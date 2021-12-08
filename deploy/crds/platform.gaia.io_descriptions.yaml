@@ -1,0 +1,84 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: descriptions.platform.gaia.io
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.phase
+    name: STATUS
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: AGE
+    type: date
+  group: platform.gaia.io
+  names:
+    categories:
+    - gaia
+    kind: Description
+    listKind: DescriptionList
+    plural: descriptions
+    shortNames:
+    - desc
+    singular: description
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: Description is the Schema for the resources to be installed
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: DescriptionSpec defines the spec of Description
+          properties:
+            raw:
+              description: Raw is the underlying serialization of all objects.
+              items:
+                format: byte
+                type: string
+              type: array
+          type: object
+        status:
+          description: DescriptionStatus defines the observed state of Description
+          properties:
+            phase:
+              description: Phase denotes the phase of Description
+              enum:
+              - Pending
+              - Success
+              - Failure
+              type: string
+            reason:
+              description: Reason indicates the reason of DescriptionPhase
+              type: string
+          type: object
+      required:
+      - spec
+      type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

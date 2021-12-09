@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	known "gaia.io/gaia/pkg/common"
+	"gaia.io/gaia/pkg/controllermanager/approver"
+	kubeinformers "k8s.io/client-go/informers"
 	"os"
 	"strings"
 
 	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
 	"gaia.io/gaia/pkg/common"
 	gaiaclientset "gaia.io/gaia/pkg/generated/clientset/versioned"
+	gaiainformers "gaia.io/gaia/pkg/generated/informers/externalversions"
 	"gaia.io/gaia/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -39,6 +42,7 @@ type ControllerManager struct {
 
 	// clientset for child cluster
 	childKubeClientSet kubernetes.Interface
+	childGaiaClientSet *gaiaclientset.Clientset
 
 	// dedicated kubeconfig for accessing parent cluster, which is auto populated by the parent cluster
 	// when cluster registration request gets approved
@@ -47,7 +51,10 @@ type ControllerManager struct {
 	DedicatedNamespace *string
 
 	// report cluster status
-	statusManager *Manager
+	statusManager       *Manager
+	crrApprover         *approver.CRRApprover
+	gaiaInformerFactory gaiainformers.SharedInformerFactory
+	kubeInformerFactory kubeinformers.SharedInformerFactory
 }
 
 // NewAgent returns a new Agent.
@@ -67,12 +74,25 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile string) (*Con
 	}
 	// create clientset for child cluster
 	childKubeClientSet := kubernetes.NewForConfigOrDie(childKubeConfig)
+	childGaiaClientSet := gaiaclientset.NewForConfigOrDie(childKubeConfig)
+
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(childKubeClientSet, known.DefaultResync)
+	gaiaInformerFactory := gaiainformers.NewSharedInformerFactory(childGaiaClientSet, known.DefaultResync)
+	approver, err := approver.NewCRRApprover(childKubeClientSet, childGaiaClientSet, gaiaInformerFactory,
+		kubeInformerFactory)
+	if err != nil {
+		klog.Error(err)
+	}
 
 	agent := &ControllerManager{
-		ctx:                ctx,
-		Identity:           identity,
-		childKubeClientSet: childKubeClientSet,
-		statusManager:      NewStatusManager(ctx, childKubeConfig.Host, childKubeClientSet),
+		ctx:                 ctx,
+		Identity:            identity,
+		childKubeClientSet:  childKubeClientSet,
+		childGaiaClientSet:  childGaiaClientSet,
+		gaiaInformerFactory: gaiaInformerFactory,
+		kubeInformerFactory: kubeInformerFactory,
+		crrApprover:         approver,
+		statusManager:       NewStatusManager(ctx, childKubeConfig.Host, childKubeClientSet),
 	}
 	return agent, nil
 }
@@ -84,10 +104,14 @@ func (controller *ControllerManager) Run() {
 	leaderelection.RunOrDie(controller.ctx, *newLeaderElectionConfigWithDefaultValue(controller.Identity, controller.childKubeClientSet,
 		leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
+				go func() {
+					controller.crrApprover.Run(common.DefaultThreadiness, ctx.Done())
+				}()
 				// we're notified when we start - this is where you would
-				// usually put your code
-				controller.registerSelfCluster(ctx)
-
+				go func() {
+					controller.registerSelfCluster(ctx)
+				}()
+				<-ctx.Done()
 				//go wait.UntilWithContext(ctx, func(ctx context.Context) {
 				//	controller.statusManager.Run(ctx, controller.parentDedicatedKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
 				//}, time.Duration(0))
@@ -166,9 +190,15 @@ func (controller *ControllerManager) registerSelfCluster(ctx context.Context) {
 			controller.ClusterID = &clusterID
 		}
 
+		target, err := controller.childGaiaClientSet.PlatformV1alpha1().Targets().Get(ctx, common.ParentClusterTargetName, metav1.GetOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			klog.Errorf("failed to get targets: %v wait for next loop", err)
+			return
+		}
+
 		// get parent cluster kubeconfig
 		if tryToUseSecret {
-			_, err := controller.childKubeClientSet.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx,
+			secret, err := controller.childKubeClientSet.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx,
 				common.ParentClusterSecretName, metav1.GetOptions{})
 			if err != nil && !apierrors.IsNotFound(err) {
 				klog.Errorf("failed to get secretFromParentCluster: %v", err)
@@ -178,21 +208,21 @@ func (controller *ControllerManager) registerSelfCluster(ctx context.Context) {
 				klog.Infof("found existing secretFromParentCluster '%s/%s' that can be used to access parent cluster",
 					common.GaiaSystemNamespace, common.ParentClusterSecretName)
 
-				//if string(secret.Data[common.ClusterAPIServerURLKey]) != controller.Options.ParentURL {
-				//	klog.Warningf("the parent url got changed from %q to %q", secret.Data[known.ClusterAPIServerURLKey], controller.Options.ParentURL)
-				//	klog.Warningf("will try to re-register current cluster")
-				//} else {
-				//	parentDedicatedKubeConfig, err := utils.GenerateKubeConfigFromToken(controller.Options.ParentURL,
-				//		string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
-				//	if err == nil {
-				//		controller.parentDedicatedKubeConfig = parentDedicatedKubeConfig
-				//	}
-				//}
+				if string(secret.Data[common.ClusterAPIServerURLKey]) != target.Spec.ParentURL {
+					klog.Warningf("the parent url got changed from %q to %q", secret.Data[known.ClusterAPIServerURLKey], target.Spec.ParentURL)
+					klog.Warningf("will try to re-register current cluster")
+				} else {
+					parentDedicatedKubeConfig, err := utils.GenerateKubeConfigFromToken(target.Spec.ParentURL,
+						string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
+					if err == nil {
+						controller.parentDedicatedKubeConfig = parentDedicatedKubeConfig
+					}
+				}
 			}
 		}
 
 		// bootstrap cluster registration
-		if err := controller.bootstrapClusterRegistrationIfNeeded(ctx); err != nil {
+		if err := controller.bootstrapClusterRegistrationIfNeeded(ctx, target); err != nil {
 			klog.Error(err)
 			klog.Warning("something went wrong when using existing parent cluster credentials, switch to use bootstrap token instead")
 			tryToUseSecret = false
@@ -214,10 +244,10 @@ func (controller *ControllerManager) getClusterID(ctx context.Context, childClie
 	return lease.UID, nil
 }
 
-func (controller *ControllerManager) bootstrapClusterRegistrationIfNeeded(ctx context.Context) error {
+func (controller *ControllerManager) bootstrapClusterRegistrationIfNeeded(ctx context.Context, target *clusterapi.Target) error {
 	klog.Infof("try to bootstrap cluster registration if needed")
 
-	clientConfig, err := controller.getBootstrapKubeConfigForParentCluster()
+	clientConfig, err := controller.getBootstrapKubeConfigForParentCluster(target)
 	if err != nil {
 		return err
 	}
@@ -233,7 +263,6 @@ func (controller *ControllerManager) bootstrapClusterRegistrationIfNeeded(ctx co
 			return fmt.Errorf("failed to create ClusterRegistrationRequest: %v", err)
 		}
 		klog.Infof("a ClusterRegistrationRequest has already been created for cluster %q", *controller.ClusterID)
-		// todo: update spec?
 	} else {
 		klog.Infof("successfully create ClusterRegistrationRequest %q", klog.KObj(crr))
 	}
@@ -244,21 +273,13 @@ func (controller *ControllerManager) bootstrapClusterRegistrationIfNeeded(ctx co
 	return err
 }
 
-func (controller *ControllerManager) getBootstrapKubeConfigForParentCluster() (*rest.Config, error) {
+func (controller *ControllerManager) getBootstrapKubeConfigForParentCluster(target *clusterapi.Target) (*rest.Config, error) {
 	if controller.parentDedicatedKubeConfig != nil {
 		return controller.parentDedicatedKubeConfig, nil
 	}
 
-	//// todo: move to option.Validate() ?
-	//if len(controller.Options.ParentURL) == 0 {
-	//	klog.Exitf("please specify a parent cluster url by flag --%s", ClusterRegistrationURL)
-	//}
-	//if len(controller.Options.BootstrapToken) == 0 {
-	//	klog.Exitf("please specify a token for parent cluster accessing by flag --%s", ClusterRegistrationToken)
-	//}
-
 	// get bootstrap kubeconfig from token
-	clientConfig, err := utils.GenerateKubeConfigFromToken("controller.Options.ParentURL", "controller.Options.BootstrapToken", nil, 1)
+	clientConfig, err := utils.GenerateKubeConfigFromToken(target.Spec.ParentURL, target.Spec.BootstrapToken, nil, 1)
 	if err != nil {
 		return nil, fmt.Errorf("error while creating kubeconfig: %v", err)
 	}

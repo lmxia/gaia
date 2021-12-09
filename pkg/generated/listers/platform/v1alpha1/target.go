@@ -31,8 +31,9 @@ type TargetLister interface {
 	// List lists all Targets in the indexer.
 	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Target, err error)
-	// Targets returns an object that can list and get Targets.
-	Targets(namespace string) TargetNamespaceLister
+	// Get retrieves the Target from the index for a given name.
+	// Objects returned here must be treated as read-only.
+	Get(name string) (*v1alpha1.Target, error)
 	TargetListerExpansion
 }
 
@@ -54,41 +55,9 @@ func (s *targetLister) List(selector labels.Selector) (ret []*v1alpha1.Target, e
 	return ret, err
 }
 
-// Targets returns an object that can list and get Targets.
-func (s *targetLister) Targets(namespace string) TargetNamespaceLister {
-	return targetNamespaceLister{indexer: s.indexer, namespace: namespace}
-}
-
-// TargetNamespaceLister helps list and get Targets.
-// All objects returned here must be treated as read-only.
-type TargetNamespaceLister interface {
-	// List lists all Targets in the indexer for a given namespace.
-	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Target, err error)
-	// Get retrieves the Target from the indexer for a given namespace and name.
-	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.Target, error)
-	TargetNamespaceListerExpansion
-}
-
-// targetNamespaceLister implements the TargetNamespaceLister
-// interface.
-type targetNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Targets in the indexer for a given namespace.
-func (s targetNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Target, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Target))
-	})
-	return ret, err
-}
-
-// Get retrieves the Target from the indexer for a given namespace and name.
-func (s targetNamespaceLister) Get(name string) (*v1alpha1.Target, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+// Get retrieves the Target from the index for a given name.
+func (s *targetLister) Get(name string) (*v1alpha1.Target, error) {
+	obj, exists, err := s.indexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}

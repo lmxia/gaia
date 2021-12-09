@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "gaia.io/gaia/pkg/generated/clientset/versioned"
-	platformv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
-	fakeplatformv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1/fake"
+	appsv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
+	fakeappsv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1/fake"
 	platformv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1"
 	fakeplatformv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -81,9 +81,9 @@ var (
 	_ testing.FakeClient  = &Clientset{}
 )
 
-// PlatformV1alpha1 retrieves the PlatformV1alpha1Client
-func (c *Clientset) PlatformV1alpha1() platformv1alpha1.PlatformV1alpha1Interface {
-	return &fakeplatformv1alpha1.FakePlatformV1alpha1{Fake: &c.Fake}
+// AppsV1alpha1 retrieves the AppsV1alpha1Client
+func (c *Clientset) AppsV1alpha1() appsv1alpha1.AppsV1alpha1Interface {
+	return &fakeappsv1alpha1.FakeAppsV1alpha1{Fake: &c.Fake}
 }
 
 // PlatformV1alpha1 retrieves the PlatformV1alpha1Client

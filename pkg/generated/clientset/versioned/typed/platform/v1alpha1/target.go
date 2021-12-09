@@ -33,7 +33,7 @@ import (
 // TargetsGetter has a method to return a TargetInterface.
 // A group's client should implement this interface.
 type TargetsGetter interface {
-	Targets(namespace string) TargetInterface
+	Targets() TargetInterface
 }
 
 // TargetInterface has methods to work with Target resources.
@@ -53,14 +53,12 @@ type TargetInterface interface {
 // targets implements TargetInterface
 type targets struct {
 	client rest.Interface
-	ns     string
 }
 
 // newTargets returns a Targets
-func newTargets(c *PlatformV1alpha1Client, namespace string) *targets {
+func newTargets(c *PlatformV1alpha1Client) *targets {
 	return &targets{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -68,7 +66,6 @@ func newTargets(c *PlatformV1alpha1Client, namespace string) *targets {
 func (c *targets) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Target, err error) {
 	result = &v1alpha1.Target{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("targets").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -85,7 +82,6 @@ func (c *targets) List(ctx context.Context, opts v1.ListOptions) (result *v1alph
 	}
 	result = &v1alpha1.TargetList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("targets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -102,7 +98,6 @@ func (c *targets) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interfa
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("targets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -113,7 +108,6 @@ func (c *targets) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interfa
 func (c *targets) Create(ctx context.Context, target *v1alpha1.Target, opts v1.CreateOptions) (result *v1alpha1.Target, err error) {
 	result = &v1alpha1.Target{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("targets").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(target).
@@ -126,7 +120,6 @@ func (c *targets) Create(ctx context.Context, target *v1alpha1.Target, opts v1.C
 func (c *targets) Update(ctx context.Context, target *v1alpha1.Target, opts v1.UpdateOptions) (result *v1alpha1.Target, err error) {
 	result = &v1alpha1.Target{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("targets").
 		Name(target.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -141,7 +134,6 @@ func (c *targets) Update(ctx context.Context, target *v1alpha1.Target, opts v1.U
 func (c *targets) UpdateStatus(ctx context.Context, target *v1alpha1.Target, opts v1.UpdateOptions) (result *v1alpha1.Target, err error) {
 	result = &v1alpha1.Target{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("targets").
 		Name(target.Name).
 		SubResource("status").
@@ -155,7 +147,6 @@ func (c *targets) UpdateStatus(ctx context.Context, target *v1alpha1.Target, opt
 // Delete takes name of the target and deletes it. Returns an error if one occurs.
 func (c *targets) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("targets").
 		Name(name).
 		Body(&opts).
@@ -170,7 +161,6 @@ func (c *targets) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, l
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("targets").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -183,7 +173,6 @@ func (c *targets) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, l
 func (c *targets) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Target, err error) {
 	result = &v1alpha1.Target{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("targets").
 		Name(name).
 		SubResource(subresources...).

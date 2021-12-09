@@ -62,13 +62,13 @@ func NewFilteredDescriptionInformer(client versioned.Interface, namespace string
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PlatformV1alpha1().Descriptions(namespace).List(context.TODO(), options)
+				return client.AppsV1alpha1().Descriptions(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PlatformV1alpha1().Descriptions(namespace).Watch(context.TODO(), options)
+				return client.AppsV1alpha1().Descriptions(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&appsv1alpha1.Description{},

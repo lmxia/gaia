@@ -21,7 +21,8 @@ package externalversions
 import (
 	"fmt"
 
-	v1alpha1 "gaia.io/gaia/pkg/apis/platform/v1alpha1"
+	v1alpha1 "gaia.io/gaia/pkg/apis/apps/v1alpha1"
+	platformv1alpha1 "gaia.io/gaia/pkg/apis/platform/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -52,28 +53,18 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=platform.gaia.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("clusterregistrationrequests"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().ClusterRegistrationRequests().Informer()}, nil
+	// Group=apps.gaia.io, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("descriptions"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().Descriptions().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("managedclusters"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().ManagedClusters().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().Descriptions().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("networkrequirements"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().NetworkRequirements().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("targets"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().Targets().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().NetworkRequirements().Informer()}, nil
 
 		// Group=platform.gaia.io, Version=v1alpha1
-	case v1alpha1.SchemeGroupVersion.WithResource("clusterregistrationrequests"):
+	case platformv1alpha1.SchemeGroupVersion.WithResource("clusterregistrationrequests"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().ClusterRegistrationRequests().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("descriptions"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().Descriptions().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("managedclusters"):
+	case platformv1alpha1.SchemeGroupVersion.WithResource("managedclusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().ManagedClusters().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("networkrequirements"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().NetworkRequirements().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("targets"):
+	case platformv1alpha1.SchemeGroupVersion.WithResource("targets"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().Targets().Informer()}, nil
 
 	}

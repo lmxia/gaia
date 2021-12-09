@@ -18,8 +18,6 @@ limitations under the License.
 
 package v1alpha1
 
-type ClusterRegistrationRequestExpansion interface{}
+type DescriptionExpansion interface{}
 
-type ManagedClusterExpansion interface{}
-
-type TargetExpansion interface{}
+type NetworkRequirementExpansion interface{}

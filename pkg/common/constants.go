@@ -20,6 +20,7 @@ const (
 	// ClusterAPIServerURLKey denotes the apiserver address
 	ClusterAPIServerURLKey = "apiserver-advertise-url"
 	ParentClusterSecretName = "parent-cluster"
+	ParentClusterTargetName = "parent-cluster"
 
 	ClusterRegisteredByLabel  = "clusters.gaia.io/registered-by"
 	ClusterIDLabel            = "clusters.gaia.io/cluster-id"
@@ -47,5 +48,6 @@ const (
 	DefaultRetryPeriod = 5 * time.Second
 	// DefaultResync means the default resync time
 	DefaultResync = time.Hour * 12
+	DefaultThreadiness = 2
 
 )

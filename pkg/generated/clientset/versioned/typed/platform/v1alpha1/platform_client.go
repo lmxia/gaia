@@ -44,8 +44,8 @@ func (c *PlatformV1alpha1Client) ManagedClusters(namespace string) ManagedCluste
 	return newManagedClusters(c, namespace)
 }
 
-func (c *PlatformV1alpha1Client) Targets(namespace string) TargetInterface {
-	return newTargets(c, namespace)
+func (c *PlatformV1alpha1Client) Targets() TargetInterface {
+	return newTargets(c)
 }
 
 // NewForConfig creates a new PlatformV1alpha1Client for the given config.

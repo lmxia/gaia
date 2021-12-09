@@ -19,6 +19,7 @@ limitations under the License.
 package fake
 
 import (
+	appsv1alpha1 "gaia.io/gaia/pkg/apis/apps/v1alpha1"
 	platformv1alpha1 "gaia.io/gaia/pkg/apis/platform/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -31,7 +32,7 @@ var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
 
 var localSchemeBuilder = runtime.SchemeBuilder{
-	platformv1alpha1.AddToScheme,
+	appsv1alpha1.AddToScheme,
 	platformv1alpha1.AddToScheme,
 }
 

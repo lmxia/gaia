@@ -33,7 +33,3 @@ type ManagedClusterNamespaceListerExpansion interface{}
 // TargetListerExpansion allows custom methods to be added to
 // TargetLister.
 type TargetListerExpansion interface{}
-
-// TargetNamespaceListerExpansion allows custom methods to be added to
-// TargetNamespaceLister.
-type TargetNamespaceListerExpansion interface{}

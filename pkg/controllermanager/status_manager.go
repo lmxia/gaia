@@ -56,7 +56,7 @@ func NewStatusManager(ctx context.Context, apiserverURL string, kubeClient kuber
 	}
 
 	return &Manager{
-		statusReportFrequency: metav1.Duration{common.DefaultClusterStatusCollectFrequency},
+		statusReportFrequency: metav1.Duration{Duration: common.DefaultClusterStatusCollectFrequency},
 	}
 }
 

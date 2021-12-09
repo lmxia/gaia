@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"gaia.io/gaia/pkg/common"
+	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"net/url"
@@ -16,7 +17,11 @@ type options struct {
 	kubeconfig          string
 	clusterRegistration *ClusterRegistrationOptions
 }
-
+// AddFlags adds the flags to the flagset.
+func (opts *options) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&opts.kubeconfig, "kubeconfig", opts.kubeconfig,
+		"Path to a kubeconfig file for current child cluster. Only required if out-of-cluster")
+}
 
 // NewOptions creates a new *options with sane defaults
 func NewOptions() *options {

@@ -55,5 +55,5 @@ func (v *version) ManagedClusters() ManagedClusterInformer {
 
 // Targets returns a TargetInformer.
 func (v *version) Targets() TargetInformer {
-	return &targetInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &targetInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

@@ -19,37 +19,32 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "gaia.io/gaia/pkg/apis/platform/v1alpha1"
+	v1alpha1 "gaia.io/gaia/pkg/apis/apps/v1alpha1"
 	"gaia.io/gaia/pkg/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
-type PlatformV1alpha1Interface interface {
+type AppsV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	ClusterRegistrationRequestsGetter
-	ManagedClustersGetter
-	TargetsGetter
+	DescriptionsGetter
+	NetworkRequirementsGetter
 }
 
-// PlatformV1alpha1Client is used to interact with features provided by the platform.gaia.io group.
-type PlatformV1alpha1Client struct {
+// AppsV1alpha1Client is used to interact with features provided by the apps.gaia.io group.
+type AppsV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *PlatformV1alpha1Client) ClusterRegistrationRequests() ClusterRegistrationRequestInterface {
-	return newClusterRegistrationRequests(c)
+func (c *AppsV1alpha1Client) Descriptions(namespace string) DescriptionInterface {
+	return newDescriptions(c, namespace)
 }
 
-func (c *PlatformV1alpha1Client) ManagedClusters(namespace string) ManagedClusterInterface {
-	return newManagedClusters(c, namespace)
+func (c *AppsV1alpha1Client) NetworkRequirements(namespace string) NetworkRequirementInterface {
+	return newNetworkRequirements(c, namespace)
 }
 
-func (c *PlatformV1alpha1Client) Targets(namespace string) TargetInterface {
-	return newTargets(c, namespace)
-}
-
-// NewForConfig creates a new PlatformV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*PlatformV1alpha1Client, error) {
+// NewForConfig creates a new AppsV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*AppsV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -58,12 +53,12 @@ func NewForConfig(c *rest.Config) (*PlatformV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &PlatformV1alpha1Client{client}, nil
+	return &AppsV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new PlatformV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new AppsV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *PlatformV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *AppsV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -71,9 +66,9 @@ func NewForConfigOrDie(c *rest.Config) *PlatformV1alpha1Client {
 	return client
 }
 
-// New creates a new PlatformV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *PlatformV1alpha1Client {
-	return &PlatformV1alpha1Client{c}
+// New creates a new AppsV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *AppsV1alpha1Client {
+	return &AppsV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -91,7 +86,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *PlatformV1alpha1Client) RESTClient() rest.Interface {
+func (c *AppsV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

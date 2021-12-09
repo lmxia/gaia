@@ -24,25 +24,21 @@ import (
 	testing "k8s.io/client-go/testing"
 )
 
-type FakePlatformV1alpha1 struct {
+type FakeAppsV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakePlatformV1alpha1) ClusterRegistrationRequests() v1alpha1.ClusterRegistrationRequestInterface {
-	return &FakeClusterRegistrationRequests{c}
+func (c *FakeAppsV1alpha1) Descriptions(namespace string) v1alpha1.DescriptionInterface {
+	return &FakeDescriptions{c, namespace}
 }
 
-func (c *FakePlatformV1alpha1) ManagedClusters(namespace string) v1alpha1.ManagedClusterInterface {
-	return &FakeManagedClusters{c, namespace}
-}
-
-func (c *FakePlatformV1alpha1) Targets(namespace string) v1alpha1.TargetInterface {
-	return &FakeTargets{c, namespace}
+func (c *FakeAppsV1alpha1) NetworkRequirements(namespace string) v1alpha1.NetworkRequirementInterface {
+	return &FakeNetworkRequirements{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakePlatformV1alpha1) RESTClient() rest.Interface {
+func (c *FakeAppsV1alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

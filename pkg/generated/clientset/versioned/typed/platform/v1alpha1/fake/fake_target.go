@@ -33,7 +33,6 @@ import (
 // FakeTargets implements TargetInterface
 type FakeTargets struct {
 	Fake *FakePlatformV1alpha1
-	ns   string
 }
 
 var targetsResource = schema.GroupVersionResource{Group: "platform.gaia.io", Version: "v1alpha1", Resource: "targets"}
@@ -43,8 +42,7 @@ var targetsKind = schema.GroupVersionKind{Group: "platform.gaia.io", Version: "v
 // Get takes name of the target, and returns the corresponding target object, and an error if there is any.
 func (c *FakeTargets) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Target, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(targetsResource, c.ns, name), &v1alpha1.Target{})
-
+		Invokes(testing.NewRootGetAction(targetsResource, name), &v1alpha1.Target{})
 	if obj == nil {
 		return nil, err
 	}
@@ -54,8 +52,7 @@ func (c *FakeTargets) Get(ctx context.Context, name string, options v1.GetOption
 // List takes label and field selectors, and returns the list of Targets that match those selectors.
 func (c *FakeTargets) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TargetList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(targetsResource, targetsKind, c.ns, opts), &v1alpha1.TargetList{})
-
+		Invokes(testing.NewRootListAction(targetsResource, targetsKind, opts), &v1alpha1.TargetList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -76,15 +73,13 @@ func (c *FakeTargets) List(ctx context.Context, opts v1.ListOptions) (result *v1
 // Watch returns a watch.Interface that watches the requested targets.
 func (c *FakeTargets) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(targetsResource, c.ns, opts))
-
+		InvokesWatch(testing.NewRootWatchAction(targetsResource, opts))
 }
 
 // Create takes the representation of a target and creates it.  Returns the server's representation of the target, and an error, if there is any.
 func (c *FakeTargets) Create(ctx context.Context, target *v1alpha1.Target, opts v1.CreateOptions) (result *v1alpha1.Target, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(targetsResource, c.ns, target), &v1alpha1.Target{})
-
+		Invokes(testing.NewRootCreateAction(targetsResource, target), &v1alpha1.Target{})
 	if obj == nil {
 		return nil, err
 	}
@@ -94,8 +89,7 @@ func (c *FakeTargets) Create(ctx context.Context, target *v1alpha1.Target, opts 
 // Update takes the representation of a target and updates it. Returns the server's representation of the target, and an error, if there is any.
 func (c *FakeTargets) Update(ctx context.Context, target *v1alpha1.Target, opts v1.UpdateOptions) (result *v1alpha1.Target, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(targetsResource, c.ns, target), &v1alpha1.Target{})
-
+		Invokes(testing.NewRootUpdateAction(targetsResource, target), &v1alpha1.Target{})
 	if obj == nil {
 		return nil, err
 	}
@@ -106,8 +100,7 @@ func (c *FakeTargets) Update(ctx context.Context, target *v1alpha1.Target, opts 
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 func (c *FakeTargets) UpdateStatus(ctx context.Context, target *v1alpha1.Target, opts v1.UpdateOptions) (*v1alpha1.Target, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(targetsResource, "status", c.ns, target), &v1alpha1.Target{})
-
+		Invokes(testing.NewRootUpdateSubresourceAction(targetsResource, "status", target), &v1alpha1.Target{})
 	if obj == nil {
 		return nil, err
 	}
@@ -117,14 +110,13 @@ func (c *FakeTargets) UpdateStatus(ctx context.Context, target *v1alpha1.Target,
 // Delete takes name of the target and deletes it. Returns an error if one occurs.
 func (c *FakeTargets) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(targetsResource, c.ns, name), &v1alpha1.Target{})
-
+		Invokes(testing.NewRootDeleteAction(targetsResource, name), &v1alpha1.Target{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeTargets) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(targetsResource, c.ns, listOpts)
+	action := testing.NewRootDeleteCollectionAction(targetsResource, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.TargetList{})
 	return err
@@ -133,8 +125,7 @@ func (c *FakeTargets) DeleteCollection(ctx context.Context, opts v1.DeleteOption
 // Patch applies the patch and returns the patched target.
 func (c *FakeTargets) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Target, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(targetsResource, c.ns, name, pt, data, subresources...), &v1alpha1.Target{})
-
+		Invokes(testing.NewRootPatchSubresourceAction(targetsResource, name, pt, data, subresources...), &v1alpha1.Target{})
 	if obj == nil {
 		return nil, err
 	}

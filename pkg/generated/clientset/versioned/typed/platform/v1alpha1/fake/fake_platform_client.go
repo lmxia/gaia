@@ -36,8 +36,8 @@ func (c *FakePlatformV1alpha1) ManagedClusters(namespace string) v1alpha1.Manage
 	return &FakeManagedClusters{c, namespace}
 }
 
-func (c *FakePlatformV1alpha1) Targets(namespace string) v1alpha1.TargetInterface {
-	return &FakeTargets{c, namespace}
+func (c *FakePlatformV1alpha1) Targets() v1alpha1.TargetInterface {
+	return &FakeTargets{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

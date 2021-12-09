@@ -43,6 +43,7 @@ func NewGaiaControllerCmd(ctx context.Context) *cobra.Command {
 	}
 
 	version.AddVersionFlag(cmd.Flags())
+	opts.AddFlags(cmd.Flags())
 	return cmd
 
 }

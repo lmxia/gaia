@@ -191,7 +191,7 @@ func (controller *ControllerManager) registerSelfCluster(ctx context.Context) {
 		}
 
 		target, err := controller.childGaiaClientSet.PlatformV1alpha1().Targets().Get(ctx, common.ParentClusterTargetName, metav1.GetOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
+		if err != nil {
 			klog.Errorf("failed to get targets: %v wait for next loop", err)
 			return
 		}

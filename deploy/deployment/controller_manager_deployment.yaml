@@ -9,4 +9,10 @@ kind: Namespace
 metadata:
   name: gaia-system
 
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gaia-resource-deployer
+  namespace: gaia-system
 

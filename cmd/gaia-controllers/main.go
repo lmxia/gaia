@@ -1,4 +1,4 @@
-package gaia_controllers
+package main
 
 import (
 	goflag "flag"

@@ -254,8 +254,8 @@ func (controller *ControllerManager) bootstrapClusterRegistrationIfNeeded(ctx co
 	// create ClusterRegistrationRequest
 	client := gaiaclientset.NewForConfigOrDie(clientConfig)
 	crr, err := client.PlatformV1alpha1().ClusterRegistrationRequests().Create(ctx,
-		newClusterRegistrationRequest(*controller.ClusterID, generateClusterName("ontroller.Options.ClusterName", common.NamePrefixForGaiaObjects),
-			"controller.Options.ClusterLabels"),
+		newClusterRegistrationRequest(*controller.ClusterID, generateClusterName("", common.NamePrefixForGaiaObjects),
+			""),
 		metav1.CreateOptions{})
 
 	if err != nil {
@@ -268,7 +268,7 @@ func (controller *ControllerManager) bootstrapClusterRegistrationIfNeeded(ctx co
 	}
 
 	// wait until stopCh is closed or request is approved
-	err = controller.waitingForApproval(ctx, client)
+	err = controller.waitingForApproval(ctx, client, target)
 
 	return err
 }
@@ -287,23 +287,25 @@ func (controller *ControllerManager) getBootstrapKubeConfigForParentCluster(targ
 	return clientConfig, nil
 }
 
-func (controller *ControllerManager) waitingForApproval(ctx context.Context, client gaiaclientset.Interface) error {
+func (controller *ControllerManager) waitingForApproval(ctx context.Context, client gaiaclientset.Interface, target *clusterapi.Target) error {
 	var crr *clusterapi.ClusterRegistrationRequest
 	var err error
 
 	// wait until stopCh is closed or request is approved
 	waitingCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
+	var clusterName string
 	wait.JitterUntilWithContext(waitingCtx, func(ctx context.Context) {
 		crrName := generateClusterRegistrationRequestName(*controller.ClusterID)
+
 		crr, err = client.PlatformV1alpha1().ClusterRegistrationRequests().Get(ctx, crrName, metav1.GetOptions{})
 		if err != nil {
 			klog.Errorf("failed to get ClusterRegistrationRequest %s: %v", crrName, err)
 			return
 		}
-		if clusterName, ok := crr.Labels[known.ClusterNameLabel]; ok {
-			//controller.Options.ClusterName = clusterName
-			klog.V(5).Infof("found existing cluster name %q, reuse it", clusterName)
+		if name, ok := crr.Labels[known.ClusterNameLabel]; ok {
+			clusterName = name
+			klog.V(5).Infof("found existing cluster name %q, reuse it", name)
 		}
 
 		if crr.Status.Result != nil && *crr.Status.Result == clusterapi.RequestApproved {
@@ -314,10 +316,10 @@ func (controller *ControllerManager) waitingForApproval(ctx context.Context, cli
 		}
 
 		klog.V(4).Infof("the registration request for cluster %q (%q) is still waiting for approval...",
-			*controller.ClusterID, "controller.Options.ClusterName")
+			*controller.ClusterID, clusterName)
 	}, known.DefaultRetryPeriod, 0.4, true)
 
-	parentDedicatedKubeConfig, err := utils.GenerateKubeConfigFromToken("controller.Options.ParentURL",
+	parentDedicatedKubeConfig, err := utils.GenerateKubeConfigFromToken(target.Spec.ParentURL,
 		string(crr.Status.DedicatedToken), crr.Status.CACertificate, 2)
 	if err != nil {
 		return err
@@ -327,30 +329,29 @@ func (controller *ControllerManager) waitingForApproval(ctx context.Context, cli
 
 	// once the request gets approved
 	// store auto-populated credentials to Secret "parent-cluster" in "clusternet-system" namespace
-	go controller.storeParentClusterCredentials(crr)
+	go controller.storeParentClusterCredentials(crr, clusterName, target)
 
 	return nil
 }
 
-func (controller *ControllerManager) storeParentClusterCredentials(crr *clusterapi.ClusterRegistrationRequest) {
+func (controller *ControllerManager) storeParentClusterCredentials(crr *clusterapi.ClusterRegistrationRequest, clusterName string, target *clusterapi.Target) {
 	klog.V(4).Infof("store parent cluster credentials to secret for later use")
 	secretCtx, cancel := context.WithCancel(controller.ctx)
 	defer cancel()
-
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "",
 			Labels: map[string]string{
 				common.ClusterBootstrappingLabel: common.CredentialsAuto,
 				common.ClusterIDLabel:            string(*controller.ClusterID),
-				common.ClusterNameLabel:          "",
+				common.ClusterNameLabel:          clusterName,
 			},
 		},
 		Data: map[string][]byte{
 			corev1.ServiceAccountRootCAKey:    crr.Status.CACertificate,
 			corev1.ServiceAccountTokenKey:     crr.Status.DedicatedToken,
 			corev1.ServiceAccountNamespaceKey: []byte(crr.Status.DedicatedNamespace),
-			common.ClusterAPIServerURLKey:     []byte("controller.Options.ParentURL"),
+			common.ClusterAPIServerURLKey:     []byte(target.Spec.ParentURL),
 		},
 	}
 

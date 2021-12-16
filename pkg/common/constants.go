@@ -8,7 +8,7 @@ const (
 	// RegistrationNamePrefix is a prefix name for cluster registration
 	RegistrationNamePrefix = "gaia-cluster"
 	// such as namespace, sa, etc
-	NamePrefixForGaiaObjects = "gaia-"
+	NamePrefixForGaiaObjects = "gaia"
 	SubCluster               = "Gaia-Controllermanager"
 
 	// ClusterRegistrationURL flag denotes the url of parent cluster

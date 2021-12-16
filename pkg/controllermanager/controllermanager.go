@@ -3,14 +3,10 @@ package controllermanager
 import (
 	"context"
 	"fmt"
-	known "gaia.io/gaia/pkg/common"
-	"gaia.io/gaia/pkg/controllermanager/approver"
-	kubeinformers "k8s.io/client-go/informers"
-	"os"
-	"strings"
-
 	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
 	"gaia.io/gaia/pkg/common"
+	known "gaia.io/gaia/pkg/common"
+	"gaia.io/gaia/pkg/controllermanager/approver"
 	gaiaclientset "gaia.io/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "gaia.io/gaia/pkg/generated/informers/externalversions"
 	"gaia.io/gaia/pkg/utils"
@@ -21,12 +17,16 @@ import (
 	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
+	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/klog/v2"
 	utilpointer "k8s.io/utils/pointer"
+	"os"
+	"strings"
+	"time"
 )
 
 // Agent defines configuration for clusternet-agent
@@ -104,18 +104,23 @@ func (controller *ControllerManager) Run() {
 	leaderelection.RunOrDie(controller.ctx, *newLeaderElectionConfigWithDefaultValue(controller.Identity, controller.childKubeClientSet,
 		leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
+				controller.gaiaInformerFactory.Start(ctx.Done())
+				controller.kubeInformerFactory.Start(ctx.Done())
+
 				go func() {
 					controller.crrApprover.Run(common.DefaultThreadiness, ctx.Done())
 				}()
 				// we're notified when we start - this is where you would
 				go func() {
+					// will wait, need period report only when register successfully.
 					controller.registerSelfCluster(ctx)
+					go wait.UntilWithContext(ctx, func(ctx context.Context) {
+						controller.statusManager.Run(ctx, controller.parentDedicatedKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
+					}, time.Duration(0))
 				}()
-				<-ctx.Done()
-				//go wait.UntilWithContext(ctx, func(ctx context.Context) {
-				//	controller.statusManager.Run(ctx, controller.parentDedicatedKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
-				//}, time.Duration(0))
 
+
+				//<-ctx.Done()
 				//go wait.UntilWithContext(ctx, func(ctx context.Context) {
 				//	if err := controller.deployer.Run(ctx,
 				//		controller.parentDedicatedKubeConfig,
@@ -340,7 +345,7 @@ func (controller *ControllerManager) storeParentClusterCredentials(crr *clustera
 	defer cancel()
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "",
+			Name: known.ParentClusterSecretName,
 			Labels: map[string]string{
 				common.ClusterBootstrappingLabel: common.CredentialsAuto,
 				common.ClusterIDLabel:            string(*controller.ClusterID),

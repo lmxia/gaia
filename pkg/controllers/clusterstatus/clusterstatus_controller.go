@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -27,8 +28,8 @@ type Controller struct {
 	kubeClient         kubernetes.Interface
 	lock               *sync.Mutex
 	clusterStatus      *clusterapi.ManagedClusterStatus
-	collectingPeriod   metav1.Duration
-	heartbeatFrequency metav1.Duration
+	collectingPeriod   time.Duration
+	heartbeatFrequency time.Duration
 	apiserverURL       string
 	appPusherEnabled   bool
 	useSocket          bool
@@ -38,8 +39,9 @@ type Controller struct {
 	podSynced          cache.InformerSynced
 }
 
-func NewController(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface, collectingPeriod metav1.Duration, heartbeatFrequency metav1.Duration) *Controller {
+func NewController(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, known.DefaultResync)
+	// add informers
 	kubeInformerFactory.Core().V1().Nodes().Informer()
 	kubeInformerFactory.Core().V1().Pods().Informer()
 	kubeInformerFactory.Start(ctx.Done())
@@ -55,7 +57,6 @@ func NewController(ctx context.Context, apiserverURL string, kubeClient kubernet
 		podLister:          kubeInformerFactory.Core().V1().Pods().Lister(),
 		podSynced:          kubeInformerFactory.Core().V1().Pods().Informer().HasSynced,
 	}
-
 }
 
 func (c *Controller) Run(ctx context.Context) {
@@ -66,7 +67,7 @@ func (c *Controller) Run(ctx context.Context) {
 		return
 	}
 
-	wait.UntilWithContext(ctx, c.collectingClusterStatus, c.collectingPeriod.Duration)
+	wait.UntilWithContext(ctx, c.collectingClusterStatus, c.collectingPeriod)
 }
 
 func (c *Controller) collectingClusterStatus(ctx context.Context) {

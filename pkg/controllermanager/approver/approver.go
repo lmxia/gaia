@@ -19,20 +19,16 @@ package approver
 import (
 	"context"
 	"fmt"
-
-	ccrListers "gaia.io/gaia/pkg/generated/listers/platform/v1alpha1"
-
-	platformapi "gaia.io/gaia/pkg/apis/platform"
-	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
-	clusternetInformers "gaia.io/gaia/pkg/generated/informers/externalversions"
-
 	"strings"
 	"sync"
 
-	"gaia.io/gaia/pkg/controllers/clusterregistrationrequest"
-
+	platformapi "gaia.io/gaia/pkg/apis/platform"
+	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
 	known "gaia.io/gaia/pkg/common"
-	clusternetClientSet "gaia.io/gaia/pkg/generated/clientset/versioned"
+	"gaia.io/gaia/pkg/controllers/clusterregistrationrequest"
+	gaiaClientSet "gaia.io/gaia/pkg/generated/clientset/versioned"
+	clusternetInformers "gaia.io/gaia/pkg/generated/informers/externalversions"
+	ccrListers "gaia.io/gaia/pkg/generated/listers/platform/v1alpha1"
 	"gaia.io/gaia/pkg/utils"
 
 	corev1 "k8s.io/api/core/v1"
@@ -61,23 +57,23 @@ type CRRApprover struct {
 	saLister corev1Lister.ServiceAccountLister
 
 	kubeclient       *kubernetes.Clientset
-	clusternetclient *clusternetClientSet.Clientset
+	clusternetclient *gaiaClientSet.Clientset
 }
 
 // NewCRRApprover returns a new CRRApprover for ClusterRegistrationRequest.
-func NewCRRApprover(kubeclient *kubernetes.Clientset, clusternetclient *clusternetClientSet.Clientset,
-	clusternetInformerFactory clusternetInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+func NewCRRApprover(kubeclient *kubernetes.Clientset, gaiaclient *gaiaClientSet.Clientset,
+	gaiaInformerFactory clusternetInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
 	crrApprover := &CRRApprover{
 		kubeclient:       kubeclient,
-		clusternetclient: clusternetclient,
-		crrLister:        clusternetInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests().Lister(),
-		mclsLister:       clusternetInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
+		clusternetclient: gaiaclient,
+		crrLister:        gaiaInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests().Lister(),
+		mclsLister:       gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
 		nsLister:         kubeInformerFactory.Core().V1().Namespaces().Lister(),
 		saLister:         kubeInformerFactory.Core().V1().ServiceAccounts().Lister(),
 	}
 
-	newCRRController, err := clusterregistrationrequest.NewController(clusternetclient,
-		clusternetInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests(),
+	newCRRController, err := clusterregistrationrequest.NewController(gaiaclient,
+		gaiaInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests(),
 		crrApprover.handleClusterRegistrationRequests)
 	if err != nil {
 		return nil, err

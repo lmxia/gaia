@@ -14,11 +14,12 @@ const (
 	// ClusterRegistrationURL flag denotes the url of parent cluster
 	ClusterRegistrationURL = "cluster-reg-parent-url"
 	// ClusterRegistrationName flag specifies the cluster registration name
-	ClusterRegistrationName              = "cluster-reg-name"
-	SelfClusterLeaseName                 = "self-cluster"
-	GaiaSystemNamespace                  = "gaia-system"
+	ClusterRegistrationName = "cluster-reg-name"
+	SelfClusterLeaseName    = "self-cluster"
+	GaiaSystemNamespace     = "gaia-system"
+	GaiaReservedNamespace   = "gaia-reserved"
 	// ClusterAPIServerURLKey denotes the apiserver address
-	ClusterAPIServerURLKey = "apiserver-advertise-url"
+	ClusterAPIServerURLKey  = "apiserver-advertise-url"
 	ParentClusterSecretName = "parent-cluster"
 	ParentClusterTargetName = "parent-cluster"
 
@@ -26,7 +27,7 @@ const (
 	ClusterIDLabel            = "clusters.gaia.io/cluster-id"
 	ClusterNameLabel          = "clusters.gaia.io/cluster-name"
 	ClusterBootstrappingLabel = "clusters.gaia.io/bootstrapping"
-	CredentialsAuto = "credentials-auto"
+	CredentialsAuto           = "credentials-auto"
 
 	DefaultClusterStatusCollectFrequency = 20 * time.Second
 	DefaultClusterStatusReportFrequency  = 3 * time.Minute
@@ -36,9 +37,7 @@ const (
 	DefaultRandomUIDLength = 5
 	// ClusternetAppSA is the service account where we store credentials to deploy resources
 	GaiaAppSA = "gaia-resource-deployer"
-
-	)
-
+)
 
 // lease lock
 const (
@@ -47,7 +46,6 @@ const (
 	// DefaultRetryPeriod means the default retry period
 	DefaultRetryPeriod = 5 * time.Second
 	// DefaultResync means the default resync time
-	DefaultResync = time.Hour * 12
+	DefaultResync      = time.Hour * 12
 	DefaultThreadiness = 2
-
 )

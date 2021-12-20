@@ -3,13 +3,10 @@ package controllermanager
 import (
 	"context"
 	"fmt"
-	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
-	"gaia.io/gaia/pkg/common"
-	known "gaia.io/gaia/pkg/common"
-	"gaia.io/gaia/pkg/controllermanager/approver"
-	gaiaclientset "gaia.io/gaia/pkg/generated/clientset/versioned"
-	gaiainformers "gaia.io/gaia/pkg/generated/informers/externalversions"
-	"gaia.io/gaia/pkg/utils"
+	"os"
+	"strings"
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,9 +21,15 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/klog/v2"
 	utilpointer "k8s.io/utils/pointer"
-	"os"
-	"strings"
-	"time"
+
+	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
+	"gaia.io/gaia/pkg/common"
+	known "gaia.io/gaia/pkg/common"
+	"gaia.io/gaia/pkg/controllermanager/approver"
+	gaiaclientset "gaia.io/gaia/pkg/generated/clientset/versioned"
+	gaiainformers "gaia.io/gaia/pkg/generated/informers/externalversions"
+	"gaia.io/gaia/pkg/scheduler"
+	"gaia.io/gaia/pkg/utils"
 )
 
 // Agent defines configuration for clusternet-agent
@@ -55,6 +58,8 @@ type ControllerManager struct {
 	crrApprover         *approver.CRRApprover
 	gaiaInformerFactory gaiainformers.SharedInformerFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
+	scheduler           *scheduler.Scheduler
+	triggerFunc         func(metav1.Object)
 }
 
 // NewAgent returns a new Agent.
@@ -76,22 +81,24 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile string) (*Con
 	childKubeClientSet := kubernetes.NewForConfigOrDie(childKubeConfig)
 	childGaiaClientSet := gaiaclientset.NewForConfigOrDie(childKubeConfig)
 
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(childKubeClientSet, known.DefaultResync)
-	gaiaInformerFactory := gaiainformers.NewSharedInformerFactory(childGaiaClientSet, known.DefaultResync)
-	approver, err := approver.NewCRRApprover(childKubeClientSet, childGaiaClientSet, gaiaInformerFactory,
-		kubeInformerFactory)
+	selfKubeInformerFactory := kubeinformers.NewSharedInformerFactory(childKubeClientSet, known.DefaultResync)
+	selfGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(childGaiaClientSet, known.DefaultResync)
+	approver, err := approver.NewCRRApprover(childKubeClientSet, childGaiaClientSet, selfGaiaInformerFactory,
+		selfKubeInformerFactory)
 	if err != nil {
 		klog.Error(err)
 	}
+	scheduler, err := scheduler.New(childGaiaClientSet)
 
 	agent := &ControllerManager{
 		ctx:                 ctx,
 		Identity:            identity,
 		childKubeClientSet:  childKubeClientSet,
 		childGaiaClientSet:  childGaiaClientSet,
-		gaiaInformerFactory: gaiaInformerFactory,
-		kubeInformerFactory: kubeInformerFactory,
+		gaiaInformerFactory: selfGaiaInformerFactory,
+		kubeInformerFactory: selfKubeInformerFactory,
 		crrApprover:         approver,
+		scheduler:           scheduler,
 		statusManager:       NewStatusManager(ctx, childKubeConfig.Host, childKubeClientSet),
 	}
 	return agent, nil
@@ -104,33 +111,35 @@ func (controller *ControllerManager) Run() {
 	leaderelection.RunOrDie(controller.ctx, *newLeaderElectionConfigWithDefaultValue(controller.Identity, controller.childKubeClientSet,
 		leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
+				//1. start generic informers
 				controller.gaiaInformerFactory.Start(ctx.Done())
 				controller.kubeInformerFactory.Start(ctx.Done())
 
+				//2. start Approve
 				go func() {
 					controller.crrApprover.Run(common.DefaultThreadiness, ctx.Done())
 				}()
-				// we're notified when we start - this is where you would
+
+				//3. start local scheduler.
 				go func() {
-					// will wait, need period report only when register successfully.
+					controller.scheduler.RunLocalScheduler(known.DefaultThreadiness, ctx.Done())
+				}()
+
+				// 4. wait for target to join into a parent cluster.
+				go func() {
+					// 5. will wait, need period report only when register successfully.
 					controller.registerSelfCluster(ctx)
+					// 6. report periodly.
 					go wait.UntilWithContext(ctx, func(ctx context.Context) {
 						controller.statusManager.Run(ctx, controller.parentDedicatedKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
 					}, time.Duration(0))
+					// 7. when we get add parentDedicatedKubeConfig add parent desc controller and start it.
+					go func() {
+						controller.scheduler.SetParentDescController(gaiaclientset.NewForConfigOrDie(controller.parentDedicatedKubeConfig),
+							*controller.DedicatedNamespace)
+						controller.scheduler.RunParentScheduler(known.DefaultThreadiness, ctx.Done())
+					}()
 				}()
-
-
-				//<-ctx.Done()
-				//go wait.UntilWithContext(ctx, func(ctx context.Context) {
-				//	if err := controller.deployer.Run(ctx,
-				//		controller.parentDedicatedKubeConfig,
-				//		controller.childKubeClientSet,
-				//		controller.DedicatedNamespace,
-				//		controller.ClusterID,
-				//		2); err != nil {
-				//		klog.Error(err)
-				//	}
-				//}, time.Duration(0))
 			},
 			OnStoppedLeading: func() {
 				klog.Error("leader election got lost")

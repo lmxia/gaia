@@ -11,9 +11,9 @@ import (
 
 type Scheduler struct {
 	//add some config here, but for now i don't know what that is.
-	localdescController  *description.Controller
-	localInformerFactory gaiainformers.SharedInformerFactory
-	parentdescController *description.Controller
+	localdescController   *description.Controller
+	localInformerFactory  gaiainformers.SharedInformerFactory
+	parentdescController  *description.Controller
 	parentInformerFactory gaiainformers.SharedInformerFactory
 }
 
@@ -22,7 +22,7 @@ func New(selfGaiaClient *gaiaClientSet.Clientset) (*Scheduler, error) {
 	return sched.SetLocalDescController(selfGaiaClient)
 }
 
-func (sched *Scheduler) NewDescController(gaiaClient *gaiaClientSet.Clientset, namespace string)(gaiainformers.SharedInformerFactory, *description.Controller, error) {
+func (sched *Scheduler) NewDescController(gaiaClient *gaiaClientSet.Clientset, namespace string) (gaiainformers.SharedInformerFactory, *description.Controller, error) {
 	selfGaiaInformerFactory := gaiainformers.NewSharedInformerFactoryWithOptions(gaiaClient,
 		known.DefaultResync, gaiainformers.WithNamespace(namespace))
 
@@ -55,8 +55,6 @@ func (sched *Scheduler) SetParentDescController(gaiaClient *gaiaClientSet.Client
 	sched.parentInformerFactory = parentInformerFactory
 	return sched, nil
 }
-
-
 
 func (sched *Scheduler) handleDescription(desc *appsapi.Description) error {
 

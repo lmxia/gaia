@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Important: Run "make generated" to regenerate code after modifying this file
@@ -51,7 +51,6 @@ type (
 		North NorthboundTraffic `json:"north,omitempty"`
 	}
 )
-
 
 // NetworkRequirementSpec defines the spec of NetworkRequirement
 type NetworkRequirementSpec struct {

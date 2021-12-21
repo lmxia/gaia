@@ -6,31 +6,28 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
   creationTimestamp: null
-  name: descriptions.platform.gaia.io
+  name: networkrequirements.apps.gaia.io
 spec:
   additionalPrinterColumns:
   - JSONPath: .status.phase
     name: STATUS
     type: string
-  - JSONPath: .metadata.creationTimestamp
-    name: AGE
-    type: date
-  group: platform.gaia.io
+  group: apps.gaia.io
   names:
     categories:
     - gaia
-    kind: Description
-    listKind: DescriptionList
-    plural: descriptions
+    kind: NetworkRequirement
+    listKind: NetworkRequirementList
+    plural: networkrequirements
     shortNames:
-    - desc
-    singular: description
+    - nwr
+    singular: networkrequirement
   scope: Namespaced
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
-      description: Description is the Schema for the resources to be installed
+      description: NetworkRequirement is the Schema for the resources to be installed
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -45,28 +42,44 @@ spec:
         metadata:
           type: object
         spec:
-          description: DescriptionSpec defines the spec of Description
+          description: NetworkRequirementSpec defines the spec of NetworkRequirement
           properties:
-            raw:
+            requirement:
               description: Raw is the underlying serialization of all objects.
               items:
-                format: byte
-                type: string
+                properties:
+                  north:
+                    properties:
+                      capacity:
+                        format: int64
+                        type: integer
+                      concurrency:
+                        format: int64
+                        type: integer
+                    type: object
+                  selector:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  south:
+                    properties:
+                      bandwidth:
+                        format: int64
+                        type: integer
+                      delay:
+                        format: int64
+                        type: integer
+                      robustness:
+                        format: int64
+                        type: integer
+                      targetlabel:
+                        type: string
+                    type: object
+                type: object
               type: array
           type: object
         status:
-          description: DescriptionStatus defines the observed state of Description
-          properties:
-            phase:
-              description: Phase denotes the phase of Description
-              enum:
-              - Pending
-              - Success
-              - Failure
-              type: string
-            reason:
-              description: Reason indicates the reason of DescriptionPhase
-              type: string
+          description: NetworkRequirementStatus defines the observed state of NetworkRequirement
           type: object
       required:
       - spec

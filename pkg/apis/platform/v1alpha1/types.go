@@ -6,7 +6,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-
 // +genclient
 // +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -34,7 +33,7 @@ type TargetSpec struct {
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
-	ParentURL      string `json:"parenturl,omitempty" protobuf:"bytes,1,opt,name=parenturl"`
+	ParentURL string `json:"parenturl,omitempty" protobuf:"bytes,1,opt,name=parenturl"`
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
@@ -175,8 +174,6 @@ type NodeStatistics struct {
 	// +optional
 	LostNodes int32 `json:"lostNodes,omitempty"`
 }
-
-
 
 const (
 	// ClusterReady means cluster is ready.

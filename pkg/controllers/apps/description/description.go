@@ -53,8 +53,8 @@ type Controller struct {
 	// simultaneously in two different workers.
 	workqueue workqueue.RateLimitingInterface
 
-	descLister appListers.DescriptionLister
-	descSynced cache.InformerSynced
+	descLister      appListers.DescriptionLister
+	descSynced      cache.InformerSynced
 	syncHandlerFunc SyncHandlerFunc
 }
 

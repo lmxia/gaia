@@ -11,12 +11,12 @@ import (
 	"strings"
 )
 
-
 // ClusterRegistrationOptions holds the command-line options for command
 type options struct {
 	kubeconfig          string
 	clusterRegistration *ClusterRegistrationOptions
 }
+
 // AddFlags adds the flags to the flagset.
 func (opts *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&opts.kubeconfig, "kubeconfig", opts.kubeconfig,
@@ -70,7 +70,6 @@ func (opts *ClusterRegistrationOptions) Complete() {
 	opts.ClusterName = strings.TrimSpace(opts.ClusterName)
 	opts.ClusterNamePrefix = strings.TrimSpace(opts.ClusterNamePrefix)
 }
-
 
 // Validate validates all the required options.
 func (opts *options) Validate() error {

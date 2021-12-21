@@ -36,7 +36,7 @@ const (
 
 // label value
 const (
-	RBACDefaults    = "rbac-defaults"
+	RBACDefaults = "rbac-defaults"
 
-	GaiaControllerManager   = "gaia-controller-manager"
+	GaiaControllerManager = "gaia-controller-manager"
 )

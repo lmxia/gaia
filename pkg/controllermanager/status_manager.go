@@ -92,7 +92,6 @@ func (mgr *Manager) Run(ctx context.Context, parentDedicatedKubeConfig *rest.Con
 	}, mgr.statusReportFrequency.Duration)
 }
 
-
 func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterID string, client gaiaclientset.Interface, backoff wait.Backoff) {
 	if mgr.managedCluster == nil {
 		managedClusters, err := client.PlatformV1alpha1().ManagedClusters(namespace).List(ctx, metav1.ListOptions{

@@ -42,9 +42,9 @@ const (
 // lease lock
 const (
 	DefaultLeaseDuration = 60 * time.Second
-	DefaultRenewDeadline = 15 * time.Second
+	DefaultRenewDeadline = 30 * time.Second
 	// DefaultRetryPeriod means the default retry period
-	DefaultRetryPeriod = 5 * time.Second
+	DefaultRetryPeriod = 15 * time.Second
 	// DefaultResync means the default resync time
 	DefaultResync      = time.Hour * 12
 	DefaultThreadiness = 2

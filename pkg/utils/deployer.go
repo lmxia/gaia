@@ -19,6 +19,10 @@ package utils
 import (
 	"context"
 	"fmt"
+	appsapi "gaia.io/gaia/pkg/apis/apps/v1alpha1"
+	gaiaClientSet "gaia.io/gaia/pkg/generated/clientset/versioned"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -117,4 +121,69 @@ func GetDeployerCredentials(ctx context.Context, childKubeClientSet kubernetes.I
 
 	klog.V(4).Info("successfully get credentials populated for deployer")
 	return secret
+}
+
+func ApplyDescription(ctx context.Context, gaiaclient *gaiaClientSet.Clientset, dynamicClient dynamic.Interface,
+	discoveryRESTMapper meta.RESTMapper, desc *appsapi.Description) error {
+	var allErrs []error
+	wg := sync.WaitGroup{}
+	objectsToBeDeployed := desc.Spec.Raw
+	errCh := make(chan error, len(objectsToBeDeployed))
+	for _, object := range objectsToBeDeployed {
+		resource := &unstructured.Unstructured{}
+		err := resource.UnmarshalJSON(object)
+		if err != nil {
+			allErrs = append(allErrs, err)
+			msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
+			klog.ErrorDepth(5, msg)
+			continue
+		}
+
+		labels := resource.GetLabels()
+		if labels == nil {
+			labels = map[string]string{}
+		}
+
+		resource.SetLabels(labels)
+		wg.Add(1)
+		go func(resource *unstructured.Unstructured) {
+			defer wg.Done()
+			// 1. 判断是否是deployment
+
+		}(resource)
+
+	}
+	wg.Wait()
+
+	// collect errors
+	close(errCh)
+	for err := range errCh {
+		allErrs = append(allErrs, err)
+	}
+
+	var statusPhase appsapi.DescriptionPhase
+	var reason string
+	if len(allErrs) > 0 {
+		statusPhase = appsapi.DescriptionPhaseFailure
+		reason = utilerrors.NewAggregate(allErrs).Error()
+
+		msg := fmt.Sprintf("failed to deploying Description %s: %s", klog.KObj(desc), reason)
+		klog.ErrorDepth(5, msg)
+	} else {
+		statusPhase = appsapi.DescriptionPhaseSuccess
+		reason = ""
+
+		msg := fmt.Sprintf("Description %s is deployed successfully", klog.KObj(desc))
+		klog.V(5).Info(msg)
+	}
+
+	// update status
+	desc.Status.Phase = statusPhase
+	desc.Status.Reason = reason
+	_, err := gaiaclient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
+
+	if len(allErrs) > 0 {
+		return utilerrors.NewAggregate(allErrs)
+	}
+	return err
 }

@@ -11,15 +11,18 @@ import (
 
 type Scheduler struct {
 	//add some config here, but for now i don't know what that is.
+	localGaiaClient *gaiaClientSet.Clientset
 	localdescController   *description.Controller
 	localInformerFactory  gaiainformers.SharedInformerFactory
 	parentdescController  *description.Controller
 	parentInformerFactory gaiainformers.SharedInformerFactory
 }
 
-func New(selfGaiaClient *gaiaClientSet.Clientset) (*Scheduler, error) {
-	sched := &Scheduler{}
-	return sched.SetLocalDescController(selfGaiaClient)
+func New(localGaiaClient *gaiaClientSet.Clientset) (*Scheduler, error) {
+	sched := &Scheduler{
+		localGaiaClient: localGaiaClient,
+	}
+	return sched.SetLocalDescController(localGaiaClient)
 }
 
 func (sched *Scheduler) NewDescController(gaiaClient *gaiaClientSet.Clientset, namespace string) (gaiainformers.SharedInformerFactory, *description.Controller, error) {
@@ -57,7 +60,7 @@ func (sched *Scheduler) SetParentDescController(gaiaClient *gaiaClientSet.Client
 }
 
 func (sched *Scheduler) handleDescription(desc *appsapi.Description) error {
-
+	klog.V(5).Infof("handle Description %s", klog.KObj(desc))
 	return nil
 }
 

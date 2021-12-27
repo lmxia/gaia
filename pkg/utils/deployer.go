@@ -22,6 +22,7 @@ import (
 	appsapi "gaia.io/gaia/pkg/apis/apps/v1alpha1"
 	gaiaClientSet "gaia.io/gaia/pkg/generated/clientset/versioned"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"strings"
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
@@ -123,6 +124,7 @@ func GetDeployerCredentials(ctx context.Context, childKubeClientSet kubernetes.I
 	return secret
 }
 
+
 func ApplyDescription(ctx context.Context, gaiaclient *gaiaClientSet.Clientset, dynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, desc *appsapi.Description) error {
 	var allErrs []error
@@ -138,19 +140,15 @@ func ApplyDescription(ctx context.Context, gaiaclient *gaiaClientSet.Clientset, 
 			klog.ErrorDepth(5, msg)
 			continue
 		}
-
-		labels := resource.GetLabels()
-		if labels == nil {
-			labels = map[string]string{}
-		}
-
-		resource.SetLabels(labels)
 		wg.Add(1)
-		go func(resource *unstructured.Unstructured) {
+		go func(resource *unstructured.Unstructured, raw []byte) {
 			defer wg.Done()
-			// 1. 判断是否是deployment
-
-		}(resource)
+			retryErr := ApplyResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, resource)
+			if retryErr != nil {
+				errCh <- retryErr
+				return
+			}
+		}(resource, object)
 
 	}
 	wg.Wait()
@@ -186,4 +184,69 @@ func ApplyDescription(ctx context.Context, gaiaclient *gaiaClientSet.Clientset, 
 		return utilerrors.NewAggregate(allErrs)
 	}
 	return err
+}
+
+func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+	// set UID as empty
+	resource.SetUID("")
+
+	var lastError error
+	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(), resource.GroupVersionKind().Version)
+		if err != nil {
+			lastError = fmt.Errorf("please check whether the advertised apiserver of current child cluster is accessible. %v", err)
+			return false, nil
+		}
+
+		_, lastError = dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
+			Create(context.TODO(), resource, metav1.CreateOptions{})
+		if lastError == nil {
+			return true, nil
+		}
+		if !apierrors.IsAlreadyExists(lastError) {
+			return false, nil
+		}
+
+		curObj, err := dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
+			Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
+		if err != nil {
+			lastError = err
+			return false, nil
+		} else {
+			lastError = nil
+		}
+
+		// try to update resource
+		_, lastError = dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
+			Update(context.TODO(), resource, metav1.UpdateOptions{})
+		if lastError == nil {
+			return true, nil
+		}
+		statusCauses, ok := getStatusCause(lastError)
+		if !ok {
+			lastError = fmt.Errorf("failed to get StatusCause for %s %s", resource.GetKind(), klog.KObj(resource))
+			return false, nil
+		}
+		resourceCopy := resource.DeepCopy()
+		for _, cause := range statusCauses {
+			if cause.Type != metav1.CauseTypeFieldValueInvalid {
+				continue
+			}
+			// apply immutable value
+			fields := strings.Split(cause.Field, ".")
+			setNestedField(resourceCopy, getNestedString(curObj.Object, fields...), fields...)
+		}
+		// update with immutable values applied
+		_, lastError = dynamicClient.Resource(restMapping.Resource).Namespace(resourceCopy.GetNamespace()).
+			Update(context.TODO(), resourceCopy, metav1.UpdateOptions{})
+		if lastError == nil {
+			return true, nil
+		}
+		return false, nil
+	})
+
+	if err == nil {
+		return nil
+	}
+	return lastError
 }

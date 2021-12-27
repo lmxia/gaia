@@ -34,6 +34,7 @@ import (
 	appsapi "gaia.io/gaia/pkg/apis/apps/v1alpha1"
 	gaiaClientSet "gaia.io/gaia/pkg/generated/clientset/versioned"
 	appInformers "gaia.io/gaia/pkg/generated/informers/externalversions/apps/v1alpha1"
+	platformInformers "gaia.io/gaia/pkg/generated/informers/externalversions/platform/v1alpha1"
 	appListers "gaia.io/gaia/pkg/generated/listers/apps/v1alpha1"
 )
 
@@ -55,13 +56,15 @@ type Controller struct {
 
 	descLister      appListers.DescriptionLister
 	descSynced      cache.InformerSynced
+	mcSynced        cache.InformerSynced
 	syncHandlerFunc SyncHandlerFunc
+	cacheHandler    cache.ResourceEventHandler
 }
 
 func NewController(childGaiaClient gaiaClientSet.Interface, descInformer appInformers.DescriptionInformer,
-	syncHandlerFunc SyncHandlerFunc) (*Controller, error) {
-	if syncHandlerFunc == nil {
-		return nil, fmt.Errorf("syncHandlerFunc must be set")
+	mcInformer platformInformers.ManagedClusterInformer, cacheHandler cache.ResourceEventHandler, syncHandlerFunc SyncHandlerFunc) (*Controller, error) {
+	if syncHandlerFunc == nil || cacheHandler == nil {
+		return nil, fmt.Errorf("syncHandlerFunc or cacheHandler must be set")
 	}
 
 	c := &Controller{
@@ -69,6 +72,9 @@ func NewController(childGaiaClient gaiaClientSet.Interface, descInformer appInfo
 		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "description"),
 		descLister:      descInformer.Lister(),
 		descSynced:      descInformer.Informer().HasSynced,
+		mcSynced: func() bool {
+			return true
+		},
 		syncHandlerFunc: syncHandlerFunc,
 	}
 
@@ -79,6 +85,10 @@ func NewController(childGaiaClient gaiaClientSet.Interface, descInformer appInfo
 		DeleteFunc: c.deleteDescription,
 	})
 
+	if mcInformer != nil && cacheHandler != nil {
+		mcInformer.Informer().AddEventHandler(cacheHandler)
+		c.mcSynced = mcInformer.Informer().HasSynced
+	}
 	return c, nil
 }
 
@@ -94,7 +104,7 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer klog.Info("shutting down description controller")
 
 	// Wait for the caches to be synced before starting workers
-	if !cache.WaitForNamedCacheSync("description-controller", stopCh, c.descSynced) {
+	if !cache.WaitForNamedCacheSync("description-controller", stopCh, c.descSynced, c.mcSynced) {
 		return
 	}
 

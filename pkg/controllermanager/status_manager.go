@@ -46,7 +46,8 @@ type Manager struct {
 
 	clusterStatusController *clusterstatus.Controller
 
-	managedCluster *clusterapi.ManagedCluster
+	managedCluster       *clusterapi.ManagedCluster
+	localSuperKubeConfig *rest.Config
 }
 
 func NewStatusManager(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface) *Manager {
@@ -55,8 +56,10 @@ func NewStatusManager(ctx context.Context, apiserverURL string, kubeClient kuber
 
 	// get high priority secret.
 	secret := utils.GetDeployerCredentials(retryCtx, kubeClient, common.GaiaAppSA)
+	var clusterStatusKubeConfig *rest.Config
 	if secret != nil {
-		clusterStatusKubeConfig, err := utils.GenerateKubeConfigFromToken(apiserverURL,
+		var err error
+		clusterStatusKubeConfig, err = utils.GenerateKubeConfigFromToken(apiserverURL,
 			string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
 		if err == nil {
 			kubeClient = kubernetes.NewForConfigOrDie(clusterStatusKubeConfig)
@@ -67,6 +70,7 @@ func NewStatusManager(ctx context.Context, apiserverURL string, kubeClient kuber
 		statusReportFrequency: metav1.Duration{Duration: common.DefaultClusterStatusCollectFrequency},
 		clusterStatusController: clusterstatus.NewController(ctx, apiserverURL,
 			kubeClient, common.DefaultClusterStatusCollectFrequency, common.DefaultClusterStatusReportFrequency),
+		localSuperKubeConfig: clusterStatusKubeConfig,
 	}
 }
 

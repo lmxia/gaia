@@ -88,7 +88,8 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile string) (*Con
 	if err != nil {
 		klog.Error(err)
 	}
-	scheduler, err := scheduler.New(childGaiaClientSet)
+	statusManager := NewStatusManager(ctx, childKubeConfig.Host, childKubeClientSet)
+	scheduler, err := scheduler.New(childGaiaClientSet, selfGaiaInformerFactory, statusManager.localSuperKubeConfig)
 
 	agent := &ControllerManager{
 		ctx:                 ctx,
@@ -99,7 +100,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile string) (*Con
 		kubeInformerFactory: selfKubeInformerFactory,
 		crrApprover:         approver,
 		scheduler:           scheduler,
-		statusManager:       NewStatusManager(ctx, childKubeConfig.Host, childKubeClientSet),
+		statusManager: statusManager,
 	}
 	return agent, nil
 }

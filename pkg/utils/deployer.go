@@ -141,14 +141,14 @@ func ApplyDescription(ctx context.Context, gaiaclient *gaiaClientSet.Clientset, 
 			continue
 		}
 		wg.Add(1)
-		go func(resource *unstructured.Unstructured, raw []byte) {
+		go func(resource *unstructured.Unstructured) {
 			defer wg.Done()
 			retryErr := ApplyResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, resource)
 			if retryErr != nil {
 				errCh <- retryErr
 				return
 			}
-		}(resource, object)
+		}(resource)
 
 	}
 	wg.Wait()

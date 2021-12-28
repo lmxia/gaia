@@ -19,11 +19,11 @@ import (
 	"sync"
 
 	"gaia.io/gaia/pkg/utils"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	rest "k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
-	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
@@ -36,58 +36,57 @@ type Scheduler struct {
 	dynamicClient         dynamic.Interface
 	schedulerCache        Cache
 	localDescController   *description.Controller
-	localInformerFactory  gaiainformers.SharedInformerFactory
+	localInformerFactory  gaiainformers.SharedInformerFactory // namespaced
 	parentDescController  *description.Controller
-	parentInformerFactory gaiainformers.SharedInformerFactory
+	parentInformerFactory gaiainformers.SharedInformerFactory // namespaced
 	discoveryRESTMapper   *restmapper.DeferredDiscoveryRESTMapper
+	localGaiaAllFactory   gaiainformers.SharedInformerFactory // all ns
+	parentGaiaClient      *gaiaClientSet.Clientset
 }
 
-func New(localGaiaClient *gaiaClientSet.Clientset, localGaiaAllFactory gaiainformers.SharedInformerFactory, config *rest.Config) (*Scheduler, error) {
-	dynamicClient, err := dynamic.NewForConfig(config)
+func New(localGaiaClient *gaiaClientSet.Clientset, localGaiaAllFactory gaiainformers.SharedInformerFactory, localSuperKubeConfig *rest.Config) (*Scheduler, error) {
+	dynamicClient, err := dynamic.NewForConfig(localSuperKubeConfig)
 	if err != nil {
 		return nil, err
 	}
-	childKubeClient, err := kubernetes.NewForConfig(config)
+	childKubeClient, err := kubernetes.NewForConfig(localSuperKubeConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	sched := &Scheduler{
-		localGaiaClient:  localGaiaClient,
-		schedulerCache:   newSchedulerCache(),
-		localSuperConfig: config,
-		dynamicClient: dynamicClient,
+		localGaiaClient:     localGaiaClient,
+		schedulerCache:      newSchedulerCache(),
+		localSuperConfig:    localSuperKubeConfig,
+		dynamicClient:       dynamicClient,
+		localGaiaAllFactory: localGaiaAllFactory,
 		discoveryRESTMapper: restmapper.NewDeferredDiscoveryRESTMapper(cacheddiscovery.NewMemCacheClient(childKubeClient.Discovery())),
 	}
-	return sched.SetLocalDescController(localGaiaClient, localGaiaAllFactory, known.GaiaReservedNamespace)
+	return sched.SetLocalDescController(localGaiaClient, known.GaiaReservedNamespace)
 }
 
 func (sched *Scheduler) NewDescController(gaiaClient *gaiaClientSet.Clientset, gaiaAllFactory gaiainformers.SharedInformerFactory, namespace string) (gaiainformers.SharedInformerFactory, *description.Controller, error) {
-	selfGaiaInformerFactory := gaiainformers.NewSharedInformerFactoryWithOptions(gaiaClient,
+	gaiaInformerFactory := gaiainformers.NewSharedInformerFactoryWithOptions(gaiaClient,
 		known.DefaultResync, gaiainformers.WithNamespace(namespace))
 
 	var descController *description.Controller
 	var err error
 
-	if gaiaAllFactory != nil {
-		descController, err = description.NewController(gaiaClient, selfGaiaInformerFactory.Apps().V1alpha1().Descriptions(),
-			gaiaAllFactory.Platform().V1alpha1().ManagedClusters(), cache.ResourceEventHandlerFuncs{
-				AddFunc:    sched.addClusterToCache,
-				UpdateFunc: sched.updateClusterInCache,
-				DeleteFunc: sched.deleteClusterFromCache,
-			}, sched.handleDescription)
-	} else {
-		descController, err = description.NewController(gaiaClient, selfGaiaInformerFactory.Apps().V1alpha1().Descriptions(),
-			nil, nil, sched.handleDescription)
-	}
+	descController, err = description.NewController(gaiaClient, gaiaInformerFactory.Apps().V1alpha1().Descriptions(),
+		gaiaAllFactory.Platform().V1alpha1().ManagedClusters(), cache.ResourceEventHandlerFuncs{
+			AddFunc:    sched.addClusterToCache,
+			UpdateFunc: sched.updateClusterInCache,
+			DeleteFunc: sched.deleteClusterFromCache,
+		}, sched.handleDescription)
+
 	if err != nil {
 		return nil, nil, err
 	}
-	return selfGaiaInformerFactory, descController, err
+	return gaiaInformerFactory, descController, err
 }
 
-func (sched *Scheduler) SetLocalDescController(gaiaClient *gaiaClientSet.Clientset, gaiaAllFactory gaiainformers.SharedInformerFactory, namespace string) (*Scheduler, error) {
-	localInformerFactory, localController, err := sched.NewDescController(gaiaClient, gaiaAllFactory, namespace)
+func (sched *Scheduler) SetLocalDescController(gaiaClient *gaiaClientSet.Clientset, namespace string) (*Scheduler, error) {
+	localInformerFactory, localController, err := sched.NewDescController(gaiaClient, sched.localGaiaAllFactory, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +96,13 @@ func (sched *Scheduler) SetLocalDescController(gaiaClient *gaiaClientSet.Clients
 	return sched, nil
 }
 
-func (sched *Scheduler) SetParentDescController(gaiaClient *gaiaClientSet.Clientset, namespace string) (*Scheduler, error) {
-	parentInformerFactory, parentController, err := sched.NewDescController(gaiaClient, nil, namespace)
+func (sched *Scheduler) SetParentDescController(parentGaiaClient *gaiaClientSet.Clientset, parentNamespace string) (*Scheduler, error) {
+	parentInformerFactory, parentController, err := sched.NewDescController(parentGaiaClient, sched.localGaiaAllFactory, parentNamespace)
 	if err != nil {
 		return nil, err
 	}
 
+	sched.parentGaiaClient = parentGaiaClient
 	sched.parentDescController = parentController
 	sched.parentInformerFactory = parentInformerFactory
 	return sched, nil
@@ -113,14 +113,13 @@ func (sched *Scheduler) handleDescription(desc *appsapi.Description) error {
 	clusters := sched.schedulerCache.GetClusters()
 	// no joined clusters, deploy to local
 	if len(clusters) == 0 {
-		if error := utils.ApplyDescription(context.TODO(), sched.localGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper,desc); error!=nil {
+		if error := utils.ApplyDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
 			return fmt.Errorf("there is no clusters so we dont need to schedule across sub-clusters")
 		}
 		return nil
 	} else {
 		// need schedule across clusters
-		if error := sched.ApplyAcrosClusters(context.TODO(), desc); error!=nil {
-			return fmt.Errorf("schedule across sub-clusters failed")
+		if error := sched.ApplyAcrosClusters(context.TODO(), desc); error != nil {return fmt.Errorf("schedule across sub-clusters failed")
 		}
 	}
 	return nil
@@ -188,7 +187,6 @@ func (sched *Scheduler) deleteClusterFromCache(obj interface{}) {
 	}
 }
 
-
 func (sched *Scheduler) ApplyAcrosClusters(ctx context.Context, desc *appsapi.Description) error {
 	var allErrs []error
 	wg := sync.WaitGroup{}
@@ -222,17 +220,32 @@ func (sched *Scheduler) ApplyAcrosClusters(ctx context.Context, desc *appsapi.De
 					managedCluster := sched.schedulerCache.GetCluster(clusterName)
 					deprep := int32(replicas)
 					dep.Spec.Replicas = &deprep
-					dep.Namespace = managedCluster.Namespace
-					depRaw, _:= json.Marshal(dep)
-					newDesc := desc.DeepCopy()
-					newDesc.Spec.Raw[i] = depRaw
-					_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Get(ctx, desc.Name, metav1.GetOptions{})
+					depRaw, _ := json.Marshal(dep)
+
+					curDesc, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Get(ctx, desc.Name, metav1.GetOptions{})
 					if err == nil {
 						// update
-						sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Update(ctx,newDesc, metav1.UpdateOptions{})
+						curDesc.Spec.Raw[i] = depRaw
+						_, er := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Update(ctx, curDesc, metav1.UpdateOptions{})
+						if er != nil {
+							errCh <- err
+						}
 					} else {
 						if apierrors.IsNotFound(err) {
-							sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
+							newDesc := &appsapi.Description{
+								ObjectMeta: metav1.ObjectMeta{
+									Namespace: managedCluster.Namespace,
+									Name:      desc.GetName(),
+									Labels:    desc.GetLabels(),
+								},
+							}
+							newDesc.Spec.Raw = make([][]byte, len(desc.Spec.Raw))
+							copy(newDesc.Spec.Raw, desc.Spec.Raw)
+							newDesc.Spec.Raw[i] = depRaw
+							_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
+							if err != nil {
+								errCh <- err
+							}
 						}
 					}
 				}

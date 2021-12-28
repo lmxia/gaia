@@ -63,8 +63,8 @@ type Controller struct {
 
 func NewController(childGaiaClient gaiaClientSet.Interface, descInformer appInformers.DescriptionInformer,
 	mcInformer platformInformers.ManagedClusterInformer, cacheHandler cache.ResourceEventHandler, syncHandlerFunc SyncHandlerFunc) (*Controller, error) {
-	if syncHandlerFunc == nil || cacheHandler == nil {
-		return nil, fmt.Errorf("syncHandlerFunc or cacheHandler must be set")
+	if syncHandlerFunc == nil {
+		return nil, fmt.Errorf("syncHandlerFunc must be set")
 	}
 
 	c := &Controller{

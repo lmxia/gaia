@@ -234,14 +234,27 @@ func (sched *Scheduler) ApplyAccrosClusters(ctx context.Context, desc *appsapi.D
 
 					curDesc, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Get(ctx, desc.Name, metav1.GetOptions{})
 					if err == nil {
-						// update
-						curDesc.Spec.Raw[i] = depRaw
-						_, er := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Update(ctx, curDesc, metav1.UpdateOptions{})
-						if er != nil {
-							errCh <- err
+						if replicas == 0 {
+							// delete
+							er := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Delete(ctx, desc.Name, metav1.DeleteOptions{})
+							if er != nil {
+								errCh <- err
+							}
+						} else {
+							// update
+							curDesc.Spec.Raw[i] = depRaw
+							_, er := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Update(ctx, curDesc, metav1.UpdateOptions{})
+							if er != nil {
+								errCh <- err
+							}
 						}
+
 					} else {
 						if apierrors.IsNotFound(err) {
+							if replicas == 0 {
+								// no need to create desc in this cluster.
+								continue
+							}
 							labels := desc.GetLabels()
 							if labels == nil {
 								labels = map[string]string{}

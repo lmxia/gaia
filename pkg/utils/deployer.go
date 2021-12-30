@@ -124,6 +124,59 @@ func GetDeployerCredentials(ctx context.Context, childKubeClientSet kubernetes.I
 	return secret
 }
 
+func OffloadDescription(ctx context.Context, gaiaClient *gaiaClientSet.Clientset, dynamicClient dynamic.Interface,
+	discoveryRESTMapper meta.RESTMapper, desc *appsapi.Description) error {
+	var err error
+	var allErrs []error
+	wg := sync.WaitGroup{}
+	objectsToBeDeleted := desc.Spec.Raw
+	errCh := make(chan error, len(objectsToBeDeleted))
+	for _, object := range objectsToBeDeleted {
+		resource := &unstructured.Unstructured{}
+		err := resource.UnmarshalJSON(object)
+		if err != nil {
+			allErrs = append(allErrs, err)
+			msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
+			klog.ErrorDepth(5, msg)
+		} else {
+			wg.Add(1)
+			go func(resource *unstructured.Unstructured) {
+				defer wg.Done()
+				klog.V(5).Infof("deleting %s %s defined in Description %s", resource.GetKind(),
+					klog.KObj(resource), klog.KObj(desc))
+				err := DeleteResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, resource)
+				if err != nil {
+					errCh <- err
+				}
+			}(resource)
+		}
+	}
+	wg.Wait()
+
+	// collect errors
+	close(errCh)
+	for err := range errCh {
+		allErrs = append(allErrs, err)
+	}
+
+	err = utilerrors.NewAggregate(allErrs)
+	if err != nil {
+		msg := fmt.Sprintf("failed to deleting Description %s: %v", klog.KObj(desc), err)
+		klog.ErrorDepth(5, msg)
+	} else {
+		klog.V(5).Infof("Description %s is deleted successfully", klog.KObj(desc))
+		descCopy := desc.DeepCopy()
+		descCopy.Finalizers = RemoveString(descCopy.Finalizers, known.AppFinalizer)
+		_, err = gaiaClient.AppsV1alpha1().Descriptions(descCopy.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{})
+		if err != nil {
+			klog.WarningDepth(4,
+				fmt.Sprintf("failed to remove finalizer %s from Description %s: %v", known.AppFinalizer, klog.KObj(descCopy), err))
+
+		}
+	}
+	return err
+}
+
 
 func ApplyDescription(ctx context.Context, gaiaclient *gaiaClientSet.Clientset, dynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, desc *appsapi.Description) error {

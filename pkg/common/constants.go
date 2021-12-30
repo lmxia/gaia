@@ -8,7 +8,7 @@ const (
 	// RegistrationNamePrefix is a prefix name for cluster registration
 	RegistrationNamePrefix = "gaia-cluster"
 	// such as namespace, sa, etc
-	NamePrefixForGaiaObjects = "gaia"
+	NamePrefixForGaiaObjects = "gaia-"
 	SubCluster               = "Gaia-Controllermanager"
 
 	// ClusterRegistrationURL flag denotes the url of parent cluster
@@ -28,6 +28,9 @@ const (
 	ClusterNameLabel          = "clusters.gaia.io/cluster-name"
 	ClusterBootstrappingLabel = "clusters.gaia.io/bootstrapping"
 	CredentialsAuto           = "credentials-auto"
+
+	AppsNameLabel = "apps.gaia.io/description-name"
+	AppFinalizer  = "apps.gaia.io/finalizer"
 
 	DefaultClusterStatusCollectFrequency = 20 * time.Second
 	DefaultClusterStatusReportFrequency  = 3 * time.Minute

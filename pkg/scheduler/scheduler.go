@@ -14,6 +14,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"sync"
@@ -111,15 +112,24 @@ func (sched *Scheduler) SetParentDescController(parentGaiaClient *gaiaClientSet.
 func (sched *Scheduler) handleDescription(desc *appsapi.Description) error {
 	klog.V(5).Infof("handle Description %s", klog.KObj(desc))
 	clusters := sched.schedulerCache.GetClusters()
+
 	// no joined clusters, deploy to local
 	if len(clusters) == 0 {
+		if desc.DeletionTimestamp != nil {
+			return utils.OffloadDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient,
+				sched.discoveryRESTMapper, desc)
+		}
 		if error := utils.ApplyDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
 			return fmt.Errorf("there is no clusters so we dont need to schedule across sub-clusters")
 		}
 		return nil
 	} else {
+		if desc.DeletionTimestamp != nil {
+			return sched.OffloadAccrossClusters(context.TODO(), desc)
+		}
 		// need schedule across clusters
-		if error := sched.ApplyAcrosClusters(context.TODO(), desc); error != nil {return fmt.Errorf("schedule across sub-clusters failed")
+		if error := sched.ApplyAccrosClusters(context.TODO(), desc); error != nil {
+			return fmt.Errorf("schedule across sub-clusters failed")
 		}
 	}
 	return nil
@@ -187,7 +197,7 @@ func (sched *Scheduler) deleteClusterFromCache(obj interface{}) {
 	}
 }
 
-func (sched *Scheduler) ApplyAcrosClusters(ctx context.Context, desc *appsapi.Description) error {
+func (sched *Scheduler) ApplyAccrosClusters(ctx context.Context, desc *appsapi.Description) error {
 	var allErrs []error
 	wg := sync.WaitGroup{}
 	objectsToBeDeployed := desc.Spec.Raw
@@ -232,11 +242,21 @@ func (sched *Scheduler) ApplyAcrosClusters(ctx context.Context, desc *appsapi.De
 						}
 					} else {
 						if apierrors.IsNotFound(err) {
+							labels := desc.GetLabels()
+							if labels == nil {
+								labels = map[string]string{}
+							}
+							labels[known.AppsNameLabel] = desc.Name
+
+							//every ns desc must have a finalizer, so we can make sure sub resources can be recycled.
 							newDesc := &appsapi.Description{
 								ObjectMeta: metav1.ObjectMeta{
 									Namespace: managedCluster.Namespace,
 									Name:      desc.GetName(),
-									Labels:    desc.GetLabels(),
+									Labels:    labels,
+									Finalizers: []string{
+										known.AppFinalizer,
+									},
 								},
 							}
 							newDesc.Spec.Raw = make([][]byte, len(desc.Spec.Raw))
@@ -282,11 +302,70 @@ func (sched *Scheduler) ApplyAcrosClusters(ctx context.Context, desc *appsapi.De
 	// update status
 	desc.Status.Phase = statusPhase
 	desc.Status.Reason = reason
-	_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
+
+	// description come from local ns
+	var err error
+	if desc.GetNamespace() == known.GaiaReservedNamespace {
+		_, err = sched.localGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
+	} else {
+		_, err = sched.parentGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
+	}
+
 
 	if len(allErrs) > 0 {
 		return utilerrors.NewAggregate(allErrs)
 	}
 	return err
 
+}
+
+func (sched *Scheduler) OffloadAccrossClusters(ctx context.Context, description *appsapi.Description) error {
+	var allErrs []error
+	descrs, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(metav1.NamespaceAll).List(ctx, metav1.ListOptions{
+		LabelSelector: labels.SelectorFromSet(labels.Set{
+			known.AppsNameLabel: description.Name,
+		}).String(),
+	})
+	errCh := make(chan error, len(descrs.Items))
+	wg := sync.WaitGroup{}
+	for _, desc := range descrs.Items {
+		wg.Add(1)
+		descDel := desc
+		go func(desc *appsapi.Description) {
+			defer wg.Done()
+			err := sched.localGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).Delete(ctx, desc.Name, metav1.DeleteOptions{})
+			if err != nil {
+				errCh <- err
+			}
+		}(&descDel)
+
+	}
+	wg.Wait()
+	// collect errors
+	close(errCh)
+	for err := range errCh {
+		allErrs = append(allErrs, err)
+	}
+
+	err = utilerrors.NewAggregate(allErrs)
+	if err == nil {
+		descCopy := description.DeepCopy()
+		descCopy.Finalizers = utils.RemoveString(descCopy.Finalizers, known.AppFinalizer)
+		if description.GetNamespace() == known.GaiaReservedNamespace {
+			_, err = sched.localGaiaClient.AppsV1alpha1().Descriptions(descCopy.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{})
+		} else {
+			_, err = sched.parentGaiaClient.AppsV1alpha1().Descriptions(descCopy.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{})
+		}
+
+		if err != nil {
+			klog.WarningDepth(4,
+				fmt.Sprintf("failed to remove finalizer %s from Description %s: %v", known.AppFinalizer, klog.KObj(descCopy), err))
+
+		}
+		return err
+	} else {
+		msg := fmt.Sprintf("failed to deleting Description %s: %v", klog.KObj(description), err)
+		klog.ErrorDepth(5, msg)
+	}
+	return nil
 }

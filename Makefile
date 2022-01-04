@@ -11,6 +11,8 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+gaia:
+	CGO_ENABLED=0 GOOS=linux go build -ldflags "-w -s" -a -installsuffix cgo -o cmd/bin/gaia cmd/gaia-controllers/main.go
 
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen

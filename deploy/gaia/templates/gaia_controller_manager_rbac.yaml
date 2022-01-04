@@ -1,0 +1,22 @@
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: ClusterRole
+metadata:
+  name: gaia:resource:deployer
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
+
+---
+apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+kind: ClusterRoleBinding
+metadata:
+  name: gaia:resource:deployer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gaia:resource:deployer
+subjects:
+  - kind: ServiceAccount
+    name: gaia-resource-deployer
+    namespace: {{ .Release.Namespace }}

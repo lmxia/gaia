@@ -19,8 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "gaia.io/gaia/pkg/apis/platform/v1alpha1"
-	"gaia.io/gaia/pkg/generated/clientset/versioned/scheme"
+	v1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

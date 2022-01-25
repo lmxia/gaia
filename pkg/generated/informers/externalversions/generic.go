@@ -21,8 +21,8 @@ package externalversions
 import (
 	"fmt"
 
-	v1alpha1 "gaia.io/gaia/pkg/apis/apps/v1alpha1"
-	platformv1alpha1 "gaia.io/gaia/pkg/apis/platform/v1alpha1"
+	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )

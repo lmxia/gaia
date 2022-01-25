@@ -19,8 +19,8 @@ limitations under the License.
 package scheme
 
 import (
-	appsv1alpha1 "gaia.io/gaia/pkg/apis/apps/v1alpha1"
-	platformv1alpha1 "gaia.io/gaia/pkg/apis/platform/v1alpha1"
+	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

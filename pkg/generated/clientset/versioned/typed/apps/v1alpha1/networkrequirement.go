@@ -22,8 +22,8 @@ import (
 	"context"
 	"time"
 
-	v1alpha1 "gaia.io/gaia/pkg/apis/apps/v1alpha1"
-	scheme "gaia.io/gaia/pkg/generated/clientset/versioned/scheme"
+	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	scheme "github.com/lmxia/gaia/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"

@@ -26,9 +26,9 @@ echo $SCRIPT_ROOT
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
-  gaia.io/gaia/pkg/generated gaia.io/gaia/pkg/apis \
+  github.com/lmxia/gaia/pkg/generated github.com/lmxia/gaia/pkg/apis \
   "platform:v1alpha1 apps:v1alpha1" \
-  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../.." \
+  --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
 
 # To use your own boilerplate text append:

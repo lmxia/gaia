@@ -22,10 +22,10 @@ import (
 	"reflect"
 	"time"
 
-	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
-	gaiaClientSet "gaia.io/gaia/pkg/generated/clientset/versioned"
-	crrsInformers "gaia.io/gaia/pkg/generated/informers/externalversions/platform/v1alpha1"
-	crrsListers "gaia.io/gaia/pkg/generated/listers/platform/v1alpha1"
+	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	crrsInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions/platform/v1alpha1"
+	crrsListers "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

@@ -19,8 +19,8 @@ package utils
 import (
 	"context"
 	"fmt"
-	appsapi "gaia.io/gaia/pkg/apis/apps/v1alpha1"
-	gaiaClientSet "gaia.io/gaia/pkg/generated/clientset/versioned"
+	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"strings"
 	"sync"
@@ -36,7 +36,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 
-	known "gaia.io/gaia/pkg/common"
+	known "github.com/lmxia/gaia/pkg/common"
 )
 
 func DeleteResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, resource *unstructured.Unstructured) error {

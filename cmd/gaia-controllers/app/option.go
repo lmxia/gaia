@@ -2,7 +2,7 @@ package app
 
 import (
 	"fmt"
-	"gaia.io/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/common"
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"

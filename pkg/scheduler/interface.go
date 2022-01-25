@@ -1,7 +1,7 @@
 package scheduler
 
 import (
-	"gaia.io/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 

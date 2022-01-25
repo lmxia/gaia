@@ -25,12 +25,12 @@ import (
 	"k8s.io/client-go/util/retry"
 	"os"
 
-	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
-	"gaia.io/gaia/pkg/common"
-	known "gaia.io/gaia/pkg/common"
-	"gaia.io/gaia/pkg/controllers/clusterstatus"
-	gaiaclientset "gaia.io/gaia/pkg/generated/clientset/versioned"
-	"gaia.io/gaia/pkg/utils"
+	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/common"
+	known "github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/controllers/clusterstatus"
+	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	"github.com/lmxia/gaia/pkg/utils"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

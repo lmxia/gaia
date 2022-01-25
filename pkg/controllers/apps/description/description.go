@@ -31,11 +31,11 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
 
-	appsapi "gaia.io/gaia/pkg/apis/apps/v1alpha1"
-	gaiaClientSet "gaia.io/gaia/pkg/generated/clientset/versioned"
-	appInformers "gaia.io/gaia/pkg/generated/informers/externalversions/apps/v1alpha1"
-	platformInformers "gaia.io/gaia/pkg/generated/informers/externalversions/platform/v1alpha1"
-	appListers "gaia.io/gaia/pkg/generated/listers/apps/v1alpha1"
+	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	appInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions/apps/v1alpha1"
+	platformInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions/platform/v1alpha1"
+	appListers "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.

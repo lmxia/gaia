@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"gaia.io/gaia/pkg/apis/platform"
+	"github.com/lmxia/gaia/pkg/apis/platform"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

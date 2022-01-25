@@ -22,14 +22,14 @@ import (
 	"k8s.io/klog/v2"
 	utilpointer "k8s.io/utils/pointer"
 
-	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
-	"gaia.io/gaia/pkg/common"
-	known "gaia.io/gaia/pkg/common"
-	"gaia.io/gaia/pkg/controllermanager/approver"
-	gaiaclientset "gaia.io/gaia/pkg/generated/clientset/versioned"
-	gaiainformers "gaia.io/gaia/pkg/generated/informers/externalversions"
-	"gaia.io/gaia/pkg/scheduler"
-	"gaia.io/gaia/pkg/utils"
+	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/common"
+	known "github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/controllermanager/approver"
+	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	"github.com/lmxia/gaia/pkg/scheduler"
+	"github.com/lmxia/gaia/pkg/utils"
 )
 
 // Agent defines configuration for clusternet-agent

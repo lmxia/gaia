@@ -3,8 +3,8 @@ package main
 import (
 	goflag "flag"
 	"fmt"
-	"gaia.io/gaia/cmd/gaia-controllers/app"
-	"gaia.io/gaia/pkg/utils"
+	"github.com/lmxia/gaia/cmd/gaia-controllers/app"
+	"github.com/lmxia/gaia/pkg/utils"
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
 	"math/rand"

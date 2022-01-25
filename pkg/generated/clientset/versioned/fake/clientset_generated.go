@@ -19,11 +19,11 @@ limitations under the License.
 package fake
 
 import (
-	clientset "gaia.io/gaia/pkg/generated/clientset/versioned"
-	appsv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
-	fakeappsv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1/fake"
-	platformv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1"
-	fakeplatformv1alpha1 "gaia.io/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1/fake"
+	clientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	appsv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
+	fakeappsv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1/fake"
+	platformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1"
+	fakeplatformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

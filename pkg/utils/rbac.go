@@ -27,7 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 
-	known "gaia.io/gaia/pkg/common"
+	known "github.com/lmxia/gaia/pkg/common"
 )
 
 // EnsureClusterRole will make sure desired clusterrole exists and update it if available

@@ -2,8 +2,8 @@ package app
 
 import (
 	"context"
-	"gaia.io/gaia/pkg/controllermanager"
-	"gaia.io/gaia/pkg/version"
+	"github.com/lmxia/gaia/pkg/controllermanager"
+	"github.com/lmxia/gaia/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"

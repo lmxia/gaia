@@ -1,8 +1,8 @@
 package scheduler
 
 import (
-	"gaia.io/gaia/pkg/apis/platform/v1alpha1"
-	"gaia.io/gaia/pkg/scheduler/framework"
+	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/scheduler/framework"
 	corev1 "k8s.io/api/core/v1"
 	"sync"
 )

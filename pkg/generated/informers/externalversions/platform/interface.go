@@ -19,8 +19,8 @@ limitations under the License.
 package platform
 
 import (
-	internalinterfaces "gaia.io/gaia/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "gaia.io/gaia/pkg/generated/informers/externalversions/platform/v1alpha1"
+	internalinterfaces "github.com/lmxia/gaia/pkg/generated/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/lmxia/gaia/pkg/generated/informers/externalversions/platform/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.

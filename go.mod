@@ -1,4 +1,4 @@
-module gaia.io/gaia
+module github.com/lmxia/gaia
 
 go 1.14
 

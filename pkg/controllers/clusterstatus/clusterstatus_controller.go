@@ -19,8 +19,8 @@ import (
 	"k8s.io/klog/v2"
 	utilpointer "k8s.io/utils/pointer"
 
-	clusterapi "gaia.io/gaia/pkg/apis/platform/v1alpha1"
-	known "gaia.io/gaia/pkg/common"
+	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	known "github.com/lmxia/gaia/pkg/common"
 )
 
 // Controller is a controller that collects cluster status

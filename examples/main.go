@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	gaiav1 "gaia.io/gaia/pkg/apis/platform/v1alpha1"
-	"gaia.io/gaia/pkg/generated/clientset/versioned"
+	gaiav1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	flag "github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"

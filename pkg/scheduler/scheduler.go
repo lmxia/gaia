@@ -31,7 +31,7 @@ import (
 )
 
 type Scheduler struct {
-	//add some config here, but for now i don't know what that is.
+	// add some config here, but for now i don't know what that is.
 	localGaiaClient       *gaiaClientSet.Clientset
 	localSuperConfig      *rest.Config
 	dynamicClient         dynamic.Interface
@@ -112,25 +112,80 @@ func (sched *Scheduler) SetParentDescController(parentGaiaClient *gaiaClientSet.
 func (sched *Scheduler) handleDescription(desc *appsapi.Description) error {
 	klog.V(5).Infof("handle Description %s", klog.KObj(desc))
 	clusters := sched.schedulerCache.GetClusters()
+	labelsDesc := desc.GetLabels()
+	clusterLevel, ok := labelsDesc["clusterlevel"]
 
-	// no joined clusters, deploy to local
-	if len(clusters) == 0 {
-		if desc.DeletionTimestamp != nil {
-			return utils.OffloadDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient,
-				sched.discoveryRESTMapper, desc)
+	// desc.meta.labels.clusterlevel empty, cluster default
+	if !ok {
+		if len(clusters) == 0 {
+			if desc.DeletionTimestamp != nil {
+				return utils.OffloadDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient,
+					sched.discoveryRESTMapper, desc)
+			}
+			if error := utils.ApplyDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
+				return fmt.Errorf("there is no clusters so we dont need to schedule across sub-clusters")
+			}
+			return nil
+		} else {
+			if desc.DeletionTimestamp != nil {
+				return sched.OffloadAccrossClusters(context.TODO(), desc)
+			}
+			// need schedule across clusters
+			if error := sched.ApplyAccrosClusters(context.TODO(), desc); error != nil {
+				return fmt.Errorf("schedule across sub-clusters failed")
+			}
 		}
-		if error := utils.ApplyDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
-			return fmt.Errorf("there is no clusters so we dont need to schedule across sub-clusters")
+
+	} else if clusterLevel == "cluster" {
+		// no joined clusters, deploy to local
+		if len(clusters) == 0 {
+			if desc.DeletionTimestamp != nil {
+				return utils.OffloadDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient,
+					sched.discoveryRESTMapper, desc)
+			}
+			if error := utils.ApplyDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
+				return fmt.Errorf("clusterlevel=cluster: ApplyDescription ERROR")
+			}
+		} else {
+			if desc.DeletionTimestamp != nil {
+				return sched.OffloadAccrossClusters(context.TODO(), desc)
+			}
+			// need schedule across clusters
+			if error := sched.ApplyAccrosClusters(context.TODO(), desc); error != nil {
+				return fmt.Errorf("clusterlevel=cluster: schedule across sub-clusters failed")
+			}
 		}
-		return nil
+	} else if clusterLevel == "field" {
+		if sched.parentGaiaClient != nil {
+			if desc.DeletionTimestamp != nil {
+				return utils.OffloadDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient,
+					sched.discoveryRESTMapper, desc)
+			}
+			if error := utils.ApplyDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
+				return fmt.Errorf("clusterlevel=field: ApplyDescription ERROR")
+			}
+			return nil
+		} else {
+			if desc.DeletionTimestamp != nil {
+				return sched.OffloadAccrossClusters(context.TODO(), desc)
+			}
+			// need schedule across clusters
+			if error := sched.ApplyAccrosClusters(context.TODO(), desc); error != nil {
+				return fmt.Errorf("clusterlevel=field: schedule across sub-clusters failed")
+			}
+		}
+	} else if clusterLevel == "global" {
+		if sched.parentGaiaClient == nil {
+			if desc.DeletionTimestamp != nil {
+				return utils.OffloadDescription(context.TODO(), sched.localGaiaClient, sched.dynamicClient,
+					sched.discoveryRESTMapper, desc)
+			}
+			if error := utils.ApplyDescription(context.TODO(), sched.localGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
+				return fmt.Errorf("clusterlevel=global: ApplyDescription ERROR")
+			}
+		}
 	} else {
-		if desc.DeletionTimestamp != nil {
-			return sched.OffloadAccrossClusters(context.TODO(), desc)
-		}
-		// need schedule across clusters
-		if error := sched.ApplyAccrosClusters(context.TODO(), desc); error != nil {
-			return fmt.Errorf("schedule across sub-clusters failed")
-		}
+		return fmt.Errorf("desc.meta.labels.clusterlevel ERROR")
 	}
 	return nil
 }
@@ -261,7 +316,7 @@ func (sched *Scheduler) ApplyAccrosClusters(ctx context.Context, desc *appsapi.D
 							}
 							labels[known.AppsNameLabel] = desc.Name
 
-							//every ns desc must have a finalizer, so we can make sure sub resources can be recycled.
+							// every ns desc must have a finalizer, so we can make sure sub resources can be recycled.
 							newDesc := &appsapi.Description{
 								ObjectMeta: metav1.ObjectMeta{
 									Namespace: managedCluster.Namespace,
@@ -323,7 +378,6 @@ func (sched *Scheduler) ApplyAccrosClusters(ctx context.Context, desc *appsapi.D
 	} else {
 		_, err = sched.parentGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
 	}
-
 
 	if len(allErrs) > 0 {
 		return utilerrors.NewAggregate(allErrs)

@@ -19,11 +19,12 @@ package controllermanager
 import (
 	"context"
 	"errors"
+	"os"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
-	"os"
 
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
@@ -50,7 +51,7 @@ type Manager struct {
 	localSuperKubeConfig *rest.Config
 }
 
-func NewStatusManager(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface) *Manager {
+func NewStatusManager(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset) *Manager {
 	retryCtx, retryCancel := context.WithTimeout(ctx, known.DefaultRetryPeriod)
 	defer retryCancel()
 
@@ -63,13 +64,14 @@ func NewStatusManager(ctx context.Context, apiserverURL string, kubeClient kuber
 			string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
 		if err == nil {
 			kubeClient = kubernetes.NewForConfigOrDie(clusterStatusKubeConfig)
+			gaiaClient = gaiaclientset.NewForConfigOrDie(clusterStatusKubeConfig)
 		}
 	}
 
 	return &Manager{
 		statusReportFrequency: metav1.Duration{Duration: common.DefaultClusterStatusCollectFrequency},
 		clusterStatusController: clusterstatus.NewController(ctx, apiserverURL,
-			kubeClient, common.DefaultClusterStatusCollectFrequency, common.DefaultClusterStatusReportFrequency),
+			kubeClient, gaiaClient, common.DefaultClusterStatusCollectFrequency, common.DefaultClusterStatusReportFrequency),
 		localSuperKubeConfig: clusterStatusKubeConfig,
 	}
 }

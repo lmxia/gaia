@@ -21,6 +21,9 @@ import (
 
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
+	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	gaialister "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 )
 
 // Controller is a controller that collects cluster status
@@ -33,25 +36,30 @@ type Controller struct {
 	apiserverURL       string
 	appPusherEnabled   bool
 	useSocket          bool
+	mclsLister         gaialister.ManagedClusterLister
 	nodeLister         corev1lister.NodeLister
 	nodeSynced         cache.InformerSynced
 	podLister          corev1lister.PodLister
 	podSynced          cache.InformerSynced
 }
 
-func NewController(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
+func NewController(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, known.DefaultResync)
 	// add informers
 	kubeInformerFactory.Core().V1().Nodes().Informer()
 	kubeInformerFactory.Core().V1().Pods().Informer()
 	kubeInformerFactory.Start(ctx.Done())
 
+	gaiaInformerFactory := gaiainformers.NewSharedInformerFactory(gaiaClient, known.DefaultResync)
+	gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Informer()
+	gaiaInformerFactory.Start(ctx.Done())
 	return &Controller{
 		kubeClient:         kubeClient,
 		lock:               &sync.Mutex{},
 		collectingPeriod:   collectingPeriod,
 		heartbeatFrequency: heartbeatFrequency,
 		apiserverURL:       apiserverURL,
+		mclsLister:         gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
 		nodeLister:         kubeInformerFactory.Core().V1().Nodes().Lister(),
 		nodeSynced:         kubeInformerFactory.Core().V1().Nodes().Informer().HasSynced,
 		podLister:          kubeInformerFactory.Core().V1().Pods().Lister(),
@@ -77,14 +85,30 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 		klog.Warningf("failed to collect kubernetes version: %v", err)
 	}
 
-	nodes, err := c.nodeLister.List(labels.Everything())
+	clusters, err := c.mclsLister.List(labels.Everything())
 	if err != nil {
-		klog.Warningf("failed to list nodes: %v", err)
+		klog.Warningf("failed to list clusters: %v", err)
 	}
 
-	nodeStatistics := getNodeStatistics(nodes)
+	var nodeStatistics clusterapi.NodeStatistics
+	var capacity, allocatable corev1.ResourceList
+	if len(clusters) == 0 {
+		klog.V(7).Info("no joined clusters, collecting cluster resources...")
+		nodes, err := c.nodeLister.List(labels.Everything())
+		if err != nil {
+			klog.Warningf("failed to list nodes: %v", err)
+		}
 
-	capacity, allocatable := getNodeResource(nodes)
+		nodeStatistics = getNodeStatistics(nodes)
+
+		capacity, allocatable = getNodeResource(nodes)
+	} else {
+		klog.V(7).Info("collecting ManagedCluster status...")
+
+		nodeStatistics = getManagedClusterNodeStatistics(clusters)
+		capacity, allocatable = getManagedClusterResource(clusters)
+
+	}
 
 	clusterCIDR, err := c.discoverClusterCIDR()
 	if err != nil {
@@ -189,6 +213,18 @@ func getNodeStatistics(nodes []*corev1.Node) (nodeStatistics clusterapi.NodeStat
 	return
 }
 
+// getManagedClusterNodeStatistics returns the sum of the ManagedClusters' NodeStatistics in the cluster
+func getManagedClusterNodeStatistics(clusters []*clusterapi.ManagedCluster) (nodeStatistics clusterapi.NodeStatistics) {
+	nodeStatistics = clusterapi.NodeStatistics{}
+	for _, cluster := range clusters {
+		nodeStatistics.LostNodes += cluster.Status.NodeStatistics.LostNodes
+		nodeStatistics.ReadyNodes += cluster.Status.NodeStatistics.ReadyNodes
+		nodeStatistics.NotReadyNodes += cluster.Status.NodeStatistics.NotReadyNodes
+		nodeStatistics.UnknownNodes += cluster.Status.NodeStatistics.UnknownNodes
+	}
+	return
+}
+
 // discoverServiceCIDR returns the service CIDR for the cluster.
 func (c *Controller) discoverServiceCIDR() (string, error) {
 	return findPodIPRange(c.nodeLister, c.podLister)
@@ -216,6 +252,23 @@ func getNodeResource(nodes []*corev1.Node) (Capacity, Allocatable corev1.Resourc
 	Allocatable[corev1.ResourceCPU] = allocatableCpu
 	Allocatable[corev1.ResourceMemory] = allocatableMem
 
+	return
+}
+
+// getManagedClusterResource gets the node capacity of all managedClusters and their allocatable resources
+func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (Capacity, Allocatable corev1.ResourceList) {
+	Capacity, Allocatable = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
+	var capacityCPU, capacityMem, allocatableCPU, allocatableMem resource.Quantity
+	for _, cluster := range clusters {
+		capacityCPU.Add(cluster.Status.Capacity[corev1.ResourceCPU])
+		capacityMem.Add(cluster.Status.Capacity[corev1.ResourceMemory])
+		allocatableCPU.Add(cluster.Status.Allocatable[corev1.ResourceCPU])
+		allocatableMem.Add(cluster.Status.Allocatable[corev1.ResourceMemory])
+	}
+	Capacity[corev1.ResourceCPU] = capacityCPU
+	Capacity[corev1.ResourceMemory] = capacityMem
+	Allocatable[corev1.ResourceCPU] = allocatableCPU
+	Allocatable[corev1.ResourceMemory] = allocatableMem
 	return
 }
 

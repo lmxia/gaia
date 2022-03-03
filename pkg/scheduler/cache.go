@@ -1,10 +1,11 @@
 package scheduler
 
 import (
+	"sync"
+
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/scheduler/framework"
 	corev1 "k8s.io/api/core/v1"
-	"sync"
 )
 
 type schedulerCache struct {
@@ -62,7 +63,6 @@ func (cache *schedulerCache) GetClusters() []string {
 	}
 	return clusterNames
 }
-
 
 func (cache *schedulerCache) GetCluster(clusterName string) *v1alpha1.ManagedCluster {
 	cache.mu.Lock()

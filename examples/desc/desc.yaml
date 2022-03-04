@@ -3,6 +3,8 @@ kind: Description
 metadata:
   name: app-demo
   namespace: gaia-reserved
+  labels:
+    clusterlevel: field
   finalizers:
     - apps.gaia.io/finalizer
 spec:

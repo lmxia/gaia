@@ -46,3 +46,33 @@ spec:
               cpu: 100m
               memory: 20Mi
       serviceAccountName: gaia
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gaia-scheduler
+  namespace: {{ .Release.Namespace }}
+  labels:
+    control-plane: pml-manager
+spec:
+  selector:
+    matchLabels:
+      control-plane: pml-manager
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        control-plane: pml-manager
+    spec:
+      containers:
+        - name: gaia
+          image: lmxia/gaia-scheduler:{{ .Values.image.tag }}
+          resources:
+            limits:
+              cpu: 100m
+              memory: 30Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
+      serviceAccountName: gaia

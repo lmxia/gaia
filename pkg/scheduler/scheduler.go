@@ -11,12 +11,14 @@ import (
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sync"
 
 	"github.com/lmxia/gaia/pkg/utils"
@@ -26,6 +28,7 @@ import (
 	rest "k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 
+	"github.com/lmxia/gaia/pkg/common"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -43,9 +46,15 @@ type Scheduler struct {
 	discoveryRESTMapper   *restmapper.DeferredDiscoveryRESTMapper
 	localGaiaAllFactory   gaiainformers.SharedInformerFactory // all ns
 	parentGaiaClient      *gaiaClientSet.Clientset
+	// clientset for child cluster
+	childKubeClientSet kubernetes.Interface
+	// dedicated kubeconfig for accessing parent cluster, which is auto populated by the parent cluster when cluster registration request gets approved
+	parentDedicatedKubeConfig *rest.Config
+	dedicatedNamespace        string `json:"dedicatednamespace,omitempty" protobuf:"bytes,1,opt,name=dedicatedNamespace"`
 }
 
-func New(localGaiaClient *gaiaClientSet.Clientset, localGaiaAllFactory gaiainformers.SharedInformerFactory, localSuperKubeConfig *rest.Config) (*Scheduler, error) {
+func New(localGaiaClient *gaiaClientSet.Clientset, localGaiaAllFactory gaiainformers.SharedInformerFactory, localSuperKubeConfig *rest.Config, childKubeClientSet kubernetes.Interface) (*Scheduler, error) {
+	klog.Infof("eNew host ==== %v\n", localSuperKubeConfig.Host)
 	dynamicClient, err := dynamic.NewForConfig(localSuperKubeConfig)
 	if err != nil {
 		return nil, err
@@ -62,19 +71,19 @@ func New(localGaiaClient *gaiaClientSet.Clientset, localGaiaAllFactory gaiainfor
 		dynamicClient:       dynamicClient,
 		localGaiaAllFactory: localGaiaAllFactory,
 		discoveryRESTMapper: restmapper.NewDeferredDiscoveryRESTMapper(cacheddiscovery.NewMemCacheClient(childKubeClient.Discovery())),
+		childKubeClientSet:  childKubeClientSet,
 	}
 	return sched.SetLocalDescController(localGaiaClient, known.GaiaReservedNamespace)
 }
 
 func (sched *Scheduler) NewDescController(gaiaClient *gaiaClientSet.Clientset, gaiaAllFactory gaiainformers.SharedInformerFactory, namespace string) (gaiainformers.SharedInformerFactory, *description.Controller, error) {
-	gaiaInformerFactory := gaiainformers.NewSharedInformerFactoryWithOptions(gaiaClient,
-		known.DefaultResync, gaiainformers.WithNamespace(namespace))
+	gaiaInformerFactory := gaiainformers.NewSharedInformerFactoryWithOptions(gaiaClient, known.DefaultResync, gaiainformers.WithNamespace(namespace))
 
 	var descController *description.Controller
 	var err error
 
-	descController, err = description.NewController(gaiaClient, gaiaInformerFactory.Apps().V1alpha1().Descriptions(),
-		gaiaAllFactory.Platform().V1alpha1().ManagedClusters(), cache.ResourceEventHandlerFuncs{
+	descController, err = description.NewController(gaiaClient, gaiaInformerFactory.Apps().V1alpha1().Descriptions(), gaiaAllFactory.Platform().V1alpha1().ManagedClusters(),
+		cache.ResourceEventHandlerFuncs{
 			AddFunc:    sched.addClusterToCache,
 			UpdateFunc: sched.updateClusterInCache,
 			DeleteFunc: sched.deleteClusterFromCache,
@@ -102,7 +111,6 @@ func (sched *Scheduler) SetParentDescController(parentGaiaClient *gaiaClientSet.
 	if err != nil {
 		return nil, err
 	}
-
 	sched.parentGaiaClient = parentGaiaClient
 	sched.parentDescController = parentController
 	sched.parentInformerFactory = parentInformerFactory
@@ -114,7 +122,6 @@ func (sched *Scheduler) handleDescription(desc *appsapi.Description) error {
 	clusters := sched.schedulerCache.GetClusters()
 	labelsDesc := desc.GetLabels()
 	clusterLevel, ok := labelsDesc["clusterlevel"]
-
 	// desc.meta.labels.clusterlevel empty, cluster default
 	if !ok {
 		if len(clusters) == 0 {
@@ -135,7 +142,6 @@ func (sched *Scheduler) handleDescription(desc *appsapi.Description) error {
 				return fmt.Errorf("schedule across sub-clusters failed")
 			}
 		}
-
 	} else if clusterLevel == "cluster" {
 		// no joined clusters, deploy to local
 		if len(clusters) == 0 {
@@ -187,13 +193,16 @@ func (sched *Scheduler) handleDescription(desc *appsapi.Description) error {
 	} else {
 		return fmt.Errorf("desc.meta.labels.clusterlevel ERROR")
 	}
+
 	return nil
 }
 
 func (sched *Scheduler) RunLocalScheduler(workers int, stopCh <-chan struct{}) {
 	klog.Info("starting local desc scheduler...")
 	defer klog.Info("shutting local scheduler")
+	klog.Info("starting sharedInformerFactory ...")
 	sched.localInformerFactory.Start(stopCh)
+	klog.Info("starting local desc scheduler ...")
 	go sched.localDescController.Run(workers, stopCh)
 	<-stopCh
 }
@@ -425,8 +434,7 @@ func (sched *Scheduler) OffloadAccrossClusters(ctx context.Context, description 
 		}
 
 		if err != nil {
-			klog.WarningDepth(4,
-				fmt.Sprintf("failed to remove finalizer %s from Description %s: %v", known.AppFinalizer, klog.KObj(descCopy), err))
+			klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from Description %s: %v", known.AppFinalizer, klog.KObj(descCopy), err))
 
 		}
 		return err
@@ -435,4 +443,55 @@ func (sched *Scheduler) OffloadAccrossClusters(ctx context.Context, description 
 		klog.ErrorDepth(5, msg)
 	}
 	return nil
+}
+
+func (sched *Scheduler) SetparentDedicatedKubeConfig(ctx context.Context) {
+	// complete your controller loop here
+	klog.Info("start set parent DedicatedKubeConfig current cluster as a child cluster...")
+	// wait until stopCh is closed or request is approved
+	waitingCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	wait.JitterUntilWithContext(waitingCtx, func(ctx context.Context) {
+		target, err := sched.localGaiaClient.PlatformV1alpha1().Targets().Get(ctx, common.ParentClusterTargetName, metav1.GetOptions{})
+		if err != nil {
+			klog.Errorf("set parentDedicatedKubeConfig failed to get targets: %v wait for next loop", err)
+			return
+		}
+		secret, err := sched.childKubeClientSet.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx, common.ParentClusterSecretName, metav1.GetOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			klog.Errorf("set parentDedicatedKubeConfig failed to get secretFromParentCluster: %v", err)
+			return
+		}
+		if err == nil {
+			klog.Infof("found existing secretFromParentCluster '%s/%s' that can be used to access parent cluster", common.GaiaSystemNamespace, common.ParentClusterSecretName)
+
+			if string(secret.Data[common.ClusterAPIServerURLKey]) != target.Spec.ParentURL {
+				klog.Warningf("the parent url got changed from %q to %q", secret.Data[known.ClusterAPIServerURLKey], target.Spec.ParentURL)
+				klog.Warningf("will try to re-get current cluster secret")
+			} else {
+				parentDedicatedKubeConfig, err := utils.GenerateKubeConfigFromToken(target.Spec.ParentURL, string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
+				if err == nil {
+					sched.parentDedicatedKubeConfig = parentDedicatedKubeConfig
+					sched.dedicatedNamespace = string(secret.Data[corev1.ServiceAccountNamespaceKey])
+				}
+			}
+		}
+
+		klog.V(4).Infof("set parentDedicatedKubeConfig still waiting for getting secret...", target.Name)
+		cancel()
+	}, known.DefaultRetryPeriod, 0.3, true)
+
+}
+
+func (sched *Scheduler) GetparentDedicatedKubeConfig() *rest.Config {
+	// complete your controller loop here
+	klog.Info(" get parent DedicatedKubeConfig current cluster as a child cluster...")
+	fmt.Printf("sched.parentDedicatedKubeConfig host == %s \n", sched.parentDedicatedKubeConfig.Host)
+	return sched.parentDedicatedKubeConfig
+}
+func (sched *Scheduler) GetDedicatedNamespace() string {
+	// complete your controller loop here
+	fmt.Printf("sched.GetDedicatedNamespace == %s \n", sched.dedicatedNamespace)
+	return sched.dedicatedNamespace
 }

@@ -28,7 +28,6 @@ import (
 	"github.com/lmxia/gaia/pkg/controllermanager/approver"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
-	"github.com/lmxia/gaia/pkg/scheduler"
 	"github.com/lmxia/gaia/pkg/utils"
 )
 
@@ -58,7 +57,6 @@ type ControllerManager struct {
 	crrApprover         *approver.CRRApprover
 	gaiaInformerFactory gaiainformers.SharedInformerFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
-	scheduler           *scheduler.Scheduler
 	triggerFunc         func(metav1.Object)
 }
 
@@ -89,7 +87,6 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile string) (*Con
 		klog.Error(err)
 	}
 	statusManager := NewStatusManager(ctx, childKubeConfig.Host, childKubeClientSet, childGaiaClientSet)
-	scheduler, err := scheduler.New(childGaiaClientSet, selfGaiaInformerFactory, statusManager.localSuperKubeConfig)
 
 	agent := &ControllerManager{
 		ctx:                 ctx,
@@ -99,7 +96,6 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile string) (*Con
 		gaiaInformerFactory: selfGaiaInformerFactory,
 		kubeInformerFactory: selfKubeInformerFactory,
 		crrApprover:         approver,
-		scheduler:           scheduler,
 		statusManager:       statusManager,
 	}
 	return agent, nil
@@ -121,11 +117,6 @@ func (controller *ControllerManager) Run() {
 					controller.crrApprover.Run(common.DefaultThreadiness, ctx.Done())
 				}()
 
-				//3. start local scheduler.
-				go func() {
-					controller.scheduler.RunLocalScheduler(known.DefaultThreadiness, ctx.Done())
-				}()
-
 				// 4. wait for target to join into a parent cluster.
 				go func() {
 					// 5. will wait, need period report only when register successfully.
@@ -134,12 +125,6 @@ func (controller *ControllerManager) Run() {
 					go wait.UntilWithContext(ctx, func(ctx context.Context) {
 						controller.statusManager.Run(ctx, controller.parentDedicatedKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
 					}, time.Duration(0))
-					// 7. when we get add parentDedicatedKubeConfig add parent desc controller and start it.
-					go func() {
-						controller.scheduler.SetParentDescController(gaiaclientset.NewForConfigOrDie(controller.parentDedicatedKubeConfig),
-							*controller.DedicatedNamespace)
-						controller.scheduler.RunParentScheduler(known.DefaultThreadiness, ctx.Done())
-					}()
 				}()
 			},
 			OnStoppedLeading: func() {

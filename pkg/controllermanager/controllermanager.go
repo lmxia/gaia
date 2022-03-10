@@ -38,7 +38,8 @@ type ControllerManager struct {
 	// Identity is the unique string identifying a lease holder across
 	// all participants in an election.
 	Identity string
-
+	// kubernetes clustername to generate gaiaName and clsrrName
+	ClusterHostName string
 	// ClusterID denotes current child cluster id
 	ClusterID *types.UID
 
@@ -61,7 +62,7 @@ type ControllerManager struct {
 }
 
 // NewAgent returns a new Agent.
-func NewControllerManager(ctx context.Context, childKubeConfigFile string) (*ControllerManager, error) {
+func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName string) (*ControllerManager, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get hostname: %v", err)
@@ -91,6 +92,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile string) (*Con
 	agent := &ControllerManager{
 		ctx:                 ctx,
 		Identity:            identity,
+		ClusterHostName:     clusterHostName,
 		childKubeClientSet:  childKubeClientSet,
 		childGaiaClientSet:  childGaiaClientSet,
 		gaiaInformerFactory: selfGaiaInformerFactory,
@@ -108,11 +110,11 @@ func (controller *ControllerManager) Run() {
 	leaderelection.RunOrDie(controller.ctx, *newLeaderElectionConfigWithDefaultValue(controller.Identity, controller.childKubeClientSet,
 		leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				//1. start generic informers
+				// 1. start generic informers
 				controller.gaiaInformerFactory.Start(ctx.Done())
 				controller.kubeInformerFactory.Start(ctx.Done())
 
-				//2. start Approve
+				// 2. start Approve
 				go func() {
 					controller.crrApprover.Run(common.DefaultThreadiness, ctx.Done())
 				}()
@@ -253,8 +255,9 @@ func (controller *ControllerManager) bootstrapClusterRegistrationIfNeeded(ctx co
 	}
 	// create ClusterRegistrationRequest
 	client := gaiaclientset.NewForConfigOrDie(clientConfig)
+	clusterNamePrefix := generateClusterNamePrefix(target.Spec.ClusterName, controller.ClusterHostName, common.NamePrefixForGaiaObjects)
 	crr, err := client.PlatformV1alpha1().ClusterRegistrationRequests().Create(ctx,
-		newClusterRegistrationRequest(*controller.ClusterID, generateClusterName("", common.NamePrefixForGaiaObjects),
+		newClusterRegistrationRequest(*controller.ClusterID, clusterNamePrefix, generateClusterName(clusterNamePrefix),
 			""),
 		metav1.CreateOptions{})
 
@@ -296,7 +299,7 @@ func (controller *ControllerManager) waitingForApproval(ctx context.Context, cli
 	defer cancel()
 	var clusterName string
 	wait.JitterUntilWithContext(waitingCtx, func(ctx context.Context) {
-		crrName := generateClusterRegistrationRequestName(*controller.ClusterID)
+		crrName := generateClusterRegistrationRequestName(*controller.ClusterID, generateClusterNamePrefix(target.Spec.ClusterName, controller.ClusterHostName, common.NamePrefixForGaiaObjects))
 
 		crr, err = client.PlatformV1alpha1().ClusterRegistrationRequests().Get(ctx, crrName, metav1.GetOptions{})
 		if err != nil {
@@ -375,10 +378,10 @@ func (controller *ControllerManager) storeParentClusterCredentials(crr *clustera
 	}, common.DefaultRetryPeriod, 0.4, true)
 }
 
-func newClusterRegistrationRequest(clusterID types.UID, clusterName, clusterLabels string) *clusterapi.ClusterRegistrationRequest {
+func newClusterRegistrationRequest(clusterID types.UID, clusterNamePrefix, clusterName, clusterLabels string) *clusterapi.ClusterRegistrationRequest {
 	return &clusterapi.ClusterRegistrationRequest{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: generateClusterRegistrationRequestName(clusterID),
+			Name: generateClusterRegistrationRequestName(clusterID, clusterNamePrefix),
 			Labels: map[string]string{
 				common.ClusterRegisteredByLabel: common.SubCluster,
 				common.ClusterIDLabel:           string(clusterID),
@@ -386,9 +389,10 @@ func newClusterRegistrationRequest(clusterID types.UID, clusterName, clusterLabe
 			},
 		},
 		Spec: clusterapi.ClusterRegistrationRequestSpec{
-			ClusterID:     clusterID,
-			ClusterName:   clusterName,
-			ClusterLabels: parseClusterLabels(clusterLabels),
+			ClusterID:         clusterID,
+			ClusterNamePrefix: clusterNamePrefix,
+			ClusterName:       clusterName,
+			ClusterLabels:     parseClusterLabels(clusterLabels),
 		},
 	}
 }
@@ -407,14 +411,26 @@ func parseClusterLabels(clusterLabels string) map[string]string {
 	return clusterLabelsMap
 }
 
-func generateClusterRegistrationRequestName(clusterID types.UID) string {
+func generateClusterNamePrefix(targetClusterName, optsClusterName, clusterNamePrefix string) string {
+	if len(targetClusterName) != 0 {
+		clusterNamePrefix = fmt.Sprintf("%s%s%s", clusterNamePrefix, targetClusterName, "-")
+	} else if len(optsClusterName) != 0 {
+		clusterNamePrefix = fmt.Sprintf("%s%s%s", clusterNamePrefix, optsClusterName, "-")
+	} else {
+		clusterNamePrefix = fmt.Sprintf("%s", clusterNamePrefix)
+	}
+	return clusterNamePrefix
+}
+
+func generateClusterRegistrationRequestName(clusterID types.UID, clusterNamePrefix string) string {
+	if len(clusterNamePrefix) != 0 {
+		return fmt.Sprintf("%s%s", clusterNamePrefix, string(clusterID))
+	}
 	return fmt.Sprintf("%s%s", common.NamePrefixForGaiaObjects, string(clusterID))
 }
 
-func generateClusterName(clusterName, clusterNamePrefix string) string {
-	if len(clusterName) == 0 {
-		clusterName = fmt.Sprintf("%s%s", clusterNamePrefix, utilrand.String(common.DefaultRandomUIDLength))
-		klog.V(4).Infof("generate a random string %q as cluster name for later use", clusterName)
-	}
+func generateClusterName(clusterNamePrefix string) string {
+	clusterName := fmt.Sprintf("%s%s", clusterNamePrefix, utilrand.String(common.DefaultRandomUIDLength))
+	klog.V(4).Infof("generate a random string %q as cluster name for later use", clusterName)
 	return clusterName
 }

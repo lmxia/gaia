@@ -14,6 +14,7 @@ import (
 // ClusterRegistrationOptions holds the command-line options for command
 type options struct {
 	kubeconfig          string
+	clusterHostName     string
 	clusterRegistration *ClusterRegistrationOptions
 }
 
@@ -21,6 +22,7 @@ type options struct {
 func (opts *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&opts.kubeconfig, "kubeconfig", opts.kubeconfig,
 		"Path to a kubeconfig file for current child cluster. Only required if out-of-cluster")
+	fs.StringVar(&opts.clusterHostName, "clustername", opts.clusterHostName, "To generate ClusterRegistration name and gaiaName as gaia-'clustername'-UID ")
 }
 
 // NewOptions creates a new *options with sane defaults

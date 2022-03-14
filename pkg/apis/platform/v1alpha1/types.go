@@ -26,6 +26,8 @@ type Target struct {
 type TargetSpec struct {
 	// +optional
 	Self bool `json:"self,omitempty"`
+	// +optional
+	ClusterName string `json:"clusterName,omitempty"`
 	// +required
 	ReportFrequency *int64 `json:"reportFrequency,omitempty" protobuf:"varint,5,opt,name=reportFrequency"`
 	// +required
@@ -192,6 +194,15 @@ type ClusterRegistrationRequestSpec struct {
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 	ClusterID types.UID `json:"clusterId"`
+
+	// ClusterNamePrefix is the prefix of cluster name.
+	// a lower case alphanumeric characters or '-', and must start and end with an alphanumeric character
+	//
+	// +optional
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:MaxLength=30
+	// +kubebuilder:validation:Pattern="[a-z0-9]([-a-z0-9]*[a-z0-9])?([a-z0-9]([-a-z0-9]*[a-z0-9]))*"
+	ClusterNamePrefix string `json:"clusterNamePrefix,omitempty"`
 
 	// ClusterName is the cluster name.
 	// a lower case alphanumeric characters or '-', and must start and end with an alphanumeric character

@@ -38,6 +38,7 @@ spec:
       containers:
         - name: gaia
           image: lmxia/gaia:{{ .Values.image.tag }}
+          command: [" gaia --clustername={{ .Values.common.clusterName }} "]
           resources:
             limits:
               cpu: 100m

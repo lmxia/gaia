@@ -62,7 +62,7 @@ type CRRApprover struct {
 
 // NewCRRApprover returns a new CRRApprover for ClusterRegistrationRequest.
 func NewCRRApprover(kubeclient *kubernetes.Clientset, gaiaclient *gaiaClientSet.Clientset,
-	gaiaInformerFactory clusternetInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+		gaiaInformerFactory clusternetInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
 	crrApprover := &CRRApprover{
 		kubeclient:       kubeclient,
 		clusternetclient: gaiaclient,
@@ -187,7 +187,7 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *clusterap
 	result := new(clusterapi.ApprovedResult)
 
 	// validate cluster id
-	expectedClusterID := strings.TrimPrefix(crr.Name, known.NamePrefixForGaiaObjects)
+	expectedClusterID := strings.TrimPrefix(crr.Name, crr.Spec.ClusterNamePrefix)
 	if expectedClusterID != string(crr.Spec.ClusterID) {
 		err := fmt.Errorf("ClusterRegistrationRequest %q has got illegal update on spec.clusterID from %q to %q, will skip processing",
 			crr.Name, expectedClusterID, crr.Spec.ClusterID)
@@ -208,7 +208,7 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *clusterap
 
 	// 1. create dedicated namespace
 	klog.V(5).Infof("create dedicated namespace for cluster %q (%q) if needed", crr.Spec.ClusterID, crr.Spec.ClusterName)
-	ns, err := crrApprover.createNamespaceForChildClusterIfNeeded(crr.Spec.ClusterID, crr.Spec.ClusterName)
+	ns, err := crrApprover.createNamespaceForChildClusterIfNeeded(crr.Spec.ClusterID, crr.Spec.ClusterNamePrefix, crr.Spec.ClusterName)
 	if err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *clusterap
 	return nil
 }
 
-func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID types.UID, clusterName string) (*corev1.Namespace, error) {
+func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID types.UID, clusterNamePrefix, clusterName string) (*corev1.Namespace, error) {
 	// checks for an existed dedicated namespace for child cluster
 	// the clusterName here may vary, we use clusterID as the identifier
 	namespaces, err := crrApprover.nsLister.List(labels.SelectorFromSet(labels.Set{
@@ -282,7 +282,7 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 	klog.V(4).Infof("no dedicated namespace for cluster %s found, will create a new one", clusterID)
 	newNs := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: known.NamePrefixForGaiaObjects,
+			GenerateName: clusterNamePrefix,
 			Labels: map[string]string{
 				known.ObjectCreatedByLabel: known.GaiaControllerManager,
 				known.ClusterIDLabel:       string(clusterID),
@@ -300,7 +300,7 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 }
 
 func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterName string, clusterID types.UID,
-	clusterLabels map[string]string) (*clusterapi.ManagedCluster, error) {
+		clusterLabels map[string]string) (*clusterapi.ManagedCluster, error) {
 	// checks for an existed ManagedCluster object
 	// the clusterName here may vary, we use clusterID as the identifier
 	mcs, err := crrApprover.mclsLister.List(labels.SelectorFromSet(labels.Set{
@@ -331,7 +331,7 @@ func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterN
 		},
 	}
 
-	//add additional labels
+	// add additional labels
 	for key, value := range clusterLabels {
 		managedCluster.Labels[key] = value
 	}

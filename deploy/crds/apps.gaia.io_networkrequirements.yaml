@@ -44,6 +44,47 @@ spec:
         spec:
           description: NetworkRequirementSpec defines the spec of NetworkRequirement
           properties:
+            interSCNID:
+              properties:
+                destination:
+                  properties:
+                    attributes:
+                      items:
+                        properties:
+                          key:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    id:
+                      type: string
+                  type: object
+                providers:
+                  items:
+                    type: string
+                  type: array
+                sla:
+                  items:
+                    type: string
+                  type: array
+                source:
+                  properties:
+                    attributes:
+                      items:
+                        properties:
+                          key:
+                            type: string
+                          value:
+                            type: string
+                        type: object
+                      type: array
+                    id:
+                      type: string
+                  type: object
+              type: object
+            name:
+              type: string
             requirement:
               description: Raw is the underlying serialization of all objects.
               items:
@@ -76,6 +117,10 @@ spec:
                         type: string
                     type: object
                 type: object
+              type: array
+            selfID:
+              items:
+                type: string
               type: array
           type: object
         status:

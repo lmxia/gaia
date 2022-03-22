@@ -6,16 +6,16 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.5
   creationTimestamp: null
-  name: targets.platform.gaia.io
+  name: resourcebindings.platform.gaia.io
 spec:
   group: platform.gaia.io
   names:
     categories:
     - gaia
-    kind: Target
-    listKind: TargetList
-    plural: targets
-    singular: target
+    kind: ResourceBinding
+    listKind: ResourceBindingList
+    plural: resourcebindings
+    singular: resourcebinding
   scope: Cluster
   subresources:
     status: {}
@@ -36,22 +36,32 @@ spec:
           type: object
         spec:
           properties:
-            bootstraptoken:
+            appID:
               type: string
-            clusterName:
+            namespace:
               type: string
-            collectFrequency:
-              format: int64
-              type: integer
-            parenturl:
+            parentAppID:
               type: string
-            reportFrequency:
-              format: int64
-              type: integer
-            self:
-              type: boolean
+            parentRB:
+              type: string
+            rbApps:
+              items:
+                properties:
+                  child:
+                    items: {}
+                    type: array
+                  clusterName:
+                    type: string
+                  replicas:
+                    format: int32
+                    type: integer
+                type: object
+              type: array
           type: object
         status:
+          properties:
+            status:
+              type: string
           type: object
       type: object
   version: v1alpha1

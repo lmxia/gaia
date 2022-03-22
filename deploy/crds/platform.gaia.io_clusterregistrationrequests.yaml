@@ -73,6 +73,13 @@ spec:
               maxLength: 30
               pattern: '[a-z0-9]([-a-z0-9]*[a-z0-9])?([a-z0-9]([-a-z0-9]*[a-z0-9]))*'
               type: string
+            clusterNamePrefix:
+              description: ClusterNamePrefix is the prefix of cluster name. a lower
+                case alphanumeric characters or '-', and must start and end with an
+                alphanumeric character
+              maxLength: 30
+              pattern: '[a-z0-9]([-a-z0-9]*[a-z0-9])?([a-z0-9]([-a-z0-9]*[a-z0-9]))*'
+              type: string
           required:
           - clusterId
           type: object

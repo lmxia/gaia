@@ -293,3 +293,42 @@ type ClusterRegistrationRequestList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ClusterRegistrationRequest `json:"items"`
 }
+
+// +genclient
+// +genclient:nonNamespaced
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope="Cluster",categories=gaia
+// +k8s:openapi-gen=true
+type ResourceBinding struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// +optional
+	Spec ResourceBindingSpec `json:"spec,omitempty"`
+	// +optional
+	Status ResourceBindingStatus `json:"status,omitempty"`
+}
+
+type ResourceBindingSpec struct {
+	// +optional
+	appID string `json:"appID,omitempty"`
+	// +optional
+	parentAppID string `json:"parentAppID,omitempty"`
+	// +optional
+	parentRB string `json:"parentRB,omitempty"`
+	// +optional
+	namespace string `json:"namespace,omitempty"`
+	// +optional
+	rbApps []ResourceBindingApps `json:"rbApps,omitempty"`
+}
+
+type ResourceBindingApps struct {
+	clusterName string                 `json:"clusterName,omitempty"`
+	replicas    int32                  `json:"replicas,omitempty"`
+	child       []*ResourceBindingApps `json:"child,omitempty"`
+}
+type ResourceBindingStatus struct {
+	status string `json:"status,omitempty"`
+}

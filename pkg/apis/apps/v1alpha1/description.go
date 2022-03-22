@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,8 +27,71 @@ type Description struct {
 type DescriptionSpec struct {
 	// Raw is the underlying serialization of all objects.
 	//
+	//Raw [][]byte `json:"raw,omitempty"`
+	// +required
+	AppID string `json:"appID,omitempty"` // appID是蓝图的id
 	// +optional
-	Raw [][]byte `json:"raw,omitempty"`
+	component []Components `json:"component,omitempty"`
+}
+type Components struct {
+	// +required
+	//AppID string `json:"appID,omitempty"` // appID是蓝图的id
+	// +optional
+	namespace string `json:"namespace,omitempty"`
+	// +required
+	name string `json:"name,omitempty"`
+	// +optional
+	moudles corev1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"` //module是container意思。
+	// +required
+	runtimeType string `json:"runtimeType,omitempty"`
+	// +required
+	workload Workload `json:"workload,omitempty"`
+	// +required
+	schedulePolicy SchedulePolicy `json:"schedulePolicy,omitempty"`
+}
+
+type Workload struct {
+	// +optional
+	workloadtype string `json:"workloadtype,omitempty"`
+	// +optional
+	traitDeployment *TraitDeployment `json:"traitServerless,omitempty"`
+	// +optional
+	traitServerless *TraitServerless `json:"traitServerless,omitempty"`
+}
+
+type TraitDeployment struct {
+	replicas int32 ` json:"replicas,omitempty"`
+}
+
+type TraitServerless struct {
+	mini_instancenumber int32  ` json:"miniInstancenumber,omitempty"`
+	step                int32  `json:"step,omitempty"`
+	threshold           string `json:"threshold,omitempty"`
+}
+
+//type Trait struct {
+//	// +optional
+//	replicas int32 `json:"replicas,omitempty"` // deploy和serverless确定结构。annity的deamonset trait是空，userapp空
+//}
+type SchedulePolicy struct {
+	// +optional
+	specificResource NodeResource `json:"specificResource,omitempty"`
+	// +optional
+	netenvironment CoreResource `json:"netenvironment,omitempty"`
+	// +optional
+	geolocation CoreResource `json:"geolocation,omitempty"`
+	// +optional
+	provider CoreResource `json:"provider,omitempty"`
+}
+type NodeResource struct {
+	// +optional
+	sn string `json:"name,omitempty"`
+	// +optional
+	sname string `json:"sname,omitempty"`
+}
+type CoreResource struct {
+	// +optional
+	hards []string `json:"hards,omitempty"`
 }
 
 // DescriptionStatus defines the observed state of Description

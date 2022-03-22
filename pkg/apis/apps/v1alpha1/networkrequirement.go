@@ -58,6 +58,32 @@ type NetworkRequirementSpec struct {
 	//
 	// +optional
 	Requirement []ServiceRequirement `json:"requirement,omitempty"`
+	// +optional
+	name string `json:"name,omitempty"`
+	// +optional
+	selfID []string `json:"selfID,omitempty"`
+	// +optional
+	interSCNID InterSCNID `json:"interSCNID,omitempty"`
+}
+
+type InterSCNID struct {
+	// +optional
+	source      Direction `json:"source,omitempty"`
+	destination Direction `json:"destination,omitempty"`
+	sla         []string  `json:"sla,omitempty"`
+	providers   []string  `json:"providers,omitempty"`
+}
+type Direction struct {
+	// +optional
+	id string `json:"id,omitempty"`
+	// +optional
+	attributes []Attributes `json:"attributes,omitempty"`
+}
+type Attributes struct {
+	// +optional
+	key string `json:"key,omitempty"`
+	// +optional
+	value string `json:"value,omitempty"`
 }
 
 // NetworkRequirementStatus defines the observed state of NetworkRequirement

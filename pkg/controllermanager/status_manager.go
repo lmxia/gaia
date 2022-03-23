@@ -51,7 +51,7 @@ type Manager struct {
 	localSuperKubeConfig *rest.Config
 }
 
-func NewStatusManager(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset) *Manager {
+func NewStatusManager(ctx context.Context, apiserverURL, managedClusterSource, promUrlPrefix string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset) *Manager {
 	retryCtx, retryCancel := context.WithTimeout(ctx, known.DefaultRetryPeriod)
 	defer retryCancel()
 
@@ -70,7 +70,7 @@ func NewStatusManager(ctx context.Context, apiserverURL string, kubeClient kuber
 
 	return &Manager{
 		statusReportFrequency: metav1.Duration{Duration: common.DefaultClusterStatusCollectFrequency},
-		clusterStatusController: clusterstatus.NewController(ctx, apiserverURL,
+		clusterStatusController: clusterstatus.NewController(ctx, apiserverURL, managedClusterSource, promUrlPrefix,
 			kubeClient, gaiaClient, common.DefaultClusterStatusCollectFrequency, common.DefaultClusterStatusReportFrequency),
 		localSuperKubeConfig: clusterStatusKubeConfig,
 	}

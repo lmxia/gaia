@@ -4,6 +4,9 @@
 
 clusterName: cluster1
 
+mcSource: informer
+promUrlPrefix: ""
+
 replicaCount: 3
 
 image:

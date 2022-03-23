@@ -31,42 +31,42 @@ type DescriptionSpec struct {
 	// +required
 	AppID string `json:"appID,omitempty"` // appID是蓝图的id
 	// +optional
-	component []Components `json:"component,omitempty"`
+	Component []Components `json:"component,omitempty"`
 }
 type Components struct {
 	// +required
 	//AppID string `json:"appID,omitempty"` // appID是蓝图的id
 	// +optional
-	namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 	// +required
-	name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
 	// +optional
-	moudles corev1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"` //module是container意思。
+	Moudles corev1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"` //module是container意思。
 	// +required
-	runtimeType string `json:"runtimeType,omitempty"`
+	RuntimeType string `json:"runtimeType,omitempty"`
 	// +required
-	workload Workload `json:"workload,omitempty"`
+	Workload Workload `json:"workload,omitempty"`
 	// +required
-	schedulePolicy SchedulePolicy `json:"schedulePolicy,omitempty"`
+	SchedulePolicy SchedulePolicy `json:"schedulePolicy,omitempty"`
 }
 
 type Workload struct {
 	// +optional
-	workloadtype string `json:"workloadtype,omitempty"`
+	Workloadtype string `json:"workloadtype,omitempty"`
 	// +optional
-	traitDeployment *TraitDeployment `json:"traitServerless,omitempty"`
+	TraitDeployment *TraitDeployment `json:"traitServerless,omitempty"`
 	// +optional
-	traitServerless *TraitServerless `json:"traitServerless,omitempty"`
+	TraitServerless *TraitServerless `json:"traitServerless,omitempty"`
 }
 
 type TraitDeployment struct {
-	replicas int32 ` json:"replicas,omitempty"`
+	Replicas int32 ` json:"replicas,omitempty"`
 }
 
 type TraitServerless struct {
-	mini_instancenumber int32  ` json:"miniInstancenumber,omitempty"`
-	step                int32  `json:"step,omitempty"`
-	threshold           string `json:"threshold,omitempty"`
+	MiniInstancenumber int32  ` json:"miniInstancenumber,omitempty"`
+	Step               int32  `json:"step,omitempty"`
+	Threshold          string `json:"threshold,omitempty"`
 }
 
 //type Trait struct {
@@ -75,23 +75,23 @@ type TraitServerless struct {
 //}
 type SchedulePolicy struct {
 	// +optional
-	specificResource NodeResource `json:"specificResource,omitempty"`
+	SpecificResource NodeResource `json:"specificResource,omitempty"`
 	// +optional
-	netenvironment CoreResource `json:"netenvironment,omitempty"`
+	Netenvironment CoreResource `json:"netenvironment,omitempty"`
 	// +optional
-	geolocation CoreResource `json:"geolocation,omitempty"`
+	Geolocation CoreResource `json:"geolocation,omitempty"`
 	// +optional
-	provider CoreResource `json:"provider,omitempty"`
+	Provider CoreResource `json:"provider,omitempty"`
 }
 type NodeResource struct {
 	// +optional
-	sn string `json:"name,omitempty"`
+	Sn string `json:"name,omitempty"`
 	// +optional
-	sname string `json:"sname,omitempty"`
+	Sname string `json:"sname,omitempty"`
 }
 type CoreResource struct {
 	// +optional
-	hards []string `json:"hards,omitempty"`
+	Hards []string `json:"hards,omitempty"`
 }
 
 // DescriptionStatus defines the observed state of Description

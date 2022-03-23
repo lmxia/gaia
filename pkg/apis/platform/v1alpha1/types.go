@@ -313,22 +313,22 @@ type ResourceBinding struct {
 
 type ResourceBindingSpec struct {
 	// +optional
-	appID string `json:"appID,omitempty"`
+	AppID string `json:"appID,omitempty"`
 	// +optional
-	parentAppID string `json:"parentAppID,omitempty"`
+	ParentAppID string `json:"parentAppID,omitempty"`
 	// +optional
-	parentRB string `json:"parentRB,omitempty"`
+	ParentRB string `json:"parentRB,omitempty"`
 	// +optional
-	namespace string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 	// +optional
-	rbApps []ResourceBindingApps `json:"rbApps,omitempty"`
+	RbApps []ResourceBindingApps `json:"rbApps,omitempty"`
 }
 
 type ResourceBindingApps struct {
-	clusterName string                 `json:"clusterName,omitempty"`
-	replicas    int32                  `json:"replicas,omitempty"`
-	child       []*ResourceBindingApps `json:"child,omitempty"`
+	ClusterName string                 `json:"clusterName,omitempty"`
+	Replicas    int32                  `json:"replicas,omitempty"`
+	Child       []*ResourceBindingApps `json:"child,omitempty"`
 }
 type ResourceBindingStatus struct {
-	status string `json:"status,omitempty"`
+	Status string `json:"status,omitempty"`
 }

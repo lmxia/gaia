@@ -75,23 +75,13 @@ type TraitServerless struct {
 //}
 type SchedulePolicy struct {
 	// +optional
-	SpecificResource NodeResource `json:"specificResource,omitempty"`
+	SpecificResource *metav1.LabelSelector `json:"specificResource,omitempty"`
 	// +optional
-	Netenvironment CoreResource `json:"netenvironment,omitempty"`
+	Netenvironment *metav1.LabelSelector `json:"netenvironment,omitempty"`
 	// +optional
-	Geolocation CoreResource `json:"geolocation,omitempty"`
+	Geolocation *metav1.LabelSelector `json:"geolocation,omitempty"`
 	// +optional
-	Provider CoreResource `json:"provider,omitempty"`
-}
-type NodeResource struct {
-	// +optional
-	Sn string `json:"name,omitempty"`
-	// +optional
-	Sname string `json:"sname,omitempty"`
-}
-type CoreResource struct {
-	// +optional
-	Hards []string `json:"hards,omitempty"`
+	Provider *metav1.LabelSelector `json:"provider,omitempty"`
 }
 
 // DescriptionStatus defines the observed state of Description

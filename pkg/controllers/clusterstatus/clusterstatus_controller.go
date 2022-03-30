@@ -2,7 +2,10 @@ package clusterstatus
 
 import (
 	"context"
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,22 +31,24 @@ import (
 
 // Controller is a controller that collects cluster status
 type Controller struct {
-	kubeClient         kubernetes.Interface
-	lock               *sync.Mutex
-	clusterStatus      *clusterapi.ManagedClusterStatus
-	collectingPeriod   time.Duration
-	heartbeatFrequency time.Duration
-	apiserverURL       string
-	appPusherEnabled   bool
-	useSocket          bool
-	mclsLister         gaialister.ManagedClusterLister
-	nodeLister         corev1lister.NodeLister
-	nodeSynced         cache.InformerSynced
-	podLister          corev1lister.PodLister
-	podSynced          cache.InformerSynced
+	kubeClient           kubernetes.Interface
+	lock                 *sync.Mutex
+	clusterStatus        *clusterapi.ManagedClusterStatus
+	collectingPeriod     time.Duration
+	heartbeatFrequency   time.Duration
+	apiserverURL         string
+	managedClusterSource string
+	promUrlPrefix        string
+	appPusherEnabled     bool
+	useSocket            bool
+	mclsLister           gaialister.ManagedClusterLister
+	nodeLister           corev1lister.NodeLister
+	nodeSynced           cache.InformerSynced
+	podLister            corev1lister.PodLister
+	podSynced            cache.InformerSynced
 }
 
-func NewController(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
+func NewController(ctx context.Context, apiserverURL, managedClusterSource, promUrlPrefix string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, known.DefaultResync)
 	// add informers
 	kubeInformerFactory.Core().V1().Nodes().Informer()
@@ -54,16 +59,18 @@ func NewController(ctx context.Context, apiserverURL string, kubeClient kubernet
 	gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Informer()
 	gaiaInformerFactory.Start(ctx.Done())
 	return &Controller{
-		kubeClient:         kubeClient,
-		lock:               &sync.Mutex{},
-		collectingPeriod:   collectingPeriod,
-		heartbeatFrequency: heartbeatFrequency,
-		apiserverURL:       apiserverURL,
-		mclsLister:         gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
-		nodeLister:         kubeInformerFactory.Core().V1().Nodes().Lister(),
-		nodeSynced:         kubeInformerFactory.Core().V1().Nodes().Informer().HasSynced,
-		podLister:          kubeInformerFactory.Core().V1().Pods().Lister(),
-		podSynced:          kubeInformerFactory.Core().V1().Pods().Informer().HasSynced,
+		kubeClient:           kubeClient,
+		lock:                 &sync.Mutex{},
+		collectingPeriod:     collectingPeriod,
+		heartbeatFrequency:   heartbeatFrequency,
+		apiserverURL:         apiserverURL,
+		managedClusterSource: managedClusterSource,
+		promUrlPrefix:        promUrlPrefix,
+		mclsLister:           gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
+		nodeLister:           kubeInformerFactory.Core().V1().Nodes().Lister(),
+		nodeSynced:           kubeInformerFactory.Core().V1().Nodes().Informer().HasSynced,
+		podLister:            kubeInformerFactory.Core().V1().Pods().Lister(),
+		podSynced:            kubeInformerFactory.Core().V1().Pods().Informer().HasSynced,
 	}
 }
 
@@ -101,7 +108,11 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 
 		nodeStatistics = getNodeStatistics(nodes)
 
-		capacity, allocatable = getNodeResource(nodes)
+		if c.managedClusterSource == "informer" {
+			capacity, allocatable = getNodeResource(nodes)
+		} else if c.managedClusterSource == "prometheus" {
+			capacity, allocatable = getNodeResourceFromPrometheus(c.promUrlPrefix)
+		}
 	} else {
 		klog.V(7).Info("collecting ManagedCluster status...")
 
@@ -285,3 +296,69 @@ func getNodeCondition(status *corev1.NodeStatus, conditionType corev1.NodeCondit
 	}
 	return -1, nil
 }
+
+// getDataFromPrometheus returns the result from Prometheus according to the specified metric in the cluster
+func getDataFromPrometheus(promPreUrl, metric string) string {
+	var build strings.Builder
+	build.WriteString(promPreUrl)
+	build.WriteString(metric)
+	url := build.String()
+
+	resp, err := http.Get(url)
+	if err != nil {
+		klog.Warningf("failed to get the request: %s%s with err: %v", promPreUrl, metric, err)
+		return "0"
+	}
+
+	defer resp.Body.Close()
+	result := PrometheusQueryResponse{}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		klog.Warningf("failed to read resp.Body with err: %v", err)
+		return "0"
+	}
+
+	json.Unmarshal(body, &result)
+
+	return result.Data.Result[0].Value[1]
+}
+
+// getNodeResourceFromPrometheus returns the cpu and memory resources from Prometheus in the cluster
+func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable corev1.ResourceList) {
+	var capacityCPU, capacityMem, allocatableCPU, allocatableMem resource.Quantity
+	Capacity, Allocatable = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
+	var valueList [4]string
+
+	for index, metric := range ClusterMetricList[:4] {
+		valueList[index] = getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
+	}
+
+	capacityCPU.Add(resource.MustParse(valueList[0]))
+	capacityMem.Add(resource.MustParse(valueList[1] + "Ki"))
+	allocatableCPU.Add(resource.MustParse(valueList[2]))
+	allocatableMem.Add(resource.MustParse(valueList[3] + "Ki"))
+
+	Capacity[corev1.ResourceCPU] = capacityCPU
+	Capacity[corev1.ResourceMemory] = capacityMem
+	Allocatable[corev1.ResourceCPU] = allocatableCPU
+	Allocatable[corev1.ResourceMemory] = allocatableMem
+
+	return
+}
+
+var (
+	ClusterCPUCapacity    = "ClusterCPUCapacity"
+	ClusterMemCapacity    = "ClusterMemCapacity"
+	ClusterCPUAllocatable = "ClusterCPUAllocatable"
+	ClusterMemAllocatable = "ClusterMemAllocatable"
+
+	ClusterMetricList = []string{ClusterCPUCapacity, ClusterMemCapacity, ClusterCPUAllocatable, ClusterMemAllocatable}
+
+	QueryMetricSet = map[string]string{
+		ClusterCPUCapacity:    `sum(kube_node_status_capacity{resource="cpu"})`,
+		ClusterMemCapacity:    `sum(kube_node_status_capacity{resource="memory"})/1024`,
+		ClusterCPUAllocatable: `sum(kube_node_status_allocatable{resource="cpu"})`,
+		ClusterMemAllocatable: `sum(kube_node_status_allocatable{resource="memory"})/1024`,
+	}
+)

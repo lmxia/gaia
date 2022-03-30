@@ -13,9 +13,11 @@ import (
 
 // ClusterRegistrationOptions holds the command-line options for command
 type options struct {
-	kubeconfig          string
-	clusterHostName     string
-	clusterRegistration *ClusterRegistrationOptions
+	kubeconfig                 string
+	clusterHostName            string
+	clusterRegistration        *ClusterRegistrationOptions
+	managedClusterSource       string
+	prometheusMonitorUrlPrefix string
 }
 
 // AddFlags adds the flags to the flagset.
@@ -23,6 +25,10 @@ func (opts *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&opts.kubeconfig, "kubeconfig", opts.kubeconfig,
 		"Path to a kubeconfig file for current child cluster. Only required if out-of-cluster")
 	fs.StringVar(&opts.clusterHostName, "clustername", opts.clusterHostName, "To generate ClusterRegistration name and gaiaName as gaia-'clustername'-UID ")
+	fs.StringVar(&opts.managedClusterSource, "mcSource", opts.managedClusterSource,
+		"where to get the managerCluster Resource.")
+	fs.StringVar(&opts.prometheusMonitorUrlPrefix, "promUrlPrefix", opts.prometheusMonitorUrlPrefix,
+		"The prefix of the prometheus monitor url.")
 }
 
 // NewOptions creates a new *options with sane defaults
@@ -81,6 +87,24 @@ func (opts *options) Validate() error {
 	errs := opts.clusterRegistration.Validate()
 	allErrs = append(allErrs, errs...)
 
+	// validate managedClusterSource and prometheusMonitorUrlPrefix options
+	if len(opts.managedClusterSource) > 0 {
+		if !validateClusterNameRegex.MatchString(opts.managedClusterSource) {
+			allErrs = append(allErrs,
+				fmt.Errorf("invalid name for --%s, regex used for validation is %q", common.ClusterRegistrationName, common.NameFmt))
+		}
+
+		if opts.managedClusterSource != "prometheus" && opts.managedClusterSource != "informer" {
+			allErrs = append(allErrs, fmt.Errorf("Invalid value for managedClusterSource --%s, please use 'prometheus' or 'informer'. ", opts.managedClusterSource))
+		}
+
+		if len(opts.prometheusMonitorUrlPrefix) > 0 {
+			_, err := url.ParseRequestURI(opts.prometheusMonitorUrlPrefix)
+			if err != nil {
+				allErrs = append(allErrs, fmt.Errorf("invalid value for --%s: %v", opts.prometheusMonitorUrlPrefix, err))
+			}
+		}
+	}
 	return utilerrors.NewAggregate(allErrs)
 }
 

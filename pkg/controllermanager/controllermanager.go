@@ -62,7 +62,7 @@ type ControllerManager struct {
 }
 
 // NewAgent returns a new Agent.
-func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName string) (*ControllerManager, error) {
+func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, managedClusterSource, promUrlPrefix string) (*ControllerManager, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get hostname: %v", err)
@@ -76,6 +76,15 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	if err != nil {
 		return nil, err
 	}
+
+	if len(managedClusterSource) <= 0 {
+		managedClusterSource = "informer"
+	}
+
+	if managedClusterSource == "prometheus" && len(promUrlPrefix) <= 0 {
+		promUrlPrefix = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090/api/v1/query?query="
+	}
+
 	// create clientset for child cluster
 	childKubeClientSet := kubernetes.NewForConfigOrDie(childKubeConfig)
 	childGaiaClientSet := gaiaclientset.NewForConfigOrDie(childKubeConfig)
@@ -87,7 +96,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	if err != nil {
 		klog.Error(err)
 	}
-	statusManager := NewStatusManager(ctx, childKubeConfig.Host, childKubeClientSet, childGaiaClientSet)
+	statusManager := NewStatusManager(ctx, childKubeConfig.Host, managedClusterSource, promUrlPrefix, childKubeClientSet, childGaiaClientSet)
 
 	agent := &ControllerManager{
 		ctx:                 ctx,

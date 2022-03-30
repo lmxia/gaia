@@ -40,6 +40,12 @@ const (
 	DefaultRandomUIDLength = 5
 	// ClusternetAppSA is the service account where we store credentials to deploy resources
 	GaiaAppSA = "gaia-resource-deployer"
+
+	SpecificNodeLabelsKeyPrefix = "gaia.io/"
+
+	ManagedClusterSourceFromInformer   = "informer"
+	ManagedClusterSourceFromPrometheus = "prometheus"
+	PrometheusUrlPrefix                = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090/api/v1/query?query="
 )
 
 // lease lock

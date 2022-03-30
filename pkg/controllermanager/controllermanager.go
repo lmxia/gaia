@@ -78,11 +78,11 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	}
 
 	if len(managedClusterSource) <= 0 {
-		managedClusterSource = "informer"
+		managedClusterSource = known.ManagedClusterSourceFromInformer
 	}
 
-	if managedClusterSource == "prometheus" && len(promUrlPrefix) <= 0 {
-		promUrlPrefix = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090/api/v1/query?query="
+	if managedClusterSource == known.ManagedClusterSourceFromPrometheus && len(promUrlPrefix) <= 0 {
+		promUrlPrefix = known.PrometheusUrlPrefix
 	}
 
 	// create clientset for child cluster

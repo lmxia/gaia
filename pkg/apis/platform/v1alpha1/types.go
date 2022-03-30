@@ -129,6 +129,12 @@ type ManagedClusterStatus struct {
 	// heartbeatFrequencySeconds is the frequency at which the agent reports current cluster status
 	// +optional
 	HeartbeatFrequencySeconds *int64 `json:"heartbeatFrequencySeconds,omitempty"`
+
+	// ClusterLabels is the node labels of the child cluster.
+	//
+	// +optional
+	// +kubebuilder:validation:Type=object
+	ClusterLabels map[string]string `json:"clusterLabels,omitempty"`
 }
 
 // +genclient

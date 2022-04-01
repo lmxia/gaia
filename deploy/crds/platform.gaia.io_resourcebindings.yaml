@@ -53,8 +53,10 @@ spec:
                   clusterName:
                     type: string
                   replicas:
-                    format: int32
-                    type: integer
+                    additionalProperties:
+                      format: int32
+                      type: integer
+                    type: object
                 type: object
               type: array
           type: object

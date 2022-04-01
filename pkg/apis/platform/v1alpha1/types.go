@@ -326,7 +326,7 @@ type ResourceBindingSpec struct {
 
 type ResourceBindingApps struct {
 	ClusterName string                 `json:"clusterName,omitempty"`
-	Replicas    int32                  `json:"replicas,omitempty"`
+	Replicas    map[string]int32       `json:"replicas,omitempty"`
 	Child       []*ResourceBindingApps `json:"child,omitempty"`
 }
 type ResourceBindingStatus struct {

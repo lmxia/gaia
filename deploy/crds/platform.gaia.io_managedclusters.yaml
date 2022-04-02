@@ -95,6 +95,11 @@ spec:
             clusterCIDR:
               description: ClusterCIDR is the CIDR range of the cluster
               type: string
+            clusterLabels:
+              additionalProperties:
+                type: string
+              description: ClusterLabels is the node labels of the child cluster.
+              type: object
             conditions:
               description: Conditions is an array of current cluster conditions.
               items:

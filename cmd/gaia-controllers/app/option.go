@@ -94,7 +94,7 @@ func (opts *options) Validate() error {
 				fmt.Errorf("invalid name for --%s, regex used for validation is %q", common.ClusterRegistrationName, common.NameFmt))
 		}
 
-		if opts.managedClusterSource != "prometheus" && opts.managedClusterSource != "informer" {
+		if opts.managedClusterSource != common.ManagedClusterSourceFromPrometheus && opts.managedClusterSource != common.ManagedClusterSourceFromInformer {
 			allErrs = append(allErrs, fmt.Errorf("Invalid value for managedClusterSource --%s, please use 'prometheus' or 'informer'. ", opts.managedClusterSource))
 		}
 

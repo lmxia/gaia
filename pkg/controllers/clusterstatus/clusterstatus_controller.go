@@ -27,6 +27,7 @@ import (
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	gaialister "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/utils"
 )
 
 // Controller is a controller that collects cluster status
@@ -99,6 +100,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 
 	var nodeStatistics clusterapi.NodeStatistics
 	var capacity, allocatable corev1.ResourceList
+	var nodeLabels map[string]string
 	if len(clusters) == 0 {
 		klog.V(7).Info("no joined clusters, collecting cluster resources...")
 		nodes, err := c.nodeLister.List(labels.Everything())
@@ -108,15 +110,17 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 
 		nodeStatistics = getNodeStatistics(nodes)
 
-		if c.managedClusterSource == "informer" {
+		if c.managedClusterSource == known.ManagedClusterSourceFromInformer {
+			nodeLabels = getNodeLabels(nodes)
 			capacity, allocatable = getNodeResource(nodes)
-		} else if c.managedClusterSource == "prometheus" {
+		} else if c.managedClusterSource == known.ManagedClusterSourceFromPrometheus {
 			capacity, allocatable = getNodeResourceFromPrometheus(c.promUrlPrefix)
 		}
 	} else {
 		klog.V(7).Info("collecting ManagedCluster status...")
 
 		nodeStatistics = getManagedClusterNodeStatistics(clusters)
+		nodeLabels = getManagedClusterNodeLabels(clusters)
 		capacity, allocatable = getManagedClusterResource(clusters)
 
 	}
@@ -145,6 +149,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	status.Capacity = capacity
 	status.HeartbeatFrequencySeconds = utilpointer.Int64Ptr(int64(c.heartbeatFrequency.Seconds()))
 	status.Conditions = []metav1.Condition{c.getCondition(status)}
+	status.ClusterLabels = nodeLabels
 	c.setClusterStatus(status)
 }
 
@@ -232,6 +237,41 @@ func getManagedClusterNodeStatistics(clusters []*clusterapi.ManagedCluster) (nod
 		nodeStatistics.ReadyNodes += cluster.Status.NodeStatistics.ReadyNodes
 		nodeStatistics.NotReadyNodes += cluster.Status.NodeStatistics.NotReadyNodes
 		nodeStatistics.UnknownNodes += cluster.Status.NodeStatistics.UnknownNodes
+	}
+	return
+}
+
+// getNodeLabels returns the NodeLabels in the cluster
+func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
+	nodeLabels = make(map[string]string)
+
+	for _, node := range nodes {
+		nodeLabels = parseNodeLabels(nodeLabels, node.ObjectMeta.Labels)
+	}
+	return nodeLabels
+}
+
+// parseNodeLabels returns the nodeLabels that begin with a specific string.
+func parseNodeLabels(nodeLabels, inLabels map[string]string) map[string]string {
+	for labelKey, labelValue := range inLabels {
+		if strings.HasPrefix(labelKey, known.SpecificNodeLabelsKeyPrefix) {
+			if _, ok := nodeLabels[labelKey]; ok {
+				if !utils.ContainsString(strings.Split(nodeLabels[labelKey], "||"), labelValue) {
+					nodeLabels[labelKey] = labelValue + "||" + nodeLabels[labelKey]
+				}
+			} else {
+				nodeLabels[labelKey] = labelValue
+			}
+		}
+	}
+	return nodeLabels
+}
+
+// getManagedClusterNodeLabels returns the ManagedClusters' nodeLabels in the cluster
+func getManagedClusterNodeLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[string]string) {
+	nodeLabels = make(map[string]string)
+	for _, cluster := range clusters {
+		nodeLabels = parseNodeLabels(nodeLabels, cluster.Status.ClusterLabels)
 	}
 	return
 }

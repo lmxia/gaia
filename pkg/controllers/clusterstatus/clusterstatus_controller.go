@@ -2,8 +2,6 @@ package clusterstatus
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
@@ -28,6 +26,9 @@ import (
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	gaialister "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/utils"
+	"github.com/prometheus/client_golang/api"
+	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
 )
 
 // Controller is a controller that collects cluster status
@@ -338,30 +339,29 @@ func getNodeCondition(status *corev1.NodeStatus, conditionType corev1.NodeCondit
 }
 
 // getDataFromPrometheus returns the result from Prometheus according to the specified metric in the cluster
-func getDataFromPrometheus(promPreUrl, metric string) string {
-	var build strings.Builder
-	build.WriteString(promPreUrl)
-	build.WriteString(metric)
-	url := build.String()
-
-	resp, err := http.Get(url)
+func getDataFromPrometheus(promPreUrl, metric string) (model.Value, error) {
+	client, err := api.NewClient(api.Config{
+		Address: promPreUrl,
+	})
 	if err != nil {
-		klog.Warningf("failed to get the request: %s%s with err: %v", promPreUrl, metric, err)
-		return "0"
+		klog.Warningf("Error creating client: %v", err)
+		return nil, err
 	}
 
-	defer resp.Body.Close()
-	result := PrometheusQueryResponse{}
+	v1api := prometheusv1.NewAPI(client)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	result, warnings, err := v1api.Query(ctx, metric, time.Now())
 	if err != nil {
-		klog.Warningf("failed to read resp.Body with err: %v", err)
-		return "0"
+		klog.Warningf("Error querying Prometheus: %v", err)
+		return nil, err
+	}
+	if len(warnings) > 0 {
+		klog.Warningf("Warnings: %v\n", warnings)
 	}
 
-	json.Unmarshal(body, &result)
-
-	return result.Data.Result[0].Value[1]
+	return result, nil
 }
 
 // getNodeResourceFromPrometheus returns the cpu and memory resources from Prometheus in the cluster
@@ -371,7 +371,12 @@ func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable cor
 	var valueList [4]string
 
 	for index, metric := range ClusterMetricList[:4] {
-		valueList[index] = getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
+		result, err := getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
+		if err == nil {
+			valueList[index] = result.(model.Vector)[0].Value.String()
+		} else {
+			valueList[index] = "0"
+		}
 	}
 
 	capacityCPU.Add(resource.MustParse(valueList[0]))

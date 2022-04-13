@@ -57,7 +57,7 @@ func (v *version) ManagedClusters() ManagedClusterInformer {
 
 // ResourceBindings returns a ResourceBindingInformer.
 func (v *version) ResourceBindings() ResourceBindingInformer {
-	return &resourceBindingInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &resourceBindingInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Targets returns a TargetInformer.

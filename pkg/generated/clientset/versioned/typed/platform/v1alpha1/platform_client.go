@@ -45,8 +45,8 @@ func (c *PlatformV1alpha1Client) ManagedClusters(namespace string) ManagedCluste
 	return newManagedClusters(c, namespace)
 }
 
-func (c *PlatformV1alpha1Client) ResourceBindings() ResourceBindingInterface {
-	return newResourceBindings(c)
+func (c *PlatformV1alpha1Client) ResourceBindings(namespace string) ResourceBindingInterface {
+	return newResourceBindings(c, namespace)
 }
 
 func (c *PlatformV1alpha1Client) Targets() TargetInterface {

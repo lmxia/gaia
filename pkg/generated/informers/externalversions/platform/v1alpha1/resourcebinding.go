@@ -42,32 +42,33 @@ type ResourceBindingInformer interface {
 type resourceBindingInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	namespace        string
 }
 
 // NewResourceBindingInformer constructs a new informer for ResourceBinding type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewResourceBindingInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredResourceBindingInformer(client, resyncPeriod, indexers, nil)
+func NewResourceBindingInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredResourceBindingInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
 // NewFilteredResourceBindingInformer constructs a new informer for ResourceBinding type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredResourceBindingInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredResourceBindingInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PlatformV1alpha1().ResourceBindings().List(context.TODO(), options)
+				return client.PlatformV1alpha1().ResourceBindings(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PlatformV1alpha1().ResourceBindings().Watch(context.TODO(), options)
+				return client.PlatformV1alpha1().ResourceBindings(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&platformv1alpha1.ResourceBinding{},
@@ -77,7 +78,7 @@ func NewFilteredResourceBindingInformer(client versioned.Interface, resyncPeriod
 }
 
 func (f *resourceBindingInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredResourceBindingInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewFilteredResourceBindingInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
 func (f *resourceBindingInformer) Informer() cache.SharedIndexInformer {

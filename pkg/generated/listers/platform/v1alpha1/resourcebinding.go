@@ -29,8 +29,8 @@ import (
 type ResourceBindingLister interface {
 	// List lists all ResourceBindings in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.ResourceBinding, err error)
-	// Get retrieves the ResourceBinding from the index for a given name.
-	Get(name string) (*v1alpha1.ResourceBinding, error)
+	// ResourceBindings returns an object that can list and get ResourceBindings.
+	ResourceBindings(namespace string) ResourceBindingNamespaceLister
 	ResourceBindingListerExpansion
 }
 
@@ -52,9 +52,38 @@ func (s *resourceBindingLister) List(selector labels.Selector) (ret []*v1alpha1.
 	return ret, err
 }
 
-// Get retrieves the ResourceBinding from the index for a given name.
-func (s *resourceBindingLister) Get(name string) (*v1alpha1.ResourceBinding, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
+// ResourceBindings returns an object that can list and get ResourceBindings.
+func (s *resourceBindingLister) ResourceBindings(namespace string) ResourceBindingNamespaceLister {
+	return resourceBindingNamespaceLister{indexer: s.indexer, namespace: namespace}
+}
+
+// ResourceBindingNamespaceLister helps list and get ResourceBindings.
+type ResourceBindingNamespaceLister interface {
+	// List lists all ResourceBindings in the indexer for a given namespace.
+	List(selector labels.Selector) (ret []*v1alpha1.ResourceBinding, err error)
+	// Get retrieves the ResourceBinding from the indexer for a given namespace and name.
+	Get(name string) (*v1alpha1.ResourceBinding, error)
+	ResourceBindingNamespaceListerExpansion
+}
+
+// resourceBindingNamespaceLister implements the ResourceBindingNamespaceLister
+// interface.
+type resourceBindingNamespaceLister struct {
+	indexer   cache.Indexer
+	namespace string
+}
+
+// List lists all ResourceBindings in the indexer for a given namespace.
+func (s resourceBindingNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.ResourceBinding, err error) {
+	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
+		ret = append(ret, m.(*v1alpha1.ResourceBinding))
+	})
+	return ret, err
+}
+
+// Get retrieves the ResourceBinding from the indexer for a given namespace and name.
+func (s resourceBindingNamespaceLister) Get(name string) (*v1alpha1.ResourceBinding, error) {
+	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}

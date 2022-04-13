@@ -326,13 +326,13 @@ type ResourceBindingSpec struct {
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 	// +optional
-	RbApps []ResourceBindingApps `json:"rbApps,omitempty"`
+	RbApps []*ResourceBindingApps `json:"rbApps,omitempty"`
 }
 
 type ResourceBindingApps struct {
 	ClusterName string                 `json:"clusterName,omitempty"`
 	Replicas    map[string]int32       `json:"replicas,omitempty"`
-	Child       []*ResourceBindingApps `json:"child,omitempty"`
+	Children    []*ResourceBindingApps `json:"child,omitempty"`
 }
 type ResourceBindingStatus struct {
 	Status string `json:"status,omitempty"`

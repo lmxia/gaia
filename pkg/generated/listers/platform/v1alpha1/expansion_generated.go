@@ -30,6 +30,10 @@ type ManagedClusterListerExpansion interface{}
 // ManagedClusterNamespaceLister.
 type ManagedClusterNamespaceListerExpansion interface{}
 
+// ResourceBindingListerExpansion allows custom methods to be added to
+// ResourceBindingLister.
+type ResourceBindingListerExpansion interface{}
+
 // TargetListerExpansion allows custom methods to be added to
 // TargetLister.
 type TargetListerExpansion interface{}

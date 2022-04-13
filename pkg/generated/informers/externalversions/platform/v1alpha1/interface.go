@@ -28,6 +28,8 @@ type Interface interface {
 	ClusterRegistrationRequests() ClusterRegistrationRequestInformer
 	// ManagedClusters returns a ManagedClusterInformer.
 	ManagedClusters() ManagedClusterInformer
+	// ResourceBindings returns a ResourceBindingInformer.
+	ResourceBindings() ResourceBindingInformer
 	// Targets returns a TargetInformer.
 	Targets() TargetInformer
 }
@@ -51,6 +53,11 @@ func (v *version) ClusterRegistrationRequests() ClusterRegistrationRequestInform
 // ManagedClusters returns a ManagedClusterInformer.
 func (v *version) ManagedClusters() ManagedClusterInformer {
 	return &managedClusterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ResourceBindings returns a ResourceBindingInformer.
+func (v *version) ResourceBindings() ResourceBindingInformer {
+	return &resourceBindingInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Targets returns a TargetInformer.

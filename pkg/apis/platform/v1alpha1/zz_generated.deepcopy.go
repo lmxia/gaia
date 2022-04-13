@@ -324,8 +324,8 @@ func (in *ResourceBindingApps) DeepCopyInto(out *ResourceBindingApps) {
 			(*out)[key] = val
 		}
 	}
-	if in.Child != nil {
-		in, out := &in.Child, &out.Child
+	if in.Children != nil {
+		in, out := &in.Children, &out.Children
 		*out = make([]*ResourceBindingApps, len(*in))
 		for i := range *in {
 			if (*in)[i] != nil {
@@ -386,9 +386,13 @@ func (in *ResourceBindingSpec) DeepCopyInto(out *ResourceBindingSpec) {
 	*out = *in
 	if in.RbApps != nil {
 		in, out := &in.RbApps, &out.RbApps
-		*out = make([]ResourceBindingApps, len(*in))
+		*out = make([]*ResourceBindingApps, len(*in))
 		for i := range *in {
-			(*in)[i].DeepCopyInto(&(*out)[i])
+			if (*in)[i] != nil {
+				in, out := &(*in)[i], &(*out)[i]
+				*out = new(ResourceBindingApps)
+				(*in).DeepCopyInto(*out)
+			}
 		}
 	}
 	return

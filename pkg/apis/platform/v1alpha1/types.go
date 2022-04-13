@@ -301,10 +301,9 @@ type ClusterRegistrationRequestList struct {
 }
 
 // +genclient
-// +genclient:nonNamespaced
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope="Cluster",categories=gaia
+// +kubebuilder:resource:scope="Namespaced",shortName=rb,categories=gaia
 // +k8s:openapi-gen=true
 type ResourceBinding struct {
 	metav1.TypeMeta `json:",inline"`

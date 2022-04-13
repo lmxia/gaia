@@ -33,7 +33,7 @@ import (
 // ResourceBindingsGetter has a method to return a ResourceBindingInterface.
 // A group's client should implement this interface.
 type ResourceBindingsGetter interface {
-	ResourceBindings() ResourceBindingInterface
+	ResourceBindings(namespace string) ResourceBindingInterface
 }
 
 // ResourceBindingInterface has methods to work with ResourceBinding resources.
@@ -53,12 +53,14 @@ type ResourceBindingInterface interface {
 // resourceBindings implements ResourceBindingInterface
 type resourceBindings struct {
 	client rest.Interface
+	ns     string
 }
 
 // newResourceBindings returns a ResourceBindings
-func newResourceBindings(c *PlatformV1alpha1Client) *resourceBindings {
+func newResourceBindings(c *PlatformV1alpha1Client, namespace string) *resourceBindings {
 	return &resourceBindings{
 		client: c.RESTClient(),
+		ns:     namespace,
 	}
 }
 
@@ -66,6 +68,7 @@ func newResourceBindings(c *PlatformV1alpha1Client) *resourceBindings {
 func (c *resourceBindings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ResourceBinding, err error) {
 	result = &v1alpha1.ResourceBinding{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("resourcebindings").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -82,6 +85,7 @@ func (c *resourceBindings) List(ctx context.Context, opts v1.ListOptions) (resul
 	}
 	result = &v1alpha1.ResourceBindingList{}
 	err = c.client.Get().
+		Namespace(c.ns).
 		Resource("resourcebindings").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -98,6 +102,7 @@ func (c *resourceBindings) Watch(ctx context.Context, opts v1.ListOptions) (watc
 	}
 	opts.Watch = true
 	return c.client.Get().
+		Namespace(c.ns).
 		Resource("resourcebindings").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -108,6 +113,7 @@ func (c *resourceBindings) Watch(ctx context.Context, opts v1.ListOptions) (watc
 func (c *resourceBindings) Create(ctx context.Context, resourceBinding *v1alpha1.ResourceBinding, opts v1.CreateOptions) (result *v1alpha1.ResourceBinding, err error) {
 	result = &v1alpha1.ResourceBinding{}
 	err = c.client.Post().
+		Namespace(c.ns).
 		Resource("resourcebindings").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(resourceBinding).
@@ -120,6 +126,7 @@ func (c *resourceBindings) Create(ctx context.Context, resourceBinding *v1alpha1
 func (c *resourceBindings) Update(ctx context.Context, resourceBinding *v1alpha1.ResourceBinding, opts v1.UpdateOptions) (result *v1alpha1.ResourceBinding, err error) {
 	result = &v1alpha1.ResourceBinding{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("resourcebindings").
 		Name(resourceBinding.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -134,6 +141,7 @@ func (c *resourceBindings) Update(ctx context.Context, resourceBinding *v1alpha1
 func (c *resourceBindings) UpdateStatus(ctx context.Context, resourceBinding *v1alpha1.ResourceBinding, opts v1.UpdateOptions) (result *v1alpha1.ResourceBinding, err error) {
 	result = &v1alpha1.ResourceBinding{}
 	err = c.client.Put().
+		Namespace(c.ns).
 		Resource("resourcebindings").
 		Name(resourceBinding.Name).
 		SubResource("status").
@@ -147,6 +155,7 @@ func (c *resourceBindings) UpdateStatus(ctx context.Context, resourceBinding *v1
 // Delete takes name of the resourceBinding and deletes it. Returns an error if one occurs.
 func (c *resourceBindings) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("resourcebindings").
 		Name(name).
 		Body(&opts).
@@ -161,6 +170,7 @@ func (c *resourceBindings) DeleteCollection(ctx context.Context, opts v1.DeleteO
 		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Namespace(c.ns).
 		Resource("resourcebindings").
 		VersionedParams(&listOpts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -173,6 +183,7 @@ func (c *resourceBindings) DeleteCollection(ctx context.Context, opts v1.DeleteO
 func (c *resourceBindings) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ResourceBinding, err error) {
 	result = &v1alpha1.ResourceBinding{}
 	err = c.client.Patch(pt).
+		Namespace(c.ns).
 		Resource("resourcebindings").
 		Name(name).
 		SubResource(subresources...).

@@ -36,8 +36,8 @@ func (c *FakePlatformV1alpha1) ManagedClusters(namespace string) v1alpha1.Manage
 	return &FakeManagedClusters{c, namespace}
 }
 
-func (c *FakePlatformV1alpha1) ResourceBindings() v1alpha1.ResourceBindingInterface {
-	return &FakeResourceBindings{c}
+func (c *FakePlatformV1alpha1) ResourceBindings(namespace string) v1alpha1.ResourceBindingInterface {
+	return &FakeResourceBindings{c, namespace}
 }
 
 func (c *FakePlatformV1alpha1) Targets() v1alpha1.TargetInterface {

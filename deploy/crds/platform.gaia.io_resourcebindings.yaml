@@ -15,8 +15,10 @@ spec:
     kind: ResourceBinding
     listKind: ResourceBindingList
     plural: resourcebindings
+    shortNames:
+    - rb
     singular: resourcebinding
-  scope: Cluster
+  scope: Namespaced
   subresources:
     status: {}
   validation:

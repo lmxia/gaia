@@ -318,6 +318,13 @@ type ResourceBinding struct {
 
 type StatusScheduler string
 
+const (
+	ResourceBindingMerging      StatusScheduler = "merging"
+	ResourceBindingmerged       StatusScheduler = "merged"
+	ResourceBindingSchedulering StatusScheduler = "schedulering"
+	ResourceBindingSelected     StatusScheduler = "selected"
+)
+
 type ResourceBindingSpec struct {
 	// +optional
 	AppID string `json:"appID,omitempty"`

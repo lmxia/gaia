@@ -46,6 +46,11 @@ const (
 	ManagedClusterSourceFromInformer   = "informer"
 	ManagedClusterSourceFromPrometheus = "prometheus"
 	PrometheusUrlPrefix                = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090"
+
+	ResourceBindingmerged       = "merged"
+	ResourceBindingMerging      = "merging"
+	ResourceBindingSchedulering = "schedulering"
+	ResourceBindingSelected     = "selected"
 )
 
 // lease lock

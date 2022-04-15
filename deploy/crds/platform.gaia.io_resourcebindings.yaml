@@ -40,10 +40,6 @@ spec:
           properties:
             appID:
               type: string
-            namespace:
-              type: string
-            parentAppID:
-              type: string
             parentRB:
               type: string
             rbApps:
@@ -61,9 +57,20 @@ spec:
                     type: object
                 type: object
               type: array
+            statusScheduler:
+              enum:
+              - merging
+              - merged
+              - schedulering
+              - selected
+              type: string
           type: object
         status:
           properties:
+            reason:
+              description: Reason indicates the reason of ResourceBinding deployment
+                Status
+              type: string
             status:
               type: string
           type: object

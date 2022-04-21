@@ -110,6 +110,10 @@ type ManagedClusterStatus struct {
 	// +optional
 	Capacity corev1.ResourceList `json:"capacity,omitempty"`
 
+	// Available is the sum of Available resources for nodes in the cluster
+	// +optional
+	Available corev1.ResourceList `json:"available,omitempty"`
+
 	// ClusterCIDR is the CIDR range of the cluster
 	// +optional
 	ClusterCIDR string `json:"clusterCIDR,omitempty"`

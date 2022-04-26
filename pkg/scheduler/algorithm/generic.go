@@ -126,6 +126,8 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		}
 	}
 
+	networkInfoMap := g.getTopologyInfoMap()
+	klog.Infof("Log: networkInfoMap is %v", networkInfoMap)
 	/*
 		add one-by-one network filter plugin.
 	*/
@@ -190,6 +192,14 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	return ScheduleResult{
 		ResourceBindings: rbsResultFinal,
 	}, err
+}
+
+func (g *genericScheduler) getTopologyInfoMap() (networkInfoMap map[string]clusterapi.Topo) {
+	clusters, _ := g.cache.ListClusters(&metav1.LabelSelector{})
+	for _, cluster := range clusters {
+		networkInfoMap[cluster.GetClusterName()] = cluster.Status.TopologyInfo
+	}
+	return networkInfoMap
 }
 
 func prioritizeResourcebindings(ctx context.Context, fwk framework.Framework, _ *v1alpha1.Description,

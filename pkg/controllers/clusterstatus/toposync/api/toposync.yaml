@@ -1,0 +1,79 @@
+---
+swagger: "2.0"
+info:
+  description: "This is restapi of toposync's relationship."
+  version: "1.0.0"
+  title: "Hyper Topo Sync"
+  termsOfService: "http://hyper.pmlabs.com/globalsync/topo"
+  contact:
+    email: "liuzhun@pmlabs.com.cn"
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+host: "localhost.api"
+tags:
+- name: "Hyper Global Sync Apis"
+  description: "Hyper Global Sync Apis"
+schemes:
+- "http"
+- "https"
+produces:
+- "application/json"
+paths:
+  /v1.0/globalsync/topo:
+    get:
+      tags:
+      - "topo sync"
+      summary: "hyper topo sync"
+      description: "hyper topo sync"
+      operationId: "TopoSync"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "hyper topo sync"
+        description: "hyper topo sync"
+        required: true
+        schema:
+          $ref: "#/definitions/Fields"
+        x-exportParamName: "HyperTopoSync"
+      responses:
+        "200":
+          description: "successful operation"
+          schema:
+            $ref: "#/definitions/Topos"
+        "400":
+          description: "Failed"
+definitions:
+  Fields:
+    type: "object"
+    properties:
+      field:
+        type: "array"
+        items:
+          type: "string"
+  Topos:
+    type: "object"
+    properties:
+      topo:
+        type: "array"
+        items:
+          $ref: "#/definitions/Topo"
+    example:
+      topo:
+      - field: "field"
+        content: "content"
+      - field: "field"
+        content: "content"
+  Topo:
+    type: "object"
+    properties:
+      field:
+        type: "string"
+        description: "field name"
+      content:
+        type: "string"
+        description: "topo in protobuf"
+    example:
+      field: "field"
+      content: "content"

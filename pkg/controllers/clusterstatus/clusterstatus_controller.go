@@ -25,6 +25,7 @@ import (
 	hypernodelister "github.com/SUMMERLm/hyperNodes/pkg/generated/listers/cluster/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/controllers/clusterstatus/toposync"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	gaialister "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
@@ -43,6 +44,7 @@ type Controller struct {
 	apiserverURL           string
 	managedClusterSource   string
 	promUrlPrefix          string
+	topoSyncBaseUrl        string
 	appPusherEnabled       bool
 	useSocket              bool
 	useHypernodeController bool
@@ -53,9 +55,10 @@ type Controller struct {
 	nodeSynced             cache.InformerSynced
 	podLister              corev1lister.PodLister
 	podSynced              cache.InformerSynced
+	clusterName            string
 }
 
-func NewController(ctx context.Context, apiserverURL, managedClusterSource, promUrlPrefix string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset, useHypernodeController bool, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
+func NewController(ctx context.Context, apiserverURL, clusterName string, managedCluster *clusterapi.ManagedClusterOptions, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, known.DefaultResync)
 	// add informers
 	kubeInformerFactory.Core().V1().Nodes().Informer()
@@ -72,15 +75,17 @@ func NewController(ctx context.Context, apiserverURL, managedClusterSource, prom
 		collectingPeriod:       collectingPeriod,
 		heartbeatFrequency:     heartbeatFrequency,
 		apiserverURL:           apiserverURL,
-		managedClusterSource:   managedClusterSource,
-		promUrlPrefix:          promUrlPrefix,
+		managedClusterSource:   managedCluster.ManagedClusterSource,
+		promUrlPrefix:          managedCluster.PrometheusMonitorUrlPrefix,
+		topoSyncBaseUrl:        managedCluster.TopoSyncBaseUrl,
 		mclsLister:             gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
 		nodeLister:             kubeInformerFactory.Core().V1().Nodes().Lister(),
 		hypernodeClient:        hypernodeClient,
-		useHypernodeController: useHypernodeController,
+		useHypernodeController: managedCluster.UseHypernodeController,
 		nodeSynced:             kubeInformerFactory.Core().V1().Nodes().Informer().HasSynced,
 		podLister:              kubeInformerFactory.Core().V1().Pods().Lister(),
 		podSynced:              kubeInformerFactory.Core().V1().Pods().Informer().HasSynced,
+		clusterName:            clusterName,
 	}
 }
 
@@ -109,6 +114,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 
 	var nodeStatistics clusterapi.NodeStatistics
 	var capacity, allocatable, available corev1.ResourceList
+	var topoInfo clusterapi.Topo
 	if len(clusters) == 0 {
 		klog.V(7).Info("no joined clusters, collecting cluster resources...")
 		nodes, err := c.nodeLister.List(labels.Everything())
@@ -127,6 +133,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 
 		nodeStatistics = getManagedClusterNodeStatistics(clusters)
 		capacity, allocatable = getManagedClusterResource(clusters)
+		topoInfo = getTopoInfo(ctx, c.clusterName, c.topoSyncBaseUrl)
 	}
 
 	clusterCIDR, err := c.discoverClusterCIDR()
@@ -154,6 +161,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	status.Available = available
 	status.HeartbeatFrequencySeconds = utilpointer.Int64Ptr(int64(c.heartbeatFrequency.Seconds()))
 	status.Conditions = []metav1.Condition{c.getCondition(status)}
+	status.TopologyInfo = topoInfo
 	c.setClusterStatus(status)
 }
 
@@ -189,6 +197,18 @@ func (c *Controller) getHealthStatus(ctx context.Context, path string) bool {
 	var statusCode int
 	c.kubeClient.Discovery().RESTClient().Get().AbsPath(path).Do(ctx).StatusCode(&statusCode)
 	return statusCode == http.StatusOK
+}
+
+// getTopoInfo returns the topology information according to toposync api
+func getTopoInfo(ctx context.Context, clusterName, topoSyncBaseUrl string) clusterapi.Topo {
+	hyperTopoSync := clusterapi.Fields{
+		Field: []string{clusterName},
+	}
+	topos, _, err := toposync.NewAPIClient(toposync.NewConfiguration(topoSyncBaseUrl)).TopoSyncApi.TopoSync(ctx, hyperTopoSync)
+	if err != nil {
+		klog.Warningf("failed to get network topology info: %v", err)
+	}
+	return topos.Topo[0]
 }
 
 func (c *Controller) getCondition(status clusterapi.ManagedClusterStatus) metav1.Condition {

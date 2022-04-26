@@ -132,6 +132,11 @@ spec:
               clusterCIDR:
                 description: ClusterCIDR is the CIDR range of the cluster
                 type: string
+              topologyInfo:
+                additionalProperties:
+                  type: string
+                description: TopologyInfo is the network topology of the cluster.
+                type: object
               conditions:
                 description: Conditions is an array of current cluster conditions.
                 items:

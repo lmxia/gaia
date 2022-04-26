@@ -31,6 +31,7 @@ type DescriptionSpec struct {
 	// +required
 	AppID string `json:"appID,omitempty"` // appID是蓝图的id
 	// +optional
+	// +kubebuilder:validation:Optional
 	Component []Components `json:"component,omitempty"`
 }
 type Components struct {
@@ -40,21 +41,26 @@ type Components struct {
 	Namespace string `json:"namespace,omitempty"`
 	// +required
 	Name string `json:"name,omitempty"`
-	// +optional
-	Moudles corev1.PodTemplateSpec `json:"template" protobuf:"bytes,3,opt,name=template"` //module是container意思。
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"` //module是container意思。
 	// +required
 	RuntimeType string `json:"runtimeType,omitempty"`
 	// +required
 	Workload Workload `json:"workload,omitempty"`
 	// +required
 	SchedulePolicy SchedulePolicy `json:"schedulePolicy,omitempty"`
+	// ClusterTolerations tolerates any matched taints of ManagedCluster.
+	//
+	// +optional
+	ClusterTolerations []corev1.Toleration `json:"clusterTolerations,omitempty"`
 }
 
 type Workload struct {
 	// +optional
 	Workloadtype string `json:"workloadtype,omitempty"`
 	// +optional
-	TraitDeployment *TraitDeployment `json:"traitServerless,omitempty"`
+	TraitDeployment *TraitDeployment `json:"traitDeployment,omitempty"`
 	// +optional
 	TraitServerless *TraitServerless `json:"traitServerless,omitempty"`
 }

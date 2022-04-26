@@ -157,7 +157,7 @@ func newLeaderElectionConfigWithDefaultValue(identity string, clientset kubernet
 	return &leaderelection.LeaderElectionConfig{
 		Lock: &resourcelock.LeaseLock{
 			LeaseMeta: metav1.ObjectMeta{
-				Name:      common.SelfClusterLeaseName,
+				Name:      common.GaiaControllerLeaseName,
 				Namespace: common.GaiaSystemNamespace,
 			},
 			Client: clientset.CoordinationV1(),
@@ -247,9 +247,9 @@ func (controller *ControllerManager) registerSelfCluster(ctx context.Context) {
 }
 
 func (controller *ControllerManager) getClusterID(ctx context.Context, childClientSet kubernetes.Interface) (types.UID, error) {
-	lease, err := childClientSet.CoordinationV1().Leases(common.GaiaSystemNamespace).Get(ctx, common.SelfClusterLeaseName, metav1.GetOptions{})
+	lease, err := childClientSet.CoordinationV1().Leases(common.GaiaSystemNamespace).Get(ctx, common.GaiaControllerLeaseName, metav1.GetOptions{})
 	if err != nil {
-		klog.Errorf("unable to retrieve %s/%s Lease object: %v", common.GaiaSystemNamespace, common.SelfClusterLeaseName, err)
+		klog.Errorf("unable to retrieve %s/%s Lease object: %v", common.GaiaSystemNamespace, common.GaiaControllerLeaseName, err)
 		return "", err
 	}
 	return lease.UID, nil

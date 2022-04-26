@@ -33,3 +33,11 @@ type NetworkRequirementListerExpansion interface{}
 // NetworkRequirementNamespaceListerExpansion allows custom methods to be added to
 // NetworkRequirementNamespaceLister.
 type NetworkRequirementNamespaceListerExpansion interface{}
+
+// ResourceBindingListerExpansion allows custom methods to be added to
+// ResourceBindingLister.
+type ResourceBindingListerExpansion interface{}
+
+// ResourceBindingNamespaceListerExpansion allows custom methods to be added to
+// ResourceBindingNamespaceLister.
+type ResourceBindingNamespaceListerExpansion interface{}

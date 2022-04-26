@@ -2,18 +2,17 @@ package framework
 
 import (
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	v1 "k8s.io/api/core/v1"
 )
-
 
 // ClusterInfo is cluster level level aggregated information.
 type ClusterInfo struct {
 	// Overall cluster information.
 	Cluster *v1alpha1.ManagedCluster
+	Total   int64
 }
 
 // pod is used to check affinity, TODO.
-func (c *ClusterInfo) CalculateCapacity(cpuRequest int64, memRequest int64, _ *v1.Pod) int64 {
+func (c *ClusterInfo) CalculateCapacity(cpuRequest int64, memRequest int64) int64 {
 	freeCpuLeft := c.Cluster.Status.Allocatable.Cpu().MilliValue()
 	freeMemLeft := c.Cluster.Status.Allocatable.Memory().Value()
 	cpuCapacity := freeCpuLeft / cpuRequest

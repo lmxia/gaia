@@ -22,6 +22,4 @@ type ClusterRegistrationRequestExpansion interface{}
 
 type ManagedClusterExpansion interface{}
 
-type ResourceBindingExpansion interface{}
-
 type TargetExpansion interface{}

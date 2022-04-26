@@ -1,19 +1,3 @@
-/*
-Copyright 2021 The Clusternet Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package approver
 
 import (
@@ -62,7 +46,7 @@ type CRRApprover struct {
 
 // NewCRRApprover returns a new CRRApprover for ClusterRegistrationRequest.
 func NewCRRApprover(kubeclient *kubernetes.Clientset, gaiaclient *gaiaClientSet.Clientset,
-		gaiaInformerFactory clusternetInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+	gaiaInformerFactory clusternetInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
 	crrApprover := &CRRApprover{
 		kubeclient:       kubeclient,
 		clusternetclient: gaiaclient,
@@ -300,7 +284,7 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 }
 
 func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterName string, clusterID types.UID,
-		clusterLabels map[string]string) (*clusterapi.ManagedCluster, error) {
+	clusterLabels map[string]string) (*clusterapi.ManagedCluster, error) {
 	// checks for an existed ManagedCluster object
 	// the clusterName here may vary, we use clusterID as the identifier
 	mcs, err := crrApprover.mclsLister.List(labels.SelectorFromSet(labels.Set{

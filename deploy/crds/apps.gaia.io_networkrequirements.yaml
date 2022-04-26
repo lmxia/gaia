@@ -1,17 +1,12 @@
-
 ---
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.5
+    controller-gen.kubebuilder.io/version: v0.8.0
   creationTimestamp: null
   name: networkrequirements.apps.gaia.io
 spec:
-  additionalPrinterColumns:
-  - JSONPath: .status.phase
-    name: STATUS
-    type: string
   group: apps.gaia.io
   names:
     categories:
@@ -23,117 +18,120 @@ spec:
     - nwr
     singular: networkrequirement
   scope: Namespaced
-  subresources:
-    status: {}
-  validation:
-    openAPIV3Schema:
-      description: NetworkRequirement is the Schema for the resources to be installed
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          description: NetworkRequirementSpec defines the spec of NetworkRequirement
-          properties:
-            interSCNID:
-              properties:
-                destination:
-                  properties:
-                    attributes:
-                      items:
-                        properties:
-                          key:
-                            type: string
-                          value:
-                            type: string
-                        type: object
-                      type: array
-                    id:
-                      type: string
-                  type: object
-                providers:
-                  items:
-                    type: string
-                  type: array
-                sla:
-                  items:
-                    type: string
-                  type: array
-                source:
-                  properties:
-                    attributes:
-                      items:
-                        properties:
-                          key:
-                            type: string
-                          value:
-                            type: string
-                        type: object
-                      type: array
-                    id:
-                      type: string
-                  type: object
-              type: object
-            name:
-              type: string
-            requirement:
-              description: Raw is the underlying serialization of all objects.
-              items:
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: STATUS
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: NetworkRequirement is the Schema for the resources to be installed
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: NetworkRequirementSpec defines the spec of NetworkRequirement
+            properties:
+              interSCNID:
                 properties:
-                  north:
+                  destination:
                     properties:
-                      capacity:
-                        format: int64
-                        type: integer
-                      concurrency:
-                        format: int64
-                        type: integer
+                      attributes:
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      id:
+                        type: string
                     type: object
-                  selector:
-                    additionalProperties:
+                  providers:
+                    items:
                       type: string
-                    type: object
-                  south:
+                    type: array
+                  sla:
+                    items:
+                      type: string
+                    type: array
+                  source:
                     properties:
-                      bandwidth:
-                        format: int64
-                        type: integer
-                      delay:
-                        format: int64
-                        type: integer
-                      robustness:
-                        format: int64
-                        type: integer
-                      targetlabel:
+                      attributes:
+                        items:
+                          properties:
+                            key:
+                              type: string
+                            value:
+                              type: string
+                          type: object
+                        type: array
+                      id:
                         type: string
                     type: object
                 type: object
-              type: array
-            selfID:
-              items:
+              name:
                 type: string
-              type: array
-          type: object
-        status:
-          description: NetworkRequirementStatus defines the observed state of NetworkRequirement
-          type: object
-      required:
-      - spec
-      type: object
-  version: v1alpha1
-  versions:
-  - name: v1alpha1
+              requirement:
+                description: Raw is the underlying serialization of all objects.
+                items:
+                  properties:
+                    north:
+                      properties:
+                        capacity:
+                          format: int64
+                          type: integer
+                        concurrency:
+                          format: int64
+                          type: integer
+                      type: object
+                    selector:
+                      additionalProperties:
+                        type: string
+                      type: object
+                    south:
+                      properties:
+                        bandwidth:
+                          format: int64
+                          type: integer
+                        delay:
+                          format: int64
+                          type: integer
+                        robustness:
+                          format: int64
+                          type: integer
+                        targetlabel:
+                          type: string
+                      type: object
+                  type: object
+                type: array
+              selfID:
+                items:
+                  type: string
+                type: array
+            type: object
+          status:
+            description: NetworkRequirementStatus defines the observed state of NetworkRequirement
+            type: object
+        required:
+        - spec
+        type: object
     served: true
     storage: true
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""

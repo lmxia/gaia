@@ -21,3 +21,5 @@ package v1alpha1
 type DescriptionExpansion interface{}
 
 type NetworkRequirementExpansion interface{}
+
+type ResourceBindingExpansion interface{}

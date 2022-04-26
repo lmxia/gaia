@@ -1,13 +1,48 @@
+
+---
 apiVersion: apps.gaia.io/v1alpha1
 kind: Description
 metadata:
-  name: app-demo
-  namespace: gaia-reserved
-  labels:
-    clusterlevel: field
   finalizers:
     - apps.gaia.io/finalizer
+  name: test
+  namespace: gaia-reserved
 spec:
-  raw:
-    - ewogICAgImFwaVZlcnNpb24iOiAidjEiLAogICAgImtpbmQiOiAiTmFtZXNwYWNlIiwKICAgICJtZXRhZGF0YSI6IHsKICAgICAgICAibmFtZSI6ICJsbXhpYSIKICAgIH0KfQo=
-    - ewogICJhcGlWZXJzaW9uIjogImFwcHMvdjEiLAogICJraW5kIjogIkRlcGxveW1lbnQiLAogICJtZXRhZGF0YSI6IHsKICAgICJuYW1lIjogIm15LW5naW54IiwKICAgICJuYW1lc3BhY2UiOiAibG14aWEiCiAgfSwKICAic3BlYyI6IHsKICAgICJzZWxlY3RvciI6IHsKICAgICAgIm1hdGNoTGFiZWxzIjogewogICAgICAgICJhcHAiOiAibmdpbngiCiAgICAgIH0KICAgIH0sCiAgICAicmVwbGljYXMiOiAzLAogICAgInRlbXBsYXRlIjogewogICAgICAibWV0YWRhdGEiOiB7CiAgICAgICAgImxhYmVscyI6IHsKICAgICAgICAgICJhcHAiOiAibmdpbngiCiAgICAgICAgfQogICAgICB9LAogICAgICAic3BlYyI6IHsKICAgICAgICAiY29udGFpbmVycyI6IFsKICAgICAgICAgIHsKICAgICAgICAgICAgIm5hbWUiOiAibmdpbngiLAogICAgICAgICAgICAiaW1hZ2UiOiAibmdpbng6MS4xNC4yIiwKICAgICAgICAgICAgInBvcnRzIjogWwogICAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgICJjb250YWluZXJQb3J0IjogODAKICAgICAgICAgICAgICB9CiAgICAgICAgICAgIF0KICAgICAgICAgIH0KICAgICAgICBdCiAgICAgIH0KICAgIH0KICB9Cn0K
+  appID: appID1
+  component:
+    - name: component1
+      namespace: test
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+              ports:
+                - containerPort: 80
+    - name: component2
+      namespace: test2
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 2
+      module:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+              ports:
+                - containerPort: 80
+
+

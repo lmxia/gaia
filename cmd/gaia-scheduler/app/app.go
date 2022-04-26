@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+
 	"github.com/lmxia/gaia/pkg/scheduler"
 	"github.com/lmxia/gaia/pkg/version"
 	"github.com/spf13/cobra"
@@ -28,16 +29,15 @@ func NewGaiaScheduleControllerCmd(ctx context.Context) *cobra.Command {
 			// TODO: add logic
 			agentCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			agentSchedule, err := scheduler.NewScheduleControllerManager(agentCtx, opts.kubeconfig)
+			agentSchedule, err := scheduler.NewSchedule(agentCtx, opts.kubeconfig)
 			if err != nil {
 				klog.Exit(err)
 			}
-			agentSchedule.Run()
+			agentSchedule.Run(agentCtx)
 		},
 	}
 
 	version.AddVersionFlag(cmd.Flags())
 	opts.AddFlags(cmd.Flags())
 	return cmd
-
 }

@@ -28,6 +28,7 @@ type AppsV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	DescriptionsGetter
 	NetworkRequirementsGetter
+	ResourceBindingsGetter
 }
 
 // AppsV1alpha1Client is used to interact with features provided by the apps.gaia.io group.
@@ -41,6 +42,10 @@ func (c *AppsV1alpha1Client) Descriptions(namespace string) DescriptionInterface
 
 func (c *AppsV1alpha1Client) NetworkRequirements(namespace string) NetworkRequirementInterface {
 	return newNetworkRequirements(c, namespace)
+}
+
+func (c *AppsV1alpha1Client) ResourceBindings(namespace string) ResourceBindingInterface {
+	return newResourceBindings(c, namespace)
 }
 
 // NewForConfig creates a new AppsV1alpha1Client for the given config.

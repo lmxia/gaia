@@ -28,7 +28,6 @@ type PlatformV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ClusterRegistrationRequestsGetter
 	ManagedClustersGetter
-	ResourceBindingsGetter
 	TargetsGetter
 }
 
@@ -43,10 +42,6 @@ func (c *PlatformV1alpha1Client) ClusterRegistrationRequests() ClusterRegistrati
 
 func (c *PlatformV1alpha1Client) ManagedClusters(namespace string) ManagedClusterInterface {
 	return newManagedClusters(c, namespace)
-}
-
-func (c *PlatformV1alpha1Client) ResourceBindings(namespace string) ResourceBindingInterface {
-	return newResourceBindings(c, namespace)
 }
 
 func (c *PlatformV1alpha1Client) Targets() TargetInterface {

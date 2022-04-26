@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	gaiav1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	"github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	flag "github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"path/filepath"
+
+	gaiav1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 )
 
 func main() {
@@ -38,8 +39,8 @@ func main() {
 			Name: "parent-cluster",
 		},
 		Spec: gaiav1.TargetSpec{
-			BootstrapToken: "2b1j4b.ys7qfar6y4fszjd9", // 固定的
-			ParentURL: "https://192.168.1.55:6443",    // 动态获取
+			BootstrapToken: "2b1j4b.ys7qfar6y4fszjd9",   // 固定的
+			ParentURL:      "https://192.168.1.55:6443", // 动态获取
 		},
 	}
 

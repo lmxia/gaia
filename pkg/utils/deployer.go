@@ -1,29 +1,11 @@
-/*
-Copyright 2021 The Clusternet Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 
 package utils
 
 import (
 	"context"
 	"fmt"
-	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"strings"
-	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -124,121 +106,6 @@ func GetDeployerCredentials(ctx context.Context, childKubeClientSet kubernetes.I
 	return secret
 }
 
-func OffloadDescription(ctx context.Context, gaiaClient *gaiaClientSet.Clientset, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, desc *appsapi.Description) error {
-	var err error
-	var allErrs []error
-	wg := sync.WaitGroup{}
-	objectsToBeDeleted := desc.Spec.Raw
-	errCh := make(chan error, len(objectsToBeDeleted))
-	for _, object := range objectsToBeDeleted {
-		resource := &unstructured.Unstructured{}
-		err := resource.UnmarshalJSON(object)
-		if err != nil {
-			allErrs = append(allErrs, err)
-			msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
-			klog.ErrorDepth(5, msg)
-		} else {
-			wg.Add(1)
-			go func(resource *unstructured.Unstructured) {
-				defer wg.Done()
-				klog.V(5).Infof("deleting %s %s defined in Description %s", resource.GetKind(),
-					klog.KObj(resource), klog.KObj(desc))
-				err := DeleteResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, resource)
-				if err != nil {
-					errCh <- err
-				}
-			}(resource)
-		}
-	}
-	wg.Wait()
-
-	// collect errors
-	close(errCh)
-	for err := range errCh {
-		allErrs = append(allErrs, err)
-	}
-
-	err = utilerrors.NewAggregate(allErrs)
-	if err != nil {
-		msg := fmt.Sprintf("failed to deleting Description %s: %v", klog.KObj(desc), err)
-		klog.ErrorDepth(5, msg)
-	} else {
-		klog.V(5).Infof("Description %s is deleted successfully", klog.KObj(desc))
-		descCopy := desc.DeepCopy()
-		descCopy.Finalizers = RemoveString(descCopy.Finalizers, known.AppFinalizer)
-		_, err = gaiaClient.AppsV1alpha1().Descriptions(descCopy.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{})
-		if err != nil {
-			klog.WarningDepth(4,
-				fmt.Sprintf("failed to remove finalizer %s from Description %s: %v", known.AppFinalizer, klog.KObj(descCopy), err))
-
-		}
-	}
-	return err
-}
-
-
-func ApplyDescription(ctx context.Context, gaiaclient *gaiaClientSet.Clientset, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, desc *appsapi.Description) error {
-	var allErrs []error
-	wg := sync.WaitGroup{}
-	objectsToBeDeployed := desc.Spec.Raw
-	errCh := make(chan error, len(objectsToBeDeployed))
-	for _, object := range objectsToBeDeployed {
-		resource := &unstructured.Unstructured{}
-		err := resource.UnmarshalJSON(object)
-		if err != nil {
-			allErrs = append(allErrs, err)
-			msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
-			klog.ErrorDepth(5, msg)
-			continue
-		}
-		wg.Add(1)
-		go func(resource *unstructured.Unstructured) {
-			defer wg.Done()
-			retryErr := ApplyResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, resource)
-			if retryErr != nil {
-				errCh <- retryErr
-				return
-			}
-		}(resource)
-
-	}
-	wg.Wait()
-
-	// collect errors
-	close(errCh)
-	for err := range errCh {
-		allErrs = append(allErrs, err)
-	}
-
-	var statusPhase appsapi.DescriptionPhase
-	var reason string
-	if len(allErrs) > 0 {
-		statusPhase = appsapi.DescriptionPhaseFailure
-		reason = utilerrors.NewAggregate(allErrs).Error()
-
-		msg := fmt.Sprintf("failed to deploying Description %s: %s", klog.KObj(desc), reason)
-		klog.ErrorDepth(5, msg)
-	} else {
-		statusPhase = appsapi.DescriptionPhaseSuccess
-		reason = ""
-
-		msg := fmt.Sprintf("Description %s is deployed successfully", klog.KObj(desc))
-		klog.V(5).Info(msg)
-	}
-
-	// update status
-	desc.Status.Phase = statusPhase
-	desc.Status.Reason = reason
-	_, err := gaiaclient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
-
-	if len(allErrs) > 0 {
-		return utilerrors.NewAggregate(allErrs)
-	}
-	return err
-}
-
 func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
 	// set UID as empty
 	resource.SetUID("")
@@ -302,4 +169,15 @@ func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface
 		return nil
 	}
 	return lastError
+}
+
+func ConstructDescriptionFromExistOne(old *v1alpha1.Description) *v1alpha1.Description {
+	newOne := &v1alpha1.Description{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: old.Name,
+			Finalizers: old.Finalizers,
+		},
+		Spec: old.Spec,
+	}
+	return newOne
 }

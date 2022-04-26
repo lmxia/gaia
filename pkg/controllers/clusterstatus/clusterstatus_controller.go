@@ -100,7 +100,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	}
 
 	var nodeStatistics clusterapi.NodeStatistics
-	var capacity, allocatable corev1.ResourceList
+	var capacity, allocatable, available corev1.ResourceList
 	var nodeLabels map[string]string
 	if len(clusters) == 0 {
 		klog.V(7).Info("no joined clusters, collecting cluster resources...")
@@ -115,7 +115,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 			nodeLabels = getNodeLabels(nodes)
 			capacity, allocatable = getNodeResource(nodes)
 		} else if c.managedClusterSource == known.ManagedClusterSourceFromPrometheus {
-			capacity, allocatable = getNodeResourceFromPrometheus(c.promUrlPrefix)
+			capacity, allocatable, available = getNodeResourceFromPrometheus(c.promUrlPrefix)
 		}
 	} else {
 		klog.V(7).Info("collecting ManagedCluster status...")
@@ -148,6 +148,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	status.NodeStatistics = nodeStatistics
 	status.Allocatable = allocatable
 	status.Capacity = capacity
+	status.Available = available
 	status.HeartbeatFrequencySeconds = utilpointer.Int64Ptr(int64(c.heartbeatFrequency.Seconds()))
 	status.Conditions = []metav1.Condition{c.getCondition(status)}
 	status.ClusterLabels = nodeLabels
@@ -365,12 +366,12 @@ func getDataFromPrometheus(promPreUrl, metric string) (model.Value, error) {
 }
 
 // getNodeResourceFromPrometheus returns the cpu and memory resources from Prometheus in the cluster
-func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable corev1.ResourceList) {
-	var capacityCPU, capacityMem, allocatableCPU, allocatableMem resource.Quantity
-	Capacity, Allocatable = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
-	var valueList [4]string
+func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable, Available corev1.ResourceList) {
+	var capacityCPU, capacityMem, allocatableCPU, allocatableMem, availableCPU, availableMem resource.Quantity
+	Capacity, Allocatable, Available = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
+	var valueList [6]string
 
-	for index, metric := range ClusterMetricList[:4] {
+	for index, metric := range ClusterMetricList[:6] {
 		result, err := getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
 		if err == nil {
 			valueList[index] = result.(model.Vector)[0].Value.String()
@@ -383,13 +384,32 @@ func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable cor
 	capacityMem.Add(resource.MustParse(valueList[1] + "Ki"))
 	allocatableCPU.Add(resource.MustParse(valueList[2]))
 	allocatableMem.Add(resource.MustParse(valueList[3] + "Ki"))
+	availableCPU.Add(resource.MustParse(getSubStringWithSpecifiedDecimalPlace(valueList[4], 3)))
+	availableMem.Add(resource.MustParse(valueList[5] + "Ki"))
 
 	Capacity[corev1.ResourceCPU] = capacityCPU
 	Capacity[corev1.ResourceMemory] = capacityMem
 	Allocatable[corev1.ResourceCPU] = allocatableCPU
 	Allocatable[corev1.ResourceMemory] = allocatableMem
+	Available[corev1.ResourceCPU] = availableCPU
+	Available[corev1.ResourceMemory] = availableMem
 
 	return
+}
+
+// getSubStringWithSpecifiedDecimalPlace returns a sub string based on the specified number of decimal places
+func getSubStringWithSpecifiedDecimalPlace(inputString string, m int) string {
+	if inputString == "" {
+		return ""
+	}
+	if m >= len(inputString) {
+		return inputString
+	}
+	newString := strings.Split(inputString, ".")
+	if len(newString) < 2 || m >= len(newString[1]) {
+		return inputString
+	}
+	return newString[0] + "." + newString[1][:m]
 }
 
 var (
@@ -397,13 +417,17 @@ var (
 	ClusterMemCapacity    = "ClusterMemCapacity"
 	ClusterCPUAllocatable = "ClusterCPUAllocatable"
 	ClusterMemAllocatable = "ClusterMemAllocatable"
+	ClusterCPUAvailable   = "ClusterCPUAvailable"
+	ClusterMemAvailable   = "ClusterMemAvailable"
 
-	ClusterMetricList = []string{ClusterCPUCapacity, ClusterMemCapacity, ClusterCPUAllocatable, ClusterMemAllocatable}
+	ClusterMetricList = []string{ClusterCPUCapacity, ClusterMemCapacity, ClusterCPUAllocatable, ClusterMemAllocatable, ClusterCPUAvailable, ClusterMemAvailable}
 
 	QueryMetricSet = map[string]string{
 		ClusterCPUCapacity:    `sum(kube_node_status_capacity{resource="cpu"})`,
 		ClusterMemCapacity:    `sum(kube_node_status_capacity{resource="memory"})/1024`,
 		ClusterCPUAllocatable: `sum(kube_node_status_allocatable{resource="cpu"})`,
 		ClusterMemAllocatable: `sum(kube_node_status_allocatable{resource="memory"})/1024`,
+		ClusterCPUAvailable:   `sum(kube_node_status_allocatable{resource="cpu"})-sum(kube_pod_container_resource_requests{resource="cpu"})`,
+		ClusterMemAvailable:   `(sum(kube_node_status_allocatable{resource="memory"})-sum(kube_pod_container_resource_requests{resource="memory"}))/1024`,
 	}
 )

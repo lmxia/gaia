@@ -58,14 +58,14 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().Descriptions().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("networkrequirements"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().NetworkRequirements().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("resourcebindings"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().ResourceBindings().Informer()}, nil
 
 		// Group=platform.gaia.io, Version=v1alpha1
 	case platformv1alpha1.SchemeGroupVersion.WithResource("clusterregistrationrequests"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().ClusterRegistrationRequests().Informer()}, nil
 	case platformv1alpha1.SchemeGroupVersion.WithResource("managedclusters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().ManagedClusters().Informer()}, nil
-	case platformv1alpha1.SchemeGroupVersion.WithResource("resourcebindings"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().ResourceBindings().Informer()}, nil
 	case platformv1alpha1.SchemeGroupVersion.WithResource("targets"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().Targets().Informer()}, nil
 

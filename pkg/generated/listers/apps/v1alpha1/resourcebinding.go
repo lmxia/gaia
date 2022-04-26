@@ -19,15 +19,17 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 )
 
 // ResourceBindingLister helps list ResourceBindings.
+// All objects returned here must be treated as read-only.
 type ResourceBindingLister interface {
 	// List lists all ResourceBindings in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ResourceBinding, err error)
 	// ResourceBindings returns an object that can list and get ResourceBindings.
 	ResourceBindings(namespace string) ResourceBindingNamespaceLister
@@ -58,10 +60,13 @@ func (s *resourceBindingLister) ResourceBindings(namespace string) ResourceBindi
 }
 
 // ResourceBindingNamespaceLister helps list and get ResourceBindings.
+// All objects returned here must be treated as read-only.
 type ResourceBindingNamespaceLister interface {
 	// List lists all ResourceBindings in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ResourceBinding, err error)
 	// Get retrieves the ResourceBinding from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.ResourceBinding, error)
 	ResourceBindingNamespaceListerExpansion
 }

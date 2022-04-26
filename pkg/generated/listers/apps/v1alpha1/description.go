@@ -26,8 +26,10 @@ import (
 )
 
 // DescriptionLister helps list Descriptions.
+// All objects returned here must be treated as read-only.
 type DescriptionLister interface {
 	// List lists all Descriptions in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Description, err error)
 	// Descriptions returns an object that can list and get Descriptions.
 	Descriptions(namespace string) DescriptionNamespaceLister
@@ -58,10 +60,13 @@ func (s *descriptionLister) Descriptions(namespace string) DescriptionNamespaceL
 }
 
 // DescriptionNamespaceLister helps list and get Descriptions.
+// All objects returned here must be treated as read-only.
 type DescriptionNamespaceLister interface {
 	// List lists all Descriptions in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.Description, err error)
 	// Get retrieves the Description from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.Description, error)
 	DescriptionNamespaceListerExpansion
 }

@@ -67,6 +67,9 @@ type ManagedClusterSpec struct {
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 	ClusterID types.UID `json:"clusterId"`
+	// Taints has the "effect" on any resource that does not tolerate the Taint.
+	// +optional
+	Taints []corev1.Taint `json:"taints,omitempty"`
 }
 
 // ManagedClusterStatus defines the observed state of ManagedCluster
@@ -302,63 +305,4 @@ type ClusterRegistrationRequestList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ClusterRegistrationRequest `json:"items"`
-}
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +kubebuilder:subresource:status
-// +kubebuilder:resource:scope="Namespaced",shortName=rb,categories=gaia
-// +k8s:openapi-gen=true
-type ResourceBinding struct {
-	metav1.TypeMeta `json:",inline"`
-	// +optional
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// +optional
-	Spec ResourceBindingSpec `json:"spec,omitempty"`
-	// +optional
-	Status ResourceBindingStatus `json:"status,omitempty"`
-}
-
-type StatusScheduler string
-
-const (
-	ResourceBindingMerging      StatusScheduler = "merging"
-	ResourceBindingmerged       StatusScheduler = "merged"
-	ResourceBindingSchedulering StatusScheduler = "schedulering"
-	ResourceBindingSelected     StatusScheduler = "selected"
-)
-
-type ResourceBindingSpec struct {
-	// +optional
-	AppID string `json:"appID,omitempty"`
-	// +optional
-	// +kubebuilder:validation:Enum=merging;merged;schedulering;selected
-	StatusScheduler StatusScheduler `json:"statusScheduler,omitempty"`
-	// +optional
-	ParentRB string `json:"parentRB,omitempty"`
-	// +optional
-	RbApps []*ResourceBindingApps `json:"rbApps,omitempty"`
-}
-
-type ResourceBindingApps struct {
-	ClusterName string                 `json:"clusterName,omitempty"`
-	Replicas    map[string]int32       `json:"replicas,omitempty"`
-	Children    []*ResourceBindingApps `json:"child,omitempty"`
-}
-type ResourceBindingStatus struct {
-	Status string `json:"status,omitempty"`
-	// Reason indicates the reason of ResourceBinding deployment Status
-	// +optional
-	Reason string `json:"reason,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// ResourceBindingList contains a list of ResourceBinding
-type ResourceBindingList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ResourceBinding `json:"items"`
 }

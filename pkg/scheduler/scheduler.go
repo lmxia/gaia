@@ -2,450 +2,415 @@ package scheduler
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	known "github.com/lmxia/gaia/pkg/common"
-	"github.com/lmxia/gaia/pkg/controllers/apps/description"
-	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
-	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
-	v1 "k8s.io/api/apps/v1"
+	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
+	"github.com/lmxia/gaia/pkg/scheduler/metrics"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"os"
+	"reflect"
+	"sync"
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"sync"
-
-	"github.com/lmxia/gaia/pkg/utils"
-	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	rest "k8s.io/client-go/rest"
-	"k8s.io/client-go/restmapper"
-
-	"github.com/lmxia/gaia/pkg/common"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+
+	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/common"
+	known "github.com/lmxia/gaia/pkg/common"
+	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	listner "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
+	"github.com/lmxia/gaia/pkg/scheduler/algorithm"
+	schedulercache "github.com/lmxia/gaia/pkg/scheduler/cache"
+	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
+	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins"
+	frameworkruntime "github.com/lmxia/gaia/pkg/scheduler/framework/runtime"
+	"github.com/lmxia/gaia/pkg/scheduler/parallelize"
+	"github.com/lmxia/gaia/pkg/utils"
+)
+
+// These are reasons for a subscription's transition to a condition.
+const (
+	// ReasonUnschedulable reason in DescriptionScheduled SubscriptionCondition means that the scheduler
+	// can't schedule the subscription right now, for example due to insufficient resources in the clusters.
+	ReasonUnschedulable = "Unschedulable"
+
+	// SchedulerError is the reason recorded for events when an error occurs during scheduling a subscription.
+	SchedulerError = "SchedulerError"
 )
 
 type Scheduler struct {
-	// add some config here, but for now i don't know what that is.
-	localGaiaClient       *gaiaClientSet.Clientset
-	localSuperConfig      *rest.Config
-	dynamicClient         dynamic.Interface
-	schedulerCache        Cache
-	localDescController   *description.Controller
-	localInformerFactory  gaiainformers.SharedInformerFactory // namespaced
-	parentDescController  *description.Controller
-	parentInformerFactory gaiainformers.SharedInformerFactory // namespaced
-	discoveryRESTMapper   *restmapper.DeferredDiscoveryRESTMapper
-	localGaiaAllFactory   gaiainformers.SharedInformerFactory // all ns
-	parentGaiaClient      *gaiaClientSet.Clientset
+	// just local options
+	dynamicClient                  dynamic.Interface
+	localGaiaClient                *gaiaClientSet.Clientset
+	localSuperConfig               *rest.Config
+	localNamespacedInformerFactory gaiainformers.SharedInformerFactory // namespaced
+	localGaiaAllFactory            gaiainformers.SharedInformerFactory // all ns
+	localDescLister                listner.DescriptionLister
+	selfClusterName                string // this cluster name
+
+	// dedicated kubeconfig for accessing parent cluster, which is auto populated by the parent cluster when cluster registration request gets approved
+	parentDedicatedKubeConfig   *rest.Config
+	parentInformerFactory       gaiainformers.SharedInformerFactory // namespaced
+	parentDescriptionLister     listner.DescriptionLister
+	parentResourceBindingLister v1alpha1.ResourceBindingLister
+	parentGaiaClient            *gaiaClientSet.Clientset
+
 	// clientset for child cluster
 	childKubeClientSet kubernetes.Interface
-	// dedicated kubeconfig for accessing parent cluster, which is auto populated by the parent cluster when cluster registration request gets approved
-	parentDedicatedKubeConfig *rest.Config
-	dedicatedNamespace        string `json:"dedicatednamespace,omitempty" protobuf:"bytes,1,opt,name=dedicatedNamespace"`
+
+	dedicatedNamespace string `json:"dedicatednamespace,omitempty" protobuf:"bytes,1,opt,name=dedicatedNamespace"`
+	Identity           string
+	// default in-tree registry
+	registry frameworkruntime.Registry
+
+	scheduleAlgorithm algorithm.ScheduleAlgorithm
+
+	// localSchedulingQueue holds description in local namespace to be scheduled
+	localSchedulingQueue workqueue.RateLimitingInterface
+
+	// parentSchedulingQueue holds description in parent cluster namespace to be scheduled
+	parentSchedulingQueue workqueue.RateLimitingInterface
+
+	framework framework.Framework
+
+	lockLocal            sync.RWMutex
+	lockParent           sync.RWMutex
 }
 
-func New(localGaiaClient *gaiaClientSet.Clientset, localGaiaAllFactory gaiainformers.SharedInformerFactory, localSuperKubeConfig *rest.Config, childKubeClientSet kubernetes.Interface) (*Scheduler, error) {
-	klog.Infof("eNew host ==== %v\n", localSuperKubeConfig.Host)
-	dynamicClient, err := dynamic.NewForConfig(localSuperKubeConfig)
+// NewSchedule returns a new Scheduler.
+func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get hostname: %v", err)
+	}
+
+	// add a uniquifier so that two processes on the same host don't accidentally both become active
+	identity := hostname + "_" + string(uuid.NewUUID())
+	klog.V(4).Infof("current identity lock id %q", identity)
+
+	childKubeConfig, err := utils.LoadsKubeConfig(childKubeConfigFile, 1)
 	if err != nil {
 		return nil, err
 	}
-	childKubeClient, err := kubernetes.NewForConfig(localSuperKubeConfig)
+	// create clientset for child cluster
+	childKubeClientSet := kubernetes.NewForConfigOrDie(childKubeConfig)
+	childGaiaClientSet := gaiaClientSet.NewForConfigOrDie(childKubeConfig)
+
+	localAllGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(childGaiaClientSet, known.DefaultResync)
+	localSuperKubeConfig := NewLocalSuperKubeConfig(ctx, childKubeConfig.Host, childKubeClientSet)
+
+	// create event recorder
+	broadcaster := record.NewBroadcaster()
+	broadcaster.StartRecordingToSink(&v1core.EventSinkImpl{
+		Interface: childKubeClientSet.CoreV1().Events(""),
+	})
+	utilruntime.Must(appsapi.AddToScheme(scheme.Scheme))
+	utilruntime.Must(platformapi.AddToScheme(scheme.Scheme))
+	recorder := broadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "gaia-scheduler"})
+
+	schedulerCache := schedulercache.New(localAllGaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister())
+	dynamicClient, err := dynamic.NewForConfig(localSuperKubeConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	sched := &Scheduler{
-		localGaiaClient:     localGaiaClient,
-		schedulerCache:      newSchedulerCache(),
-		localSuperConfig:    localSuperKubeConfig,
-		dynamicClient:       dynamicClient,
-		localGaiaAllFactory: localGaiaAllFactory,
-		discoveryRESTMapper: restmapper.NewDeferredDiscoveryRESTMapper(cacheddiscovery.NewMemCacheClient(childKubeClient.Discovery())),
+		localGaiaClient:     childGaiaClientSet,
+		localGaiaAllFactory: localAllGaiaInformerFactory,
+		localDescLister:     localAllGaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister(),
 		childKubeClientSet:  childKubeClientSet,
+
+		dynamicClient:         dynamicClient,
+		registry:              plugins.NewInTreeRegistry(),
+		scheduleAlgorithm:     algorithm.NewGenericScheduler(schedulerCache),
+		localSchedulingQueue:  workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
+		parentSchedulingQueue: workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
 	}
-	return sched.SetLocalDescController(localGaiaClient, known.GaiaReservedNamespace)
-}
 
-func (sched *Scheduler) NewDescController(gaiaClient *gaiaClientSet.Clientset, gaiaAllFactory gaiainformers.SharedInformerFactory, namespace string) (gaiainformers.SharedInformerFactory, *description.Controller, error) {
-	gaiaInformerFactory := gaiainformers.NewSharedInformerFactoryWithOptions(gaiaClient, known.DefaultResync, gaiainformers.WithNamespace(namespace))
-
-	var descController *description.Controller
-	var err error
-
-	descController, err = description.NewController(gaiaClient, gaiaInformerFactory.Apps().V1alpha1().Descriptions(), gaiaAllFactory.Platform().V1alpha1().ManagedClusters(),
-		cache.ResourceEventHandlerFuncs{
-			AddFunc:    sched.addClusterToCache,
-			UpdateFunc: sched.updateClusterInCache,
-			DeleteFunc: sched.deleteClusterFromCache,
-		}, sched.handleDescription)
-
-	if err != nil {
-		return nil, nil, err
-	}
-	return gaiaInformerFactory, descController, err
-}
-
-func (sched *Scheduler) SetLocalDescController(gaiaClient *gaiaClientSet.Clientset, namespace string) (*Scheduler, error) {
-	localInformerFactory, localController, err := sched.NewDescController(gaiaClient, sched.localGaiaAllFactory, namespace)
+	framework, err := frameworkruntime.NewFramework(sched.registry, getDefaultPlugins(),
+		frameworkruntime.WithEventRecorder(recorder),
+		frameworkruntime.WithInformerFactory(localAllGaiaInformerFactory),
+		frameworkruntime.WithClientSet(childGaiaClientSet),
+		frameworkruntime.WithKubeConfig(localSuperKubeConfig), // 最高权 kubeconfig
+		frameworkruntime.WithParallelism(parallelize.DefaultParallelism),
+		frameworkruntime.WithRunAllFilters(false),
+	)
 	if err != nil {
 		return nil, err
 	}
+	sched.framework = framework
+	// local scheduler always exsit
+	sched.localNamespacedInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(childGaiaClientSet, known.DefaultResync,
+		gaiainformers.WithNamespace(known.GaiaReservedNamespace))
+	// local event handler
+	sched.addLocalAllEventHandlers()
 
-	sched.localDescController = localController
-	sched.localInformerFactory = localInformerFactory
 	return sched, nil
 }
 
-func (sched *Scheduler) SetParentDescController(parentGaiaClient *gaiaClientSet.Clientset, parentNamespace string) (*Scheduler, error) {
-	parentInformerFactory, parentController, err := sched.NewDescController(parentGaiaClient, sched.localGaiaAllFactory, parentNamespace)
-	if err != nil {
-		return nil, err
+func (scheduler *Scheduler) Run(cxt context.Context) {
+	klog.Info("starting gaia schedule scheduler ...")
+	defer scheduler.localSchedulingQueue.ShutDown()
+
+	// start the leader election code loop
+	leaderelection.RunOrDie(context.TODO(), *newLeaderElectionConfigWithDefaultValue(scheduler.Identity, scheduler.childKubeClientSet, leaderelection.LeaderCallbacks{
+		OnStartedLeading: func(ctx context.Context) {
+			// 1. start local gaia generic informers
+			scheduler.localGaiaAllFactory.Start(ctx.Done())
+			scheduler.localGaiaAllFactory.WaitForCacheSync(ctx.Done())
+
+			scheduler.localNamespacedInformerFactory.Start(ctx.Done())
+			scheduler.localNamespacedInformerFactory.WaitForCacheSync(ctx.Done())
+			// 2. start local scheduler.
+			go func() {
+				wait.UntilWithContext(ctx, scheduler.RunLocalScheduler, 0)
+			}()
+
+			// 3. when we get add parentDedicatedKubeConfig add parent desc scheduler and start it.
+			scheduler.SetparentDedicatedConfig(ctx)
+			scheduler.parentInformerFactory.Start(ctx.Done())
+			scheduler.parentInformerFactory.WaitForCacheSync(ctx.Done())
+			wait.UntilWithContext(ctx, scheduler.RunParentScheduler, 0)
+		},
+		OnStoppedLeading: func() {
+			klog.Error("leader election got lost")
+		},
+		OnNewLeader: func(identity string) {
+			// we're notified when new leader elected
+			if identity == scheduler.Identity {
+				// I just got the lock
+				return
+			}
+			klog.Infof("new leader elected: %s", identity)
+		},
+	},
+	))
+}
+
+func newLeaderElectionConfigWithDefaultValue(identity string, clientset kubernetes.Interface, callbacks leaderelection.LeaderCallbacks) *leaderelection.LeaderElectionConfig {
+	return &leaderelection.LeaderElectionConfig{
+		Lock: &resourcelock.LeaseLock{
+			LeaseMeta: metav1.ObjectMeta{
+				Name:      common.GaiaSchedulerLeaseName,
+				Namespace: common.GaiaSystemNamespace,
+			},
+			Client: clientset.CoordinationV1(),
+			LockConfig: resourcelock.ResourceLockConfig{
+				Identity: identity,
+			},
+		},
+		// IMPORTANT: you MUST ensure that any code you have that
+		// is protected by the lease must terminate **before**
+		// you call cancel. Otherwise, you could have a background
+		// loop still running and another process could
+		// get elected before your background loop finished, violating
+		// the stated goal of the lease.
+		ReleaseOnCancel: true,
+		LeaseDuration:   common.DefaultLeaseDuration,
+		RenewDeadline:   common.DefaultRenewDeadline,
+		RetryPeriod:     common.DefaultRetryPeriod,
+		Callbacks:       callbacks,
 	}
-	sched.parentGaiaClient = parentGaiaClient
-	sched.parentDescController = parentController
-	sched.parentInformerFactory = parentInformerFactory
-	return sched, nil
 }
 
-func (sched *Scheduler) handleDescription(desc *appsapi.Description) error {
-	klog.V(5).Infof("handle Description %s", klog.KObj(desc))
-	clusters := sched.schedulerCache.GetClusters()
-	labelsDesc := desc.GetLabels()
-	clusterLevel, ok := labelsDesc["clusterlevel"]
-	// desc.meta.labels.clusterlevel empty, cluster default
-	if !ok {
-		if len(clusters) == 0 {
-			if desc.DeletionTimestamp != nil {
-				return utils.OffloadDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient,
-					sched.discoveryRESTMapper, desc)
+func NewLocalSuperKubeConfig(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface) *rest.Config {
+	retryCtx, retryCancel := context.WithTimeout(ctx, known.DefaultRetryPeriod)
+	defer retryCancel()
+
+	// get high priority secret.
+	secret := utils.GetDeployerCredentials(retryCtx, kubeClient, common.GaiaAppSA)
+	var clusterStatusKubeConfig *rest.Config
+	if secret != nil {
+		var err error
+		clusterStatusKubeConfig, err = utils.GenerateKubeConfigFromToken(apiserverURL, string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
+		if err == nil {
+			kubeClient = kubernetes.NewForConfigOrDie(clusterStatusKubeConfig)
+		}
+	}
+	return clusterStatusKubeConfig
+}
+
+func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
+	key, shutdown := sched.localSchedulingQueue.Get()
+	if shutdown {
+		klog.Error("failed to get next unscheduled description from closed queue")
+		return
+	}
+	defer sched.localSchedulingQueue.Done(key)
+
+	// TODO: scheduling
+	// Convert the namespace/name string into a distinct namespace and name
+	ns, name, err := cache.SplitMetaNamespaceKey(key.(string))
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		return
+	}
+
+	desc, err := sched.localDescLister.Descriptions(ns).Get(name)
+	if err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	klog.V(3).InfoS("Attempting to schedule description", "description", klog.KObj(desc))
+
+	// Synchronously attempt to find a fit for the description.
+	start := time.Now()
+
+	schedulingCycleCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, desc)
+	if err != nil {
+		sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
+		return
+	}
+
+	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if len(mcls.Items) == 0 {
+		klog.V(3).InfoS("scheduler success but do nothing because there is no child clusters.", scheduleResult)
+	} else {
+		//1. create rbs in sub children cluster namespace.
+		for _, itemCluster := range mcls.Items {
+			for _, itemRb := range scheduleResult.ResourceBindings {
+				itemRb.Namespace = itemCluster.Namespace
+				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
+					Create(ctx, itemRb, metav1.CreateOptions{})
+				if err != nil {
+					klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
+				}
 			}
-			if error := utils.ApplyDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
-				return fmt.Errorf("there is no clusters so we dont need to schedule across sub-clusters")
-			}
-			return nil
-		} else {
-			if desc.DeletionTimestamp != nil {
-				return sched.OffloadAccrossClusters(context.TODO(), desc)
-			}
-			// need schedule across clusters
-			if error := sched.ApplyAccrosClusters(context.TODO(), desc); error != nil {
-				return fmt.Errorf("schedule across sub-clusters failed")
+			//2. create desc in to child cluster namespace
+			newDesc := utils.ConstructDescriptionFromExistOne(desc)
+			newDesc.Namespace = itemCluster.Namespace
+			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
+			if err != nil {
+				klog.V(3).InfoS("scheduler success, but desc not created success in sub child cluster.", err)
 			}
 		}
-	} else if clusterLevel == "cluster" {
-		// no joined clusters, deploy to local
-		if len(clusters) == 0 {
-			if desc.DeletionTimestamp != nil {
-				return utils.OffloadDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient,
-					sched.discoveryRESTMapper, desc)
+
+		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
+		metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
+		klog.V(3).InfoS("scheduler success", scheduleResult)
+	}
+}
+
+func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
+	klog.Info("start to schedule one description...")
+	defer klog.Info("finish schedule a description")
+	key, shutdown := sched.parentSchedulingQueue.Get()
+	if shutdown {
+		klog.Error("failed to get next unscheduled description from closed queue")
+		return
+	}
+	defer sched.parentSchedulingQueue.Done(key)
+
+	// TODO: scheduling
+	// Convert the namespace/name string into a distinct namespace and name
+	ns, name, err := cache.SplitMetaNamespaceKey(key.(string))
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		return
+	}
+
+	desc, err := sched.parentDescriptionLister.Descriptions(ns).Get(name)
+	if err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	klog.V(3).InfoS("Attempting to schedule description", "description", klog.KObj(desc))
+
+	// Synchronously attempt to find a fit for the description.
+	start := time.Now()
+
+	schedulingCycleCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if len(mcls.Items) == 0 {
+		// there is no child clusters. no need to schedule just transfer.
+		labelSelector := labels.NewSelector()
+		requirement, _ := labels.NewRequirement(common.GaiaDescriptionLabel, selection.Equals, []string{desc.Name})
+		labelSelector = labelSelector.Add(*requirement)
+		if rbs, err := sched.parentResourceBindingLister.List(labelSelector); err == nil {
+			for _, item := range rbs {
+				rb := &appsapi.ResourceBinding{}
+				rb.Name = item.Name
+				rb.Namespace = common.GaiaRSToBeMergedReservedNamespace
+				rb.Spec = appsapi.ResourceBindingSpec{
+					AppID:    desc.Name,
+					ParentRB: item.Name,
+					RbApps:   item.Spec.RbApps,
+				}
+				_, errCreate := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
+					Create(ctx, rb, metav1.CreateOptions{})
+				if errCreate != nil {
+					klog.Infof("create rb in local to be merged ns error", errCreate)
+				}
 			}
-			if error := utils.ApplyDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
-				return fmt.Errorf("clusterlevel=cluster: ApplyDescription ERROR")
+			klog.V(3).InfoS("scheduler success just change rb namespace.")
+			err := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
+				DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+					common.GaiaDescriptionLabel: desc.Name,
+				}).String()})
+			if err != nil {
+				klog.Infof("faild to delete rbs in parent cluster", err)
 			}
-		} else {
-			if desc.DeletionTimestamp != nil {
-				return sched.OffloadAccrossClusters(context.TODO(), desc)
-			}
-			// need schedule across clusters
-			if error := sched.ApplyAccrosClusters(context.TODO(), desc); error != nil {
-				return fmt.Errorf("clusterlevel=cluster: schedule across sub-clusters failed")
-			}
-		}
-	} else if clusterLevel == "field" {
-		if sched.parentGaiaClient != nil {
-			if desc.DeletionTimestamp != nil {
-				return utils.OffloadDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient,
-					sched.discoveryRESTMapper, desc)
-			}
-			if error := utils.ApplyDescription(context.TODO(), sched.parentGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
-				return fmt.Errorf("clusterlevel=field: ApplyDescription ERROR")
-			}
-			return nil
-		} else {
-			if desc.DeletionTimestamp != nil {
-				return sched.OffloadAccrossClusters(context.TODO(), desc)
-			}
-			// need schedule across clusters
-			if error := sched.ApplyAccrosClusters(context.TODO(), desc); error != nil {
-				return fmt.Errorf("clusterlevel=field: schedule across sub-clusters failed")
-			}
-		}
-	} else if clusterLevel == "global" {
-		if sched.parentGaiaClient == nil {
-			if desc.DeletionTimestamp != nil {
-				return utils.OffloadDescription(context.TODO(), sched.localGaiaClient, sched.dynamicClient,
-					sched.discoveryRESTMapper, desc)
-			}
-			if error := utils.ApplyDescription(context.TODO(), sched.localGaiaClient, sched.dynamicClient, sched.discoveryRESTMapper, desc); error != nil {
-				return fmt.Errorf("clusterlevel=global: ApplyDescription ERROR")
-			}
+
 		}
 	} else {
-		return fmt.Errorf("desc.meta.labels.clusterlevel ERROR")
-	}
-
-	return nil
-}
-
-func (sched *Scheduler) RunLocalScheduler(workers int, stopCh <-chan struct{}) {
-	klog.Info("starting local desc scheduler...")
-	defer klog.Info("shutting local scheduler")
-	klog.Info("starting sharedInformerFactory ...")
-	sched.localInformerFactory.Start(stopCh)
-	klog.Info("starting local desc scheduler ...")
-	go sched.localDescController.Run(workers, stopCh)
-	<-stopCh
-}
-
-func (sched *Scheduler) RunParentScheduler(workers int, stopCh <-chan struct{}) {
-	klog.Info("starting parent desc scheduler...")
-	defer klog.Info("shutting parent scheduler")
-	sched.parentInformerFactory.Start(stopCh)
-	go sched.parentDescController.Run(workers, stopCh)
-	<-stopCh
-}
-
-func (sched *Scheduler) addClusterToCache(obj interface{}) {
-	cluster, ok := obj.(*v1alpha1.ManagedCluster)
-	if !ok {
-		klog.ErrorS(nil, "Cannot convert to *v1alpha1.ManagedCluster", "obj", obj)
-		return
-	}
-
-	sched.schedulerCache.AddCluster(cluster)
-}
-
-func (sched *Scheduler) updateClusterInCache(oldObj, newObj interface{}) {
-	oldCluster, ok := oldObj.(*v1alpha1.ManagedCluster)
-	if !ok {
-		klog.ErrorS(nil, "Cannot convert oldObj to *v1alpha1.ManagedCluster", "oldObj", oldObj)
-		return
-	}
-	newCluster, ok := newObj.(*v1alpha1.ManagedCluster)
-	if !ok {
-		klog.ErrorS(nil, "Cannot convert newObj to *v1alpha1.ManagedCluster", "newObj", newObj)
-		return
-	}
-
-	sched.schedulerCache.UpdateCluster(oldCluster, newCluster)
-}
-
-func (sched *Scheduler) deleteClusterFromCache(obj interface{}) {
-	var cluster *v1alpha1.ManagedCluster
-	switch t := obj.(type) {
-	case *v1alpha1.ManagedCluster:
-		cluster = t
-	case cache.DeletedFinalStateUnknown:
-		var ok bool
-		cluster, ok = t.Obj.(*v1alpha1.ManagedCluster)
-		if !ok {
-			klog.ErrorS(nil, "Cannot convert to *v1alpha1.ManagedCluster", "obj", t.Obj)
+		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, desc)
+		if err != nil {
+			sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
 			return
 		}
-	default:
-		klog.ErrorS(nil, "Cannot convert to *v1alpha1.ManagedCluster", "obj", t)
-		return
-	}
-	if err := sched.schedulerCache.RemoveCluster(cluster); err != nil {
-		klog.ErrorS(err, "Scheduler cache RemoveCluster failed")
-	}
-}
 
-func (sched *Scheduler) ApplyAccrosClusters(ctx context.Context, desc *appsapi.Description) error {
-	var allErrs []error
-	wg := sync.WaitGroup{}
-	objectsToBeDeployed := desc.Spec.Raw
-	errCh := make(chan error, len(objectsToBeDeployed))
-	// 1. 判断是否是deployment
-	deployGVK := schema.GroupVersionKind{
-		Group:   "apps",
-		Version: "v1",
-		Kind:    "Deployment",
-	}
-	for i, object := range objectsToBeDeployed {
-		resource := &unstructured.Unstructured{}
-		err := resource.UnmarshalJSON(object)
-		if err != nil {
-			allErrs = append(allErrs, err)
-			msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
-			klog.ErrorDepth(5, msg)
-			continue
-		}
-
-		if resource.GroupVersionKind().String() == deployGVK.String() {
-			wg.Add(1)
-			go func(resource *unstructured.Unstructured, raw []byte) {
-				defer wg.Done()
-				dep := &v1.Deployment{}
-				// TODO check may it's not a deployment
-				json.Unmarshal(raw, dep)
-				scheduleResult, _, _ := sched.ScheduleDeploymentOverClusters(dep, sched.schedulerCache.GetClusters())
-				for clusterName, replicas := range scheduleResult {
-					managedCluster := sched.schedulerCache.GetCluster(clusterName)
-					deprep := int32(replicas)
-					dep.Spec.Replicas = &deprep
-					depRaw, _ := json.Marshal(dep)
-
-					curDesc, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Get(ctx, desc.Name, metav1.GetOptions{})
-					if err == nil {
-						if replicas == 0 {
-							// delete
-							er := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Delete(ctx, desc.Name, metav1.DeleteOptions{})
-							if er != nil {
-								errCh <- err
-							}
-						} else {
-							// update
-							curDesc.Spec.Raw[i] = depRaw
-							_, er := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Update(ctx, curDesc, metav1.UpdateOptions{})
-							if er != nil {
-								errCh <- err
-							}
-						}
-
-					} else {
-						if apierrors.IsNotFound(err) {
-							if replicas == 0 {
-								// no need to create desc in this cluster.
-								continue
-							}
-							labels := desc.GetLabels()
-							if labels == nil {
-								labels = map[string]string{}
-							}
-							labels[known.AppsNameLabel] = desc.Name
-
-							// every ns desc must have a finalizer, so we can make sure sub resources can be recycled.
-							newDesc := &appsapi.Description{
-								ObjectMeta: metav1.ObjectMeta{
-									Namespace: managedCluster.Namespace,
-									Name:      desc.GetName(),
-									Labels:    labels,
-									Finalizers: []string{
-										known.AppFinalizer,
-									},
-								},
-							}
-							newDesc.Spec.Raw = make([][]byte, len(desc.Spec.Raw))
-							copy(newDesc.Spec.Raw, desc.Spec.Raw)
-							newDesc.Spec.Raw[i] = depRaw
-							_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(managedCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
-							if err != nil {
-								errCh <- err
-							}
-						}
-					}
+		for _, itemCluster := range mcls.Items {
+			for _, itemRb := range scheduleResult.ResourceBindings {
+				itemRb.Namespace = itemCluster.Namespace
+				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
+					Create(ctx, itemRb, metav1.CreateOptions{})
+				if err != nil {
+					klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
 				}
-
-			}(resource, object)
-			break
-			// 只处理deployment.
-		}
-	}
-	wg.Wait()
-
-	// collect errors
-	close(errCh)
-	for err := range errCh {
-		allErrs = append(allErrs, err)
-	}
-
-	var statusPhase appsapi.DescriptionPhase
-	var reason string
-	if len(allErrs) > 0 {
-		statusPhase = appsapi.DescriptionPhaseFailure
-		reason = utilerrors.NewAggregate(allErrs).Error()
-
-		msg := fmt.Sprintf("failed to deploying Description %s: %s", klog.KObj(desc), reason)
-		klog.ErrorDepth(5, msg)
-	} else {
-		statusPhase = appsapi.DescriptionPhaseSuccess
-		reason = ""
-
-		msg := fmt.Sprintf("Description %s is deployed successfully", klog.KObj(desc))
-		klog.V(5).Info(msg)
-	}
-
-	// update status
-	desc.Status.Phase = statusPhase
-	desc.Status.Reason = reason
-
-	// description come from local ns
-	var err error
-	if desc.GetNamespace() == known.GaiaReservedNamespace {
-		_, err = sched.localGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
-	} else {
-		_, err = sched.parentGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
-	}
-
-	if len(allErrs) > 0 {
-		return utilerrors.NewAggregate(allErrs)
-	}
-	return err
-
-}
-
-func (sched *Scheduler) OffloadAccrossClusters(ctx context.Context, description *appsapi.Description) error {
-	var allErrs []error
-	descrs, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(metav1.NamespaceAll).List(ctx, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labels.Set{
-			known.AppsNameLabel: description.Name,
-		}).String(),
-	})
-	errCh := make(chan error, len(descrs.Items))
-	wg := sync.WaitGroup{}
-	for _, desc := range descrs.Items {
-		wg.Add(1)
-		descDel := desc
-		go func(desc *appsapi.Description) {
-			defer wg.Done()
-			err := sched.localGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).Delete(ctx, desc.Name, metav1.DeleteOptions{})
-			if err != nil {
-				errCh <- err
 			}
-		}(&descDel)
-
-	}
-	wg.Wait()
-	// collect errors
-	close(errCh)
-	for err := range errCh {
-		allErrs = append(allErrs, err)
-	}
-
-	err = utilerrors.NewAggregate(allErrs)
-	if err == nil {
-		descCopy := description.DeepCopy()
-		descCopy.Finalizers = utils.RemoveString(descCopy.Finalizers, known.AppFinalizer)
-		if description.GetNamespace() == known.GaiaReservedNamespace {
-			_, err = sched.localGaiaClient.AppsV1alpha1().Descriptions(descCopy.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{})
-		} else {
-			_, err = sched.parentGaiaClient.AppsV1alpha1().Descriptions(descCopy.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{})
+			//2. create desc in to child cluster namespace
+			newDesc := utils.ConstructDescriptionFromExistOne(desc)
+			newDesc.Namespace = itemCluster.Namespace
+			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
+			if err != nil {
+				klog.V(3).InfoS("scheduler success, but desc not created success in sub child cluster.", err)
+			}
 		}
-
-		if err != nil {
-			klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from Description %s: %v", known.AppFinalizer, klog.KObj(descCopy), err))
-
-		}
-		return err
-	} else {
-		msg := fmt.Sprintf("failed to deleting Description %s: %v", klog.KObj(description), err)
-		klog.ErrorDepth(5, msg)
 	}
-	return nil
+
+	sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
+		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+			common.GaiaDescriptionLabel: desc.Name,
+		}).String()})
+	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
+	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
+	klog.V(3).InfoS("scheduler success")
 }
 
-func (sched *Scheduler) SetparentDedicatedKubeConfig(ctx context.Context) {
+func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 	// complete your controller loop here
 	klog.Info("start set parent DedicatedKubeConfig current cluster as a child cluster...")
 	// wait until stopCh is closed or request is approved
@@ -474,13 +439,22 @@ func (sched *Scheduler) SetparentDedicatedKubeConfig(ctx context.Context) {
 				if err == nil {
 					sched.parentDedicatedKubeConfig = parentDedicatedKubeConfig
 					sched.dedicatedNamespace = string(secret.Data[corev1.ServiceAccountNamespaceKey])
+					sched.selfClusterName = secret.Labels[common.ClusterNameLabel]
+					sched.parentGaiaClient = gaiaClientSet.NewForConfigOrDie(sched.parentDedicatedKubeConfig)
+					sched.parentInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(
+						sched.parentGaiaClient, known.DefaultResync, gaiainformers.WithNamespace(sched.dedicatedNamespace))
+					sched.parentDescriptionLister = sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Lister()
+					sched.parentResourceBindingLister = sched.parentInformerFactory.Apps().V1alpha1().ResourceBindings().Lister()
+					sched.scheduleAlgorithm.SetRBLister(sched.parentResourceBindingLister)
+					sched.scheduleAlgorithm.SetSelfClusterName(sched.selfClusterName)
+					sched.addParentAllEventHandlers()
 				}
 			}
 		}
 
 		klog.V(4).Infof("set parentDedicatedKubeConfig still waiting for getting secret...", target.Name)
 		cancel()
-	}, known.DefaultRetryPeriod, 0.3, true)
+	}, known.DefaultRetryPeriod * 4, 0.3, true)
 
 }
 
@@ -494,4 +468,129 @@ func (sched *Scheduler) GetDedicatedNamespace() string {
 	// complete your controller loop here
 	fmt.Printf("sched.GetDedicatedNamespace == %s \n", sched.dedicatedNamespace)
 	return sched.dedicatedNamespace
+}
+
+// recordSchedulingFailure records an event for the subscription that indicates the
+// subscription has failed to schedule. Also, update the subscription condition.
+func (sched *Scheduler) recordSchedulingFailure(sub *appsapi.Description, err error, _ string) {
+	klog.V(2).InfoS("Unable to schedule subscription; waiting", "subscription", klog.KObj(sub), "err", err)
+
+	msg := truncateMessage(err.Error())
+	sched.framework.EventRecorder().Event(sub, corev1.EventTypeWarning, "FailedScheduling", msg)
+
+	// re-added to the queue for re-processing
+	sched.localSchedulingQueue.AddRateLimited(klog.KObj(sub).String())
+}
+
+// addLocalAllEventHandlers is a helper function used in Scheduler
+// to add event handlers for various local informers.
+func (sched *Scheduler) addLocalAllEventHandlers() {
+	sched.localNamespacedInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: func(obj interface{}) bool {
+			switch t := obj.(type) {
+			case *appsapi.Description:
+				desc := obj.(*appsapi.Description)
+				if desc.DeletionTimestamp != nil {
+					sched.lockLocal.Lock()
+					defer sched.lockLocal.Unlock()
+					return false
+				}
+				// TODO: filter scheduler name
+				return true
+			case cache.DeletedFinalStateUnknown:
+				if _, ok := t.Obj.(*appsapi.Description); ok {
+					return true
+				}
+				utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *Description in %T", obj, sched))
+				return false
+			default:
+				utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
+				return false
+			}
+		},
+		Handler: cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				sub := obj.(*appsapi.Description)
+				sched.lockLocal.Lock()
+				defer sched.lockLocal.Unlock()
+				sched.localSchedulingQueue.AddRateLimited(klog.KObj(sub).String())
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				oldSub := oldObj.(*appsapi.Description)
+				newSub := newObj.(*appsapi.Description)
+
+				// Decide whether discovery has reported a spec change.
+				if reflect.DeepEqual(oldSub.Spec, newSub.Spec) {
+					klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing", klog.KObj(oldSub))
+					return
+				}
+
+				sched.lockLocal.Lock()
+				defer sched.lockLocal.Unlock()
+				sched.localSchedulingQueue.AddRateLimited(klog.KObj(newSub).String())
+			},
+		},
+	})
+
+}
+
+// addParentAllEventHandlers is a helper function used in Scheduler
+// to add event handlers for various parent informers.
+func (sched *Scheduler) addParentAllEventHandlers() {
+	sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: func(obj interface{}) bool {
+			switch t := obj.(type) {
+			case *appsapi.Description:
+				desc := obj.(*appsapi.Description)
+				if desc.DeletionTimestamp != nil {
+					sched.lockParent.Lock()
+					defer sched.lockParent.Unlock()
+					return false
+				}
+				// TODO: filter scheduler name
+				return true
+			case cache.DeletedFinalStateUnknown:
+				if _, ok := t.Obj.(*appsapi.Description); ok {
+					return true
+				}
+				utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *Description in %T", obj, sched))
+				return false
+			default:
+				utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
+				return false
+			}
+		},
+		Handler: cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				sub := obj.(*appsapi.Description)
+				sched.lockParent.Lock()
+				defer sched.lockParent.Unlock()
+				sched.parentSchedulingQueue.AddRateLimited(klog.KObj(sub).String())
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				oldDesc := oldObj.(*appsapi.Description)
+				newDesc := newObj.(*appsapi.Description)
+
+				// Decide whether discovery has reported a spec change.
+				if reflect.DeepEqual(oldDesc.Spec, newDesc.Spec) {
+					klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing", klog.KObj(oldDesc))
+					return
+				}
+				sched.lockParent.Lock()
+				defer sched.lockParent.Unlock()
+				sched.parentSchedulingQueue.AddRateLimited(klog.KObj(newDesc).String())
+			},
+		},
+	})
+}
+
+// truncateMessage truncates a message if it hits the NoteLengthLimit.
+// copied from k8s.io/kubernetes/pkg/scheduler/scheduler.go
+func truncateMessage(message string) string {
+	max := known.NoteLengthLimit
+	if len(message) <= max {
+		return message
+	}
+	suffix := " ..."
+	return message[:max-len(suffix)] + suffix
 }

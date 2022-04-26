@@ -21,7 +21,7 @@ package fake
 import (
 	"context"
 
-	v1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -32,13 +32,13 @@ import (
 
 // FakeResourceBindings implements ResourceBindingInterface
 type FakeResourceBindings struct {
-	Fake *FakePlatformV1alpha1
+	Fake *FakeAppsV1alpha1
 	ns   string
 }
 
-var resourcebindingsResource = schema.GroupVersionResource{Group: "platform.gaia.io", Version: "v1alpha1", Resource: "resourcebindings"}
+var resourcebindingsResource = schema.GroupVersionResource{Group: "apps.gaia.io", Version: "v1alpha1", Resource: "resourcebindings"}
 
-var resourcebindingsKind = schema.GroupVersionKind{Group: "platform.gaia.io", Version: "v1alpha1", Kind: "ResourceBinding"}
+var resourcebindingsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "ResourceBinding"}
 
 // Get takes name of the resourceBinding, and returns the corresponding resourceBinding object, and an error if there is any.
 func (c *FakeResourceBindings) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ResourceBinding, err error) {

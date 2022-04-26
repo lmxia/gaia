@@ -1,6 +1,16 @@
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: gaia-to-be-merged
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gaia-merged
+---
+apiVersion: v1
+kind: Namespace
+metadata:
   name: gaia-reserved
 
 ---

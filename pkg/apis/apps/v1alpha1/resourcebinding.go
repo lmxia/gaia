@@ -21,6 +21,8 @@ type ResourceBindingSpec struct {
 	// +optional
 	ParentAppID string `json:"parentAppID,omitempty"`
 	// +optional
+	TotalPeer int `json:"totalpeer,omitempty"`
+	// +optional
 	ParentRB string `json:"parentRB,omitempty"`
 	// +optional
 	Namespace string `json:"namespace,omitempty"`

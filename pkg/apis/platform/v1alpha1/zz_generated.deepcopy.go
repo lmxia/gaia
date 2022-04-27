@@ -244,6 +244,13 @@ func (in *ManagedClusterStatus) DeepCopyInto(out *ManagedClusterStatus) {
 			(*out)[key] = val.DeepCopy()
 		}
 	}
+	if in.Available != nil {
+		in, out := &in.Available, &out.Available
+		*out = make(v1.ResourceList, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val.DeepCopy()
+		}
+	}
 	out.NodeStatistics = in.NodeStatistics
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions

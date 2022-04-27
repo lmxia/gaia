@@ -47,6 +47,8 @@ spec:
                 type: string
               rbApps:
                 x-kubernetes-preserve-unknown-fields: true
+              totalpeer:
+                type: integer
             type: object
           status:
             properties:

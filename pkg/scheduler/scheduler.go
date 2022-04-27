@@ -291,6 +291,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 		for _, itemCluster := range mcls.Items {
 			for _, itemRb := range scheduleResult.ResourceBindings {
 				itemRb.Namespace = itemCluster.Namespace
+				itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
 				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
@@ -358,6 +359,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 					AppID:    desc.Name,
 					ParentRB: item.Name,
 					RbApps:   item.Spec.RbApps,
+					TotalPeer: len(rbs),
 				}
 				_, errCreate := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
 					Create(ctx, rb, metav1.CreateOptions{})
@@ -385,6 +387,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		for _, itemCluster := range mcls.Items {
 			for _, itemRb := range scheduleResult.ResourceBindings {
 				itemRb.Namespace = itemCluster.Namespace
+				itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
 				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {

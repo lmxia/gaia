@@ -12,7 +12,7 @@ import (
 
 const (
 	// SchedulerSubsystem - subsystem name used by scheduler
-	SchedulerSubsystem = "clusternet_scheduler"
+	SchedulerSubsystem = "gaia_scheduler"
 
 	// Binding - binding operation label value
 	Binding = "binding"

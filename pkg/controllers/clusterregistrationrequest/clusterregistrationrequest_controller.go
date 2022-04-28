@@ -1,18 +1,4 @@
-/*
-Copyright 2021 The Clusternet Authors.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// copied and modified from clusternet
 
 package clusterregistrationrequest
 
@@ -37,12 +23,6 @@ import (
 	"k8s.io/klog/v2"
 )
 
-const (
-	// InvalidSpec is used as part of the Event 'reason' when a Resource fails
-	// to sync due to the invalid spec.
-	InvalidSpec = "InvalidSpec"
-)
-
 // controllerKind contains the schema.GroupVersionKind for this controller type.
 var controllerKind = clusterapi.SchemeGroupVersion.WithKind("ClusterRegistrationRequest")
 
@@ -50,7 +30,7 @@ type SyncHandlerFunc func(*clusterapi.ClusterRegistrationRequest) error
 
 // Controller is a controller that handle edge cluster registration requests
 type Controller struct {
-	clusternetClient gaiaClientSet.Interface
+	gaiaClient gaiaClientSet.Interface
 
 	crrsLister crrsListers.ClusterRegistrationRequestLister
 	crrsSynced cache.InformerSynced
@@ -66,18 +46,18 @@ type Controller struct {
 }
 
 // NewController creates and initializes a new Controller
-func NewController(clusternetClient gaiaClientSet.Interface,
+func NewController(gaiaClient gaiaClientSet.Interface,
 	crrsInformer crrsInformers.ClusterRegistrationRequestInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
 
 	c := &Controller{
-		clusternetClient: clusternetClient,
-		crrsLister:       crrsInformer.Lister(),
-		crrsSynced:       crrsInformer.Informer().HasSynced,
-		workqueue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cluster-registration-requests"),
-		SyncHandler:      syncHandler,
+		gaiaClient:  gaiaClient,
+		crrsLister:  crrsInformer.Lister(),
+		crrsSynced:  crrsInformer.Informer().HasSynced,
+		workqueue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cluster-registration-requests"),
+		SyncHandler: syncHandler,
 	}
 
 	// Manage the addition/update of cluster registration requests
@@ -273,7 +253,7 @@ func (c *Controller) UpdateCRRStatus(crr *clusterapi.ClusterRegistrationRequest,
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		crr.Status = *status
-		_, err := c.clusternetClient.PlatformV1alpha1().ClusterRegistrationRequests().UpdateStatus(context.TODO(), crr, metav1.UpdateOptions{})
+		_, err := c.gaiaClient.PlatformV1alpha1().ClusterRegistrationRequests().UpdateStatus(context.TODO(), crr, metav1.UpdateOptions{})
 		if err == nil {
 			klog.V(4).Infof("successfully update status of ClusterRegistrationRequest %q to %q", crr.Name, status.Result)
 			return nil

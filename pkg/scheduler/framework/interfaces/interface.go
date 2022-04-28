@@ -109,7 +109,7 @@ type PreFilterPlugin interface {
 
 	// PreFilter is called at the beginning of the scheduling cycle. All PreFilter
 	// plugins must return success or the subscription will be rejected.
-	PreFilter(ctx context.Context, sub *appsapi.Components) *Status
+	PreFilter(ctx context.Context, sub *appsapi.Component) *Status
 }
 
 // FilterPlugin is an interface for Filter plugins. These plugins are called at the
@@ -128,7 +128,7 @@ type FilterPlugin interface {
 	// it will return Unschedulable, UnschedulableAndUnresolvable or Error.
 	// For the cluster being evaluated, Filter plugins should look at the passed
 	// cluster's information (e.g., subscriptions considered to be running on the cluster).
-	Filter(ctx context.Context, sub *appsapi.Components, cluster *clusterapi.ManagedCluster) *Status
+	Filter(ctx context.Context, sub *appsapi.Component, cluster *clusterapi.ManagedCluster) *Status
 }
 
 // PostFilterPlugin is an interface for "PostFilter" plugins. These plugins are called
@@ -146,7 +146,7 @@ type PostFilterPlugin interface {
 	// Optionally, a non-nil PostFilterResult may be returned along with a Success status. For example,
 	// a preemption plugin may choose to return nominatedClusterName, so that framework can reuse that to update the
 	// preemptor subscription's .spec.status.nominatedClusterName field.
-	PostFilter(ctx context.Context, sub *appsapi.Components, filteredClusterStatusMap ClusterToStatusMap) (*PostFilterResult, *Status)
+	PostFilter(ctx context.Context, sub *appsapi.Component, filteredClusterStatusMap ClusterToStatusMap) (*PostFilterResult, *Status)
 }
 
 // PreScorePlugin is an interface for "PreScore" plugin. PreScore is an
@@ -159,7 +159,7 @@ type PreScorePlugin interface {
 	// PreScore is called by the scheduling framework after a list of managed clusters
 	// passed the filtering phase. All prescore plugins must return success or
 	// the subscription will be rejected
-	PreScore(ctx context.Context, sub *appsapi.Components, clusters []*clusterapi.ManagedCluster) *Status
+	PreScore(ctx context.Context, sub *appsapi.Component, clusters []*clusterapi.ManagedCluster) *Status
 }
 
 // ScoreExtensions is an interface for Score extended functionality.
@@ -178,7 +178,7 @@ type ScorePlugin interface {
 	// Score is called on each filtered cluster. It must return success and an integer
 	// indicating the rank of the cluster. All scoring plugins must return success or
 	// the subscription will be rejected.
-	Score(ctx context.Context, sub *appsapi.Components, namespacedCluster string) (int64, *Status)
+	Score(ctx context.Context, sub *appsapi.Component, namespacedCluster string) (int64, *Status)
 
 	// ScoreExtensions returns a ScoreExtensions interface if it implements one, or nil if not.
 	ScoreExtensions() ScoreExtensions
@@ -193,13 +193,13 @@ type Framework interface {
 	// *Status and its code is set to non-success if any of the plugins returns
 	// anything but Success. If a non-success status is returned, then the scheduling
 	// cycle is aborted.
-	RunPreFilterPlugins(ctx context.Context, sub *appsapi.Components) *Status
+	RunPreFilterPlugins(ctx context.Context, sub *appsapi.Component) *Status
 
 	// RunPostFilterPlugins runs the set of configured PostFilter plugins.
 	// PostFilter plugins can either be informational, in which case should be configured
 	// to execute first and return Unschedulable status, or ones that try to change the
 	// cluster state to make the subscription potentially schedulable in a future scheduling cycle.
-	RunPostFilterPlugins(ctx context.Context, sub *appsapi.Components, filteredClusterStatusMap ClusterToStatusMap) (*PostFilterResult, *Status)
+	RunPostFilterPlugins(ctx context.Context, sub *appsapi.Component, filteredClusterStatusMap ClusterToStatusMap) (*PostFilterResult, *Status)
 
 	// HasFilterPlugins returns true if at least one Filter plugin is defined.
 	HasFilterPlugins() bool
@@ -224,7 +224,7 @@ type Handle interface {
 	// PluginsRunner abstracts operations to run some plugins.
 	PluginsRunner
 
-	// ClientSet returns a clusternet clientSet.
+	// ClientSet returns a clientSet.
 	ClientSet() gaiaClientSet.Interface
 
 	// KubeConfig returns the raw kubeconfig.
@@ -250,15 +250,15 @@ type PostFilterResult struct {
 type PluginsRunner interface {
 	// RunPreScorePlugins runs the set of configured PreScore plugins. If any
 	// of these plugins returns any status other than "Success", the given subscription is rejected.
-	RunPreScorePlugins(context.Context, *appsapi.Components, []*clusterapi.ManagedCluster) *Status
+	RunPreScorePlugins(context.Context, *appsapi.Component, []*clusterapi.ManagedCluster) *Status
 
 	// RunScorePlugins runs the set of configured Score plugins. It returns a map that
 	// stores for each Score plugin name the corresponding ClusterScoreList(s).
 	// It also returns *Status, which is set to non-success if any of the plugins returns
 	// a non-success status.
-	RunScorePlugins(context.Context, *appsapi.Components, []*clusterapi.ManagedCluster) (PluginToClusterScores, *Status)
+	RunScorePlugins(context.Context, *appsapi.Component, []*clusterapi.ManagedCluster) (PluginToClusterScores, *Status)
 
 	// RunFilterPlugins runs the set of configured Filter plugins for subscription on
 	// the given cluster.
-	RunFilterPlugins(context.Context, *appsapi.Components, *clusterapi.ManagedCluster) PluginToStatus
+	RunFilterPlugins(context.Context, *appsapi.Component, *clusterapi.ManagedCluster) PluginToStatus
 }

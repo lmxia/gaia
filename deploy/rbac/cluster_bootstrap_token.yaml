@@ -9,7 +9,7 @@ metadata:
 type: bootstrap.kubernetes.io/token
 stringData:
   # Human readable description. Optional.
-  description: "The bootstrap token used by clusternet cluster registration."
+  description: "The bootstrap token used by gaia cluster registration."
 
   # Token ID and secret. Required.
   token-id: 2b1j4b

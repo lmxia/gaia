@@ -14,7 +14,7 @@ var (
 	cmdName = "gaia-controllers"
 )
 
-// NewClusternetAgentCmd creates a *cobra.Command object with default parameters
+// NewGaiaControllerCmd creates a *cobra.Command object with default parameters
 func NewGaiaControllerCmd(ctx context.Context) *cobra.Command {
 	opts := NewOptions()
 	cmd := &cobra.Command{

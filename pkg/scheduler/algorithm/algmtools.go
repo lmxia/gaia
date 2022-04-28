@@ -94,7 +94,7 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 
 	for i := 0; i < matR; i++ {
 		for j := 0; j < matC; j++ {
-			rbapps[j].Replicas[desc.Spec.Component[i].Name] = int32(mat.At(i, j))
+			rbapps[j].Replicas[desc.Spec.Components[i].Name] = int32(mat.At(i, j))
 		}
 	}
 	return rbapps

@@ -38,12 +38,12 @@ const (
 // frameworkImpl is the component responsible for initializing and running scheduler
 // plugins.
 type frameworkImpl struct {
-	scorePluginWeight    map[string]int
-	preFilterPlugins     []framework.PreFilterPlugin
-	filterPlugins        []framework.FilterPlugin
-	postFilterPlugins    []framework.PostFilterPlugin
-	preScorePlugins      []framework.PreScorePlugin
-	scorePlugins         []framework.ScorePlugin
+	scorePluginWeight map[string]int
+	preFilterPlugins  []framework.PreFilterPlugin
+	filterPlugins     []framework.FilterPlugin
+	postFilterPlugins []framework.PostFilterPlugin
+	preScorePlugins   []framework.PreScorePlugin
+	scorePlugins      []framework.ScorePlugin
 
 	clientSet       gaiaClientSet.Interface
 	kubeConfig      *restclient.Config
@@ -154,15 +154,15 @@ func NewFramework(r Registry, plugins *schedulerapis.Plugins, opts ...Option) (f
 	}
 
 	f := &frameworkImpl{
-		scorePluginWeight:    make(map[string]int),
-		clientSet:            options.clientSet,
-		kubeConfig:           options.kubeConfig,
-		eventRecorder:        options.eventRecorder,
-		informerFactory:      options.informerFactory,
-		metricsRecorder:      options.metricsRecorder,
-		runAllFilters:        options.runAllFilters,
-		parallelizer:         options.parallelizer,
-		profileName:          "default",
+		scorePluginWeight: make(map[string]int),
+		clientSet:         options.clientSet,
+		kubeConfig:        options.kubeConfig,
+		eventRecorder:     options.eventRecorder,
+		informerFactory:   options.informerFactory,
+		metricsRecorder:   options.metricsRecorder,
+		runAllFilters:     options.runAllFilters,
+		parallelizer:      options.parallelizer,
+		profileName:       "default",
 	}
 
 	if r == nil {
@@ -228,7 +228,7 @@ func updatePluginList(pluginList interface{}, pluginSet schedulerapis.PluginSet,
 // *Status and its code is set to non-success if any of the plugins returns
 // anything but Success. If a non-success status is returned, then the scheduling
 // cycle is aborted.
-func (f *frameworkImpl) RunPreFilterPlugins(ctx context.Context, sub *v1alpha1.Components) (status *framework.Status) {
+func (f *frameworkImpl) RunPreFilterPlugins(ctx context.Context, sub *v1alpha1.Component) (status *framework.Status) {
 	startTime := time.Now()
 	defer func() {
 		metrics.FrameworkExtensionPointDuration.WithLabelValues(preFilter, status.Code().String(), f.profileName).Observe(metrics.SinceInSeconds(startTime))
@@ -247,7 +247,7 @@ func (f *frameworkImpl) RunPreFilterPlugins(ctx context.Context, sub *v1alpha1.C
 	return nil
 }
 
-func (f *frameworkImpl) runPreFilterPlugin(ctx context.Context, pl framework.PreFilterPlugin, sub *v1alpha1.Components) *framework.Status {
+func (f *frameworkImpl) runPreFilterPlugin(ctx context.Context, pl framework.PreFilterPlugin, sub *v1alpha1.Component) *framework.Status {
 	startTime := time.Now()
 	status := pl.PreFilter(ctx, sub)
 	f.metricsRecorder.observePluginDurationAsync(preFilter, pl.Name(), status, metrics.SinceInSeconds(startTime))
@@ -258,7 +258,7 @@ func (f *frameworkImpl) runPreFilterPlugin(ctx context.Context, pl framework.Pre
 // the given cluster. If any of these plugins doesn't return "Success", the
 // given cluster is not suitable for running subscription.
 // Meanwhile, the failure message and status are set for the given cluster.
-func (f *frameworkImpl) RunFilterPlugins(ctx context.Context, com *v1alpha1.Components, cluster *clusterapi.ManagedCluster) framework.PluginToStatus {
+func (f *frameworkImpl) RunFilterPlugins(ctx context.Context, com *v1alpha1.Component, cluster *clusterapi.ManagedCluster) framework.PluginToStatus {
 	statuses := make(framework.PluginToStatus)
 	for _, pl := range f.filterPlugins {
 		pluginStatus := f.runFilterPlugin(ctx, pl, com, cluster)
@@ -281,7 +281,7 @@ func (f *frameworkImpl) RunFilterPlugins(ctx context.Context, com *v1alpha1.Comp
 	return statuses
 }
 
-func (f *frameworkImpl) runFilterPlugin(ctx context.Context, pl framework.FilterPlugin, com *v1alpha1.Components, cluster *clusterapi.ManagedCluster) *framework.Status {
+func (f *frameworkImpl) runFilterPlugin(ctx context.Context, pl framework.FilterPlugin, com *v1alpha1.Component, cluster *clusterapi.ManagedCluster) *framework.Status {
 	startTime := time.Now()
 	status := pl.Filter(ctx, com, cluster)
 	f.metricsRecorder.observePluginDurationAsync(Filter, pl.Name(), status, metrics.SinceInSeconds(startTime))
@@ -290,7 +290,7 @@ func (f *frameworkImpl) runFilterPlugin(ctx context.Context, pl framework.Filter
 
 // RunPostFilterPlugins runs the set of configured PostFilter plugins until the first
 // Success or Error is met, otherwise continues to execute all plugins.
-func (f *frameworkImpl) RunPostFilterPlugins(ctx context.Context, sub *v1alpha1.Components, filteredClusterStatusMap framework.ClusterToStatusMap) (_ *framework.PostFilterResult, status *framework.Status) {
+func (f *frameworkImpl) RunPostFilterPlugins(ctx context.Context, sub *v1alpha1.Component, filteredClusterStatusMap framework.ClusterToStatusMap) (_ *framework.PostFilterResult, status *framework.Status) {
 	startTime := time.Now()
 	defer func() {
 		metrics.FrameworkExtensionPointDuration.WithLabelValues(postFilter, status.Code().String(), f.profileName).Observe(metrics.SinceInSeconds(startTime))
@@ -311,7 +311,7 @@ func (f *frameworkImpl) RunPostFilterPlugins(ctx context.Context, sub *v1alpha1.
 	return nil, statuses.Merge()
 }
 
-func (f *frameworkImpl) runPostFilterPlugin(ctx context.Context, pl framework.PostFilterPlugin, sub *v1alpha1.Components, filteredClusterStatusMap framework.ClusterToStatusMap) (*framework.PostFilterResult, *framework.Status) {
+func (f *frameworkImpl) runPostFilterPlugin(ctx context.Context, pl framework.PostFilterPlugin, sub *v1alpha1.Component, filteredClusterStatusMap framework.ClusterToStatusMap) (*framework.PostFilterResult, *framework.Status) {
 	startTime := time.Now()
 	r, s := pl.PostFilter(ctx, sub, filteredClusterStatusMap)
 	f.metricsRecorder.observePluginDurationAsync(postFilter, pl.Name(), s, metrics.SinceInSeconds(startTime))
@@ -320,7 +320,7 @@ func (f *frameworkImpl) runPostFilterPlugin(ctx context.Context, pl framework.Po
 
 // RunPreScorePlugins runs the set of configured pre-score plugins. If any
 // of these plugins returns any status other than "Success", the given subscription is rejected.
-func (f *frameworkImpl) RunPreScorePlugins(ctx context.Context, sub *v1alpha1.Components, clusters []*clusterapi.ManagedCluster) (status *framework.Status) {
+func (f *frameworkImpl) RunPreScorePlugins(ctx context.Context, sub *v1alpha1.Component, clusters []*clusterapi.ManagedCluster) (status *framework.Status) {
 	startTime := time.Now()
 	defer func() {
 		metrics.FrameworkExtensionPointDuration.WithLabelValues(preScore, status.Code().String(), f.profileName).Observe(metrics.SinceInSeconds(startTime))
@@ -335,7 +335,7 @@ func (f *frameworkImpl) RunPreScorePlugins(ctx context.Context, sub *v1alpha1.Co
 	return nil
 }
 
-func (f *frameworkImpl) runPreScorePlugin(ctx context.Context, pl framework.PreScorePlugin, sub *v1alpha1.Components, clusters []*clusterapi.ManagedCluster) *framework.Status {
+func (f *frameworkImpl) runPreScorePlugin(ctx context.Context, pl framework.PreScorePlugin, sub *v1alpha1.Component, clusters []*clusterapi.ManagedCluster) *framework.Status {
 	startTime := time.Now()
 	status := pl.PreScore(ctx, sub, clusters)
 	f.metricsRecorder.observePluginDurationAsync(preScore, pl.Name(), status, metrics.SinceInSeconds(startTime))
@@ -346,7 +346,7 @@ func (f *frameworkImpl) runPreScorePlugin(ctx context.Context, pl framework.PreS
 // stores for each scoring plugin name the corresponding  ClusterScoreList(s).
 // It also returns *Status, which is set to non-success if any of the plugins returns
 // a non-success status.
-func (f *frameworkImpl) RunScorePlugins(ctx context.Context, sub *v1alpha1.Components, clusters []*clusterapi.ManagedCluster) (ps framework.PluginToClusterScores, status *framework.Status) {
+func (f *frameworkImpl) RunScorePlugins(ctx context.Context, sub *v1alpha1.Component, clusters []*clusterapi.ManagedCluster) (ps framework.PluginToClusterScores, status *framework.Status) {
 	startTime := time.Now()
 	defer func() {
 		metrics.FrameworkExtensionPointDuration.WithLabelValues(score, status.Code().String(), f.profileName).Observe(metrics.SinceInSeconds(startTime))
@@ -420,7 +420,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, sub *v1alpha1.Compo
 	return pluginToClusterScores, nil
 }
 
-func (f *frameworkImpl) runScorePlugin(ctx context.Context, pl framework.ScorePlugin, sub *v1alpha1.Components, clusterNamespace string) (int64, *framework.Status) {
+func (f *frameworkImpl) runScorePlugin(ctx context.Context, pl framework.ScorePlugin, sub *v1alpha1.Component, clusterNamespace string) (int64, *framework.Status) {
 	startTime := time.Now()
 	s, status := pl.Score(ctx, sub, clusterNamespace)
 	f.metricsRecorder.observePluginDurationAsync(score, pl.Name(), status, metrics.SinceInSeconds(startTime))
@@ -474,7 +474,7 @@ func (f *frameworkImpl) ListPlugins() *schedulerapis.Plugins {
 	return &m
 }
 
-// ClientSet returns a clusternet clientset.
+// ClientSet returns a clientset.
 func (f *frameworkImpl) ClientSet() gaiaClientSet.Interface {
 	return f.clientSet
 }

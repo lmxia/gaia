@@ -30,7 +30,7 @@ func (pl *TaintToleration) Name() string {
 }
 
 // Filter invoked at the filter extension point.
-func (pl *TaintToleration) Filter(ctx context.Context, com *v1alpha1.Components, cluster *clusterapi.ManagedCluster) *framework.Status {
+func (pl *TaintToleration) Filter(ctx context.Context, com *v1alpha1.Component, cluster *clusterapi.ManagedCluster) *framework.Status {
 	if cluster == nil {
 		return framework.AsStatus(fmt.Errorf("invalid cluster"))
 	}
@@ -79,7 +79,7 @@ func countIntolerableTaintsPreferNoSchedule(taints []v1.Taint, tolerations []v1.
 }
 
 // Score invoked at the Score extension point.
-func (pl *TaintToleration) Score(ctx context.Context, comm *v1alpha1.Components, namespacedCluster string) (int64, *framework.Status) {
+func (pl *TaintToleration) Score(ctx context.Context, comm *v1alpha1.Component, namespacedCluster string) (int64, *framework.Status) {
 	// Convert the namespace/name string into a distinct namespace and name
 	ns, name, err := cache.SplitMetaNamespaceKey(namespacedCluster)
 	if err != nil {

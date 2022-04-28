@@ -46,7 +46,7 @@ type Component struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Module corev1.PodSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
+	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required
 	RuntimeType string `json:"runtimeType,omitempty"`
 	// +required

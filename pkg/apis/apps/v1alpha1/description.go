@@ -3,6 +3,7 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	serveringv1 "knative.dev/serving/pkg/apis/serving/v1"
 )
 
 // Important: Run "make generated" to regenerate code after modifying this file
@@ -25,25 +26,27 @@ type Description struct {
 
 // DescriptionSpec defines the spec of Description
 type DescriptionSpec struct {
-	// Raw is the underlying serialization of all objects.
-	//
-	//Raw [][]byte `json:"raw,omitempty"`
 	// +required
 	AppID string `json:"appID,omitempty"` // appID是蓝图的id
 	// +optional
 	// +kubebuilder:validation:Optional
-	Component []Components `json:"component,omitempty"`
+	Components []Component `json:"components,omitempty"`
 }
-type Components struct {
-	// +required
-	//AppID string `json:"appID,omitempty"` // appID是蓝图的id
+type Component struct {
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 	// +required
 	Name string `json:"name,omitempty"`
+
+	// +optional
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"` //module是container意思。
+	Serverless ServerlessSpec `json:"serverless,omitempty" protobuf:"bytes,3,opt,name=serverless"`
+
+	// +optional
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:pruning:PreserveUnknownFields
+	Module corev1.PodSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required
 	RuntimeType string `json:"runtimeType,omitempty"`
 	// +required
@@ -64,6 +67,30 @@ type Workload struct {
 	// +optional
 	TraitServerless *TraitServerless `json:"traitServerless,omitempty"`
 }
+type ServerlessSpec struct {
+	// +optional
+	Revision RevisionSpec `json:"revision,omitempty"`
+	// Traffic specifies how to distribute traffic over a collection of
+	// revisions and configurations.
+	// +optional
+	Traffic []serveringv1.TrafficTarget `json:"traffic,omitempty"`
+}
+
+// RevisionSpec holds the desired state of the Revision (from the client).
+type RevisionSpec struct {
+	// ContainerConcurrency specifies the maximum allowed in-flight (concurrent)
+	// requests per container of the Revision.  Defaults to `0` which means
+	// concurrency to the application is not limited, and the system decides the
+	// target concurrency for the autoscaler.
+	// +optional
+	ContainerConcurrency *int64 `json:"containerConcurrency,omitempty"`
+
+	// TimeoutSeconds is the maximum duration in seconds that the request routing
+	// layer will wait for a request delivered to a container to begin replying
+	// (send network traffic). If unspecified, a system default will be provided.
+	// +optional
+	TimeoutSeconds *int64 `json:"timeoutSeconds,omitempty"`
+}
 
 type TraitDeployment struct {
 	Replicas int32 ` json:"replicas,omitempty"`
@@ -79,6 +106,7 @@ type TraitServerless struct {
 //	// +optional
 //	replicas int32 `json:"replicas,omitempty"` // deploy和serverless确定结构。annity的deamonset trait是空，userapp空
 //}
+
 type SchedulePolicy struct {
 	// +optional
 	SpecificResource *metav1.LabelSelector `json:"specificResource,omitempty"`

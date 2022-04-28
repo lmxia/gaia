@@ -3,7 +3,7 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
+	serveringv1 "knative.dev/serving/pkg/apis/serving/v1"
 )
 
 // Important: Run "make generated" to regenerate code after modifying this file
@@ -73,7 +73,7 @@ type ServerlessSpec struct {
 	// Traffic specifies how to distribute traffic over a collection of
 	// revisions and configurations.
 	// +optional
-	Traffic []TrafficTarget `json:"traffic,omitempty"`
+	Traffic []serveringv1.TrafficTarget `json:"traffic,omitempty"`
 }
 
 // RevisionSpec holds the desired state of the Revision (from the client).
@@ -90,52 +90,6 @@ type RevisionSpec struct {
 	// (send network traffic). If unspecified, a system default will be provided.
 	// +optional
 	TimeoutSeconds *int64 `json:"timeoutSeconds,omitempty"`
-}
-
-// TrafficTarget holds a single entry of the routing table for a Route.
-type TrafficTarget struct {
-	// Tag is optionally used to expose a dedicated url for referencing
-	// this target exclusively.
-	// +optional
-	Tag string `json:"tag,omitempty"`
-
-	// RevisionName of a specific revision to which to send this portion of
-	// traffic.  This is mutually exclusive with ConfigurationName.
-	// +optional
-	RevisionName string `json:"revisionName,omitempty"`
-
-	// ConfigurationName of a configuration to whose latest revision we will send
-	// this portion of traffic. When the "status.latestReadyRevisionName" of the
-	// referenced configuration changes, we will automatically migrate traffic
-	// from the prior "latest ready" revision to the new one.  This field is never
-	// set in Route's status, only its spec.  This is mutually exclusive with
-	// RevisionName.
-	// +optional
-	ConfigurationName string `json:"configurationName,omitempty"`
-
-	// LatestRevision may be optionally provided to indicate that the latest
-	// ready Revision of the Configuration should be used for this traffic
-	// target.  When provided LatestRevision must be true if RevisionName is
-	// empty; it must be false when RevisionName is non-empty.
-	// +optional
-	LatestRevision *bool `json:"latestRevision,omitempty"`
-
-	// Percent indicates that percentage based routing should be used and
-	// the value indicates the percent of traffic that is be routed to this
-	// Revision or Configuration. `0` (zero) mean no traffic, `100` means all
-	// traffic.
-	// When percentage based routing is being used the follow rules apply:
-	// - the sum of all percent values must equal 100
-	// - when not specified, the implied value for `percent` is zero for
-	//   that particular Revision or Configuration
-	// +optional
-	Percent *int64 `json:"percent,omitempty"`
-
-	// URL displays the URL for accessing named traffic targets. URL is displayed in
-	// status, and is disallowed on spec. URL must contain a scheme (e.g. http://) and
-	// a hostname, but may not contain anything else (e.g. basic auth, url path, etc.)
-	// +optional
-	URL *apis.URL `json:"url,omitempty"`
 }
 
 type TraitDeployment struct {

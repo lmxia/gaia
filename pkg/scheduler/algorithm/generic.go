@@ -62,7 +62,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		return result, ErrNoClustersAvailable
 	}
 	allClusters, _ := g.cache.ListClusters(&metav1.LabelSelector{})
-	numComponent := len(desc.Spec.Component)
+	numComponent := len(desc.Spec.Components)
 	// 3, means allspread, one spread, 2 spread.
 	allResultGlobal := make([][]mat.Matrix, 3)
 	for i := 0; i < 3; i++ {
@@ -81,7 +81,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		}
 	}
 
-	for i, comm := range desc.Spec.Component {
+	for i, comm := range desc.Spec.Components {
 		localComponent := &comm
 		// NO.1 pre filter
 		feasibleClusters, diagnosis, err := g.findClustersThatFitComponent(ctx, fwk, localComponent)
@@ -202,7 +202,7 @@ func (g *genericScheduler) selectClusters(clusterScoreList framework.ClusterScor
 }
 
 // Filters the clusters to find the ones that fit the subscription based on the framework filter plugins.
-func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk framework.Framework, comm *v1alpha1.Components) ([]*framework2.ClusterInfo, framework.Diagnosis, error) {
+func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk framework.Framework, comm *v1alpha1.Component) ([]*framework2.ClusterInfo, framework.Diagnosis, error) {
 	diagnosis := framework.Diagnosis{
 		ClusterToStatusMap:   make(framework.ClusterToStatusMap),
 		UnschedulablePlugins: sets.NewString(),
@@ -224,7 +224,7 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 					mergedSelector.MatchLabels[key] = val
 				}
 			}
-		}  else {
+		} else {
 			mergedSelector.MatchLabels = comm.SchedulePolicy.Netenvironment.MatchLabels
 		}
 
@@ -244,7 +244,7 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 					mergedSelector.MatchLabels[key] = val
 				}
 			}
-		}  else {
+		} else {
 			mergedSelector.MatchLabels = comm.SchedulePolicy.SpecificResource.MatchLabels
 		}
 		if mergedSelector.MatchExpressions != nil {
@@ -318,7 +318,7 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 
 // findClustersThatPassFilters finds the clusters that fit the filter plugins.
 func (g *genericScheduler) findClustersThatPassFilters(ctx context.Context, fwk framework.Framework,
-	com *v1alpha1.Components, diagnosis framework.Diagnosis,
+	com *v1alpha1.Component, diagnosis framework.Diagnosis,
 	clusters []*clusterapi.ManagedCluster) ([]*clusterapi.ManagedCluster, error) {
 	if !fwk.HasFilterPlugins() {
 		return clusters, nil

@@ -91,8 +91,8 @@ type Scheduler struct {
 
 	framework framework.Framework
 
-	lockLocal            sync.RWMutex
-	lockParent           sync.RWMutex
+	lockLocal  sync.RWMutex
+	lockParent sync.RWMutex
 }
 
 // NewSchedule returns a new Scheduler.
@@ -356,9 +356,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 				rb.Name = item.Name
 				rb.Namespace = common.GaiaRSToBeMergedReservedNamespace
 				rb.Spec = appsapi.ResourceBindingSpec{
-					AppID:    desc.Name,
-					ParentRB: item.Name,
-					RbApps:   item.Spec.RbApps,
+					AppID:     desc.Name,
+					ParentRB:  item.Name,
+					RbApps:    item.Spec.RbApps,
 					TotalPeer: len(rbs),
 				}
 				_, errCreate := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
@@ -457,7 +457,7 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 
 		klog.V(4).Infof("set parentDedicatedKubeConfig still waiting for getting secret...", target.Name)
 		cancel()
-	}, known.DefaultRetryPeriod * 4, 0.3, true)
+	}, known.DefaultRetryPeriod*4, 0.3, true)
 
 }
 

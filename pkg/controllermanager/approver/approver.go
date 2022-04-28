@@ -11,7 +11,7 @@ import (
 	known "github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllers/clusterregistrationrequest"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
-	clusternetInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	gaiaInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	ccrListers "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/utils"
 
@@ -40,20 +40,20 @@ type CRRApprover struct {
 	nsLister corev1Lister.NamespaceLister
 	saLister corev1Lister.ServiceAccountLister
 
-	kubeclient       *kubernetes.Clientset
-	clusternetclient *gaiaClientSet.Clientset
+	kubeclient *kubernetes.Clientset
+	gaiaclient *gaiaClientSet.Clientset
 }
 
 // NewCRRApprover returns a new CRRApprover for ClusterRegistrationRequest.
 func NewCRRApprover(kubeclient *kubernetes.Clientset, gaiaclient *gaiaClientSet.Clientset,
-	gaiaInformerFactory clusternetInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+	gaiaInformerFactory gaiaInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
 	crrApprover := &CRRApprover{
-		kubeclient:       kubeclient,
-		clusternetclient: gaiaclient,
-		crrLister:        gaiaInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests().Lister(),
-		mclsLister:       gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
-		nsLister:         kubeInformerFactory.Core().V1().Namespaces().Lister(),
-		saLister:         kubeInformerFactory.Core().V1().ServiceAccounts().Lister(),
+		kubeclient: kubeclient,
+		gaiaclient: gaiaclient,
+		crrLister:  gaiaInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests().Lister(),
+		mclsLister: gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
+		nsLister:   kubeInformerFactory.Core().V1().Namespaces().Lister(),
+		saLister:   kubeInformerFactory.Core().V1().ServiceAccounts().Lister(),
 	}
 
 	newCRRController, err := clusterregistrationrequest.NewController(gaiaclient,
@@ -68,7 +68,7 @@ func NewCRRApprover(kubeclient *kubernetes.Clientset, gaiaclient *gaiaClientSet.
 }
 
 func (crrApprover *CRRApprover) Run(threadiness int, stopCh <-chan struct{}) {
-	klog.Info("starting Clusternet CRRApprover ...")
+	klog.Info("starting gaia crr approver ...")
 
 	// initializing roles is really important
 	// and nothing works if the roles don't get initialized
@@ -320,7 +320,7 @@ func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterN
 		managedCluster.Labels[key] = value
 	}
 
-	mc, err := crrApprover.clusternetclient.PlatformV1alpha1().ManagedClusters(namespace).Create(context.TODO(), managedCluster, metav1.CreateOptions{})
+	mc, err := crrApprover.gaiaclient.PlatformV1alpha1().ManagedClusters(namespace).Create(context.TODO(), managedCluster, metav1.CreateOptions{})
 	if err != nil {
 		klog.Errorf("failed to create ManagedCluster for cluster %q: %v", clusterID, err)
 		return nil, err

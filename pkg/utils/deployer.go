@@ -1,4 +1,3 @@
-
 package utils
 
 import (
@@ -174,7 +173,7 @@ func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface
 func ConstructDescriptionFromExistOne(old *v1alpha1.Description) *v1alpha1.Description {
 	newOne := &v1alpha1.Description{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: old.Name,
+			Name:       old.Name,
 			Finalizers: old.Finalizers,
 		},
 		Spec: old.Spec,

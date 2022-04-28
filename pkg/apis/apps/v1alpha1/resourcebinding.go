@@ -8,9 +8,9 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 // +kubebuilder:resource:scope="Namespaced",shortName=rb,categories=gaia
 // +k8s:openapi-gen=true
 type ResourceBinding struct {
-	metav1.TypeMeta `json:",inline"`
+	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec ResourceBindingSpec `json:"spec,omitempty"`
+	Spec              ResourceBindingSpec `json:"spec,omitempty"`
 	// +optional
 	Status ResourceBindingStatus `json:"status,omitempty"`
 }
@@ -33,10 +33,10 @@ type ResourceBindingSpec struct {
 }
 
 type ResourceBindingApps struct {
-	ClusterName string                 `json:"clusterName,omitempty"`
-	Replicas    map[string]int32       `json:"replicas,omitempty"`
+	ClusterName string           `json:"clusterName,omitempty"`
+	Replicas    map[string]int32 `json:"replicas,omitempty"`
 	// +optional
-	Children    []*ResourceBindingApps `json:"children,omitempty"`
+	Children []*ResourceBindingApps `json:"children,omitempty"`
 }
 type ResourceBindingStatus struct {
 	Status string `json:"status,omitempty"`

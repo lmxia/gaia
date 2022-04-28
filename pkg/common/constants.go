@@ -42,7 +42,7 @@ const (
 	ClusterNameMaxLength = 30
 	// default length for random uid
 	DefaultRandomUIDLength = 5
-	// ClusternetAppSA is the service account where we store credentials to deploy resources
+	// GaiaAppSA is the service account where we store credentials to deploy resources
 	GaiaAppSA = "gaia-resource-deployer"
 
 	SpecificNodeLabelsKeyPrefix = "gaia.io/"

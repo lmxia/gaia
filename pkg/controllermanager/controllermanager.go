@@ -31,7 +31,6 @@ import (
 	"github.com/lmxia/gaia/pkg/utils"
 )
 
-// Agent defines configuration for clusternet-agent
 type ControllerManager struct {
 	ctx context.Context
 
@@ -340,7 +339,7 @@ func (controller *ControllerManager) waitingForApproval(ctx context.Context, cli
 	controller.DedicatedNamespace = utilpointer.StringPtr(crr.Status.DedicatedNamespace)
 
 	// once the request gets approved
-	// store auto-populated credentials to Secret "parent-cluster" in "clusternet-system" namespace
+	// store auto-populated credentials to Secret "parent-cluster" in "gaia-system" namespace
 	go controller.storeParentClusterCredentials(crr, clusterName, target)
 
 	return nil

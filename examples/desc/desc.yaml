@@ -9,7 +9,7 @@ metadata:
   namespace: gaia-reserved
 spec:
   appID: appID1
-  component:
+  components:
     - name: component1
       namespace: test
       runtimeType: runc

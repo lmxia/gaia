@@ -18,17 +18,8 @@ func getDefaultPlugins() *schedulerapis.Plugins {
 		PreScore:   schedulerapis.PluginSet{},
 		Score: schedulerapis.PluginSet{
 			Enabled: []schedulerapis.Plugin{
-				{Name: names.TaintToleration, Weight: 3},
+				{Name: names.CorePriority, Weight: 3},
 			},
 		},
-		Reserve: schedulerapis.PluginSet{},
-		Permit:  schedulerapis.PluginSet{},
-		PreBind: schedulerapis.PluginSet{},
-		Bind: schedulerapis.PluginSet{
-			Enabled: []schedulerapis.Plugin{
-				{Name: names.DefaultBinder},
-			},
-		},
-		PostBind: schedulerapis.PluginSet{},
 	}
 }

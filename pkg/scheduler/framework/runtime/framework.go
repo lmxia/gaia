@@ -8,11 +8,6 @@ import (
 	"reflect"
 	"time"
 
-	"k8s.io/apimachinery/pkg/util/sets"
-	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
-	"k8s.io/klog/v2"
-
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
@@ -21,6 +16,9 @@ import (
 	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 	"github.com/lmxia/gaia/pkg/scheduler/metrics"
 	"github.com/lmxia/gaia/pkg/scheduler/parallelize"
+	"k8s.io/apimachinery/pkg/util/sets"
+	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/record"
 )
 
 const (
@@ -343,34 +341,33 @@ func (f *frameworkImpl) runPreScorePlugin(ctx context.Context, pl framework.PreS
 }
 
 // RunScorePlugins runs the set of configured scoring plugins. It returns a list that
-// stores for each scoring plugin name the corresponding  ClusterScoreList(s).
+// stores for each scoring plugin name the corresponding  ResourceBindingScoreList(s).
 // It also returns *Status, which is set to non-success if any of the plugins returns
 // a non-success status.
-func (f *frameworkImpl) RunScorePlugins(ctx context.Context, sub *v1alpha1.Component, clusters []*clusterapi.ManagedCluster) (ps framework.PluginToClusterScores, status *framework.Status) {
+func (f *frameworkImpl) RunScorePlugins(ctx context.Context, rbs []*v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (ps framework.PluginToRBScores, status *framework.Status) {
 	startTime := time.Now()
 	defer func() {
 		metrics.FrameworkExtensionPointDuration.WithLabelValues(score, status.Code().String(), f.profileName).Observe(metrics.SinceInSeconds(startTime))
 	}()
-	pluginToClusterScores := make(framework.PluginToClusterScores, len(f.scorePlugins))
+	pluginToRBScores := make(framework.PluginToRBScores, len(f.scorePlugins))
 	for _, pl := range f.scorePlugins {
-		pluginToClusterScores[pl.Name()] = make(framework.ClusterScoreList, len(clusters))
+		pluginToRBScores[pl.Name()] = make(framework.ResourceBindingScoreList, len(rbs))
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	errCh := parallelize.NewErrorChannel()
 
 	// Run Score method for each cluster in parallel.
-	f.Parallelizer().Until(ctx, len(clusters), func(index int) {
+	f.Parallelizer().Until(ctx, len(rbs), func(index int) {
 		for _, pl := range f.scorePlugins {
-			clusterNamespacedName := klog.KObj(clusters[index]).String()
-			s, status := f.runScorePlugin(ctx, pl, sub, clusterNamespacedName)
+			s, status := f.runScorePlugin(ctx, pl, rbs[index], clusters)
 			if !status.IsSuccess() {
 				err := fmt.Errorf("plugin %q failed with: %w", pl.Name(), status.AsError())
 				errCh.SendErrorWithCancel(err, cancel)
 				return
 			}
-			pluginToClusterScores[pl.Name()][index] = framework.ClusterScore{
-				NamespacedName: clusterNamespacedName,
-				Score:          s,
+			pluginToRBScores[pl.Name()][index] = framework.ResourceBindingScore{
+				Index: index,
+				Score: s,
 			}
 		}
 	})
@@ -381,7 +378,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, sub *v1alpha1.Compo
 	// Run NormalizeScore method for each ScorePlugin in parallel.
 	f.Parallelizer().Until(ctx, len(f.scorePlugins), func(index int) {
 		pl := f.scorePlugins[index]
-		ClusterScoreList := pluginToClusterScores[pl.Name()]
+		ClusterScoreList := pluginToRBScores[pl.Name()]
 		if pl.ScoreExtensions() == nil {
 			return
 		}
@@ -401,35 +398,35 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, sub *v1alpha1.Compo
 		pl := f.scorePlugins[index]
 		// Score plugins' weight has been checked when they are initialized.
 		weight := f.scorePluginWeight[pl.Name()]
-		ClusterScoreList := pluginToClusterScores[pl.Name()]
+		rbScoreList := pluginToRBScores[pl.Name()]
 
-		for i, clusterScore := range ClusterScoreList {
+		for i, rbScore := range rbScoreList {
 			// return error if score plugin returns invalid score.
-			if clusterScore.Score > framework.MaxClusterScore || clusterScore.Score < framework.MinClusterScore {
-				err := fmt.Errorf("plugin %q returns an invalid score %v, it should in the range of [%v, %v] after normalizing", pl.Name(), clusterScore.Score, framework.MinClusterScore, framework.MaxClusterScore)
+			if rbScore.Score > framework.MaxClusterScore || rbScore.Score < framework.MinClusterScore {
+				err := fmt.Errorf("plugin %q returns an invalid score %v, it should in the range of [%v, %v] after normalizing", pl.Name(), rbScore.Score, framework.MinClusterScore, framework.MaxClusterScore)
 				errCh.SendErrorWithCancel(err, cancel)
 				return
 			}
-			ClusterScoreList[i].Score = clusterScore.Score * int64(weight)
+			rbScoreList[i].Score = rbScore.Score * int64(weight)
 		}
 	})
 	if err := errCh.ReceiveError(); err != nil {
 		return nil, framework.AsStatus(fmt.Errorf("applying score defaultWeights on Score plugins: %w", err))
 	}
 
-	return pluginToClusterScores, nil
+	return pluginToRBScores, nil
 }
 
-func (f *frameworkImpl) runScorePlugin(ctx context.Context, pl framework.ScorePlugin, sub *v1alpha1.Component, clusterNamespace string) (int64, *framework.Status) {
+func (f *frameworkImpl) runScorePlugin(ctx context.Context, pl framework.ScorePlugin, rb *v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
 	startTime := time.Now()
-	s, status := pl.Score(ctx, sub, clusterNamespace)
+	s, status := pl.Score(ctx, rb, clusters)
 	f.metricsRecorder.observePluginDurationAsync(score, pl.Name(), status, metrics.SinceInSeconds(startTime))
 	return s, status
 }
 
-func (f *frameworkImpl) runScoreExtension(ctx context.Context, pl framework.ScorePlugin, ClusterScoreList framework.ClusterScoreList) *framework.Status {
+func (f *frameworkImpl) runScoreExtension(ctx context.Context, pl framework.ScorePlugin, RBScoreList framework.ResourceBindingScoreList) *framework.Status {
 	startTime := time.Now()
-	status := pl.ScoreExtensions().NormalizeScore(ctx, ClusterScoreList)
+	status := pl.ScoreExtensions().NormalizeScore(ctx, RBScoreList)
 	f.metricsRecorder.observePluginDurationAsync(scoreExtensionNormalize, pl.Name(), status, metrics.SinceInSeconds(startTime))
 	return status
 }

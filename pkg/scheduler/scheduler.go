@@ -289,7 +289,8 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	} else {
 		//1. create rbs in sub children cluster namespace.
 		for _, itemCluster := range mcls.Items {
-			for _, itemRb := range scheduleResult.ResourceBindings {
+			for rbIndex, itemRb := range scheduleResult.ResourceBindings {
+				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 				itemRb.Namespace = itemCluster.Namespace
 				itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
 				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
@@ -385,8 +386,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		}
 
 		for _, itemCluster := range mcls.Items {
-			for _, itemRb := range scheduleResult.ResourceBindings {
+			for rbIndex, itemRb := range scheduleResult.ResourceBindings {
 				itemRb.Namespace = itemCluster.Namespace
+				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 				itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
 				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})

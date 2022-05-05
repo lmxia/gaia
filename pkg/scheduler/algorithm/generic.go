@@ -5,6 +5,7 @@ package algorithm
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"sync"
 	"sync/atomic"
@@ -120,15 +121,13 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		add one-by-one network filter plugin.
 	*/
 
+	rbsResult := make([]*v1alpha1.ResourceBinding, 0)
+
 	// NO.2 first we should spawn rbs.
 	if desc.Namespace == common.GaiaReservedNamespace {
-		rbs := spawnResourceBindings(allResultGlobal, allClusters, desc)
-		return ScheduleResult{
-			ResourceBindings: rbs,
-		}, nil
+		rbsResult = spawnResourceBindings(allResultGlobal, allClusters, desc)
 	} else {
 		rbIndex := 0
-		rbsNew := make([]*v1alpha1.ResourceBinding, 0)
 		for i, rbOld := range rbs {
 			rbForrb := spawnResourceBindings(allResultWithRB[i], allClusters, desc)
 			var resourceBindingApps *v1alpha1.ResourceBindingApps = nil
@@ -156,13 +155,48 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				rbNew.APIVersion = "platform.gaia.io/v1alpha1"
 				rbIndex += 1
 				resourceBindingApps.Children = item.Spec.RbApps
-				rbsNew = append(rbsNew, rbNew)
+				rbsResult = append(rbsResult, rbNew)
 			}
 		}
-		return ScheduleResult{
-			ResourceBindings: rbsNew,
-		}, err
 	}
+
+	// score plugins.
+	priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResult)
+	// select prioritize
+	rbsResult, err = g.selectResourceBindings(priorityList, rbsResult)
+	return ScheduleResult{
+		ResourceBindings: rbsResult,
+	}, err
+}
+
+func prioritizeResourcebindings(ctx context.Context, fwk framework.Framework, _ *v1alpha1.Description,
+	clusters []*clusterapi.ManagedCluster, rbs []*v1alpha1.ResourceBinding) (framework.ResourceBindingScoreList, error) {
+	if !fwk.HasScorePlugins() {
+		result := make(framework.ResourceBindingScoreList, 0, len(rbs))
+		for i := range rbs {
+			result = append(result, framework.ResourceBindingScore{
+				Index: i,
+				Score: 1,
+			})
+		}
+		return result, nil
+	}
+
+	scoresMap, scoreStatus := fwk.RunScorePlugins(ctx, rbs, clusters)
+	if !scoreStatus.IsSuccess() {
+		return nil, scoreStatus.AsError()
+	}
+
+	// Summarize all scores.
+	result := make(framework.ResourceBindingScoreList, 0, len(rbs))
+
+	for i := range rbs {
+		result = append(result, framework.ResourceBindingScore{Index: i, Score: 0})
+		for j := range scoresMap {
+			result[i].Score += scoresMap[j][i].Score
+		}
+	}
+	return result, nil
 }
 
 func nomalizeClusters(feasibleClusters []*framework2.ClusterInfo, allClusters []*clusterapi.ManagedCluster) []*framework2.ClusterInfo {
@@ -186,17 +220,18 @@ func nomalizeClusters(feasibleClusters []*framework2.ClusterInfo, allClusters []
 	return result
 }
 
-// selectClusters takes a prioritized list of clusters and then picks a fraction of clusters
+// selectResourceBindings takes a prioritized list of rbs and then picks a fraction of clusters
 // in a reservoir sampling manner from the clusters that had the highest score.
-func (g *genericScheduler) selectClusters(clusterScoreList framework.ClusterScoreList, _ *v1alpha1.Description) ([]string, error) {
-	if len(clusterScoreList) == 0 {
-		return nil, fmt.Errorf("empty clusterScoreList")
+func (g *genericScheduler) selectResourceBindings(rbScoreList framework.ResourceBindingScoreList, result []*v1alpha1.ResourceBinding) ([]*v1alpha1.ResourceBinding, error) {
+	if len(rbScoreList) == 0 {
+		return nil, fmt.Errorf("empty rbScoreList")
 	}
+	sort.Sort(rbScoreList)
 
-	var selected []string
-	for _, clusterScore := range clusterScoreList {
-		// TODO: sampling with scores
-		selected = append(selected, clusterScore.NamespacedName)
+	// Top best 2 rbs.
+	selected := []*v1alpha1.ResourceBinding {
+		0: result[rbScoreList[0].Index],
+		1: result[rbScoreList[1].Index],
 	}
 	return selected, nil
 }

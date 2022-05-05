@@ -50,14 +50,14 @@ func TestDefaultNormalizeScore(t *testing.T) {
 
 	for i, test := range tests {
 		t.Run(fmt.Sprintf("case_%d", i), func(t *testing.T) {
-			scores := framework.ClusterScoreList{}
+			scores := framework.ResourceBindingScoreList{}
 			for _, score := range test.scores {
-				scores = append(scores, framework.ClusterScore{Score: score})
+				scores = append(scores, framework.ResourceBindingScore{Score: score})
 			}
 
-			expectedScores := framework.ClusterScoreList{}
+			expectedScores := framework.ResourceBindingScoreList{}
 			for _, score := range test.expectedScores {
-				expectedScores = append(expectedScores, framework.ClusterScore{Score: score})
+				expectedScores = append(expectedScores, framework.ResourceBindingScore{Score: score})
 			}
 
 			DefaultNormalizeScore(framework.MaxClusterScore, test.reverse, scores)

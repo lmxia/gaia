@@ -3,6 +3,7 @@ package controllermanager
 import (
 	"context"
 	"fmt"
+	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
 	"os"
 	"strings"
 	"time"
@@ -61,7 +62,7 @@ type ControllerManager struct {
 }
 
 // NewAgent returns a new Agent.
-func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, managedClusterSource, promUrlPrefix string) (*ControllerManager, error) {
+func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, managedClusterSource, promUrlPrefix string, useHypernodeController bool) (*ControllerManager, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get hostname: %v", err)
@@ -87,6 +88,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	// create clientset for child cluster
 	childKubeClientSet := kubernetes.NewForConfigOrDie(childKubeConfig)
 	childGaiaClientSet := gaiaclientset.NewForConfigOrDie(childKubeConfig)
+	hypernodeClientSet := hypernodeclientset.NewForConfigOrDie(childKubeConfig)
 
 	selfKubeInformerFactory := kubeinformers.NewSharedInformerFactory(childKubeClientSet, known.DefaultResync)
 	selfGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(childGaiaClientSet, known.DefaultResync)
@@ -95,7 +97,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	if err != nil {
 		klog.Error(err)
 	}
-	statusManager := NewStatusManager(ctx, childKubeConfig.Host, managedClusterSource, promUrlPrefix, childKubeClientSet, childGaiaClientSet)
+	statusManager := NewStatusManager(ctx, childKubeConfig.Host, managedClusterSource, promUrlPrefix, childKubeClientSet, childGaiaClientSet, hypernodeClientSet, useHypernodeController)
 
 	agent := &ControllerManager{
 		ctx:                 ctx,

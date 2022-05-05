@@ -34,7 +34,7 @@ func NewGaiaControllerCmd(ctx context.Context) *cobra.Command {
 			// TODO: add logic
 			agentCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			agent, err := controllermanager.NewControllerManager(agentCtx, opts.kubeconfig, opts.clusterHostName, opts.managedClusterSource, opts.prometheusMonitorUrlPrefix)
+			agent, err := controllermanager.NewControllerManager(agentCtx, opts.kubeconfig, opts.clusterHostName, opts.managedClusterSource, opts.prometheusMonitorUrlPrefix, opts.useHypernodeController)
 			if err != nil {
 				klog.Exit(err)
 			}

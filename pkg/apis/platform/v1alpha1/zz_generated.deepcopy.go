@@ -264,13 +264,6 @@ func (in *ManagedClusterStatus) DeepCopyInto(out *ManagedClusterStatus) {
 		*out = new(int64)
 		**out = **in
 	}
-	if in.ClusterLabels != nil {
-		in, out := &in.ClusterLabels, &out.ClusterLabels
-		*out = make(map[string]string, len(*in))
-		for key, val := range *in {
-			(*out)[key] = val
-		}
-	}
 	return
 }
 

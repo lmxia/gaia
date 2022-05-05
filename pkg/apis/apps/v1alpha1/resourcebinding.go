@@ -29,7 +29,8 @@ type ResourceBindingSpec struct {
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-	RbApps []*ResourceBindingApps `json:"rbApps,omitempty"`
+	RbApps      []*ResourceBindingApps `json:"rbApps,omitempty"`
+	NetworkPath [][]byte               `json:"networkPath,omitempty"`
 }
 
 type ResourceBindingApps struct {

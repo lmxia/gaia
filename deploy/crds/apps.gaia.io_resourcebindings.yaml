@@ -41,6 +41,11 @@ spec:
                 type: string
               namespace:
                 type: string
+              networkPath:
+                items:
+                  format: byte
+                  type: string
+                type: array
               parentAppID:
                 type: string
               parentRB:

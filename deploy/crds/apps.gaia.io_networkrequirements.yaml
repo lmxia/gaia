@@ -43,83 +43,68 @@ spec:
           spec:
             description: NetworkRequirementSpec defines the spec of NetworkRequirement
             properties:
-              interSCNID:
-                properties:
-                  destination:
-                    properties:
-                      attributes:
-                        items:
-                          properties:
-                            key:
-                              type: string
-                            value:
-                              type: string
-                          type: object
-                        type: array
-                      id:
-                        type: string
-                    type: object
-                  providers:
-                    items:
-                      type: string
-                    type: array
-                  sla:
-                    items:
-                      type: string
-                    type: array
-                  source:
-                    properties:
-                      attributes:
-                        items:
-                          properties:
-                            key:
-                              type: string
-                            value:
-                              type: string
-                          type: object
-                        type: array
-                      id:
-                        type: string
-                    type: object
-                type: object
-              name:
-                type: string
-              requirement:
-                description: Raw is the underlying serialization of all objects.
+              networkCommunication:
                 items:
                   properties:
-                    north:
-                      properties:
-                        capacity:
-                          format: int64
-                          type: integer
-                        concurrency:
-                          format: int64
-                          type: integer
-                      type: object
-                    selector:
-                      additionalProperties:
+                    interSCNID:
+                      items:
+                        properties:
+                          destination:
+                            properties:
+                              attributes:
+                                items:
+                                  properties:
+                                    key:
+                                      type: string
+                                    value:
+                                      type: string
+                                  type: object
+                                type: array
+                              id:
+                                type: string
+                            type: object
+                          providers:
+                            items:
+                              type: string
+                            type: array
+                          sla:
+                            properties:
+                              bandwidth:
+                                format: int64
+                                type: integer
+                              delay:
+                                format: int32
+                                type: integer
+                              jitter:
+                                format: int32
+                                type: integer
+                              lost:
+                                format: int32
+                                type: integer
+                            type: object
+                          source:
+                            properties:
+                              attributes:
+                                items:
+                                  properties:
+                                    key:
+                                      type: string
+                                    value:
+                                      type: string
+                                  type: object
+                                type: array
+                              id:
+                                type: string
+                            type: object
+                        type: object
+                      type: array
+                    name:
+                      type: string
+                    selfID:
+                      items:
                         type: string
-                      type: object
-                    south:
-                      properties:
-                        bandwidth:
-                          format: int64
-                          type: integer
-                        delay:
-                          format: int64
-                          type: integer
-                        robustness:
-                          format: int64
-                          type: integer
-                        targetlabel:
-                          type: string
-                      type: object
+                      type: array
                   type: object
-                type: array
-              selfID:
-                items:
-                  type: string
                 type: array
             type: object
           status:

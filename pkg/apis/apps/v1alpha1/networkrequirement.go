@@ -21,57 +21,33 @@ type NetworkRequirement struct {
 	Status NetworkRequirementStatus `json:"status,omitempty"`
 }
 
-type (
-	SouthboundTraffic struct {
-		// +optional
-		TargetLabel string `json:"targetlabel,omitempty" protobuf:"bytes,1,opt,name=targetlabel"`
-		// +optional
-		Delay *int64 `json:"delay,omitempty" protobuf:"varint,5,opt,name=delay"`
-		// +optional
-		Robustness *int64 `json:"robustness,omitempty" protobuf:"varint,5,opt,name=robustness"`
-		// +optional
-		Bandwidth *int64 `json:"bandwidth,omitempty" protobuf:"varint,5,opt,name=bandwidth"`
-	}
-
-	NorthboundTraffic struct {
-		// +optional
-		Concurrency *int64 `json:"concurrency,omitempty" protobuf:"varint,5,opt,name=concurrency"`
-		// +optional
-		Capacity *int64 `json:"capacity,omitempty" protobuf:"varint,5,opt,name=capacity"`
-	}
-
-	ServiceRequirement struct {
-		// +optional
-		Selector map[string]string `json:"selector,omitempty" protobuf:"bytes,2,rep,name=selector"`
-
-		// +optional
-		South SouthboundTraffic `json:"south,omitempty"`
-
-		// +optional
-		North NorthboundTraffic `json:"north,omitempty"`
-	}
-)
-
 // NetworkRequirementSpec defines the spec of NetworkRequirement
 type NetworkRequirementSpec struct {
-	// Raw is the underlying serialization of all objects.
-	//
 	// +optional
-	Requirement []ServiceRequirement `json:"requirement,omitempty"`
+	NetworkCommunication []NetworkCommunication `json:"networkCommunication,omitempty"`
+}
+
+type NetworkCommunication struct {
 	// +optional
 	Name string `json:"name,omitempty"`
 	// +optional
 	SelfID []string `json:"selfID,omitempty"`
 	// +optional
-	InterSCNID InterSCNID `json:"interSCNID,omitempty"`
+	InterSCNID []InterSCNID `json:"interSCNID,omitempty"`
 }
 
 type InterSCNID struct {
 	// +optional
-	Source      Direction `json:"source,omitempty"`
-	Destination Direction `json:"destination,omitempty"`
-	Sla         []string  `json:"sla,omitempty"`
-	Providers   []string  `json:"providers,omitempty"`
+	Source      Direction  `json:"source,omitempty"`
+	Destination Direction  `json:"destination,omitempty"`
+	Sla         AppSlaAttr `json:"sla,omitempty"`
+	Providers   []string   `json:"providers,omitempty"`
+}
+type AppSlaAttr struct {
+	Delay     int32 `json:"delay,omitempty"`
+	Lost      int32 `json:"lost,omitempty"`
+	Jitter    int32 `json:"jitter,omitempty"`
+	Bandwidth int64 `json:"bandwidth,omitempty"`
 }
 type Direction struct {
 	// +optional

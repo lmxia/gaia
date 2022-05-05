@@ -7,7 +7,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/cache"
 	v1helper "k8s.io/component-helpers/scheduling/corev1"
 
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
@@ -22,7 +21,6 @@ type TaintToleration struct {
 }
 
 var _ framework.FilterPlugin = &TaintToleration{}
-var _ framework.ScorePlugin = &TaintToleration{}
 
 // Name returns name of the plugin. It is used in logs, etc.
 func (pl *TaintToleration) Name() string {
@@ -78,26 +76,8 @@ func countIntolerableTaintsPreferNoSchedule(taints []v1.Taint, tolerations []v1.
 	return
 }
 
-// Score invoked at the Score extension point.
-func (pl *TaintToleration) Score(ctx context.Context, comm *v1alpha1.Component, namespacedCluster string) (int64, *framework.Status) {
-	// Convert the namespace/name string into a distinct namespace and name
-	ns, name, err := cache.SplitMetaNamespaceKey(namespacedCluster)
-	if err != nil {
-		return 0, framework.AsStatus(fmt.Errorf("invalid resource key: %s", namespacedCluster))
-	}
-
-	cluster, err := pl.handle.SharedInformerFactory().Platform().V1alpha1().ManagedClusters().Lister().ManagedClusters(ns).Get(name)
-	if err != nil {
-		return 0, framework.AsStatus(fmt.Errorf("getting cluster %s: %v", namespacedCluster, err))
-	}
-
-	score := int64(countIntolerableTaintsPreferNoSchedule(cluster.Spec.Taints,
-		getAllTolerationPreferNoSchedule(comm.ClusterTolerations)))
-	return score, nil
-}
-
 // NormalizeScore invoked after scoring all clusters.
-func (pl *TaintToleration) NormalizeScore(ctx context.Context, scores framework.ClusterScoreList) *framework.Status {
+func (pl *TaintToleration) NormalizeScore(ctx context.Context, scores framework.ResourceBindingScoreList) *framework.Status {
 	return helper.DefaultNormalizeScore(framework.MaxClusterScore, true, scores)
 }
 

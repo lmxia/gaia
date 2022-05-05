@@ -73,7 +73,7 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 			result = append(result, rb)
 			// TODO only return top 10 rbs. not so random
 			// TODO change me!!!
-			if rbIndex == 2 {
+			if rbIndex == 5 {
 				return result
 			}
 		}
@@ -192,7 +192,7 @@ func makeResourceBindingMatrix(in []mat.Matrix) ([]mat.Matrix, error) {
 }
 
 // constructResourceBinding
-func getComponentClusterTotal(rbApps []*appv1alpha1.ResourceBindingApps, clusterName, componentName string) int64 {
+ func getComponentClusterTotal(rbApps []*appv1alpha1.ResourceBindingApps, clusterName, componentName string) int64 {
 	for _, rbApp := range rbApps {
 		if rbApp.ClusterName == clusterName {
 			return int64(rbApp.Replicas[componentName])

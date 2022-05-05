@@ -53,6 +53,7 @@ const (
 	// description labels on rb
 	GaiaDescriptionLabel = "apps.gaia.io/description"
 	StatusScheduling     = "scheduling"
+	NetworkLocationCore  = "core"
 )
 
 // lease lock
@@ -70,4 +71,8 @@ const (
 	// NoteLengthLimit denotes the maximum note length.
 	// copied from k8s.io/kubernetes/pkg/apis/core/validation/events.go
 	NoteLengthLimit = 1024
+)
+
+const (
+	ClusterNetworkLabel = "hyperos.io/network"
 )

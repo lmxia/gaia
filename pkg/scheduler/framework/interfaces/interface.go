@@ -15,17 +15,29 @@ import (
 	"github.com/lmxia/gaia/pkg/scheduler/parallelize"
 )
 
-// ClusterScoreList declares a list of clusters and their scores.
-type ClusterScoreList []ClusterScore
+// ResourceBindingScoreList declares a list of clusters and their scores.
+type ResourceBindingScoreList []ResourceBindingScore
 
-// ClusterScore is a struct with cluster id and score.
-type ClusterScore struct {
-	NamespacedName string // the namespaced name key of a ManagedCluster
-	Score          int64
+// ResourceBindingScore is a struct with cluster id and score.
+type ResourceBindingScore struct {
+	Index int // the index of rbs.
+	Score int64
 }
 
-// PluginToClusterScores declares a map from plugin name to its ClusterScoreList.
-type PluginToClusterScores map[string]ClusterScoreList
+func (rbScores ResourceBindingScoreList) Len() int {
+	return  len(rbScores)
+}
+
+func (rbScores ResourceBindingScoreList) Less(i, j int) bool {
+	return rbScores[i].Score < rbScores[j].Score
+}
+
+func (rbScores ResourceBindingScoreList) Swap(i, j int) {
+	rbScores[i], rbScores[j] = rbScores[j], rbScores[i]
+}
+
+// PluginToRBScores declares a map from plugin name to its ResourceBindingScoreList.
+type PluginToRBScores map[string]ResourceBindingScoreList
 
 // ClusterToStatusMap declares map from cluster namespaced key to its status.
 type ClusterToStatusMap map[string]*Status
@@ -167,7 +179,7 @@ type ScoreExtensions interface {
 	// NormalizeScore is called for all cluster scores produced by the same plugin's "Score"
 	// method. A successful run of NormalizeScore will update the scores list and return
 	// a success status.
-	NormalizeScore(ctx context.Context, scores ClusterScoreList) *Status
+	NormalizeScore(ctx context.Context, scores ResourceBindingScoreList) *Status
 }
 
 // ScorePlugin is an interface that must be implemented by "Score" plugins to rank
@@ -178,7 +190,7 @@ type ScorePlugin interface {
 	// Score is called on each filtered cluster. It must return success and an integer
 	// indicating the rank of the cluster. All scoring plugins must return success or
 	// the subscription will be rejected.
-	Score(ctx context.Context, sub *appsapi.Component, namespacedCluster string) (int64, *Status)
+	Score(ctx context.Context, sub *appsapi.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *Status)
 
 	// ScoreExtensions returns a ScoreExtensions interface if it implements one, or nil if not.
 	ScoreExtensions() ScoreExtensions
@@ -253,10 +265,10 @@ type PluginsRunner interface {
 	RunPreScorePlugins(context.Context, *appsapi.Component, []*clusterapi.ManagedCluster) *Status
 
 	// RunScorePlugins runs the set of configured Score plugins. It returns a map that
-	// stores for each Score plugin name the corresponding ClusterScoreList(s).
+	// stores for each Score plugin name the corresponding ResourceBindingScoreList(s).
 	// It also returns *Status, which is set to non-success if any of the plugins returns
 	// a non-success status.
-	RunScorePlugins(context.Context, *appsapi.Component, []*clusterapi.ManagedCluster) (PluginToClusterScores, *Status)
+	RunScorePlugins(context.Context, []*appsapi.ResourceBinding, []*clusterapi.ManagedCluster) (PluginToRBScores, *Status)
 
 	// RunFilterPlugins runs the set of configured Filter plugins for subscription on
 	// the given cluster.

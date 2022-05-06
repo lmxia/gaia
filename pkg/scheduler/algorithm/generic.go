@@ -103,15 +103,25 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {
 			for j, spreadLevel := range spreadLevels {
-				componentMat := makeComponentPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), spreadLevel)
-				allResultGlobal[j][i] = componentMat
+				if comm.Workload.Workloadtype == common.WorkloadTypeDeployment {
+					componentMat := makeComponentPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), spreadLevel)
+					allResultGlobal[j][i] = componentMat
+				} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless{
+					componentMat := makeServelessPlan(allPlan, 1)
+					allResultGlobal[j][i] = componentMat
+				}
 			}
 		} else {
 			for j, rb := range rbs {
 				replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
 				for k, spreadLevel := range spreadLevels {
-					componentMat := makeComponentPlans(allPlan, replicas, spreadLevel)
-					allResultWithRB[j][k][i] = componentMat
+					if comm.Workload.Workloadtype == common.WorkloadTypeDeployment {
+						componentMat := makeComponentPlans(allPlan, replicas, spreadLevel)
+						allResultWithRB[j][k][i] = componentMat
+					} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless{
+						componentMat := makeServelessPlan(allPlan, replicas)
+						allResultWithRB[j][k][i] = componentMat
+					}
 				}
 			}
 		}

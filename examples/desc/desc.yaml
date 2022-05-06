@@ -14,9 +14,7 @@ spec:
       namespace: test
       runtimeType: runc
       workload:
-        workloadtype: deployment
-        traitDeployment:
-          replicas: 3
+        workloadtype: serverless
       module:
         metadata:
           labels:
@@ -33,7 +31,7 @@ spec:
       workload:
         workloadtype: deployment
         traitDeployment:
-          replicas: 2
+          replicas: 3
       module:
         metadata:
           labels:

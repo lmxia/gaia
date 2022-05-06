@@ -100,6 +100,26 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 	return rbapps
 }
 
+// makeServelessPlan return serverless plan
+func makeServelessPlan(capability []*framework.ClusterInfo, replicas int64) mat.Matrix {
+	result := mat.NewDense(1, len(capability), nil)
+	if replicas > 0  {
+		numResult := make([]float64, len(capability))
+		for i, item := range capability {
+			if item.Total > 0 {
+				numResult[i] = 1
+			} else {
+				numResult[i] = 0
+			}
+		}
+		result.SetRow(0, numResult)
+	} else {
+		result.Zero()
+	}
+	return result
+}
+
+
 // makeComponentPlans make plans for specific component
 func makeComponentPlans(capability []*framework.ClusterInfo, componentTotal, spreadOver int64) mat.Matrix {
 	if componentTotal == 0 {

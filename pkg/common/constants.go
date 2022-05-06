@@ -67,6 +67,12 @@ const (
 	DefaultThreadiness = 2
 )
 
+// app.
+const (
+	WorkloadTypeDeployment = "deployment"
+	WorkloadTypeServerless = "serverless"
+)
+
 const (
 	// NoteLengthLimit denotes the maximum note length.
 	// copied from k8s.io/kubernetes/pkg/apis/core/validation/events.go

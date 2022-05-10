@@ -2,6 +2,7 @@ package clusterstatus
 
 import (
 	"context"
+	"github.com/lmxia/gaia/pkg/utils"
 	"net/http"
 	"strings"
 	"sync"
@@ -20,12 +21,14 @@ import (
 	"k8s.io/klog/v2"
 	utilpointer "k8s.io/utils/pointer"
 
+	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
+	hypernodeinformers "github.com/SUMMERLm/hyperNodes/pkg/generated/informers/externalversions"
+	hypernodelister "github.com/SUMMERLm/hyperNodes/pkg/generated/listers/cluster/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	gaialister "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
-	"github.com/lmxia/gaia/pkg/utils"
 	"github.com/prometheus/client_golang/api"
 	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -33,24 +36,26 @@ import (
 
 // Controller is a controller that collects cluster status
 type Controller struct {
-	kubeClient           kubernetes.Interface
-	lock                 *sync.Mutex
-	clusterStatus        *clusterapi.ManagedClusterStatus
-	collectingPeriod     time.Duration
-	heartbeatFrequency   time.Duration
-	apiserverURL         string
-	managedClusterSource string
-	promUrlPrefix        string
-	appPusherEnabled     bool
-	useSocket            bool
-	mclsLister           gaialister.ManagedClusterLister
-	nodeLister           corev1lister.NodeLister
-	nodeSynced           cache.InformerSynced
-	podLister            corev1lister.PodLister
-	podSynced            cache.InformerSynced
+	kubeClient             kubernetes.Interface
+	lock                   *sync.Mutex
+	clusterStatus          *clusterapi.ManagedClusterStatus
+	collectingPeriod       time.Duration
+	heartbeatFrequency     time.Duration
+	apiserverURL           string
+	managedClusterSource   string
+	promUrlPrefix          string
+	appPusherEnabled       bool
+	useSocket              bool
+	useHypernodeController bool
+	mclsLister             gaialister.ManagedClusterLister
+	nodeLister             corev1lister.NodeLister
+	hypernodeLister        hypernodelister.HypernodeLister
+	nodeSynced             cache.InformerSynced
+	podLister              corev1lister.PodLister
+	podSynced              cache.InformerSynced
 }
 
-func NewController(ctx context.Context, apiserverURL, managedClusterSource, promUrlPrefix string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
+func NewController(ctx context.Context, apiserverURL, managedClusterSource, promUrlPrefix string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset, useHypernodeController bool, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, known.DefaultResync)
 	// add informers
 	kubeInformerFactory.Core().V1().Nodes().Informer()
@@ -60,19 +65,26 @@ func NewController(ctx context.Context, apiserverURL, managedClusterSource, prom
 	gaiaInformerFactory := gaiainformers.NewSharedInformerFactory(gaiaClient, known.DefaultResync)
 	gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Informer()
 	gaiaInformerFactory.Start(ctx.Done())
+
+	hypernodeInformerFactory := hypernodeinformers.NewSharedInformerFactory(hypernodeClient, known.DefaultResync)
+	hypernodeInformerFactory.Cluster().V1alpha1().Hypernodes().Informer()
+	hypernodeInformerFactory.Start(ctx.Done())
+
 	return &Controller{
-		kubeClient:           kubeClient,
-		lock:                 &sync.Mutex{},
-		collectingPeriod:     collectingPeriod,
-		heartbeatFrequency:   heartbeatFrequency,
-		apiserverURL:         apiserverURL,
-		managedClusterSource: managedClusterSource,
-		promUrlPrefix:        promUrlPrefix,
-		mclsLister:           gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
-		nodeLister:           kubeInformerFactory.Core().V1().Nodes().Lister(),
-		nodeSynced:           kubeInformerFactory.Core().V1().Nodes().Informer().HasSynced,
-		podLister:            kubeInformerFactory.Core().V1().Pods().Lister(),
-		podSynced:            kubeInformerFactory.Core().V1().Pods().Informer().HasSynced,
+		kubeClient:             kubeClient,
+		lock:                   &sync.Mutex{},
+		collectingPeriod:       collectingPeriod,
+		heartbeatFrequency:     heartbeatFrequency,
+		apiserverURL:           apiserverURL,
+		managedClusterSource:   managedClusterSource,
+		promUrlPrefix:          promUrlPrefix,
+		mclsLister:             gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
+		nodeLister:             kubeInformerFactory.Core().V1().Nodes().Lister(),
+		hypernodeLister:        hypernodeInformerFactory.Cluster().V1alpha1().Hypernodes().Lister(),
+		useHypernodeController: useHypernodeController,
+		nodeSynced:             kubeInformerFactory.Core().V1().Nodes().Informer().HasSynced,
+		podLister:              kubeInformerFactory.Core().V1().Pods().Lister(),
+		podSynced:              kubeInformerFactory.Core().V1().Pods().Informer().HasSynced,
 	}
 }
 
@@ -101,7 +113,6 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 
 	var nodeStatistics clusterapi.NodeStatistics
 	var capacity, allocatable, available corev1.ResourceList
-	var nodeLabels map[string]string
 	if len(clusters) == 0 {
 		klog.V(7).Info("no joined clusters, collecting cluster resources...")
 		nodes, err := c.nodeLister.List(labels.Everything())
@@ -110,9 +121,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 		}
 
 		nodeStatistics = getNodeStatistics(nodes)
-
 		if c.managedClusterSource == known.ManagedClusterSourceFromInformer {
-			nodeLabels = getNodeLabels(nodes)
 			capacity, allocatable = getNodeResource(nodes)
 		} else if c.managedClusterSource == known.ManagedClusterSourceFromPrometheus {
 			capacity, allocatable, available = getNodeResourceFromPrometheus(c.promUrlPrefix)
@@ -121,9 +130,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 		klog.V(7).Info("collecting ManagedCluster status...")
 
 		nodeStatistics = getManagedClusterNodeStatistics(clusters)
-		nodeLabels = getManagedClusterNodeLabels(clusters)
 		capacity, allocatable = getManagedClusterResource(clusters)
-
 	}
 
 	clusterCIDR, err := c.discoverClusterCIDR()
@@ -151,7 +158,6 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	status.Available = available
 	status.HeartbeatFrequencySeconds = utilpointer.Int64Ptr(int64(c.heartbeatFrequency.Seconds()))
 	status.Conditions = []metav1.Condition{c.getCondition(status)}
-	status.ClusterLabels = nodeLabels
 	c.setClusterStatus(status)
 }
 
@@ -243,39 +249,73 @@ func getManagedClusterNodeStatistics(clusters []*clusterapi.ManagedCluster) (nod
 	return
 }
 
-// getNodeLabels returns the NodeLabels in the cluster
+// getNodeLabels returns the specified node labels in the cluster
 func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
 	nodeLabels = make(map[string]string)
 
 	for _, node := range nodes {
-		nodeLabels = parseNodeLabels(nodeLabels, node.ObjectMeta.Labels)
+		nodeLabels = parseNodeLabels(nodeLabels, node.GetLabels(), node.GetName())
 	}
 	return nodeLabels
 }
 
-// parseNodeLabels returns the nodeLabels that begin with a specific string.
-func parseNodeLabels(nodeLabels, inLabels map[string]string) map[string]string {
+// parseNodeLabels returns the nodeLabels that belong to specific string list.
+func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
 	for labelKey, labelValue := range inLabels {
-		if strings.HasPrefix(labelKey, known.SpecificNodeLabelsKeyPrefix) {
-			if _, ok := nodeLabels[labelKey]; ok {
-				if !utils.ContainsString(strings.Split(nodeLabels[labelKey], "||"), labelValue) {
-					nodeLabels[labelKey] = labelValue + "||" + nodeLabels[labelKey]
-				}
-			} else {
-				nodeLabels[labelKey] = labelValue
-			}
+		if utils.ContainsString(HypernodeLableKeyList, labelKey) {
+			nodeLabels[labelKey+"_"+nodeName] = labelValue
 		}
 	}
 	return nodeLabels
 }
 
-// getManagedClusterNodeLabels returns the ManagedClusters' nodeLabels in the cluster
-func getManagedClusterNodeLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[string]string) {
+// getClusterLabels returns the specified node labels from its sub clusters
+func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[string]string) {
 	nodeLabels = make(map[string]string)
 	for _, cluster := range clusters {
-		nodeLabels = parseNodeLabels(nodeLabels, cluster.Status.ClusterLabels)
+		for labelKey, labelValue := range cluster.GetLabels() {
+			if strings.HasPrefix(labelKey, known.SpecificNodeLabelsKeyPrefix) {
+				nodeLabels[labelKey] = labelValue
+			}
+		}
 	}
 	return
+}
+
+// GetManagedClusterLabels returns the specified node labels for the clusters
+func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
+	nodeLabels = make(map[string]string)
+	if c.useHypernodeController {
+		hypernodes, err := c.hypernodeLister.List(labels.Everything())
+		if err != nil {
+			klog.Warningf("failed to list hypernodes: %v", err)
+		}
+
+		for _, hypernode := range hypernodes {
+			// get hypernodes' labels that are in Cluster level
+			if hypernode.Spec.NodeAreaType == "cluster" {
+				nodeLabels = parseNodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())
+			}
+		}
+	} else {
+		// get clusters
+		clusters, err := c.mclsLister.List(labels.Everything())
+		if err != nil {
+			klog.Warningf("failed to list clusters: %v", err)
+		}
+		if len(clusters) == 0 {
+			// get nodes
+			nodes, err := c.nodeLister.List(labels.Everything())
+			if err != nil {
+				klog.Warningf("failed to list nodes: %v", err)
+				nodeLabels = getNodeLabels(nodes)
+			}
+			nodeLabels = getNodeLabels(nodes)
+		} else {
+			nodeLabels = getClusterLabels(clusters)
+		}
+	}
+	return nodeLabels
 }
 
 // discoverServiceCIDR returns the service CIDR for the cluster.
@@ -429,5 +469,14 @@ var (
 		ClusterMemAllocatable: `sum(kube_node_status_allocatable{resource="memory"})/1024`,
 		ClusterCPUAvailable:   `sum(kube_node_status_allocatable{resource="cpu"})-sum(kube_pod_container_resource_requests{resource="cpu"})`,
 		ClusterMemAvailable:   `(sum(kube_node_status_allocatable{resource="memory"})-sum(kube_pod_container_resource_requests{resource="memory"}))/1024`,
+	}
+)
+
+var (
+	HypernodeLableKeyList = []string{
+		known.SpecificNodeLabelsKeyPrefix + "GeoLocation",
+		known.SpecificNodeLabelsKeyPrefix + "NetEnvironment",
+		known.SpecificNodeLabelsKeyPrefix + "NetworkEnv",
+		known.SpecificNodeLabelsKeyPrefix + "SN",
 	}
 )

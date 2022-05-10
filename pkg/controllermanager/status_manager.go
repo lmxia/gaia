@@ -4,7 +4,9 @@ package controllermanager
 import (
 	"context"
 	"errors"
+	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
 	"os"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -36,7 +38,7 @@ type Manager struct {
 	localSuperKubeConfig *rest.Config
 }
 
-func NewStatusManager(ctx context.Context, apiserverURL, managedClusterSource, promUrlPrefix string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset) *Manager {
+func NewStatusManager(ctx context.Context, apiserverURL, managedClusterSource, promUrlPrefix string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset, useHypernodeController bool) *Manager {
 	retryCtx, retryCancel := context.WithTimeout(ctx, known.DefaultRetryPeriod)
 	defer retryCancel()
 
@@ -50,13 +52,14 @@ func NewStatusManager(ctx context.Context, apiserverURL, managedClusterSource, p
 		if err == nil {
 			kubeClient = kubernetes.NewForConfigOrDie(clusterStatusKubeConfig)
 			gaiaClient = gaiaclientset.NewForConfigOrDie(clusterStatusKubeConfig)
+			hypernodeClient = hypernodeclientset.NewForConfigOrDie(clusterStatusKubeConfig)
 		}
 	}
 
 	return &Manager{
 		statusReportFrequency: metav1.Duration{Duration: common.DefaultClusterStatusCollectFrequency},
 		clusterStatusController: clusterstatus.NewController(ctx, apiserverURL, managedClusterSource, promUrlPrefix,
-			kubeClient, gaiaClient, common.DefaultClusterStatusCollectFrequency, common.DefaultClusterStatusReportFrequency),
+			kubeClient, gaiaClient, hypernodeClient, useHypernodeController, common.DefaultClusterStatusCollectFrequency, common.DefaultClusterStatusReportFrequency),
 		localSuperKubeConfig: clusterStatusKubeConfig,
 	}
 }
@@ -108,13 +111,20 @@ func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterI
 	}
 
 	// in case the network is not stable, retry with backoff
-	var lastError error
+	var lastError, updateMCError error
 	var mcls *clusterapi.ManagedCluster
 	err := wait.ExponentialBackoffWithContext(ctx, backoff, func() (bool, error) {
 		status := mgr.clusterStatusController.GetClusterStatus()
 		if status == nil {
 			lastError = errors.New("cluster status is not ready, will retry later")
 			return false, nil
+		}
+		mgr.managedCluster.SetLabels(mgr.getNewManagedClusterLabels())
+		mcls, updateMCError = client.PlatformV1alpha1().ManagedClusters(namespace).Update(ctx, mgr.managedCluster, metav1.UpdateOptions{})
+		if updateMCError == nil {
+			mgr.managedCluster = mcls
+		} else {
+			klog.Warning("failed to update labels of ManagedCluster: %v", updateMCError)
 		}
 
 		mgr.managedCluster.Status = *status
@@ -134,4 +144,16 @@ func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterI
 	if err != nil {
 		klog.WarningDepth(2, "failed to update status of ManagedCluster: %v", lastError)
 	}
+}
+
+// getNewManagedClusterLabels return managedCluster labels
+// for the labels begin with known.SpecificNodeLabelsKeyPrefix, will use the newly acquired node labels
+func (mgr *Manager) getNewManagedClusterLabels() map[string]string {
+	managedClusterLabels := mgr.managedCluster.GetLabels()
+	for k, _ := range managedClusterLabels {
+		if strings.HasPrefix(k, known.SpecificNodeLabelsKeyPrefix) {
+			delete(managedClusterLabels, k)
+		}
+	}
+	return labels.Merge(managedClusterLabels, mgr.clusterStatusController.GetManagedClusterLabels())
 }

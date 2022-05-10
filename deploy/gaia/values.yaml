@@ -7,6 +7,8 @@ clusterName: cluster1
 mcSource: informer
 promUrlPrefix: ""
 
+useHypernodeController: false
+
 replicaCount: 3
 
 image:

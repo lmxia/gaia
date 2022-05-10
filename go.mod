@@ -3,6 +3,8 @@ module github.com/lmxia/gaia
 go 1.14
 
 require (
+	github.com/SUMMERLm/hyperNodes v0.0.0-20220411082828-8c56025edf7c
+	github.com/clusternet/clusternet v0.9.1 // indirect
 	github.com/google/go-cmp v0.5.7
 	github.com/onsi/gomega v1.17.0 // indirect
 	github.com/prometheus/client_golang v1.11.1
@@ -10,6 +12,7 @@ require (
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
 	gonum.org/v1/gonum v0.11.0
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5

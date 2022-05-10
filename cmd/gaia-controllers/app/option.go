@@ -18,6 +18,7 @@ type options struct {
 	clusterRegistration        *ClusterRegistrationOptions
 	managedClusterSource       string
 	prometheusMonitorUrlPrefix string
+	useHypernodeController     bool
 }
 
 // AddFlags adds the flags to the flagset.
@@ -29,6 +30,8 @@ func (opts *options) AddFlags(fs *pflag.FlagSet) {
 		"where to get the managerCluster Resource.")
 	fs.StringVar(&opts.prometheusMonitorUrlPrefix, "promUrlPrefix", opts.prometheusMonitorUrlPrefix,
 		"The prefix of the prometheus monitor url.")
+	fs.BoolVar(&opts.useHypernodeController, "useHypernodeController", opts.useHypernodeController,
+		"Whether use hypernode controller, default value is false.")
 }
 
 // NewOptions creates a new *options with sane defaults

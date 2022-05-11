@@ -22,7 +22,6 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
-	hypernodeinformers "github.com/SUMMERLm/hyperNodes/pkg/generated/informers/externalversions"
 	hypernodelister "github.com/SUMMERLm/hyperNodes/pkg/generated/listers/cluster/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
@@ -50,6 +49,7 @@ type Controller struct {
 	mclsLister             gaialister.ManagedClusterLister
 	nodeLister             corev1lister.NodeLister
 	hypernodeLister        hypernodelister.HypernodeLister
+	hypernodeClient        *hypernodeclientset.Clientset
 	nodeSynced             cache.InformerSynced
 	podLister              corev1lister.PodLister
 	podSynced              cache.InformerSynced
@@ -66,10 +66,6 @@ func NewController(ctx context.Context, apiserverURL, managedClusterSource, prom
 	gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Informer()
 	gaiaInformerFactory.Start(ctx.Done())
 
-	hypernodeInformerFactory := hypernodeinformers.NewSharedInformerFactory(hypernodeClient, known.DefaultResync)
-	hypernodeInformerFactory.Cluster().V1alpha1().Hypernodes().Informer()
-	hypernodeInformerFactory.Start(ctx.Done())
-
 	return &Controller{
 		kubeClient:             kubeClient,
 		lock:                   &sync.Mutex{},
@@ -80,7 +76,7 @@ func NewController(ctx context.Context, apiserverURL, managedClusterSource, prom
 		promUrlPrefix:          promUrlPrefix,
 		mclsLister:             gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
 		nodeLister:             kubeInformerFactory.Core().V1().Nodes().Lister(),
-		hypernodeLister:        hypernodeInformerFactory.Cluster().V1alpha1().Hypernodes().Lister(),
+		hypernodeClient:        hypernodeClient,
 		useHypernodeController: useHypernodeController,
 		nodeSynced:             kubeInformerFactory.Core().V1().Nodes().Informer().HasSynced,
 		podLister:              kubeInformerFactory.Core().V1().Pods().Lister(),
@@ -286,12 +282,12 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 	nodeLabels = make(map[string]string)
 	if c.useHypernodeController {
-		hypernodes, err := c.hypernodeLister.List(labels.Everything())
+		hypernodeList, err := c.hypernodeClient.ClusterV1alpha1().Hypernodes(metav1.NamespaceDefault).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			klog.Warningf("failed to list hypernodes: %v", err)
 		}
 
-		for _, hypernode := range hypernodes {
+		for _, hypernode := range hypernodeList.Items {
 			// get hypernodes' labels that are in Cluster level
 			if hypernode.Spec.NodeAreaType == "cluster" {
 				nodeLabels = parseNodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())

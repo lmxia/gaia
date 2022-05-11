@@ -5,9 +5,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.8.0
   creationTimestamp: null
-  name: resourcebindings.platform.gaia.io
+  name: resourcebindings.apps.gaia.io
 spec:
-  group: platform.gaia.io
+  group: apps.gaia.io
   names:
     categories:
     - gaia
@@ -41,12 +41,19 @@ spec:
                 type: string
               namespace:
                 type: string
+              networkPath:
+                items:
+                  format: byte
+                  type: string
+                type: array
               parentAppID:
                 type: string
               parentRB:
                 type: string
               rbApps:
                 x-kubernetes-preserve-unknown-fields: true
+              totalpeer:
+                type: integer
             type: object
           status:
             properties:

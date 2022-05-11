@@ -48,7 +48,11 @@ spec:
       containers:
         - name: gaia
           image: lmxia/gaia:{{ .Values.image.tag }}
-          command: [" gaia --clustername={{ .Values.common.clusterName }} --mcSource={{ .Values.common.mcSource }} --promUrlPrefix={{ .Values.common.promUrlPrefix }} --useHypernodeController={{ .Values.common.useHypernodeController }} "]
+          args:
+            - --clustername={{ .Values.common.clusterName }}
+            - --mcSource={{ .Values.common.mcSource }}
+            - --promUrlPrefix={{ .Values.common.promUrlPrefix }}
+            - --useHypernodeController={{ .Values.common.useHypernodeController }}
           resources:
             limits:
               cpu: 100m

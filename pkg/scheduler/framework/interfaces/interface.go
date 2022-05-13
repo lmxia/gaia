@@ -25,7 +25,7 @@ type ResourceBindingScore struct {
 }
 
 func (rbScores ResourceBindingScoreList) Len() int {
-	return  len(rbScores)
+	return len(rbScores)
 }
 
 func (rbScores ResourceBindingScoreList) Less(i, j int) bool {

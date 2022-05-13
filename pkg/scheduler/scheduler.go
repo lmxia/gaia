@@ -307,7 +307,9 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 				klog.V(3).InfoS("scheduler success, but desc not created success in sub child cluster.", err)
 			}
 		}
-
+		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+		// TODO check if failed
+		sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
 		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 		metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 		klog.V(3).InfoS("scheduler success", scheduleResult)
@@ -358,7 +360,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 				rb.Namespace = common.GaiaRSToBeMergedReservedNamespace
 				rb.Spec = appsapi.ResourceBindingSpec{
 					AppID:     desc.Name,
-					ParentRB:  item.Name,
+					ParentRB:  item.Spec.ParentRB,
 					RbApps:    item.Spec.RbApps,
 					TotalPeer: len(rbs),
 				}
@@ -410,6 +412,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
 			common.GaiaDescriptionLabel: desc.Name,
 		}).String()})
+	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+	// TODO check if failed
+	sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 	klog.V(3).InfoS("scheduler success")
@@ -500,8 +505,14 @@ func (sched *Scheduler) addLocalAllEventHandlers() {
 					defer sched.lockLocal.Unlock()
 					return false
 				}
-				// TODO: filter scheduler name
-				return true
+				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending {
+					// TODO: filter scheduler name
+					return true
+				} else {
+					sched.lockParent.Lock()
+					defer sched.lockParent.Unlock()
+					return false
+				}
 			case cache.DeletedFinalStateUnknown:
 				if _, ok := t.Obj.(*appsapi.Description); ok {
 					return true
@@ -552,8 +563,15 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 					defer sched.lockParent.Unlock()
 					return false
 				}
-				// TODO: filter scheduler name
-				return true
+				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending {
+					// TODO: filter scheduler name
+					return true
+				} else {
+					sched.lockParent.Lock()
+					defer sched.lockParent.Unlock()
+					return false
+				}
+
 			case cache.DeletedFinalStateUnknown:
 				if _, ok := t.Obj.(*appsapi.Description); ok {
 					return true

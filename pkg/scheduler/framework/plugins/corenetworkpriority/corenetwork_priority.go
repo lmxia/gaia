@@ -16,8 +16,6 @@ type CoreNetworkPriority struct {
 	handle framework.Handle
 }
 
-
-
 var _ framework.ScorePlugin = &CoreNetworkPriority{}
 
 // Name returns name of the plugin. It is used in logs, etc.
@@ -38,7 +36,6 @@ func (pl *CoreNetworkPriority) Score(ctx context.Context, rb *v1alpha1.ResourceB
 
 	return calculateScore(0, rb.Spec.RbApps, clusterMap), nil
 }
-
 
 // ScoreExtensions of the Score plugin.
 func (pl *CoreNetworkPriority) ScoreExtensions() framework.ScoreExtensions {

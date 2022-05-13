@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"sort"
-
 	"sync"
 	"sync/atomic"
 	"time"
@@ -106,7 +105,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				if comm.Workload.Workloadtype == common.WorkloadTypeDeployment {
 					componentMat := makeComponentPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), spreadLevel)
 					allResultGlobal[j][i] = componentMat
-				} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless{
+				} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless {
 					componentMat := makeServelessPlan(allPlan, 1)
 					allResultGlobal[j][i] = componentMat
 				}
@@ -118,7 +117,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 					if comm.Workload.Workloadtype == common.WorkloadTypeDeployment {
 						componentMat := makeComponentPlans(allPlan, replicas, spreadLevel)
 						allResultWithRB[j][k][i] = componentMat
-					} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless{
+					} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless {
 						componentMat := makeServelessPlan(allPlan, replicas)
 						allResultWithRB[j][k][i] = componentMat
 					}
@@ -131,23 +130,35 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		add one-by-one network filter plugin.
 	*/
 
-	rbsResult := make([]*v1alpha1.ResourceBinding, 0)
+	rbsResultFinal := make([]*v1alpha1.ResourceBinding, 0)
 
 	// NO.2 first we should spawn rbs.
 	if desc.Namespace == common.GaiaReservedNamespace {
-		rbsResult = spawnResourceBindings(allResultGlobal, allClusters, desc)
+		// all 5
+		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc)
+		if len(rbsResultFinal) > 2 {
+			// score plugins.
+			priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResultFinal)
+			// select 2
+			rbsResultFinal, err = g.selectResourceBindings(priorityList, rbsResultFinal)
+		} else {
+			rbsResultFinal = append(rbsResultFinal, rbsResultFinal...)
+		}
 	} else {
 		rbIndex := 0
 		for i, rbOld := range rbs {
+			rbsResult := make([]*v1alpha1.ResourceBinding, 0)
 			rbForrb := spawnResourceBindings(allResultWithRB[i], allClusters, desc)
-			var resourceBindingApps *v1alpha1.ResourceBindingApps = nil
-			for _, rbapp := range rbOld.Spec.RbApps {
-				if rbapp.ClusterName == g.cache.GetSelfClusterName() {
-					resourceBindingApps = rbapp
-					break
+			for j, _ := range rbForrb {
+				subRBApps := make([]*v1alpha1.ResourceBindingApps, 0)
+				for _, rbapp := range rbOld.Spec.RbApps {
+					rbItemApp := rbapp.DeepCopy()
+					subRBApps = append(subRBApps, rbItemApp)
+					if rbItemApp.ClusterName == g.cache.GetSelfClusterName() {
+						rbItemApp.Children = rbForrb[j].Spec.RbApps
+					}
 				}
-			}
-			for _, item := range rbForrb {
+
 				rbNew := &v1alpha1.ResourceBinding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex),
@@ -158,24 +169,26 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 					Spec: v1alpha1.ResourceBindingSpec{
 						AppID:    desc.Name,
 						ParentRB: rbOld.Name,
-						RbApps:   rbOld.Spec.RbApps,
+						RbApps:   subRBApps,
 					},
 				}
 				rbNew.Kind = "ResourceBinding"
-				rbNew.APIVersion = "platform.gaia.io/v1alpha1"
+				rbNew.APIVersion = "apps.gaia.io/v1alpha1"
 				rbIndex += 1
-				resourceBindingApps.Children = item.Spec.RbApps
 				rbsResult = append(rbsResult, rbNew)
 			}
+			if len(rbsResult) > 2 {
+				// score plugins.
+				priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResult)
+				// select prioritize
+				rbsResult, err = g.selectResourceBindings(priorityList, rbsResult)
+			}
+			rbsResultFinal = append(rbsResultFinal, rbsResult...)
 		}
 	}
 
-	// score plugins.
-	priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResult)
-	// select prioritize
-	rbsResult, err = g.selectResourceBindings(priorityList, rbsResult)
 	return ScheduleResult{
-		ResourceBindings: rbsResult,
+		ResourceBindings: rbsResultFinal,
 	}, err
 }
 
@@ -239,7 +252,7 @@ func (g *genericScheduler) selectResourceBindings(rbScoreList framework.Resource
 	sort.Sort(rbScoreList)
 
 	// Top best 2 rbs.
-	selected := []*v1alpha1.ResourceBinding {
+	selected := []*v1alpha1.ResourceBinding{
 		0: result[rbScoreList[0].Index],
 		1: result[rbScoreList[1].Index],
 	}

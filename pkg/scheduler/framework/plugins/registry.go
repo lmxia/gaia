@@ -11,6 +11,6 @@ import (
 func NewInTreeRegistry() runtime.Registry {
 	return runtime.Registry{
 		names.TaintToleration: tainttoleration.New,
-		names.CorePriority: corenetworkpriority.New,
+		names.CorePriority:    corenetworkpriority.New,
 	}
 }

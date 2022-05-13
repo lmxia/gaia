@@ -3,19 +3,20 @@ package algorithm
 import (
 	"errors"
 	"fmt"
-	"github.com/lmxia/gaia/pkg/common"
 	"math"
 	"math/rand"
 	"reflect"
 	"sort"
 	"time"
 
-	appv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	"github.com/lmxia/gaia/pkg/scheduler/framework"
 	"gonum.org/v1/gonum/mat"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	appv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/scheduler/framework"
 )
 
 const (
@@ -64,7 +65,7 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 				},
 			}
 			rb.Kind = "ResourceBinding"
-			rb.APIVersion = "platform.gaia.io/v1alpha1"
+			rb.APIVersion = "apps.gaia.io/v1alpha1"
 			if checkContainMatrix(matResult, item) {
 				continue
 			}
@@ -103,7 +104,7 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 // makeServelessPlan return serverless plan
 func makeServelessPlan(capability []*framework.ClusterInfo, replicas int64) mat.Matrix {
 	result := mat.NewDense(1, len(capability), nil)
-	if replicas > 0  {
+	if replicas > 0 {
 		numResult := make([]float64, len(capability))
 		for i, item := range capability {
 			if item.Total > 0 {
@@ -118,7 +119,6 @@ func makeServelessPlan(capability []*framework.ClusterInfo, replicas int64) mat.
 	}
 	return result
 }
-
 
 // makeComponentPlans make plans for specific component
 func makeComponentPlans(capability []*framework.ClusterInfo, componentTotal, spreadOver int64) mat.Matrix {
@@ -212,7 +212,7 @@ func makeResourceBindingMatrix(in []mat.Matrix) ([]mat.Matrix, error) {
 }
 
 // constructResourceBinding
- func getComponentClusterTotal(rbApps []*appv1alpha1.ResourceBindingApps, clusterName, componentName string) int64 {
+func getComponentClusterTotal(rbApps []*appv1alpha1.ResourceBindingApps, clusterName, componentName string) int64 {
 	for _, rbApp := range rbApps {
 		if rbApp.ClusterName == clusterName {
 			return int64(rbApp.Replicas[componentName])

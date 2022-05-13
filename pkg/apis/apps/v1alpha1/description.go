@@ -122,7 +122,7 @@ type SchedulePolicy struct {
 type DescriptionStatus struct {
 	// Phase denotes the phase of Description
 	// +optional
-	// +kubebuilder:validation:Enum=Pending;Success;Failure
+	// +kubebuilder:validation:Enum=Pending;Scheduled;Failure
 	Phase DescriptionPhase `json:"phase,omitempty"`
 
 	// Reason indicates the reason of DescriptionPhase
@@ -140,8 +140,9 @@ const (
 type DescriptionPhase string
 
 const (
-	DescriptionPhaseSuccess DescriptionPhase = "Success"
-	DescriptionPhaseFailure DescriptionPhase = "Failure"
+	DescriptionPhaseScheduled DescriptionPhase = "Scheduled"
+	DescriptionPhasePending   DescriptionPhase = "Pending"
+	DescriptionPhaseFailure   DescriptionPhase = "Failure"
 )
 
 // +kubebuilder:object:root=true

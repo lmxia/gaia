@@ -7,6 +7,7 @@ import (
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/names"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/netenviroment"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/resform"
+	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/runtimetype"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/specificresource"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/supplier"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/tainttoleration"
@@ -24,5 +25,6 @@ func NewInTreeRegistry() runtime.Registry {
 		names.Geolocation:      geolocation.New,
 		names.SupplierName:     supplier.New,
 		names.ResForm:          resform.New,
+		names.RuntimeType:      runtimetype.New,
 	}
 }

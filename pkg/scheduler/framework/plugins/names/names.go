@@ -9,4 +9,5 @@ const (
 	Geolocation      = "GeoLocation"
 	SupplierName     = "SupplierName"
 	ResForm          = "ResForm"
+	RuntimeType      = "RuntimeType"
 )

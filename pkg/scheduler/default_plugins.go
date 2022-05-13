@@ -18,6 +18,7 @@ func getDefaultPlugins() *schedulerapis.Plugins {
 				{Name: names.Geolocation},
 				{Name: names.SupplierName},
 				{Name: names.ResForm},
+				{Name: names.RuntimeType},
 			},
 		},
 		PostFilter: schedulerapis.PluginSet{},

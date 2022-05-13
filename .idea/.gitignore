@@ -1,6 +1,10 @@
 # Default ignored files
 /shelf/
+/deployment.xml
+/sshConfigs.xml
+/webServers.xml
 /workspace.xml
+/misc.xml
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml

@@ -126,7 +126,7 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, e
 	utilruntime.Must(platformapi.AddToScheme(scheme.Scheme))
 	recorder := broadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "gaia-scheduler"})
 
-	schedulerCache := schedulercache.New(localAllGaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister())
+	schedulerCache := schedulercache.New(localAllGaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(), childGaiaClientSet)
 	dynamicClient, err := dynamic.NewForConfig(localSuperKubeConfig)
 	if err != nil {
 		return nil, err

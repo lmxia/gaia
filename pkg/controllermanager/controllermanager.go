@@ -62,7 +62,7 @@ type ControllerManager struct {
 }
 
 // NewAgent returns a new Agent.
-func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, managedClusterSource, promUrlPrefix string, useHypernodeController bool) (*ControllerManager, error) {
+func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName string, managedCluster *clusterapi.ManagedClusterOptions) (*ControllerManager, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get hostname: %v", err)
@@ -77,12 +77,16 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		return nil, err
 	}
 
-	if len(managedClusterSource) <= 0 {
-		managedClusterSource = known.ManagedClusterSourceFromInformer
+	if len(managedCluster.ManagedClusterSource) <= 0 {
+		managedCluster.ManagedClusterSource = known.ManagedClusterSourceFromInformer
 	}
 
-	if managedClusterSource == known.ManagedClusterSourceFromPrometheus && len(promUrlPrefix) <= 0 {
-		promUrlPrefix = known.PrometheusUrlPrefix
+	if managedCluster.ManagedClusterSource == known.ManagedClusterSourceFromPrometheus && len(managedCluster.PrometheusMonitorUrlPrefix) <= 0 {
+		managedCluster.PrometheusMonitorUrlPrefix = known.PrometheusUrlPrefix
+	}
+
+	if len(managedCluster.TopoSyncBaseUrl) <= 0 {
+		managedCluster.TopoSyncBaseUrl = known.TopoSyncBaseUrl
 	}
 
 	// create clientset for child cluster
@@ -97,7 +101,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	if err != nil {
 		klog.Error(err)
 	}
-	statusManager := NewStatusManager(ctx, childKubeConfig.Host, managedClusterSource, promUrlPrefix, childKubeClientSet, childGaiaClientSet, hypernodeClientSet, useHypernodeController)
+	statusManager := NewStatusManager(ctx, childKubeConfig.Host, clusterHostName, managedCluster, childKubeClientSet, childGaiaClientSet, hypernodeClientSet)
 
 	agent := &ControllerManager{
 		ctx:                 ctx,

@@ -1,9 +1,14 @@
 package v1alpha1
 
 import (
+	"fmt"
+	"github.com/lmxia/gaia/pkg/common"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"net/url"
+	"regexp"
+	"strings"
 )
 
 // +genclient
@@ -136,6 +141,12 @@ type ManagedClusterStatus struct {
 	// heartbeatFrequencySeconds is the frequency at which the agent reports current cluster status
 	// +optional
 	HeartbeatFrequencySeconds *int64 `json:"heartbeatFrequencySeconds,omitempty"`
+
+	// TopologyInfo is the network topology of the cluster.
+	//
+	// +optional
+	// +kubebuilder:validation:Type=object
+	TopologyInfo Topo `json:"topologyInfo,omitempty"`
 }
 
 // +genclient
@@ -299,4 +310,75 @@ type ClusterRegistrationRequestList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ClusterRegistrationRequest `json:"items"`
+}
+
+// ManagedClusterOptions holds the command-line options about managedCluster
+type ManagedClusterOptions struct {
+	//ManagedClusterSource specified where to get the managerCluster Resource.
+	ManagedClusterSource string
+	//PrometheusMonitorUrlPrefix specified the prefix of the prometheus monitor url.
+	PrometheusMonitorUrlPrefix string
+	//TopoSyncBaseUrl is the base url of the synccontroller service.
+	TopoSyncBaseUrl string
+	//UseHypernodeController means whether use hypernode controller, default value is false.
+	UseHypernodeController bool
+}
+
+// NewClusterRegistrationOptions creates a new *ClusterRegistrationOptions with sane defaults
+func NewManagedClusterOptions() *ManagedClusterOptions {
+	return &ManagedClusterOptions{
+		ManagedClusterSource:       common.ManagedClusterSourceFromInformer,
+		PrometheusMonitorUrlPrefix: common.PrometheusUrlPrefix,
+		TopoSyncBaseUrl:            common.TopoSyncBaseUrl,
+		UseHypernodeController:     false,
+	}
+}
+
+// Complete completes all the required options.
+func (opts *ManagedClusterOptions) Complete() {
+	opts.ManagedClusterSource = strings.TrimSpace(opts.ManagedClusterSource)
+	opts.PrometheusMonitorUrlPrefix = strings.TrimSpace(opts.PrometheusMonitorUrlPrefix)
+	opts.TopoSyncBaseUrl = strings.TrimSpace(opts.TopoSyncBaseUrl)
+}
+
+var validateClusterNameRegex = regexp.MustCompile(common.NameFmt)
+
+// Validate validates all the required options.
+func (opts *ManagedClusterOptions) Validate() []error {
+	var allErrs []error
+
+	// validate managedClusterSource and prometheusMonitorUrlPrefix options
+	if len(opts.ManagedClusterSource) > 0 {
+		if !validateClusterNameRegex.MatchString(opts.ManagedClusterSource) {
+			allErrs = append(allErrs,
+				fmt.Errorf("invalid name for --%s, regex used for validation is %q", common.ClusterRegistrationName, common.NameFmt))
+		}
+
+		if opts.ManagedClusterSource != common.ManagedClusterSourceFromPrometheus && opts.ManagedClusterSource != common.ManagedClusterSourceFromInformer {
+			allErrs = append(allErrs, fmt.Errorf("Invalid value for managedClusterSource --%s, please use 'prometheus' or 'informer'. ", opts.ManagedClusterSource))
+		}
+
+		if len(opts.PrometheusMonitorUrlPrefix) > 0 {
+			_, err := url.ParseRequestURI(opts.PrometheusMonitorUrlPrefix)
+			if err != nil {
+				allErrs = append(allErrs, fmt.Errorf("invalid value for --%s: %v", opts.PrometheusMonitorUrlPrefix, err))
+			}
+		}
+	}
+	return allErrs
+}
+
+type Topos struct {
+	Topo []Topo `json:"topo,omitempty"`
+}
+
+type Topo struct {
+	// field name
+	Field string `json:"field,omitempty"`
+	// topo in protobuf
+	Content string `json:"content,omitempty"`
+}
+
+type Fields struct {
+	Field []string `json:"field,omitempty"`
 }

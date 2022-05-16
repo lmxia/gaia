@@ -54,6 +54,9 @@ const (
 	GaiaDescriptionLabel = "apps.gaia.io/description"
 	StatusScheduling     = "scheduling"
 	NetworkLocationCore  = "core"
+
+	TopoSyncBaseUrl = "http://ssiexpose.synccontroller.svc:8080"
+	TopoSyncUrlPath = "/v1.0/globalsync/topo"
 )
 
 // lease lock

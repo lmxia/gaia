@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,12 +14,10 @@ import (
 
 // ClusterRegistrationOptions holds the command-line options for command
 type options struct {
-	kubeconfig                 string
-	clusterHostName            string
-	clusterRegistration        *ClusterRegistrationOptions
-	managedClusterSource       string
-	prometheusMonitorUrlPrefix string
-	useHypernodeController     bool
+	kubeconfig          string
+	clusterHostName     string
+	clusterRegistration *ClusterRegistrationOptions
+	managedCluster      *clusterapi.ManagedClusterOptions
 }
 
 // AddFlags adds the flags to the flagset.
@@ -26,11 +25,13 @@ func (opts *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&opts.kubeconfig, "kubeconfig", opts.kubeconfig,
 		"Path to a kubeconfig file for current child cluster. Only required if out-of-cluster")
 	fs.StringVar(&opts.clusterHostName, "clustername", opts.clusterHostName, "To generate ClusterRegistration name and gaiaName as gaia-'clustername'-UID ")
-	fs.StringVar(&opts.managedClusterSource, "mcSource", opts.managedClusterSource,
+	fs.StringVar(&opts.managedCluster.ManagedClusterSource, "mcSource", opts.managedCluster.ManagedClusterSource,
 		"where to get the managerCluster Resource.")
-	fs.StringVar(&opts.prometheusMonitorUrlPrefix, "promUrlPrefix", opts.prometheusMonitorUrlPrefix,
+	fs.StringVar(&opts.managedCluster.PrometheusMonitorUrlPrefix, "promUrlPrefix", opts.managedCluster.PrometheusMonitorUrlPrefix,
 		"The prefix of the prometheus monitor url.")
-	fs.BoolVar(&opts.useHypernodeController, "useHypernodeController", opts.useHypernodeController,
+	fs.StringVar(&opts.managedCluster.TopoSyncBaseUrl, "topoSyncBaseUrl", opts.managedCluster.TopoSyncBaseUrl,
+		"The base url of the synccontroller service.")
+	fs.BoolVar(&opts.managedCluster.UseHypernodeController, "useHypernodeController", opts.managedCluster.UseHypernodeController,
 		"Whether use hypernode controller, default value is false.")
 }
 
@@ -38,6 +39,7 @@ func (opts *options) AddFlags(fs *pflag.FlagSet) {
 func NewOptions() *options {
 	return &options{
 		clusterRegistration: NewClusterRegistrationOptions(),
+		managedCluster:      clusterapi.NewManagedClusterOptions(),
 	}
 }
 
@@ -74,6 +76,7 @@ func NewClusterRegistrationOptions() *ClusterRegistrationOptions {
 func (opts *options) Complete() {
 	// complete cluster registration options
 	opts.clusterRegistration.Complete()
+	opts.managedCluster.Complete()
 }
 
 // Complete completes all the required options.
@@ -90,24 +93,10 @@ func (opts *options) Validate() error {
 	errs := opts.clusterRegistration.Validate()
 	allErrs = append(allErrs, errs...)
 
-	// validate managedClusterSource and prometheusMonitorUrlPrefix options
-	if len(opts.managedClusterSource) > 0 {
-		if !validateClusterNameRegex.MatchString(opts.managedClusterSource) {
-			allErrs = append(allErrs,
-				fmt.Errorf("invalid name for --%s, regex used for validation is %q", common.ClusterRegistrationName, common.NameFmt))
-		}
+	// validate managed cluster options
+	mcErrs := opts.managedCluster.Validate()
+	allErrs = append(allErrs, mcErrs...)
 
-		if opts.managedClusterSource != common.ManagedClusterSourceFromPrometheus && opts.managedClusterSource != common.ManagedClusterSourceFromInformer {
-			allErrs = append(allErrs, fmt.Errorf("Invalid value for managedClusterSource --%s, please use 'prometheus' or 'informer'. ", opts.managedClusterSource))
-		}
-
-		if len(opts.prometheusMonitorUrlPrefix) > 0 {
-			_, err := url.ParseRequestURI(opts.prometheusMonitorUrlPrefix)
-			if err != nil {
-				allErrs = append(allErrs, fmt.Errorf("invalid value for --%s: %v", opts.prometheusMonitorUrlPrefix, err))
-			}
-		}
-	}
 	return utilerrors.NewAggregate(allErrs)
 }
 

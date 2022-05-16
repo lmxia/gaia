@@ -38,7 +38,7 @@ type Manager struct {
 	localSuperKubeConfig *rest.Config
 }
 
-func NewStatusManager(ctx context.Context, apiserverURL, managedClusterSource, promUrlPrefix string, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset, useHypernodeController bool) *Manager {
+func NewStatusManager(ctx context.Context, apiserverURL, clusterName string, managedCluster *clusterapi.ManagedClusterOptions, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset) *Manager {
 	retryCtx, retryCancel := context.WithTimeout(ctx, known.DefaultRetryPeriod)
 	defer retryCancel()
 
@@ -58,8 +58,8 @@ func NewStatusManager(ctx context.Context, apiserverURL, managedClusterSource, p
 
 	return &Manager{
 		statusReportFrequency: metav1.Duration{Duration: common.DefaultClusterStatusCollectFrequency},
-		clusterStatusController: clusterstatus.NewController(ctx, apiserverURL, managedClusterSource, promUrlPrefix,
-			kubeClient, gaiaClient, hypernodeClient, useHypernodeController, common.DefaultClusterStatusCollectFrequency, common.DefaultClusterStatusReportFrequency),
+		clusterStatusController: clusterstatus.NewController(ctx, apiserverURL, clusterName, managedCluster,
+			kubeClient, gaiaClient, hypernodeClient, common.DefaultClusterStatusCollectFrequency, common.DefaultClusterStatusReportFrequency),
 		localSuperKubeConfig: clusterStatusKubeConfig,
 	}
 }

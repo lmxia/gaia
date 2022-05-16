@@ -5,6 +5,7 @@ package algorithm
 import (
 	"context"
 	"fmt"
+	"github.com/lmxia/gaia/pkg/networkfilter/npcore"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -126,18 +127,18 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		}
 	}
 
-	networkInfoMap := g.getTopologyInfoMap()
-	klog.Infof("Log: networkInfoMap is %v", networkInfoMap)
-	/*
-		add one-by-one network filter plugin.
-	*/
-
 	rbsResultFinal := make([]*v1alpha1.ResourceBinding, 0)
 
 	// NO.2 first we should spawn rbs.
 	if desc.Namespace == common.GaiaReservedNamespace {
 		// all 5
 		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc)
+		// 1. add networkfileter only if we can get nwr
+		if nwr, err := g.cache.GetNetworkRequirement(desc); err == nil {
+			networkInfoMap := g.getTopologyInfoMap()
+			klog.Infof("Log: networkInfoMap is %v", networkInfoMap)
+			rbsResultFinal = npcore.NetworkFilter(rbsResultFinal, nwr, networkInfoMap)
+		}
 		if len(rbsResultFinal) > 2 {
 			// score plugins.
 			priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResultFinal)

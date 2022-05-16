@@ -1,7 +1,9 @@
 package cache
 
 import (
+	"context"
 	"fmt"
+	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -33,6 +35,9 @@ type Cache interface {
 	// GetResourceBindings get rb related to description with specific status.
 	ListResourceBindings(description *v1alpha1.Description, status string) []*v1alpha1.ResourceBinding
 
+	//
+	GetNetworkRequirement(description *v1alpha1.Description) (*v1alpha1.NetworkRequirement, error)
+
 	//SetSelfClusterName set self cluster name
 	SetSelfClusterName(name string)
 
@@ -42,6 +47,7 @@ type Cache interface {
 type schedulerCache struct {
 	clusterListers        platformlisters.ManagedClusterLister
 	resourcebindingLister applisters.ResourceBindingLister
+	localGaiaClient       *gaiaClientSet.Clientset
 	selfClusterName       string
 }
 
@@ -76,9 +82,10 @@ func (s *schedulerCache) GetCLuster(namespacedName string) (*clusterapi.ManagedC
 	return s.clusterListers.ManagedClusters(ns).Get(name)
 }
 
-func New(clusterListers platformlisters.ManagedClusterLister) Cache {
+func New(clusterListers platformlisters.ManagedClusterLister, localGaiaClient *gaiaClientSet.Clientset) Cache {
 	return &schedulerCache{
-		clusterListers: clusterListers,
+		clusterListers:  clusterListers,
+		localGaiaClient: localGaiaClient,
 	}
 }
 
@@ -107,4 +114,12 @@ func (s *schedulerCache) ListResourceBindings(desc *v1alpha1.Description, status
 	} else {
 		return rbs
 	}
+}
+
+func (s *schedulerCache) GetNetworkRequirement(desc *v1alpha1.Description) (*v1alpha1.NetworkRequirement, error) {
+	nwr, err := s.localGaiaClient.AppsV1alpha1().NetworkRequirements(desc.Namespace).Get(context.TODO(), desc.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return nwr, nil
 }

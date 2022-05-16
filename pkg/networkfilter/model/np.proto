@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+//option go_package="./;ncsnp";
+package ncsnp;
+
+/****************************************域内和域间vlink信息***********************************************************/
+/****************************************使用场景：1、资源管理通过sync推送控制器；2、控制器通过SBI下发设备；3、UI查询 ***********************************************************/
+message VLinkSla {
+    uint32 Delay     = 1; //网络延迟时间，单位ms
+    uint32 Jitter    = 2; //网络抖动时间，单位ms
+    uint32 Loss      = 3; //网络丢包率[0-100]
+    uint64 Bandwidth = 4; //网络带宽，单位kbps
+    uint64 FreeBandwidth = 5; //当前可用带宽，单位kbps
+}
+
+message FieldVLink {
+    string LocalNodeSN     = 1;
+    string RemoteNodeSN    = 2;
+    string LocalInterface  = 3; //实际物理口名称
+    uint64 AttachId        = 4;
+    VLinkSla VLinkSlaAttr  = 5;
+    string OpaqueValue     = 6; //underlay数据结构序列化字符串，控制器仅仅透传
+}
+
+message DomainVLink {
+    string LocalDomainName   = 1;
+    uint32 LocalDomainId     = 2;
+    string RemoteDomainName  = 3;
+    uint32 RemoteDomainId    = 4;
+    string LocalNodeSN       = 5;
+    string RemoteNodeSN      = 6;
+    string LocalInterface    = 7; //实际物理口名称
+    uint64 AttachDomainId    = 8;
+    VLinkSla   VLinkSlaAttr  = 9;
+    string OpaqueValue       = 10; //underlay数据结构序列化字符串，控制器仅仅透传
+    string AttachDomainName  = 11; //AttachDomainId对应的Fabric名称
+
+}
+
+/**********************************************上报融合管理接口 Begin ******************************************************************/
+
+message FieldTopoCacheNotify {
+    uint64    SequenceNum     = 1;
+    uint32    LocalDomainId   = 2;
+    string    LocalDomainName = 3;
+    string    LocalNodeSN     = 4;  //LocalNodeSN 如果是空，表明是所有设备
+    repeated FieldVLink FieldVLinkArray = 5;
+}
+
+message DomainTopoCacheNotify {
+    uint64    SequenceNum     = 1;
+    uint32    LocalDomainId   = 2;
+    string    LocalDomainName = 3;
+    string    LocalNodeSN     = 4;  //LocalNodeSN 如果是空，表明是所有设备
+    repeated DomainVLink DomainVLinkArray = 5;
+}
+
+/**********************************************上报融合管理接口 End ******************************************************************/
+
+message Id2Name {
+    string DomainID = 1;
+    string Name     = 2;
+}
+
+message TopoWithFabricMap {
+    repeated Id2Name NameMap    = 1;
+    bytes Contend               = 2;
+}
+
+//一种resourcebing的方案
+message BindingSelectedDomainPath {
+    repeated AppConnectSelectedDomainPath SelectedDomainPath  = 1;
+}
+
+//InterCommunication只选取一个副本的DomainSrPathArray
+message AppConnectSelectedDomainPath {
+    AppConnectAttr      AppConnect = 1;
+    repeated DomainInfo DomainList = 2;
+    bytes               Content    = 3;
+}
+
+message AppConnectAttr {
+    AppConnectKey  Key    = 1;
+    AppSlaAttr    SlaAttr = 2;
+}
+
+message AppConnectKey {
+    string  SrcSCNID     = 1;
+    string  DstSCNID     = 2;
+    uint32  SrcID        = 3;
+    uint32  DstID        = 4;
+    uint32  SrcDomainId  = 5;
+    uint32  DstDomainId  = 6;
+}
+
+message AppSlaAttr {
+    uint32  DelayValue          = 1;
+    uint32  LostValue           = 2;
+    uint32  JitterValue         = 3;
+    uint64  ThroughputValue     = 4;
+}
+
+message DomainInfo {
+    string DomainName = 1;
+    uint32 DomainId   = 2;
+    uint32 DomainType = 3;
+}

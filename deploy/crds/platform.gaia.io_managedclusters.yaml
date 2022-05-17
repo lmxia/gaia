@@ -132,11 +132,6 @@ spec:
               clusterCIDR:
                 description: ClusterCIDR is the CIDR range of the cluster
                 type: string
-              topologyInfo:
-                additionalProperties:
-                  type: string
-                description: TopologyInfo is the network topology of the cluster.
-                type: object
               conditions:
                 description: Conditions is an array of current cluster conditions.
                 items:
@@ -260,6 +255,16 @@ spec:
               serviceCIDR:
                 description: ServcieCIDR is the CIDR range of the services
                 type: string
+              topologyInfo:
+                description: TopologyInfo is the network topology of the cluster.
+                properties:
+                  content:
+                    description: topo in protobuf
+                    type: string
+                  field:
+                    description: field name
+                    type: string
+                type: object
             type: object
         type: object
     served: true

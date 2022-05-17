@@ -99,3 +99,8 @@ func Str2bytes(s string) []byte {
 	h := [3]uintptr{x[0], x[1], x[1]}
 	return *(*[]byte)(unsafe.Pointer(&h))
 }
+
+// bytes to str
+func Bytes2str(b []byte) string {
+	return *(*string)(unsafe.Pointer(&b))
+}

@@ -374,6 +374,8 @@ func GetDomainNameByDomainId(domainId uint32) string {
 
 	baseDomain := baseDomainGraph.BaseDomainFindById(domainId)
 	if baseDomain == nil {
+		infoString := fmt.Sprintf("The domain is nil and domainId is (%d)!\n", domainId)
+		nputil.TraceInfoEnd(infoString)
 		nputil.TraceErrorString("baseDomain is nil.")
 		return ""
 	}
@@ -623,6 +625,8 @@ func (baseDomain *BaseDomain) BaseDomainLinkAddFromCache(domainTopoCache ncsnp.D
 
 		//Add Fabric domain of the domainlink
 		if domainVlink.AttachDomainName != "" {
+			infoString := fmt.Sprintf("fabric domainId(%d) is , fabricName is (%s)", domainVlink.AttachDomainId, domainVlink.AttachDomainName)
+			nputil.TraceInfoEnd(infoString)
 			DomainAddForAllGraph(uint32(domainVlink.AttachDomainId), domainVlink.AttachDomainName, domainTypeString_Fabric_Internet)
 		}
 	}

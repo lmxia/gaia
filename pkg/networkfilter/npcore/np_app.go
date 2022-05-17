@@ -109,7 +109,7 @@ func getComponentReplicas(rbApp *v1alpha1.ResourceBindingApps, componentName str
 		replicasVal = replicas
 
 	} else {
-		fmt.Print("The component (%s) doesn't exist!\n", componentName)
+		fmt.Printf("The component (%s) doesn't exist!\n", componentName)
 		infoString := fmt.Sprintf("The component (%s) doesn't exist!\n", componentName)
 		nputil.TraceInfo(infoString)
 	}
@@ -128,7 +128,7 @@ func GetFiledNamebyComponent(rbApp *v1alpha1.ResourceBindingApps, componentName 
 		ret = true
 
 	} else {
-		fmt.Print("The field(%s) doesn't have the component (%s)!\n", rbApp.ClusterName, componentName)
+		fmt.Printf("The field(%s) doesn't have the component (%s)!\n", rbApp.ClusterName, componentName)
 		infoString := fmt.Sprintf("The field(%s) doesn't have the component (%s)!\n", rbApp.ClusterName, componentName)
 		nputil.TraceInfo(infoString)
 		ret = false
@@ -190,7 +190,17 @@ func SetComponentByRb(rb v1alpha1.ResourceBinding) {
 	local := GetCoreLocal()
 	for _, rbApp := range rb.Spec.RbApps {
 		for comName, replicas := range rbApp.Replicas {
+			if replicas == 0 {
+				continue
+			}
 			filedName := rbApp.ClusterName
+			fmt.Printf("filedName is [%s], local.ComponentArray[%s] is (%+v).\n", filedName, comName, local.ComponentArray[comName])
+			infoString := fmt.Sprintf("filedName is [%s], local.ComponentArray[%s] is (%+v).", filedName, comName, local.ComponentArray[comName])
+			nputil.TraceInfo(infoString)
+			//component不存在
+			if _, ok := local.ComponentArray[comName]; !ok {
+				continue
+			}
 			appCom := local.ComponentArray[comName]
 			filedList := appCom.FiledList
 			filedList[filedName] = uint32(replicas)
@@ -339,7 +349,7 @@ func CreateAppConnectAttrByScnInst(srcInst ScnIdInstance, dstInst ScnIdInstance)
 	srcDomainId, flag := getDomainIDbyName(srcInst.Filed)
 	if flag == false {
 		fmt.Printf("The source domain (%s) doesn't exist!\n", srcInst.Filed)
-		infoString := fmt.Sprintf("The component (%s) doesn't exist!\n", srcInst.Filed)
+		infoString := fmt.Sprintf("The source domain (%s) doesn't exist!\n", srcInst.Filed)
 		nputil.TraceInfo(infoString)
 		nputil.TraceInfoEnd("")
 		return nil
@@ -689,8 +699,8 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 	var rbDomainPathArray []BindingSelectedDomainPath
 	for i, appPathGroup := range domainPathCluster {
 		var rbSdp = BindingSelectedDomainPath{}
-		for _, appDomainPath := range appPathGroup {
-			infoString := fmt.Sprintf("appPathGroup[%d] is: (%+v).\n\n", appDomainPath)
+		for i, appDomainPath := range appPathGroup {
+			infoString := fmt.Sprintf("appPathGroup[%d] is: (%+v).\n\n", i, appDomainPath)
 			nputil.TraceInfo(infoString)
 			var appSelectedPath = AppConnectSelectedDomainPath{}
 			appSelectedPath.AppConnectAttr = appDomainPath.AppConnect

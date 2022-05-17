@@ -60,13 +60,17 @@ var yenShortestPathTests = []struct {
 		},*/
 		query: simple.Edge{F: simple.Node(1), T: simple.Node(4)},
 		k:     5,
-		wantPaths: [][]int64{
+		/*wantPaths: [][]int64{
 			{'C', 'E', 'F', 'H'},
 			{'C', 'E', 'G', 'H'},
 			{'C', 'D', 'F', 'H'},
+		},*/
+		wantPaths: [][]int64{
+			{1, 3, 4},
+			{1, 2, 3, 4},
 		},
 	},
-	/*{
+	{
 		name:  "1 edge graph",
 		graph: func() graph.WeightedEdgeAdder { return simple.NewWeightedDirectedGraph(0, math.Inf(1)) },
 		edges: []simple.WeightedEdge{
@@ -103,7 +107,7 @@ var yenShortestPathTests = []struct {
 	{
 		name:  "bipartite small",
 		graph: func() graph.WeightedEdgeAdder { return simple.NewWeightedDirectedGraph(0, math.Inf(1)) },
-		edges: bipartite(5, 3, 0),
+		edges: Bipartite(5, 3, 0),
 		query: simple.Edge{F: simple.Node(-1), T: simple.Node(1)},
 		k:     10,
 		wantPaths: [][]int64{
@@ -117,7 +121,7 @@ var yenShortestPathTests = []struct {
 	{
 		name:  "bipartite parity",
 		graph: func() graph.WeightedEdgeAdder { return simple.NewWeightedDirectedGraph(0, math.Inf(1)) },
-		edges: bipartite(5, 3, 0),
+		edges: Bipartite(5, 3, 0),
 		query: simple.Edge{F: simple.Node(-1), T: simple.Node(1)},
 		k:     5,
 		wantPaths: [][]int64{
@@ -131,7 +135,7 @@ var yenShortestPathTests = []struct {
 	{
 		name:    "bipartite large",
 		graph:   func() graph.WeightedEdgeAdder { return simple.NewWeightedDirectedGraph(0, math.Inf(1)) },
-		edges:   bipartite(10, 3, 0),
+		edges:   Bipartite(10, 3, 0),
 		query:   simple.Edge{F: simple.Node(-1), T: simple.Node(1)},
 		k:       5,
 		relaxed: true,
@@ -139,7 +143,7 @@ var yenShortestPathTests = []struct {
 	{
 		name:  "bipartite inc",
 		graph: func() graph.WeightedEdgeAdder { return simple.NewWeightedDirectedGraph(0, math.Inf(1)) },
-		edges: bipartite(5, 10, 1),
+		edges: Bipartite(5, 10, 1),
 		query: simple.Edge{F: simple.Node(-1), T: simple.Node(1)},
 		k:     5,
 		wantPaths: [][]int64{
@@ -153,7 +157,7 @@ var yenShortestPathTests = []struct {
 	{
 		name:  "bipartite dec",
 		graph: func() graph.WeightedEdgeAdder { return simple.NewWeightedDirectedGraph(0, math.Inf(1)) },
-		edges: bipartite(5, 10, -1),
+		edges: Bipartite(5, 10, -1),
 		query: simple.Edge{F: simple.Node(-1), T: simple.Node(1)},
 		k:     5,
 		wantPaths: [][]int64{
@@ -187,7 +191,7 @@ var yenShortestPathTests = []struct {
 			{0, 1, 2, 4, 6},
 			{0, 1, 2, 5, 6},
 		},
-	},*/
+	},
 }
 
 func TestYenKSP(t *testing.T) {

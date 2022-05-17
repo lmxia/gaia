@@ -199,21 +199,15 @@ func DomainLinkTopoAddFromScache(topoContents map[string][]byte) {
 
 	local := GetCoreLocal()
 	baseDomainGraph := local.BaseGraphPoint.BaseDomainGraphPoint
-
-	//TBD :to be deleted
-	topoContents = BuildNetworkDomainEdge()
+	
 	for filedName, topoMsg := range topoContents {
-		fmt.Printf("Filded is (%s), topoMsg is (%+v)\n", filedName, topoMsg)
-		infoString := fmt.Sprintf("Filded is (%s), topoMsg is (%+v)", topoMsg)
-		nputil.TraceInfo(infoString)
-
 		domainTopoCache := new(ncsnp.DomainTopoCacheNotify)
 		err := proto.Unmarshal(topoMsg, domainTopoCache)
 		if err != nil {
 			nputil.TraceError(err)
 			return
 		}
-		infoString = fmt.Sprintf("domainTopoCache(%+v)", *domainTopoCache)
+		infoString := fmt.Sprintf("Domain(%s)'s domainTopoCache is:(%+v)", filedName, *domainTopoCache)
 		nputil.TraceInfo(infoString)
 
 		//Add domain in baseDomainGraph and graph tree
@@ -285,10 +279,8 @@ func NetworkFilter(rbs []*v1alpha1.ResourceBinding, networkReq *v1alpha1.Network
 	//1. get network TopoInfo from schedule cache
 	var topoContents map[string][]byte
 	topoContents = make(map[string][]byte)
-	for filedName, topoInfo := range networkInfoMap {
+	for _, topoInfo := range networkInfoMap {
 		topoContents[topoInfo.Field] = nputil.Str2bytes((topoInfo.Content))
-		infoString := fmt.Sprintf("filedName is (%s), topoInfo is (%+v)", filedName, topoContents[topoInfo.Field])
-		nputil.TraceInfo(infoString)
 	}
 	//Add DomainLink topo from cache
 	DomainLinkTopoAddFromScache(topoContents)

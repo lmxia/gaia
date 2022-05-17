@@ -719,7 +719,8 @@ func (graph *Graph) GetDomainPathNameArrayWithFaric(domainSrPathArray []DomainSr
 	var domainSrPathWithFabricArray []DomainSrNamePath
 	domainGraph := graph.DomainGraphPoint
 	for _, domainSrPath := range domainSrPathArray {
-		fmt.Printf("domainSrPath.DomainSidArray is (%+v)\n", domainSrPath.DomainSidArray)
+		infoString := fmt.Sprintf("domainSrPath.DomainSidArray is (%+v).", domainSrPath.DomainSidArray)
+		nputil.TraceInfo(infoString)
 		var domainSrNamePath = DomainSrNamePath{}
 		for j := 0; j < len(domainSrPath.DomainSidArray)-1; j++ {
 			filedName := GetDomainNameByDomainId(domainSrPath.DomainSidArray[j].DomainId)
@@ -736,7 +737,8 @@ func (graph *Graph) GetDomainPathNameArrayWithFaric(domainSrPathArray []DomainSr
 		domainSrNamePath.DomainNameList = append(domainSrNamePath.DomainNameList, lastFiledName)
 		domainSrPathWithFabricArray = append(domainSrPathWithFabricArray, domainSrNamePath)
 	}
-	fmt.Printf("domainSrPathWithFabricArray is (%+v)\n", domainSrPathWithFabricArray)
+	infoString := fmt.Sprintf("domainSrPathWithFabricArray is (%+v).", domainSrPathWithFabricArray)
+	nputil.TraceInfo(infoString)
 	nputil.TraceInfoEnd("")
 	return domainSrPathWithFabricArray
 }

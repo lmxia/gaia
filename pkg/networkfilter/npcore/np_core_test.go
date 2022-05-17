@@ -4,11 +4,14 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/networkfilter/logx"
 	ncsnp "github.com/lmxia/gaia/pkg/networkfilter/model"
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
+	"testing"
 )
 
-func SetRbsAndNetworksRequirment() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+func SetRbsAndNetworksRequirementAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
 
 	var rbs []*v1alpha1.ResourceBinding
 	var rb0 = v1alpha1.ResourceBinding{
@@ -58,13 +61,13 @@ func SetRbsAndNetworksRequirment() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netwo
 						"c": 1,
 					},
 				},
-				/*2: {
-					ClusterName: "Domain3",
+				2: {
+					ClusterName: "Domain5",
 					Replicas: map[string]int32{
-						"a": 0,
-						"c": 2,
+						"a": 1,
+						"d": 2,
 					},
-				},*/
+				},
 			},
 		},
 	}
@@ -138,11 +141,186 @@ func SetRbsAndNetworksRequirment() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netwo
 	return rbs, &networkReq
 }
 
-func BuildNetworkDomainEdge() map[string][]byte {
+func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+
+	var rbs []*v1alpha1.ResourceBinding
+	var rb0 = v1alpha1.ResourceBinding{
+		Spec: v1alpha1.ResourceBindingSpec{
+			AppID: "0",
+			RbApps: []*v1alpha1.ResourceBindingApps{
+				0: {
+					ClusterName: "Domain1",
+					Replicas: map[string]int32{
+						"a": 2,
+						"b": 0,
+					},
+				},
+				1: {
+					ClusterName: "Domain4",
+					Replicas: map[string]int32{
+						"a": 0,
+						"b": 1,
+					},
+				},
+				2: {
+					ClusterName: "Domain5",
+					Replicas: map[string]int32{
+						"a": 0,
+						"c": 2,
+					},
+				},
+			},
+		},
+	}
+	rbs = append(rbs, &rb0)
+
+	var networkReq = v1alpha1.NetworkRequirement{
+		Spec: v1alpha1.NetworkRequirementSpec{
+			NetworkCommunication: []v1alpha1.NetworkCommunication{
+				0: {
+					Name:   "a",
+					SelfID: []string{"sca1", "sca2"},
+					InterSCNID: []v1alpha1.InterSCNID{
+						0: {
+							Source: v1alpha1.Direction{
+								Id: "sca1",
+							},
+							Destination: v1alpha1.Direction{
+								Id: "scb1",
+							},
+							Sla: v1alpha1.AppSlaAttr{
+								Delay:     10000,
+								Lost:      10000,
+								Jitter:    1000,
+								Bandwidth: 100,
+							},
+						},
+					},
+				},
+				1: {
+					Name:   "b",
+					SelfID: []string{"scb1"},
+					InterSCNID: []v1alpha1.InterSCNID{
+						0: {
+							Source: v1alpha1.Direction{
+								Id: "scb1",
+							},
+							Destination: v1alpha1.Direction{
+								Id: "scc1",
+							},
+							Sla: v1alpha1.AppSlaAttr{
+								Delay:     10000,
+								Lost:      10000,
+								Jitter:    1000,
+								Bandwidth: 100,
+							},
+						},
+					},
+				},
+				2: {
+					Name:       "c",
+					SelfID:     []string{"scc1"},
+					InterSCNID: []v1alpha1.InterSCNID{},
+				},
+			},
+		},
+	}
+	return rbs, &networkReq
+}
+
+func SetRbsAndNetReqSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+
+	var rbs []*v1alpha1.ResourceBinding
+	var rb0 = v1alpha1.ResourceBinding{
+		Spec: v1alpha1.ResourceBindingSpec{
+			AppID: "0",
+			RbApps: []*v1alpha1.ResourceBindingApps{
+				0: {
+					ClusterName: "Domain1",
+					Replicas: map[string]int32{
+						"a": 2,
+						"b": 0,
+					},
+				},
+				1: {
+					ClusterName: "Domain4",
+					Replicas: map[string]int32{
+						"a": 0,
+						"b": 1,
+					},
+				},
+				2: {
+					ClusterName: "Domain5",
+					Replicas: map[string]int32{
+						"a": 0,
+						"c": 2,
+					},
+				},
+			},
+		},
+	}
+	rbs = append(rbs, &rb0)
+
+	var networkReq = v1alpha1.NetworkRequirement{
+		Spec: v1alpha1.NetworkRequirementSpec{
+			NetworkCommunication: []v1alpha1.NetworkCommunication{
+				0: {
+					Name:   "a",
+					SelfID: []string{"sca1", "sca2"},
+					InterSCNID: []v1alpha1.InterSCNID{
+						0: {
+							Source: v1alpha1.Direction{
+								Id: "sca1",
+							},
+							Destination: v1alpha1.Direction{
+								Id: "scb1",
+							},
+							Sla: v1alpha1.AppSlaAttr{
+								Delay:     10000,
+								Lost:      10000,
+								Jitter:    1000,
+								Bandwidth: 100,
+							},
+						},
+					},
+				},
+				1: {
+					Name:   "b",
+					SelfID: []string{"scb1"},
+					InterSCNID: []v1alpha1.InterSCNID{
+						0: {
+							Source: v1alpha1.Direction{
+								Id: "scb1",
+							},
+							Destination: v1alpha1.Direction{
+								Id: "scc1",
+							},
+							Sla: v1alpha1.AppSlaAttr{
+								Delay:     10,
+								Lost:      10000,
+								Jitter:    1000,
+								Bandwidth: 100,
+							},
+						},
+					},
+				},
+				2: {
+					Name:       "c",
+					SelfID:     []string{"scc1"},
+					InterSCNID: []v1alpha1.InterSCNID{},
+				},
+			},
+		},
+	}
+	return rbs, &networkReq
+}
+
+func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	nputil.TraceInfoBegin("------------------------------------------------------")
 
 	var domainTopoCacheArry []*ncsnp.DomainTopoCacheNotify
-	var domainTopoMsg = make(map[string][]byte)
+	var domainTopoMsg = make(map[string]clusterapi.Topo)
+	var topoInfo = clusterapi.Topo{}
 
 	domainTopoCache1 := new(ncsnp.DomainTopoCacheNotify)
 	domainTopoCache1.LocalDomainId = 1
@@ -171,12 +349,13 @@ func BuildNetworkDomainEdge() map[string][]byte {
 	domainVLink13.LocalNodeSN = "Node13"
 	domainVLink13.RemoteNodeSN = "Node31"
 	domainVLink13.AttachDomainId = 1013
-	domainVLink12.AttachDomainName = "Fabric13"
+	domainVLink13.AttachDomainName = "Fabric13"
 	vLinkSlaAttr13 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr13.Delay = 1
 	vLinkSlaAttr13.Bandwidth = 10000
 	vLinkSlaAttr13.FreeBandwidth = 10000
 	domainVLink13.VLinkSlaAttr = vLinkSlaAttr13
+	domainVLink13.OpaqueValue = ""
 	domainTopoCache1.DomainVLinkArray = append(domainTopoCache1.DomainVLinkArray, domainVLink13)
 	domainTopoCacheArry = append(domainTopoCacheArry, domainTopoCache1)
 	content, err := proto.Marshal(domainTopoCache1)
@@ -184,8 +363,11 @@ func BuildNetworkDomainEdge() map[string][]byte {
 		nputil.TraceErrorWithStack(err)
 		return nil
 	}
-	domainTopoMsg[domainTopoCache1.LocalDomainName] = content
+	topoInfo.Field = domainTopoCache1.LocalDomainName
+	topoInfo.Content = nputil.Bytes2str(content)
+	domainTopoMsg[domainTopoCache1.LocalDomainName] = topoInfo
 
+	topoInfo = clusterapi.Topo{}
 	domainTopoCache2 := new(ncsnp.DomainTopoCacheNotify)
 	domainTopoCache2.LocalDomainId = 2
 	domainTopoCache2.LocalDomainName = "Domain2"
@@ -198,7 +380,7 @@ func BuildNetworkDomainEdge() map[string][]byte {
 	domainVLink23.LocalNodeSN = "Node23"
 	domainVLink23.RemoteNodeSN = "Node32"
 	domainVLink23.AttachDomainId = 1023
-	domainVLink12.AttachDomainName = "Fabric23"
+	domainVLink23.AttachDomainName = "Fabric23"
 	vLinkSlaAttr23 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr23.Delay = 2
 	vLinkSlaAttr23.Bandwidth = 10000
@@ -214,7 +396,7 @@ func BuildNetworkDomainEdge() map[string][]byte {
 	domainVLink21.LocalNodeSN = "Node21"
 	domainVLink21.RemoteNodeSN = "Node12"
 	domainVLink21.AttachDomainId = 1012
-	domainVLink12.AttachDomainName = "Fabric12"
+	domainVLink21.AttachDomainName = "Fabric12"
 	vLinkSlaAttr21 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr21.Delay = 1
 	vLinkSlaAttr21.Bandwidth = 10000
@@ -227,8 +409,11 @@ func BuildNetworkDomainEdge() map[string][]byte {
 		nputil.TraceErrorWithStack(err)
 		return nil
 	}
-	domainTopoMsg[domainTopoCache2.LocalDomainName] = content
+	topoInfo.Field = domainTopoCache2.LocalDomainName
+	topoInfo.Content = nputil.Bytes2str(content)
+	domainTopoMsg[domainTopoCache2.LocalDomainName] = topoInfo
 
+	topoInfo = clusterapi.Topo{}
 	domainTopoCache3 := new(ncsnp.DomainTopoCacheNotify)
 	domainTopoCache3.LocalDomainId = 3
 	domainTopoCache3.LocalDomainName = "Domain3"
@@ -241,7 +426,7 @@ func BuildNetworkDomainEdge() map[string][]byte {
 	domainVLink34.LocalNodeSN = "Node34"
 	domainVLink34.RemoteNodeSN = "Node43"
 	domainVLink34.AttachDomainId = 1034
-	domainVLink12.AttachDomainName = "Fabric34"
+	domainVLink34.AttachDomainName = "Fabric34"
 	vLinkSlaAttr34 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr34.Delay = 3
 	vLinkSlaAttr34.Bandwidth = 10000
@@ -256,7 +441,7 @@ func BuildNetworkDomainEdge() map[string][]byte {
 	domainVLink32.LocalNodeSN = "Node32"
 	domainVLink32.RemoteNodeSN = "Node23"
 	domainVLink32.AttachDomainId = 1023
-	domainVLink12.AttachDomainName = "Fabric23"
+	domainVLink32.AttachDomainName = "Fabric23"
 	vLinkSlaAttr32 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr32.Delay = 2
 	vLinkSlaAttr32.Bandwidth = 10000
@@ -269,8 +454,11 @@ func BuildNetworkDomainEdge() map[string][]byte {
 		nputil.TraceErrorWithStack(err)
 		return nil
 	}
-	domainTopoMsg[domainTopoCache3.LocalDomainName] = content
+	topoInfo.Field = domainTopoCache3.LocalDomainName
+	topoInfo.Content = nputil.Bytes2str(content)
+	domainTopoMsg[domainTopoCache3.LocalDomainName] = topoInfo
 
+	topoInfo = clusterapi.Topo{}
 	domainTopoCache4 := new(ncsnp.DomainTopoCacheNotify)
 	domainTopoCache4.LocalDomainId = 4
 	domainTopoCache4.LocalDomainName = "Domain4"
@@ -283,7 +471,7 @@ func BuildNetworkDomainEdge() map[string][]byte {
 	domainVLink43.LocalNodeSN = "Node43"
 	domainVLink43.RemoteNodeSN = "Node34"
 	domainVLink43.AttachDomainId = 1034
-	domainVLink12.AttachDomainName = "Fabric34"
+	domainVLink43.AttachDomainName = "Fabric34"
 	vLinkSlaAttr43 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr43.Delay = 3
 	vLinkSlaAttr43.Bandwidth = 10000
@@ -299,7 +487,7 @@ func BuildNetworkDomainEdge() map[string][]byte {
 	domainVLink42.LocalNodeSN = "Node42"
 	domainVLink42.RemoteNodeSN = "Node24"
 	domainVLink42.AttachDomainId = 1024
-	domainVLink12.AttachDomainName = "Fabric24"
+	domainVLink42.AttachDomainName = "Fabric24"
 	vLinkSlaAttr42 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr42.Delay = 2
 	vLinkSlaAttr42.Bandwidth = 10000
@@ -312,13 +500,56 @@ func BuildNetworkDomainEdge() map[string][]byte {
 		nputil.TraceErrorWithStack(err)
 		return nil
 	}
-	domainTopoMsg[domainTopoCache4.LocalDomainName] = content
+	topoInfo.Field = domainTopoCache4.LocalDomainName
+	topoInfo.Content = nputil.Bytes2str(content)
+	domainTopoMsg[domainTopoCache4.LocalDomainName] = topoInfo
 
-	fmt.Printf("Len of domainTopoCache is (+%d)\n", len(domainTopoCacheArry))
-	for i, domainTopoCache := range domainTopoCacheArry {
-		fmt.Printf("domainTopoCacheArry[%d] is (%+v)\n", i, domainTopoCache)
+	fmt.Printf("Len of domainTopoMsg is (+%d)\n", len(domainTopoMsg))
+	for domainName, domainTopoCache := range domainTopoMsg {
+		fmt.Printf("domainTopoMsg of domain (%s) is (%+v)\n", domainName, domainTopoCache)
+		infoString := fmt.Sprintf("domainTopoMsg of domain (%s) is (%+v)\n", domainName, domainTopoCache)
+		nputil.TraceInfo(infoString)
 	}
 
 	nputil.TraceInfoEnd("------------------------------------------------------")
 	return domainTopoMsg
+}
+
+func TestNetworkFilterAvailable(t *testing.T) {
+
+	/************* 1.INIT: 初始化ncs子模块 ************/
+	logx.NewLogger()
+	rbs, networkRequirement := SetRbsAndNetworksRequirementAvailable()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if len(rbsRet) != 0 {
+		infoString := fmt.Sprintf("The rbs is available!")
+		nputil.TraceInfo(infoString)
+	}
+}
+
+func TestNetworkFilterUnAvailableTopoFailed(t *testing.T) {
+
+	/************* 1.INIT: 初始化ncs子模块 ************/
+	logx.NewLogger()
+	rbs, networkRequirement := SetRbsAndNetReqTopoFailed()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if len(rbsRet) == 0 {
+		infoString := fmt.Sprintf("The rbs is unavailable due to topo failed!")
+		nputil.TraceInfo(infoString)
+	}
+}
+
+func TestNetworkFilterUnAvailableSlaFailed(t *testing.T) {
+
+	/************* 1.INIT: 初始化ncs子模块 ************/
+	logx.NewLogger()
+	rbs, networkRequirement := SetRbsAndNetReqSlaFailed()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if len(rbsRet) == 0 {
+		infoString := fmt.Sprintf("The rbs is unavailable due to sla failed!")
+		nputil.TraceInfo(infoString)
+	}
 }

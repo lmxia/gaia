@@ -200,15 +200,17 @@ func (c *Controller) getHealthStatus(ctx context.Context, path string) bool {
 }
 
 // getTopoInfo returns the topology information according to toposync api
-func getTopoInfo(ctx context.Context, clusterName, topoSyncBaseUrl string) clusterapi.Topo {
+func getTopoInfo(ctx context.Context, clusterName, topoSyncBaseUrl string) (topoInfo clusterapi.Topo) {
 	hyperTopoSync := clusterapi.Fields{
 		Field: []string{clusterName},
 	}
 	topos, _, err := toposync.NewAPIClient(toposync.NewConfiguration(topoSyncBaseUrl)).TopoSyncApi.TopoSync(ctx, hyperTopoSync)
 	if err != nil {
 		klog.Warningf("failed to get network topology info: %v", err)
+		return topoInfo
 	}
-	return topos.Topo[0]
+	topoInfo = topos.Topo[0]
+	return topoInfo
 }
 
 func (c *Controller) getCondition(status clusterapi.ManagedClusterStatus) metav1.Condition {

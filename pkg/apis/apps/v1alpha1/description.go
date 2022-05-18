@@ -37,12 +37,10 @@ type Component struct {
 	Namespace string `json:"namespace,omitempty"`
 	// +required
 	Name string `json:"name,omitempty"`
-
 	// +optional
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Serverless ServerlessSpec `json:"serverless,omitempty" protobuf:"bytes,3,opt,name=serverless"`
-
 	// +optional
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -53,15 +51,24 @@ type Component struct {
 	Workload Workload `json:"workload,omitempty"`
 	// +required
 	SchedulePolicy SchedulePolicy `json:"schedulePolicy,omitempty"`
-	// ClusterTolerations tolerates any matched taints of ManagedCluster.
-	//
 	// +optional
 	ClusterTolerations []corev1.Toleration `json:"clusterTolerations,omitempty"`
 }
 
+type WorkloadType string
+
+const (
+	WorkloadTypeDeployment     WorkloadType = "deployment"
+	WorkloadTypeServerless     WorkloadType = "serverless"
+	WorkloadTypeAffinityDaemon WorkloadType = "affinitydaemon"
+	WorkloadTypeUserApp        WorkloadType = "userapp"
+	WorkloadTypeKnative        WorkloadType = "knative"
+)
+
 type Workload struct {
-	// +optional
-	Workloadtype string `json:"workloadtype,omitempty"`
+	// +required
+	// +kubebuilder:validation:Enum=deployment;serverless;affinitydaemon;userapp;knative
+	Workloadtype WorkloadType `json:"workloadtype,omitempty"`
 	// +optional
 	TraitDeployment *TraitDeployment `json:"traitDeployment,omitempty"`
 	// +optional
@@ -101,11 +108,6 @@ type TraitServerless struct {
 	Step               int32  `json:"step,omitempty"`
 	Threshold          string `json:"threshold,omitempty"`
 }
-
-//type Trait struct {
-//	// +optional
-//	replicas int32 `json:"replicas,omitempty"` // deploy和serverless确定结构。annity的deamonset trait是空，userapp空
-//}
 
 type SchedulePolicy struct {
 	// +optional

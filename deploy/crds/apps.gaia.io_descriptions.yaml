@@ -52,8 +52,6 @@ spec:
                 items:
                   properties:
                     clusterTolerations:
-                      description: ClusterTolerations tolerates any matched taints
-                        of ManagedCluster.
                       items:
                         description: The pod this Toleration is attached to tolerates
                           any taint that matches the triple <key,value,effect> using
@@ -8013,6 +8011,12 @@ spec:
                               type: string
                           type: object
                         workloadtype:
+                          enum:
+                          - deployment
+                          - serverless
+                          - affinitydaemon
+                          - userapp
+                          - knative
                           type: string
                       type: object
                   type: object

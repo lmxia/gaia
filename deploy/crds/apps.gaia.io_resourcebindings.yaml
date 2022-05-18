@@ -39,24 +39,31 @@ spec:
             properties:
               appID:
                 type: string
-              namespace:
-                type: string
               networkPath:
                 items:
                   format: byte
                   type: string
                 type: array
-              parentAppID:
-                type: string
               parentRB:
                 type: string
               rbApps:
                 x-kubernetes-preserve-unknown-fields: true
+              statusScheduler:
+                enum:
+                - merging
+                - merged
+                - schedulering
+                - selected
+                type: string
               totalpeer:
                 type: integer
             type: object
           status:
             properties:
+              reason:
+                description: Reason indicates the reason of ResourceBinding deployment
+                  Status
+                type: string
               status:
                 type: string
             type: object

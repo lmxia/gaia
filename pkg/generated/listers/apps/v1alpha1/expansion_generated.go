@@ -41,3 +41,11 @@ type ResourceBindingListerExpansion interface{}
 // ResourceBindingNamespaceListerExpansion allows custom methods to be added to
 // ResourceBindingNamespaceLister.
 type ResourceBindingNamespaceListerExpansion interface{}
+
+// ServerlessListerExpansion allows custom methods to be added to
+// ServerlessLister.
+type ServerlessListerExpansion interface{}
+
+// ServerlessNamespaceListerExpansion allows custom methods to be added to
+// ServerlessNamespaceLister.
+type ServerlessNamespaceListerExpansion interface{}

@@ -55,6 +55,10 @@ const (
 	StatusScheduling     = "scheduling"
 	NetworkLocationCore  = "core"
 
+	ResourceBindingRed   string = "Red"
+	ResourceBindingGreen string = "Green"
+	ResourceBindingBlue  string = "Blue"
+
 	TopoSyncBaseUrl = "http://ssiexpose.synccontroller.svc:8080"
 	TopoSyncUrlPath = "/v1.0/globalsync/topo"
 )

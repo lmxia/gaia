@@ -60,6 +60,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().NetworkRequirements().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("resourcebindings"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().ResourceBindings().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("serverlesses"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().Serverlesses().Informer()}, nil
 
 		// Group=platform.gaia.io, Version=v1alpha1
 	case platformv1alpha1.SchemeGroupVersion.WithResource("clusterregistrationrequests"):

@@ -3,29 +3,33 @@ package approver
 import (
 	"context"
 	"fmt"
-	"strings"
-	"sync"
-
 	platformapi "github.com/lmxia/gaia/pkg/apis/platform"
-	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllers/clusterregistrationrequest"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
-	gaiaInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	externalInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	appsListers "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	ccrListers "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/utils"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apimachinery/pkg/util/wait"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
+	"strings"
+	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/dynamic"
 	kubeInformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	corev1Lister "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 )
@@ -36,27 +40,39 @@ type CRRApprover struct {
 
 	crrLister  ccrListers.ClusterRegistrationRequestLister
 	mclsLister ccrListers.ManagedClusterLister
+	rbsLister  appsListers.ResourceBindingLister
+	descLister appsListers.DescriptionLister
 
 	nsLister corev1Lister.NamespaceLister
 	saLister corev1Lister.ServiceAccountLister
 
-	kubeclient *kubernetes.Clientset
-	gaiaclient *gaiaClientSet.Clientset
+	localkubeclient    *kubernetes.Clientset
+	localgaiaclient    *gaiaClientSet.Clientset
+	localdynamicClient dynamic.Interface
+
+	parentDynamicClient dynamic.Interface
+	parentgaiaclient    *gaiaClientSet.Clientset
+	restMapper          *restmapper.DeferredDiscoveryRESTMapper
 }
 
 // NewCRRApprover returns a new CRRApprover for ClusterRegistrationRequest.
-func NewCRRApprover(kubeclient *kubernetes.Clientset, gaiaclient *gaiaClientSet.Clientset,
-	gaiaInformerFactory gaiaInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+func NewCRRApprover(localkubeclient *kubernetes.Clientset, localgaiaclient *gaiaClientSet.Clientset, localKubeConfig *rest.Config,
+	gaiaInformerFactory externalInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+	localdynamicClient, err := dynamic.NewForConfig(localKubeConfig)
+
 	crrApprover := &CRRApprover{
-		kubeclient: kubeclient,
-		gaiaclient: gaiaclient,
-		crrLister:  gaiaInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests().Lister(),
-		mclsLister: gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
-		nsLister:   kubeInformerFactory.Core().V1().Namespaces().Lister(),
-		saLister:   kubeInformerFactory.Core().V1().ServiceAccounts().Lister(),
+		localkubeclient:    localkubeclient,
+		localgaiaclient:    localgaiaclient,
+		localdynamicClient: localdynamicClient,
+		restMapper:         restmapper.NewDeferredDiscoveryRESTMapper(cacheddiscovery.NewMemCacheClient(localkubeclient.Discovery())),
+		crrLister:          gaiaInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests().Lister(),
+		mclsLister:         gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
+		rbsLister:          gaiaInformerFactory.Apps().V1alpha1().ResourceBindings().Lister(),
+		nsLister:           kubeInformerFactory.Core().V1().Namespaces().Lister(),
+		saLister:           kubeInformerFactory.Core().V1().ServiceAccounts().Lister(),
 	}
 
-	newCRRController, err := clusterregistrationrequest.NewController(gaiaclient,
+	newCRRController, err := clusterregistrationrequest.NewController(localgaiaclient,
 		gaiaInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests(),
 		crrApprover.handleClusterRegistrationRequests)
 	if err != nil {
@@ -67,6 +83,14 @@ func NewCRRApprover(kubeclient *kubernetes.Clientset, gaiaclient *gaiaClientSet.
 	return crrApprover, nil
 }
 
+func (crrApprover *CRRApprover) SetParentClient() {
+	//parentGaiaClient, parentDynamicClient, parentgaiaInformerFactory := utils.SetParentClient(crrApprover.localkubeclient, crrApprover.localgaiaclient)
+	parentGaiaClient, parentDynamicClient, _ := utils.SetParentClient(crrApprover.localkubeclient, crrApprover.localgaiaclient)
+
+	crrApprover.parentgaiaclient = parentGaiaClient
+	//crrApprover.descLister = parentgaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister()
+	crrApprover.parentDynamicClient = parentDynamicClient
+}
 func (crrApprover *CRRApprover) Run(threadiness int, stopCh <-chan struct{}) {
 	klog.Info("starting gaia crr approver ...")
 
@@ -90,7 +114,7 @@ func (crrApprover *CRRApprover) applyDefaultRBACRules(ctx context.Context) {
 
 			// make sure this clusterrole gets initialized before we go next
 			for {
-				err := utils.EnsureClusterRole(ctx, cr, crrApprover.kubeclient, retry.DefaultBackoff)
+				err := utils.EnsureClusterRole(ctx, cr, crrApprover.localkubeclient, retry.DefaultBackoff)
 				if err == nil {
 					break
 				}
@@ -110,7 +134,6 @@ func (crrApprover *CRRApprover) bootstrappingClusterRoles() []rbacv1.ClusterRole
 
 func (crrApprover *CRRApprover) defaultRoles(namespace string) []rbacv1.Role {
 	// default roles for child cluster registration
-
 	roleForManagedCluster := rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        ManagedClusterRole,
@@ -129,9 +152,42 @@ func (crrApprover *CRRApprover) defaultRoles(namespace string) []rbacv1.Role {
 			},
 		},
 	}
+	roleForToBeMerged := rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        known.GaiaRSToBeMergedReservedNamespace,
+			Namespace:   known.GaiaRSToBeMergedReservedNamespace,
+			Annotations: map[string]string{known.AutoUpdateAnnotation: "true"},
+			Labels: map[string]string{
+				known.ObjectCreatedByLabel: known.GaiaControllerManager,
+			},
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"*"},
+				Resources: []string{"*"},
+				Verbs:     []string{"*"},
+			},
+		},
+	}
+
+	roleForMerged := rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      known.GaiaRBMergedReservedNamespace,
+			Namespace: known.GaiaRBMergedReservedNamespace,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"*"},
+				Resources: []string{"*"},
+				Verbs:     []string{"*"},
+			},
+		},
+	}
 
 	return []rbacv1.Role{
 		roleForManagedCluster,
+		roleForToBeMerged,
+		roleForMerged,
 	}
 }
 
@@ -153,6 +209,7 @@ func (crrApprover *CRRApprover) defaultClusterRoles(clusterID types.UID) []rbacv
 				Verbs: []string{
 					"create", // create cluster registration requests
 					"get",    // and get the created object, we don't allow to "list" operation due to security concerns
+					"update",
 				},
 			},
 		},
@@ -163,12 +220,12 @@ func (crrApprover *CRRApprover) defaultClusterRoles(clusterID types.UID) []rbacv
 	}
 }
 
-func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *clusterapi.ClusterRegistrationRequest) error {
+func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *platformv1alpha1.ClusterRegistrationRequest) error {
 	// If an error occurs during handling, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
 
-	result := new(clusterapi.ApprovedResult)
+	result := new(platformv1alpha1.ApprovedResult)
 
 	// validate cluster id
 	expectedClusterID := strings.TrimPrefix(crr.Name, crr.Spec.ClusterNamePrefix)
@@ -177,8 +234,8 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *clusterap
 			crr.Name, expectedClusterID, crr.Spec.ClusterID)
 		klog.Error(err)
 
-		*result = clusterapi.RequestDenied
-		utilruntime.HandleError(crrApprover.crrController.UpdateCRRStatus(crr, &clusterapi.ClusterRegistrationRequestStatus{
+		*result = platformv1alpha1.RequestDenied
+		utilruntime.HandleError(crrApprover.crrController.UpdateCRRStatus(crr, &platformv1alpha1.ClusterRegistrationRequestStatus{
 			Result:       result,
 			ErrorMessage: err.Error(),
 		}))
@@ -224,14 +281,14 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *clusterap
 
 	// 5. get credentials
 	klog.V(5).Infof("get generated credentials for cluster %q (%q)", crr.Spec.ClusterID, crr.Spec.ClusterName)
-	secret, err := getCredentialsForChildCluster(context.TODO(), crrApprover.kubeclient, retry.DefaultBackoff, sa.Name, sa.Namespace)
+	secret, err := getCredentialsForChildCluster(context.TODO(), crrApprover.localkubeclient, retry.DefaultBackoff, sa.Name, sa.Namespace)
 	if err != nil {
 		return err
 	}
 
 	// 6. update status
-	*result = clusterapi.RequestApproved
-	err = crrApprover.crrController.UpdateCRRStatus(crr, &clusterapi.ClusterRegistrationRequestStatus{
+	*result = platformv1alpha1.RequestApproved
+	err = crrApprover.crrController.UpdateCRRStatus(crr, &platformv1alpha1.ClusterRegistrationRequestStatus{
 		Result:             result,
 		ErrorMessage:       "",
 		DedicatedNamespace: ns.Name,
@@ -274,7 +331,7 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 			},
 		},
 	}
-	newNs, err = crrApprover.kubeclient.CoreV1().Namespaces().Create(context.TODO(), newNs, metav1.CreateOptions{})
+	newNs, err = crrApprover.localkubeclient.CoreV1().Namespaces().Create(context.TODO(), newNs, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +341,7 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 }
 
 func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterName string, clusterID types.UID,
-	clusterLabels map[string]string) (*clusterapi.ManagedCluster, error) {
+	clusterLabels map[string]string) (*platformv1alpha1.ManagedCluster, error) {
 	// checks for an existed ManagedCluster object
 	// the clusterName here may vary, we use clusterID as the identifier
 	mcs, err := crrApprover.mclsLister.List(labels.SelectorFromSet(labels.Set{
@@ -301,7 +358,7 @@ func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterN
 		return mcs[0], nil
 	}
 
-	managedCluster := &clusterapi.ManagedCluster{
+	managedCluster := &platformv1alpha1.ManagedCluster{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: clusterName,
 			Labels: map[string]string{
@@ -310,7 +367,7 @@ func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterN
 				known.ClusterNameLabel:     clusterName,
 			},
 		},
-		Spec: clusterapi.ManagedClusterSpec{
+		Spec: platformv1alpha1.ManagedClusterSpec{
 			ClusterID: clusterID,
 		},
 	}
@@ -320,7 +377,7 @@ func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterN
 		managedCluster.Labels[key] = value
 	}
 
-	mc, err := crrApprover.gaiaclient.PlatformV1alpha1().ManagedClusters(namespace).Create(context.TODO(), managedCluster, metav1.CreateOptions{})
+	mc, err := crrApprover.localgaiaclient.PlatformV1alpha1().ManagedClusters(namespace).Create(context.TODO(), managedCluster, metav1.CreateOptions{})
 	if err != nil {
 		klog.Errorf("failed to create ManagedCluster for cluster %q: %v", clusterID, err)
 		return nil, err
@@ -359,7 +416,7 @@ func (crrApprover *CRRApprover) createServiceAccountIfNeeded(namespace, clusterN
 			},
 		},
 	}
-	newSA, err = crrApprover.kubeclient.CoreV1().ServiceAccounts(namespace).Create(context.TODO(), newSA, metav1.CreateOptions{})
+	newSA, err = crrApprover.localkubeclient.CoreV1().ServiceAccounts(namespace).Create(context.TODO(), newSA, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +435,7 @@ func (crrApprover *CRRApprover) bindingClusterRolesIfNeeded(serviceAccountName, 
 	for _, clusterrole := range clusterRoles {
 		go func(cr rbacv1.ClusterRole) {
 			defer wg.Done()
-			err := utils.EnsureClusterRole(context.TODO(), cr, crrApprover.kubeclient, retry.DefaultRetry)
+			err := utils.EnsureClusterRole(context.TODO(), cr, crrApprover.localkubeclient, retry.DefaultRetry)
 			if err != nil {
 				allErrs = append(allErrs, err)
 			}
@@ -408,7 +465,7 @@ func (crrApprover *CRRApprover) bindingClusterRolesIfNeeded(serviceAccountName, 
 					{Kind: rbacv1.ServiceAccountKind, Name: serviceAccountName, Namespace: serivceAccountNamespace},
 				},
 				RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: cr.Name},
-			}, crrApprover.kubeclient, retry.DefaultRetry)
+			}, crrApprover.localkubeclient, retry.DefaultRetry)
 			if err != nil {
 				allErrs = append(allErrs, err)
 			}
@@ -429,7 +486,7 @@ func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespac
 	for _, role := range roles {
 		go func(r rbacv1.Role) {
 			defer wg.Done()
-			err := utils.EnsureRole(context.TODO(), r, crrApprover.kubeclient, retry.DefaultRetry)
+			err := utils.EnsureRole(context.TODO(), r, crrApprover.localkubeclient, retry.DefaultRetry)
 			if err != nil {
 				allErrs = append(allErrs, err)
 			}
@@ -460,7 +517,7 @@ func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespac
 					{Kind: rbacv1.ServiceAccountKind, Name: serviceAccountName, Namespace: namespace},
 				},
 				RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: r.Name},
-			}, crrApprover.kubeclient, retry.DefaultRetry)
+			}, crrApprover.localkubeclient, retry.DefaultRetry)
 			if err != nil {
 				allErrs = append(allErrs, err)
 			}

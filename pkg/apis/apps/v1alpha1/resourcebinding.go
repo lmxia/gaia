@@ -15,22 +15,31 @@ type ResourceBinding struct {
 	Status ResourceBindingStatus `json:"status,omitempty"`
 }
 
+type StatusScheduler string
+
+const (
+	ResourceBindingMerging      StatusScheduler = "merging"
+	ResourceBindingmerged       StatusScheduler = "merged"
+	ResourceBindingSchedulering StatusScheduler = "schedulering"
+	ResourceBindingSelected     StatusScheduler = "selected"
+)
+
 type ResourceBindingSpec struct {
 	// +optional
 	AppID string `json:"appID,omitempty"`
-	// +optional
-	ParentAppID string `json:"parentAppID,omitempty"`
 	// +optional
 	TotalPeer int `json:"totalpeer,omitempty"`
 	// +optional
 	ParentRB string `json:"parentRB,omitempty"`
 	// +optional
-	Namespace string `json:"namespace,omitempty"`
-	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	RbApps      []*ResourceBindingApps `json:"rbApps,omitempty"`
 	NetworkPath [][]byte               `json:"networkPath,omitempty"`
+
+	// +optional
+	// +kubebuilder:validation:Enum=merging;merged;schedulering;selected
+	StatusScheduler StatusScheduler `json:"statusScheduler,omitempty"`
 }
 
 type ResourceBindingApps struct {
@@ -41,6 +50,9 @@ type ResourceBindingApps struct {
 }
 type ResourceBindingStatus struct {
 	Status string `json:"status,omitempty"`
+	// Reason indicates the reason of ResourceBinding deployment Status
+	// +optional
+	Reason string `json:"reason,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -26,10 +26,8 @@ import (
 )
 
 // NetworkRequirementLister helps list NetworkRequirements.
-// All objects returned here must be treated as read-only.
 type NetworkRequirementLister interface {
 	// List lists all NetworkRequirements in the indexer.
-	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.NetworkRequirement, err error)
 	// NetworkRequirements returns an object that can list and get NetworkRequirements.
 	NetworkRequirements(namespace string) NetworkRequirementNamespaceLister
@@ -60,13 +58,10 @@ func (s *networkRequirementLister) NetworkRequirements(namespace string) Network
 }
 
 // NetworkRequirementNamespaceLister helps list and get NetworkRequirements.
-// All objects returned here must be treated as read-only.
 type NetworkRequirementNamespaceLister interface {
 	// List lists all NetworkRequirements in the indexer for a given namespace.
-	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.NetworkRequirement, err error)
 	// Get retrieves the NetworkRequirement from the indexer for a given namespace and name.
-	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.NetworkRequirement, error)
 	NetworkRequirementNamespaceListerExpansion
 }

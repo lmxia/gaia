@@ -144,8 +144,6 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResultFinal)
 			// select 2
 			rbsResultFinal, err = g.selectResourceBindings(priorityList, rbsResultFinal)
-		} else {
-			rbsResultFinal = append(rbsResultFinal, rbsResultFinal...)
 		}
 	} else {
 		rbIndex := 0

@@ -84,6 +84,10 @@ spec:
                       type: string
                   type: object
                 type: array
+              dispersion:
+                default: 1
+                format: int32
+                type: integer
               module:
                 description: PodTemplateSpec describes the data a pod should have
                   when created from a template
@@ -7449,6 +7453,11 @@ spec:
                         format: int32
                         type: integer
                       threshold:
+                        type: string
+                    type: object
+                  traitaffinitydaemon:
+                    properties:
+                      sn:
                         type: string
                     type: object
                   workloadtype:

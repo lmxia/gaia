@@ -4,6 +4,5 @@ const (
 	DefaultBinder = "DefaultBinder"
 
 	TaintToleration = "TaintToleration"
-
-	CorePriority = "CorePriority"
+	CorePriority    = "CorePriority"
 )

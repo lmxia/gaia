@@ -153,20 +153,22 @@ func (controller *ControllerManager) Run() {
 						controller.statusManager.Run(ctx, controller.parentKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
 					}, time.Duration(0))
 				}()
-				// 4. start resourcebinding and description
-				//go func() {
-				//	klog.Info("start 4. start local resourcebinding informers...")
-				//	controller.rbController.RunLocalResourceBinding(common.DefaultThreadiness, ctx.Done())
-				//}()
 
-				// 5. start parent resourcebinding
+				// 4. start local description
+				go func() {
+					// set parent config
+					controller.rbController.SetLocalDescriptionController()
+					klog.Info("start 4. start local description informers...")
+					controller.rbController.RunLocalDescription(common.DefaultThreadiness, ctx.Done())
+				}()
+
+				// 5. start parent resourcebinding and description
 				go func() {
 					// set parent config
 					controller.rbController.SetParentRBController()
-					klog.Info("start 5. start parent resourcebinding informers...")
+					klog.Info("start 5. start parent resourcebinding and description informers...")
 					controller.rbController.RunParentResourceBinding(common.DefaultThreadiness, ctx.Done())
 				}()
-
 			},
 			OnStoppedLeading: func() {
 				klog.Error("leader election got lost")

@@ -92,6 +92,10 @@ spec:
                             type: string
                         type: object
                       type: array
+                    dispersion:
+                      default: 1
+                      format: int32
+                      type: integer
                     module:
                       description: PodTemplateSpec describes the data a pod should
                         have when created from a template
@@ -8010,6 +8014,11 @@ spec:
                             threshold:
                               type: string
                           type: object
+                        traitaffinitydaemon:
+                          properties:
+                            sn:
+                              type: string
+                          type: object
                         workloadtype:
                           enum:
                           - deployment
@@ -8021,6 +8030,8 @@ spec:
                       type: object
                   type: object
                 type: array
+              preoccupy:
+                type: string
             type: object
           status:
             description: DescriptionStatus defines the observed state of Description

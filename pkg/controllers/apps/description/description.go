@@ -29,7 +29,7 @@ type SyncHandlerFunc func(description *appsapi.Description) error
 
 // Controller is a controller that handle Description
 type Controller struct {
-	childGaiaClient gaiaClientSet.Interface
+	gaiaClient gaiaClientSet.Interface
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -45,6 +45,31 @@ type Controller struct {
 	cacheHandler    cache.ResourceEventHandler
 }
 
+// NewDescController creates and initializes a new Controller
+func NewDescController(gaiaClient gaiaClientSet.Interface,
+	descInformer appInformers.DescriptionInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+	if syncHandler == nil {
+		return nil, fmt.Errorf("syncHandler must be set")
+	}
+
+	c := &Controller{
+		gaiaClient:      gaiaClient,
+		descLister:      descInformer.Lister(),
+		descSynced:      descInformer.Informer().HasSynced,
+		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "description"),
+		syncHandlerFunc: syncHandler,
+	}
+
+	// Manage the addition/update of cluster ResourceBinding requests
+	descInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.addDescription,
+		UpdateFunc: c.updateDescription,
+		DeleteFunc: c.deleteDescription,
+	})
+
+	return c, nil
+}
+
 func NewController(childGaiaClient gaiaClientSet.Interface, descInformer appInformers.DescriptionInformer,
 	mcInformer platformInformers.ManagedClusterInformer, cacheHandler cache.ResourceEventHandler, syncHandlerFunc SyncHandlerFunc) (*Controller, error) {
 	if syncHandlerFunc == nil {
@@ -52,10 +77,10 @@ func NewController(childGaiaClient gaiaClientSet.Interface, descInformer appInfo
 	}
 
 	c := &Controller{
-		childGaiaClient: childGaiaClient,
-		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "description"),
-		descLister:      descInformer.Lister(),
-		descSynced:      descInformer.Informer().HasSynced,
+		gaiaClient: childGaiaClient,
+		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "description"),
+		descLister: descInformer.Lister(),
+		descSynced: descInformer.Informer().HasSynced,
 		mcSynced: func() bool {
 			return true
 		},
@@ -249,7 +274,7 @@ func (c *Controller) UpdateDescriptionStatus(desc *appsapi.Description, status *
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		desc.Status = *status
-		_, err := c.childGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
+		_, err := c.gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
 		if err == nil {
 			//TODO
 			return nil

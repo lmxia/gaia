@@ -53,8 +53,8 @@ type SyncHandlerFunc func(binding *appsv1alpha1.ResourceBinding) error
 
 // RBController defines configuration for ResourceBinding requests
 type RBController struct {
-	rbLocalController *Controller
-	descController    *description.Controller
+	rbLocalController   *Controller
+	descLocalController *description.Controller
 
 	localGaiaInformerFactory gaiainformers.SharedInformerFactory
 	localkubeclient          *kubernetes.Clientset
@@ -65,6 +65,7 @@ type RBController struct {
 	parentDynamicClient       dynamic.Interface
 	parentGaiaclient          *gaiaClientSet.Clientset
 	rbParentController        *Controller
+	descParentController      *description.Controller
 	restMapper                *restmapper.DeferredDiscoveryRESTMapper
 }
 
@@ -110,7 +111,7 @@ func NewRBController(localkubeclient *kubernetes.Clientset, localgaiaclient *gai
 	//if err != nil {
 	//	return nil, err
 	//}
-	//rbLocalController.descController = newdesController
+	//rbLocalController.descLocalController = newdesController
 
 	return rbController, nil
 }
@@ -345,67 +346,78 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
+	<-stopCh
+}
 
-	<-stopCh
-}
-func (c *RBController) RunLocalResourceBinding(threadiness int, stopCh <-chan struct{}) {
-	klog.Info("starting local runRB ResourceBinding  ...")
-	defer klog.Info("shutting local  runRB scheduler")
-	c.localGaiaInformerFactory.Start(stopCh)
-	// todo: gorountine
-	go c.rbLocalController.Run(threadiness, stopCh)
-	<-stopCh
-}
+//func (c *RBController) RunLocalResourceBinding(threadiness int, stopCh <-chan struct{}) {
+//	klog.Info("starting local runRB ResourceBinding  ...")
+//	defer klog.Info("shutting local  runRB scheduler")
+//	c.localGaiaInformerFactory.Start(stopCh)
+//	// todo: gorountine
+//	go c.rbLocalController.Run(threadiness, stopCh)
+//	<-stopCh
+//}
 
 func (c *RBController) RunParentResourceBinding(threadiness int, stopCh <-chan struct{}) {
 	klog.Info("starting parent ResourceBinding  ...")
 	defer klog.Info("shutting parent scheduler")
 	c.parentGaiaInformerFactory.Start(stopCh)
-	// todo: gorountine
-	go c.rbParentController.Run(threadiness, stopCh)
-	<-stopCh
-}
 
-func (c *RBController) RunDescription(threadiness int, stopCh <-chan struct{}) {
-	klog.Info("starting runDescription ... ")
-	// todo: gorountine
-	c.descController.Run(threadiness, stopCh)
+	c.rbParentController.Run(threadiness, stopCh)
+	c.descParentController.Run(threadiness, stopCh)
 	return
 }
 
-func (c *RBController) handleLocalResourceBinding(rb *appsv1alpha1.ResourceBinding) error {
-	klog.V(5).Infof("handle local resourceBinding %s", klog.KObj(rb))
-	if rb.Spec.StatusScheduler == appsv1alpha1.ResourceBindingSelected {
-		clusterName, desNs, errcluster := utils.GetLocalClusterName(c.localkubeclient)
-		if errcluster != nil {
-			klog.Errorf("local handleResourceBinding failed to get clustername From secret: %v", errcluster)
-			return errcluster
-		}
-		if len(clusterName) > 0 {
-			descriptionName := rb.Labels[known.GaiaDescriptionLabel]
-			desc, descErr := utils.GetDescrition(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, desNs)
-			if descErr != nil {
-				if apierrors.IsNotFound(descErr) {
-					klog.Infof("local OffloadRBWorkloads name==%s, have no description \n", descriptionName)
-					return nil
-				}
-				klog.Errorf(" local get %s namespace Descrition %s, error == %v", known.GaiaRBMergedReservedNamespace, descriptionName, descErr)
-				return descErr
-			}
+func (c *RBController) RunLocalDescription(threadiness int, stopCh <-chan struct{}) {
+	klog.Info("starting runDescription ... ")
+	defer klog.Info("shutting local description ...")
+	c.localGaiaInformerFactory.Start(stopCh)
+	go c.descLocalController.Run(threadiness, stopCh)
+	<-stopCh
+}
 
-			if rb.DeletionTimestamp != nil {
-				return utils.OffloadRBWorkloads(context.TODO(), desc, c.parentGaiaclient, c.localdynamicClient,
-					c.restMapper, rb, clusterName)
-			}
-			// need schedule across clusters
-			if error := utils.ApplyRBWorkloads(context.TODO(), desc, c.parentGaiaclient, c.localdynamicClient,
-				c.restMapper, rb, clusterName); error != nil {
-				return fmt.Errorf("local apply workloads(components) failed")
-			}
-		}
+func (c *RBController) handleLocalDescription(desc *appsv1alpha1.Description) error {
+	klog.V(5).Infof("handle local description %s", klog.KObj(desc))
+	if desc.DeletionTimestamp != nil {
+		return utils.OffloadResourceBindingByDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
 	}
 	return nil
 }
+
+//func (c *RBController) handleLocalResourceBinding(rb *appsv1alpha1.ResourceBinding) error {
+//	klog.V(5).Infof("handle local resourceBinding %s", klog.KObj(rb))
+//	if rb.Spec.StatusScheduler == appsv1alpha1.ResourceBindingSelected {
+//		clusterName, desNs, errcluster := utils.GetLocalClusterName(c.localkubeclient)
+//		if errcluster != nil {
+//			klog.Errorf("local handleResourceBinding failed to get clustername From secret: %v", errcluster)
+//			return errcluster
+//		}
+//		if len(clusterName) > 0 {
+//			descriptionName := rb.Labels[known.GaiaDescriptionLabel]
+//			desc, descErr := utils.GetDescrition(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, desNs)
+//			if descErr != nil {
+//				if apierrors.IsNotFound(descErr) {
+//					klog.Infof("local OffloadRBWorkloads name==%s, have no description \n", descriptionName)
+//					return nil
+//				}
+//				klog.Errorf(" local get %s namespace Descrition %s, error == %v", known.GaiaRBMergedReservedNamespace, descriptionName, descErr)
+//				return descErr
+//			}
+//
+//			if rb.DeletionTimestamp != nil {
+//				return utils.OffloadRBWorkloads(context.TODO(), desc, c.parentGaiaclient, c.localdynamicClient,
+//					c.restMapper, rb, clusterName)
+//			}
+//			// need schedule across clusters
+//			if error := utils.ApplyRBWorkloads(context.TODO(), desc, c.parentGaiaclient, c.localdynamicClient,
+//				c.restMapper, rb, clusterName); error != nil {
+//				return fmt.Errorf("local apply workloads(components) failed")
+//			}
+//		}
+//	}
+//	return nil
+//}
+
 func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBinding) error {
 	klog.V(5).Infof("handle parent resourceBinding %s", klog.KObj(rb))
 	if rb.Spec.StatusScheduler == appsv1alpha1.ResourceBindingSelected {
@@ -450,12 +462,13 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 	}
 	return nil
 }
-func (c *RBController) handleDescription(desc *appsv1alpha1.Description) error {
+func (c *RBController) handleParentDescription(desc *appsv1alpha1.Description) error {
 	klog.V(5).Infof("handle Description %s", klog.KObj(desc))
-	if desc.DeletionTimestamp != nil {
-		utils.OffloadResourceBindingByDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
-		utils.OffloadWorkloadsByDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
-		utils.OffloadDescription(context.TODO(), c.parentDynamicClient, c.restMapper, desc)
+	if desc != nil && desc.DeletionTimestamp != nil {
+		//utils.OffloadResourceBindingByDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
+		//utils.OffloadWorkloadsByDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
+
+		utils.OffloadDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
 	}
 	return nil
 }
@@ -466,11 +479,30 @@ func (c *RBController) SetParentRBController() (*RBController, error) {
 	c.parentDynamicClient = parentDynamicClient
 	c.parentGaiaInformerFactory = parentgaiaInformerFactory
 
-	newParentRBController, err := NewController(parentGaiaClient, parentgaiaInformerFactory.Apps().V1alpha1().ResourceBindings(),
+	rbController, rberr := NewController(parentGaiaClient, parentgaiaInformerFactory.Apps().V1alpha1().ResourceBindings(),
 		c.handleParentResourceBinding)
+	if rberr != nil {
+		klog.Errorf(" local handleParentResourceBinding SetParentRBController rberr == %v", rberr)
+		return nil, rberr
+	}
+	c.rbParentController = rbController
+	descController, descerr := description.NewDescController(parentGaiaClient, parentgaiaInformerFactory.Apps().V1alpha1().Descriptions(),
+		c.handleParentDescription)
+	if descerr != nil {
+		klog.Errorf(" local handleParentDescription SetParentRBController descerr == %v", descerr)
+		return nil, descerr
+	}
+	c.descParentController = descController
+	return c, nil
+}
+
+func (c *RBController) SetLocalDescriptionController() (*RBController, error) {
+	descController, err := description.NewDescController(c.localgaiaclient, c.localGaiaInformerFactory.Apps().V1alpha1().Descriptions(),
+		c.handleLocalDescription)
 	if err != nil {
+		klog.Errorf(" local handleLocalDescription SetLocalDescriptionController descerr == %v", err)
 		return nil, err
 	}
-	c.rbParentController = newParentRBController
+	c.descLocalController = descController
 	return c, nil
 }

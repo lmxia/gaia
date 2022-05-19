@@ -480,6 +480,30 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Namespace = metav1.NamespaceDefault
 			}
 			dep.Name = com.Name
+			nodeAffinity := &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
+						{
+							Preference: corev1.NodeSelectorTerm{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      known.SpecificNodeLabelsKeyVirtualnode,
+										Operator: corev1.NodeSelectorOpIn,
+										Values:   []string{"pool", "Pool"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			dep.Spec.Template.Spec.Affinity = nodeAffinity
+			if com.SchedulePolicy.SpecificResource != nil {
+				if com.SchedulePolicy.SpecificResource.MatchLabels != nil {
+					dep.Spec.Template.Spec.NodeSelector = com.SchedulePolicy.SpecificResource.MatchLabels
+				}
+			}
+			
 			if !delete {
 				//dep.ClusterName = clusterName
 				dep.Spec.Template = com.Module
@@ -765,19 +789,46 @@ func OffloadResourceBindingByDescription(ctx context.Context, dynamicClient dyna
 
 func OffloadDescription(ctx context.Context, dynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
-	deletePropagationBackground := metav1.DeletePropagationBackground
-	var descriptionsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "Description"}
-	restMapping, err := discoveryRESTMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
-	if err != nil {
-		klog.Errorf("cannot get desc name=%s its descrito %v", desc.Name, err)
-		return err
-	}
+	descUnstructured, _ := ObjectConvertToUnstructured(desc)
+	return DeleteResource(ctx, dynamicClient, discoveryRESTMapper, descUnstructured)
+}
 
-	klog.V(5).Infof("deleting description %s  defined in deploy %s", desc.Name, klog.KObj(desc))
-	err = dynamicClient.Resource(restMapping.Resource).Namespace(desc.Namespace).Delete(ctx, desc.Name, metav1.DeleteOptions{PropagationPolicy: &deletePropagationBackground})
-	if err != nil && !apierrors.IsNotFound(err) {
-		klog.Errorf("deleting description %s  defined in deploy %s", desc.Name, klog.KObj(desc))
-		return err
-	}
+func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
+	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+	wg := sync.WaitGroup{}
+	var err error
+	wg.Add(1)
+	go func(resource *unstructured.Unstructured) {
+		defer wg.Done()
+		klog.V(5).Infof("resource deleting %s %s defined in resource %s", resource.GetKind(),
+			resource.GetName(), klog.KObj(resource))
+		err = DeleteResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, resource)
+		if err != nil {
+			klog.Errorf("error resource deleting %s %s defined in resource %s", resource.GetKind(),
+				resource.GetName(), klog.KObj(resource))
+			return
+		}
+	}(resource)
+	wg.Wait()
+	return err
+}
+
+func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
+	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+	wg := sync.WaitGroup{}
+	var err error
+	wg.Add(1)
+	go func(resource *unstructured.Unstructured) {
+		defer wg.Done()
+		klog.V(5).Infof("resource apply %s %s defined in resource %s", resource.GetKind(),
+			resource.GetName(), klog.KObj(resource))
+		err = ApplyResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, resource)
+		if err != nil {
+			klog.Errorf("error resource apply %s %s defined in resource %s", resource.GetKind(),
+				resource.GetName(), klog.KObj(resource))
+			return
+		}
+	}(resource)
+	wg.Wait()
 	return err
 }

@@ -279,27 +279,27 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 	// 1. Geo labels
 	mergedSelector := &metav1.LabelSelector{}
 
-	if comm.SchedulePolicy.Geolocation != nil {
-		mergedSelector.MatchLabels = comm.SchedulePolicy.Geolocation.MatchLabels
-		mergedSelector.MatchExpressions = comm.SchedulePolicy.Geolocation.MatchExpressions
+	if comm.SchedulePolicy.GeoLocation != nil {
+		mergedSelector.MatchLabels = comm.SchedulePolicy.GeoLocation.MatchLabels
+		mergedSelector.MatchExpressions = comm.SchedulePolicy.GeoLocation.MatchExpressions
 	}
 	// 2. Net labels
-	if comm.SchedulePolicy.Netenvironment != nil {
+	if comm.SchedulePolicy.NetEnvironment != nil {
 		if mergedSelector.MatchLabels != nil {
-			for key := range comm.SchedulePolicy.Netenvironment.MatchLabels {
+			for key := range comm.SchedulePolicy.NetEnvironment.MatchLabels {
 				if val, ok := mergedSelector.MatchLabels[key]; !ok {
 					mergedSelector.MatchLabels[key] = val
 				}
 			}
 		} else {
-			mergedSelector.MatchLabels = comm.SchedulePolicy.Netenvironment.MatchLabels
+			mergedSelector.MatchLabels = comm.SchedulePolicy.NetEnvironment.MatchLabels
 		}
 
 		if mergedSelector.MatchExpressions != nil {
 			mergedSelector.MatchExpressions = append(mergedSelector.MatchExpressions,
-				comm.SchedulePolicy.Netenvironment.MatchExpressions...)
+				comm.SchedulePolicy.NetEnvironment.MatchExpressions...)
 		} else {
-			mergedSelector.MatchExpressions = comm.SchedulePolicy.Netenvironment.MatchExpressions
+			mergedSelector.MatchExpressions = comm.SchedulePolicy.NetEnvironment.MatchExpressions
 		}
 	}
 

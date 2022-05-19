@@ -29,6 +29,8 @@ type DescriptionSpec struct {
 	// +required
 	AppID string `json:"appID,omitempty"` // appID是蓝图的id
 	// +optional
+	Preoccupy string `json:"preoccupy,omitempty"`
+	// +optional
 	// +kubebuilder:validation:Optional
 	Components []Component `json:"components,omitempty"`
 }
@@ -47,6 +49,9 @@ type Component struct {
 	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required
 	RuntimeType string `json:"runtimeType,omitempty"`
+	// +required
+	// +kubebuilder:default=1
+	Dispersion int32 `json:"dispersion,omitempty"`
 	// +required
 	Workload Workload `json:"workload,omitempty"`
 	// +required
@@ -73,6 +78,8 @@ type Workload struct {
 	TraitDeployment *TraitDeployment `json:"traitDeployment,omitempty"`
 	// +optional
 	TraitServerless *TraitServerless `json:"traitServerless,omitempty"`
+	// +optional
+	TraitAffinityDaemon *TraitAffinityDaemon `json:"traitaffinitydaemon,omitempty"`
 }
 type ServerlessSpec struct {
 	// +optional
@@ -104,18 +111,22 @@ type TraitDeployment struct {
 }
 
 type TraitServerless struct {
-	MiniInstancenumber int32  ` json:"miniInstancenumber,omitempty"`
+	MiniInstancenumber int32  `json:"miniInstancenumber,omitempty"`
 	Step               int32  `json:"step,omitempty"`
 	Threshold          string `json:"threshold,omitempty"`
+}
+
+type TraitAffinityDaemon struct {
+	SN string `json:"sn,omitempty"`
 }
 
 type SchedulePolicy struct {
 	// +optional
 	SpecificResource *metav1.LabelSelector `json:"specificResource,omitempty"`
 	// +optional
-	Netenvironment *metav1.LabelSelector `json:"netenvironment,omitempty"`
+	NetEnvironment *metav1.LabelSelector `json:"netenvironment,omitempty"`
 	// +optional
-	Geolocation *metav1.LabelSelector `json:"geolocation,omitempty"`
+	GeoLocation *metav1.LabelSelector `json:"geolocation,omitempty"`
 	// +optional
 	Provider *metav1.LabelSelector `json:"provider,omitempty"`
 }

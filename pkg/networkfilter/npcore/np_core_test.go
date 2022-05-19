@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func SetRbsAndNetworksRequirementAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
 
 	var rbs []*v1alpha1.ResourceBinding
 	var rb0 = v1alpha1.ResourceBinding{
@@ -141,6 +141,59 @@ func SetRbsAndNetworksRequirementAvailable() ([]*v1alpha1.ResourceBinding, *v1al
 	return rbs, &networkReq
 }
 
+func SetRbsAndNetReqSameDomain() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+
+	var rbs []*v1alpha1.ResourceBinding
+	var rb0 = v1alpha1.ResourceBinding{
+		Spec: v1alpha1.ResourceBindingSpec{
+			AppID: "0",
+			RbApps: []*v1alpha1.ResourceBindingApps{
+				0: {
+					ClusterName: "Domain1",
+					Replicas: map[string]int32{
+						"a": 2,
+						"b": 1,
+					},
+				},
+			},
+		},
+	}
+	rbs = append(rbs, &rb0)
+
+	var networkReq = v1alpha1.NetworkRequirement{
+		Spec: v1alpha1.NetworkRequirementSpec{
+			NetworkCommunication: []v1alpha1.NetworkCommunication{
+				0: {
+					Name:   "a",
+					SelfID: []string{"sca1", "sca2"},
+					InterSCNID: []v1alpha1.InterSCNID{
+						0: {
+							Source: v1alpha1.Direction{
+								Id: "sca1",
+							},
+							Destination: v1alpha1.Direction{
+								Id: "scb1",
+							},
+							Sla: v1alpha1.AppSlaAttr{
+								Delay:     10000,
+								Lost:      10000,
+								Jitter:    1000,
+								Bandwidth: 100,
+							},
+						},
+					},
+				},
+				1: {
+					Name:       "b",
+					SelfID:     []string{"scb1"},
+					InterSCNID: []v1alpha1.InterSCNID{},
+				},
+			},
+		},
+	}
+	return rbs, &networkReq
+}
+
 func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
 
 	var rbs []*v1alpha1.ResourceBinding
@@ -243,14 +296,14 @@ func SetRbsAndNetReqSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 					},
 				},
 				1: {
-					ClusterName: "Domain4",
+					ClusterName: "Domain2",
 					Replicas: map[string]int32{
 						"a": 0,
 						"b": 1,
 					},
 				},
 				2: {
-					ClusterName: "Domain5",
+					ClusterName: "Domain4",
 					Replicas: map[string]int32{
 						"a": 0,
 						"c": 2,
@@ -296,13 +349,70 @@ func SetRbsAndNetReqSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 								Id: "scc1",
 							},
 							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10,
+								Delay:     2,
 								Lost:      10000,
 								Jitter:    1000,
 								Bandwidth: 100,
 							},
 						},
 					},
+				},
+				2: {
+					Name:       "c",
+					SelfID:     []string{"scc1"},
+					InterSCNID: []v1alpha1.InterSCNID{},
+				},
+			},
+		},
+	}
+	return rbs, &networkReq
+}
+
+func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+
+	var rbs []*v1alpha1.ResourceBinding
+	var rb0 = v1alpha1.ResourceBinding{
+		Spec: v1alpha1.ResourceBindingSpec{
+			AppID: "0",
+			RbApps: []*v1alpha1.ResourceBindingApps{
+				0: {
+					ClusterName: "Domain1",
+					Replicas: map[string]int32{
+						"a": 2,
+						"b": 0,
+					},
+				},
+				1: {
+					ClusterName: "Domain4",
+					Replicas: map[string]int32{
+						"a": 0,
+						"b": 1,
+					},
+				},
+				2: {
+					ClusterName: "Domain5",
+					Replicas: map[string]int32{
+						"a": 0,
+						"c": 2,
+					},
+				},
+			},
+		},
+	}
+	rbs = append(rbs, &rb0)
+
+	var networkReq = v1alpha1.NetworkRequirement{
+		Spec: v1alpha1.NetworkRequirementSpec{
+			NetworkCommunication: []v1alpha1.NetworkCommunication{
+				0: {
+					Name:       "a",
+					SelfID:     []string{"sca1", "sca2"},
+					InterSCNID: []v1alpha1.InterSCNID{},
+				},
+				1: {
+					Name:       "b",
+					SelfID:     []string{"scb1"},
+					InterSCNID: []v1alpha1.InterSCNID{},
 				},
 				2: {
 					Name:       "c",
@@ -517,9 +627,8 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 
 func TestNetworkFilterAvailable(t *testing.T) {
 
-	/************* 1.INIT: 初始化ncs子模块 ************/
 	logx.NewLogger()
-	rbs, networkRequirement := SetRbsAndNetworksRequirementAvailable()
+	rbs, networkRequirement := SetRbsAndNetReqAvailable()
 	networkInfoMap := BuildNetworkDomainEdge()
 	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
 	if len(rbsRet) != 0 {
@@ -530,7 +639,6 @@ func TestNetworkFilterAvailable(t *testing.T) {
 
 func TestNetworkFilterUnAvailableTopoFailed(t *testing.T) {
 
-	/************* 1.INIT: 初始化ncs子模块 ************/
 	logx.NewLogger()
 	rbs, networkRequirement := SetRbsAndNetReqTopoFailed()
 	networkInfoMap := BuildNetworkDomainEdge()
@@ -543,12 +651,35 @@ func TestNetworkFilterUnAvailableTopoFailed(t *testing.T) {
 
 func TestNetworkFilterUnAvailableSlaFailed(t *testing.T) {
 
-	/************* 1.INIT: 初始化ncs子模块 ************/
 	logx.NewLogger()
 	rbs, networkRequirement := SetRbsAndNetReqSlaFailed()
 	networkInfoMap := BuildNetworkDomainEdge()
 	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
 	if len(rbsRet) == 0 {
+		infoString := fmt.Sprintf("The rbs is unavailable due to sla failed!")
+		nputil.TraceInfo(infoString)
+	}
+}
+
+func TestNetworkFilterNoInterCommunication(t *testing.T) {
+
+	logx.NewLogger()
+	rbs, networkRequirement := SetRbsAndNetReqNoInterCommunication()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if len(rbsRet) != 0 {
+		infoString := fmt.Sprintf("The rbs is unavailable due to sla failed!")
+		nputil.TraceInfo(infoString)
+	}
+}
+
+func TestNetworkFilterSameDomain(t *testing.T) {
+
+	logx.NewLogger()
+	rbs, networkRequirement := SetRbsAndNetReqSameDomain()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if len(rbsRet) != 0 {
 		infoString := fmt.Sprintf("The rbs is unavailable due to sla failed!")
 		nputil.TraceInfo(infoString)
 	}

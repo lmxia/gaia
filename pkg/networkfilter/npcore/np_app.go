@@ -423,6 +423,10 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 		pbRbDomainPaths.SelectedDomainPath = append(pbRbDomainPaths.SelectedDomainPath, pbAppConnectDomainPath)
 	}
 	nputil.TraceInfoEnd("")
+	for i, rbDomainPaths := range pbRbDomainPaths.SelectedDomainPath {
+		infoString := fmt.Sprintf("pbRbDomainPaths[%d] is: (%+v).", i, rbDomainPaths)
+		nputil.TraceInfo(infoString)
+	}
 	return pbRbDomainPaths
 }
 
@@ -544,7 +548,7 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 }
 
 //假设连接属性的源srcScnId的component有5个副本，则每个副本实例在该连接属性都可达，才认为该连接属性有效。
-//每个副本实例只要有一条可达实例就认为该副本的连接属性是有效的：即a1--b1可达就认为有效，无需再计算a1-b2
+//每个副本实例只要有一条可达实例就认为该副本的连接属性是有效的：即a1--b1可达就认为有效
 //尽量满足负荷分担，如：a1--b1可达，那a2尝试从b2开始连接，如果到a2---b2……b5都不可达，则再从头计算a2-b1，截至的实例为上次循环的前一个实例b2-1=b1
 func CalAppConnectAttrForInterSCNID(interSCNID v1alpha1.InterSCNID) bool {
 	nputil.TraceInfoBegin("")
@@ -645,7 +649,7 @@ func CalAppConnectAttrForInterSCNID(interSCNID v1alpha1.InterSCNID) bool {
 			fmt.Printf("The interCommunication (%+v) is unavailable!\n", interSCNID)
 			infoString := fmt.Sprintf("The interCommunication (%+v) is unavailable!\n", interSCNID)
 			nputil.TraceInfo(infoString)
-			nputil.TraceInfoEnd("")
+			nputil.TraceInfoEnd("false")
 			return false
 		} else {
 			//该副本实例存在可达路径，将该副本实例的与不同目的实例的AppConnect的domainSrPathArray 存放在相同源标识的local.ComponentArray[srcCom].AppConnectReqList下
@@ -663,7 +667,9 @@ func CalAppConnectAttrForInterSCNID(interSCNID v1alpha1.InterSCNID) bool {
 		}
 	}
 
-	nputil.TraceInfoEnd("")
+	infoString := fmt.Sprintf("The interCommunication (%+v) is available!\n", interSCNID)
+	nputil.TraceInfo(infoString)
+	nputil.TraceInfoEnd("true")
 	return true
 }
 
@@ -682,9 +688,15 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 
 	//Calc and check domainSrPathArray of all appConnect instances for all interCommunication
 	// and store domainSrPathArray in
+	var available bool
+	available = true
 	for _, netCom := range networkReq.Spec.NetworkCommunication {
+		infoString := fmt.Sprintf("The netCom is (%+v)!\n", netCom)
+		nputil.TraceInfo(infoString)
 		for _, interSCNID := range netCom.InterSCNID {
-			available := CalAppConnectAttrForInterSCNID(interSCNID)
+			infoString := fmt.Sprintf("The netCom.InterSCNID is (%+v)!\n", interSCNID)
+			nputil.TraceInfo(infoString)
+			available = CalAppConnectAttrForInterSCNID(interSCNID)
 			if available == false {
 				infoString := fmt.Sprintf("The interComm (%+v) is unavailable!\n", interSCNID)
 				nputil.TraceInfo(infoString)
@@ -696,57 +708,56 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 
 	//选出DomainPathGroupMaxNum组组合方案
 	domainPathCluster := CombMatrixToDomainPathGroup()
-	var rbDomainPathArray []BindingSelectedDomainPath
-	for i, appPathGroup := range domainPathCluster {
-		var rbSdp = BindingSelectedDomainPath{}
-		for i, appDomainPath := range appPathGroup {
-			infoString := fmt.Sprintf("appPathGroup[%d] is: (%+v).\n\n", i, appDomainPath)
+	if len(domainPathCluster) != 0 {
+		var rbDomainPathArray []BindingSelectedDomainPath
+		for _, appPathGroup := range domainPathCluster {
+			var rbSdp = BindingSelectedDomainPath{}
+			for i, appDomainPath := range appPathGroup {
+				infoString := fmt.Sprintf("appPathGroup[%d] is: (%+v).\n\n", i, appDomainPath)
+				nputil.TraceInfo(infoString)
+				var appSelectedPath = AppConnectSelectedDomainPath{}
+				appSelectedPath.AppConnectAttr = appDomainPath.AppConnect
+				appSelectedPath.DomainSrPath = appDomainPath.DomainSrPath
+				appSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(appDomainPath.DomainSrPath)
+				rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
+			}
+			infoString := fmt.Sprintf("rbSdp : (%+v).\n\n", rbSdp)
 			nputil.TraceInfo(infoString)
-			var appSelectedPath = AppConnectSelectedDomainPath{}
-			appSelectedPath.AppConnectAttr = appDomainPath.AppConnect
-			appSelectedPath.DomainSrPath = appDomainPath.DomainSrPath
-			appSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(appDomainPath.DomainSrPath)
-			rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
+			if len(rbSdp.SelectedDomainPath) != 0 {
+				rbDomainPathArray = append(rbDomainPathArray, rbSdp)
+			}
 		}
-		infoString1 := fmt.Sprintf("rbSdp : (%+v).\n\n", rbSdp)
-		nputil.TraceInfo(infoString1)
-
-		rbDomainPathArray = append(rbDomainPathArray, rbSdp)
-		i++
-	}
-
-	for i, bindDomainPath := range rbDomainPathArray {
-		fmt.Printf("---------bindDomainPath SelectedDomainPath [%d] ---------\n", i)
-		infoString1 := fmt.Sprintf("---------bindDomainPath SelectedDomainPath [%d] ---------\n", i)
-		nputil.TraceInfo(infoString1)
-		for _, appDomainPath := range bindDomainPath.SelectedDomainPath {
-			fmt.Printf("AppConnectAttr is: [%+v]\n\n", appDomainPath.AppConnectAttr)
-			fmt.Printf("DomainSrPath is: [%+v]\n\n", appDomainPath.DomainSrPath)
-			fmt.Printf("DomainInfoPath is: [%+v]\n\n", appDomainPath.DomainInfoPath)
-			infoString1 := fmt.Sprintf("AppConnectAttr is: [%+v]", appDomainPath.AppConnectAttr)
-			nputil.TraceInfo(infoString1)
-			infoString2 := fmt.Sprintf("DomainSrPath is: [%+v]", appDomainPath.DomainSrPath)
-			nputil.TraceInfo(infoString2)
-			infoString3 := fmt.Sprintf("DomainInfoPath is: [%+v]", appDomainPath.DomainInfoPath)
-			nputil.TraceInfo(infoString3)
+		//构造message数据
+		for i, bindDomainPath := range rbDomainPathArray {
+			fmt.Printf("---------bindDomainPath SelectedDomainPath [%d] ---------\n", i)
+			infoString := fmt.Sprintf("---------bindDomainPath SelectedDomainPath [%d] ---------\n", i)
+			nputil.TraceInfo(infoString)
+			for _, appDomainPath := range bindDomainPath.SelectedDomainPath {
+				fmt.Printf("AppConnectAttr is: [%+v]\n\n", appDomainPath.AppConnectAttr)
+				fmt.Printf("DomainSrPath is: [%+v]\n\n", appDomainPath.DomainSrPath)
+				fmt.Printf("DomainInfoPath is: [%+v]\n\n", appDomainPath.DomainInfoPath)
+				infoString := fmt.Sprintf("AppConnectAttr is: [%+v]", appDomainPath.AppConnectAttr)
+				nputil.TraceInfo(infoString)
+				infoString = fmt.Sprintf("DomainSrPath is: [%+v]", appDomainPath.DomainSrPath)
+				nputil.TraceInfo(infoString)
+				infoString = fmt.Sprintf("DomainInfoPath is: [%+v]", appDomainPath.DomainInfoPath)
+				nputil.TraceInfo(infoString)
+			}
+			pbRbDomainPaths := PbRbDomainPathsCreate(bindDomainPath)
+			content, err := proto.Marshal(pbRbDomainPaths)
+			if err != nil {
+				nputil.TraceErrorWithStack(err)
+				return nil
+			}
+			rb.Spec.NetworkPath = append(rb.Spec.NetworkPath, content)
+			//test
+			TmpRbDomainPaths := new(ncsnp.BindingSelectedDomainPath)
+			err = proto.Unmarshal(content, TmpRbDomainPaths)
+			infoString = fmt.Sprintf("TmpRbDomainPaths is: [%+v]", TmpRbDomainPaths)
+			nputil.TraceInfo(infoString)
 		}
-	}
-	//构造message数据
-	for _, bindDomainPath := range rbDomainPathArray {
-		pbRbDomainPaths := PbRbDomainPathsCreate(bindDomainPath)
-		content, err := proto.Marshal(pbRbDomainPaths)
-		if err != nil {
-			nputil.TraceErrorWithStack(err)
-			return nil
-		}
-		rb.Spec.NetworkPath = append(rb.Spec.NetworkPath, content)
-		//test
-		TmpRbDomainPaths := new(ncsnp.BindingSelectedDomainPath)
-		err = proto.Unmarshal(content, TmpRbDomainPaths)
-		infoString3 := fmt.Sprintf("TmpRbDomainPaths is: [%+v]", TmpRbDomainPaths)
-		nputil.TraceInfo(infoString3)
-	}
 
+	}
 	nputil.TraceInfoEnd("")
 	return rb
 }
@@ -759,56 +770,21 @@ func networkFilterForRbs(rbs []*v1alpha1.ResourceBinding, networkReq *v1alpha1.N
 		tmpRb := CalAppConnectAttrForRb(rb, *networkReq)
 		if tmpRb != nil {
 			selectedRbs = append(selectedRbs, tmpRb)
+		} else {
+			infoString := fmt.Sprintf("The rb (%+v) is unavailable!\n", rb)
+			nputil.TraceInfo(infoString)
+			for _, app := range rb.Spec.RbApps {
+				infoString := fmt.Sprintf("The app of the unavailable rb is (%+v).\n", *app)
+				nputil.TraceInfo(infoString)
+			}
 		}
 		//一个ResourceBing筛选完路径后，清除暂存的临时数据。
 		ClearLocalComConnectArray()
 	}
 	for i, selectedRb := range selectedRbs {
-		fmt.Printf("The selectedRbs[%d] is:  (%+v).\n", i, selectedRb)
-		infoString := fmt.Sprintf("The selectedRbs[%d] is:  (%+v).\n", i, selectedRb)
+		infoString := fmt.Sprintf("The selectedRbs[%d] is:  (%+v).\n", i, *selectedRb)
 		nputil.TraceInfo(infoString)
 	}
 	nputil.TraceInfoEnd("")
 	return selectedRbs
 }
-
-/*func NetworkFilter_old() {
-
-	logx.NewLogger()
-
-	var topoContents = map[string][]byte{}
-	//Add DomainLink topo from cache
-	DomainLinkTopoAddFromScache(topoContents)
-	//Build KSP Spf edge for KSP graph
-	buildSpfGraphEdge()
-	//Build DomainLinkKspGraph for all Graph
-	BuildDomainLinkKspGraphAll()
-
-	graph := GraphFindByGraphType(GraphTypeAlgo_Cspf)
-	domainGraph := graph.DomainGraphPoint
-
-	var appConnectAttr = AppConnectAttr{
-		Key: AppConnectAttrKey{
-			SrcUrl:      "pml1/app1_1",
-			DstUrl:      "pml1/app1_1",
-			SrcDomainId: 1,
-			DstDomainId: 4,
-			SrcID:       0,
-			DstID:       0,
-		},
-		SlaAttr: AppSlaAttr{
-			DelayValue:      100,
-			LostValue:       2,
-			JitterValue:     3,
-			ThroughputValue: 150,
-		},
-	}
-	srcDomainSpfID, _ := getDomainSpfID(appConnectAttr.Key.SrcDomainId)
-	dstDomainSpfID, _ := getDomainSpfID(appConnectAttr.Key.DstDomainId)
-	query := simple.Edge{F: simple.Node(srcDomainSpfID), T: simple.Node(dstDomainSpfID)}
-
-	domainSrPathArray := graph.AppConnect(domainGraph.DomainLinkKspGraph, 5, query, appConnectAttr)
-	fmt.Printf("networkPlugin DomainSrPath are:%+v\n", domainSrPathArray)
-	domainSrNamePath := graph.GetDomainPathNameArrayWithFaric(domainSrPathArray)
-	fmt.Printf("domainSrNamePath is (%+v)\n", domainSrNamePath)
-}*/

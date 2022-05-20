@@ -382,3 +382,83 @@ type Topo struct {
 type Fields struct {
 	Field []string `json:"field,omitempty"`
 }
+
+//getHypernodeLabelsMapFromManagedCluster returns hypernode labels of the current cluster from the managedCluster
+func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (nodeRoleMap, resFormMap, runtimeStateMap, snMap map[string]struct{}) {
+	nodeRoleMap, resFormMap, runtimeStateMap, snMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
+	var labelValueArray []string
+	clusterLabels := cluster.GetLabels()
+	for labelKey, labelValue := range clusterLabels {
+		if strings.HasPrefix(labelKey, common.SpecificNodeLabelsKeyPrefix) {
+			if strings.Contains(labelValue, "__") {
+				labelValueArray = strings.Split(labelValue, "__")
+			} else {
+				labelValueArray = []string{labelValue}
+			}
+			if strings.HasPrefix(labelKey, ParsedNodeRoleKey) {
+				for _, v := range labelValueArray {
+					nodeRoleMap[v] = struct{}{}
+				}
+			} else if strings.HasPrefix(labelKey, ParsedResFormKey) {
+				for _, v := range labelValueArray {
+					resFormMap[v] = struct{}{}
+				}
+			} else if strings.HasPrefix(labelKey, ParsedRuntimeStateKey) {
+				for _, v := range labelValueArray {
+					runtimeStateMap[v] = struct{}{}
+				}
+			} else if strings.HasPrefix(labelKey, ParsedSNKey) {
+				snMap[labelValue] = struct{}{}
+			}
+		}
+	}
+	return nodeRoleMap, resFormMap, runtimeStateMap, snMap
+}
+
+var (
+	GeoLocationKey    = common.SpecificNodeLabelsKeyPrefix + "GeoLocation"
+	NetEnvironmentKey = common.SpecificNodeLabelsKeyPrefix + "NetworkEnv"
+	NodeRoleKey       = common.SpecificNodeLabelsKeyPrefix + "NodeRole"
+	ResFormKey        = common.SpecificNodeLabelsKeyPrefix + "ResForm"
+	RuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "RuntimeState"
+	SNKey             = common.SpecificNodeLabelsKeyPrefix + "SN"
+	NetworkEnvKey     = common.SpecificNodeLabelsKeyPrefix + "SupplierName"
+
+	HypernodeLableKeyList = []string{
+		GeoLocationKey,
+		NetEnvironmentKey,
+		NodeRoleKey,
+		ResFormKey,
+		RuntimeStateKey,
+		SNKey,
+		NetworkEnvKey,
+	}
+
+	ParsedGeoLocationKey    = common.SpecificNodeLabelsKeyPrefix + "geo-location"
+	ParsedNetEnvironmentKey = common.SpecificNodeLabelsKeyPrefix + "net-environment"
+	ParsedNodeRoleKey       = common.SpecificNodeLabelsKeyPrefix + "node-role"
+	ParsedResFormKey        = common.SpecificNodeLabelsKeyPrefix + "res-form"
+	ParsedRuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "runtime-state"
+	ParsedSNKey             = common.SpecificNodeLabelsKeyPrefix + "sn"
+	ParsedNetworkEnvKey     = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
+
+	ParsedHypernodeLableKeyList = []string{
+		ParsedGeoLocationKey,
+		ParsedNetEnvironmentKey,
+		ParsedNodeRoleKey,
+		ParsedResFormKey,
+		ParsedRuntimeStateKey,
+		ParsedSNKey,
+		ParsedNetworkEnvKey,
+	}
+
+	HypernodeLableKeyToStandardLabelKey = map[string]string{
+		GeoLocationKey:    ParsedGeoLocationKey,
+		NetEnvironmentKey: ParsedNetEnvironmentKey,
+		NodeRoleKey:       ParsedNodeRoleKey,
+		ResFormKey:        ParsedResFormKey,
+		RuntimeStateKey:   ParsedRuntimeStateKey,
+		SNKey:             ParsedSNKey,
+		NetworkEnvKey:     ParsedNetworkEnvKey,
+	}
+)

@@ -280,8 +280,29 @@ func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
 // parseNodeLabels returns the nodeLabels that belong to specific string list.
 func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
 	for labelKey, labelValue := range inLabels {
-		if utils.ContainsString(HypernodeLableKeyList, labelKey) {
-			nodeLabels[labelKey+"_"+nodeName] = labelValue
+		if labelKey == clusterapi.ParsedSNKey {
+			nodeLabels[labelKey+"__"+nodeName] = labelValue
+		} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
+			nodeLabels[labelKey] = labelValue
+		}
+	}
+	return nodeLabels
+}
+
+// parseHypernodeLabels returns the HypernodeLabels that belong to specific string list.
+func parseHypernodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
+	for labelKey, labelValue := range inLabels {
+		if labelKey == clusterapi.SNKey {
+			nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]+"__"+nodeName] = labelValue
+		} else if utils.ContainsString(clusterapi.HypernodeLableKeyList, labelKey) {
+			if _, ok := nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]]; ok {
+				existedLabelValueArray := strings.Split(nodeLabels[labelKey], "__")
+				if !utils.ContainsString(existedLabelValueArray, labelValue) {
+					nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] = nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] + "__" + labelValue
+				}
+			} else {
+				nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] = labelValue
+			}
 		}
 	}
 	return nodeLabels
@@ -292,8 +313,17 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 	nodeLabels = make(map[string]string)
 	for _, cluster := range clusters {
 		for labelKey, labelValue := range cluster.GetLabels() {
-			if strings.HasPrefix(labelKey, known.SpecificNodeLabelsKeyPrefix) {
+			if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) {
 				nodeLabels[labelKey] = labelValue
+			} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
+				if _, ok := nodeLabels[labelKey]; ok {
+					existedLabelValueArray := strings.Split(nodeLabels[labelKey], "__")
+					if !utils.ContainsString(existedLabelValueArray, labelValue) {
+						nodeLabels[labelKey] = nodeLabels[labelKey] + "__" + labelValue
+					}
+				} else {
+					nodeLabels[labelKey] = labelValue
+				}
 			}
 		}
 	}
@@ -312,7 +342,7 @@ func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 		for _, hypernode := range hypernodeList.Items {
 			// get hypernodes' labels that are in Cluster level
 			if hypernode.Spec.NodeAreaType == "cluster" {
-				nodeLabels = parseNodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())
+				nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())
 			}
 		}
 	} else {
@@ -487,14 +517,5 @@ var (
 		ClusterMemAllocatable: `sum(kube_node_status_allocatable{resource="memory"})/1024`,
 		ClusterCPUAvailable:   `sum(kube_node_status_allocatable{resource="cpu"})-sum(kube_pod_container_resource_requests{resource="cpu"})`,
 		ClusterMemAvailable:   `(sum(kube_node_status_allocatable{resource="memory"})-sum(kube_pod_container_resource_requests{resource="memory"}))/1024`,
-	}
-)
-
-var (
-	HypernodeLableKeyList = []string{
-		known.SpecificNodeLabelsKeyPrefix + "GeoLocation",
-		known.SpecificNodeLabelsKeyPrefix + "NetEnvironment",
-		known.SpecificNodeLabelsKeyPrefix + "NetworkEnv",
-		known.SpecificNodeLabelsKeyPrefix + "SN",
 	}
 )

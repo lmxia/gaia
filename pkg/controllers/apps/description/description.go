@@ -113,7 +113,7 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer klog.Info("shutting down description controller")
 
 	// Wait for the caches to be synced before starting workers
-	if !cache.WaitForNamedCacheSync("description-controller", stopCh, c.descSynced, c.mcSynced) {
+	if !cache.WaitForNamedCacheSync("description-controller", stopCh, c.descSynced) {
 		return
 	}
 

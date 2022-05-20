@@ -11,4 +11,6 @@ const (
 	RBACDefaults = "rbac-defaults"
 
 	GaiaControllerManager = "gaia-controller-manager"
+	TotalPeerOfParentRB   = "total-peer-of-parent-rb"
+	StatusScheduler       = "status-scheduler"
 )

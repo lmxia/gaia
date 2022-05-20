@@ -287,19 +287,19 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	if len(mcls.Items) == 0 {
 		klog.V(3).InfoS("scheduler success but do nothing because there is no child clusters.", scheduleResult)
 	} else {
-		//1. create rbs in sub children cluster namespace.
+		// 1. create rbs in sub children cluster namespace.
 		for _, itemCluster := range mcls.Items {
 			for rbIndex, itemRb := range scheduleResult.ResourceBindings {
 				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 				itemRb.Namespace = itemCluster.Namespace
-				itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
+				// itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
 				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
 					klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
 				}
 			}
-			//2. create desc in to child cluster namespace
+			// 2. create desc in to child cluster namespace
 			newDesc := utils.ConstructDescriptionFromExistOne(desc)
 			newDesc.Namespace = itemCluster.Namespace
 			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
@@ -358,11 +358,13 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 				rb := &appsapi.ResourceBinding{}
 				rb.Name = item.Name
 				rb.Namespace = common.GaiaRSToBeMergedReservedNamespace
+				rb.Labels = item.Labels
 				rb.Spec = appsapi.ResourceBindingSpec{
 					AppID:     desc.Name,
 					ParentRB:  item.Spec.ParentRB,
 					RbApps:    item.Spec.RbApps,
-					TotalPeer: len(rbs),
+					TotalPeer: item.Spec.TotalPeer,
+					// TotalPeer: len(rbs),
 				}
 				_, errCreate := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
 					Create(ctx, rb, metav1.CreateOptions{})
@@ -372,9 +374,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 			}
 			klog.V(3).InfoS("scheduler success just change rb namespace.")
 			err := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
-				DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-					common.GaiaDescriptionLabel: desc.Name,
-				}).String()})
+					DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+						common.GaiaDescriptionLabel: desc.Name,
+					}).String()})
 			if err != nil {
 				klog.Infof("faild to delete rbs in parent cluster", err)
 			}
@@ -391,14 +393,14 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 			for rbIndex, itemRb := range scheduleResult.ResourceBindings {
 				itemRb.Namespace = itemCluster.Namespace
 				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
-				itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
+				// itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
 				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
 					klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
 				}
 			}
-			//2. create desc in to child cluster namespace
+			// 2. create desc in to child cluster namespace
 			newDesc := utils.ConstructDescriptionFromExistOne(desc)
 			newDesc.Namespace = itemCluster.Namespace
 			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
@@ -409,9 +411,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	}
 
 	sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
-		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-			common.GaiaDescriptionLabel: desc.Name,
-		}).String()})
+			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+				common.GaiaDescriptionLabel: desc.Name,
+			}).String()})
 	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 	// TODO check if failed
 	sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})

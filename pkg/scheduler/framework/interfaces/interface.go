@@ -140,7 +140,7 @@ type FilterPlugin interface {
 	// it will return Unschedulable, UnschedulableAndUnresolvable or Error.
 	// For the cluster being evaluated, Filter plugins should look at the passed
 	// cluster's information (e.g., subscriptions considered to be running on the cluster).
-	Filter(ctx context.Context, sub *appsapi.Component, cluster *clusterapi.ManagedCluster) *Status
+	Filter(ctx context.Context, com *appsapi.Component, cluster *clusterapi.ManagedCluster) *Status
 }
 
 // PostFilterPlugin is an interface for "PostFilter" plugins. These plugins are called

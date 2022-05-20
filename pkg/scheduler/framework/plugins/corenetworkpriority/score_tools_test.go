@@ -21,7 +21,7 @@ func (suite *ScoreSuite) SetupTest() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "cluster0",
 				Labels: map[string]string{
-					common.ClusterNetworkLabel: common.NetworkLocationCore,
+					v1alpha1.ParsedNetEnvironmentKey: common.NetworkLocationCore,
 				},
 			},
 		},
@@ -29,7 +29,7 @@ func (suite *ScoreSuite) SetupTest() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "cluster1",
 				Labels: map[string]string{
-					common.ClusterNetworkLabel: common.NetworkLocationCore,
+					v1alpha1.ParsedNetEnvironmentKey: common.NetworkLocationCore,
 				},
 			},
 		},
@@ -37,7 +37,7 @@ func (suite *ScoreSuite) SetupTest() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "field0",
 				Labels: map[string]string{
-					common.ClusterNetworkLabel: common.NetworkLocationCore,
+					v1alpha1.ParsedNetEnvironmentKey: common.NetworkLocationCore,
 				},
 			},
 		},
@@ -50,7 +50,7 @@ func (suite *ScoreSuite) SetupTest() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "field2",
 				Labels: map[string]string{
-					common.ClusterNetworkLabel: common.NetworkLocationCore,
+					v1alpha1.ParsedNetEnvironmentKey: common.NetworkLocationCore,
 				},
 			},
 		},

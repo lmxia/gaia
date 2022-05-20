@@ -503,7 +503,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 					dep.Spec.Template.Spec.NodeSelector = com.SchedulePolicy.SpecificResource.MatchLabels
 				}
 			}
-			
+
 			if !delete {
 				//dep.ClusterName = clusterName
 				dep.Spec.Template = com.Module

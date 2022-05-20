@@ -12,6 +12,9 @@ func getDefaultPlugins() *schedulerapis.Plugins {
 		Filter: schedulerapis.PluginSet{
 			Enabled: []schedulerapis.Plugin{
 				{Name: names.TaintToleration},
+				{Name: names.SpecificResource},
+				{Name: names.AffinityDaemon},
+				{Name: names.NetEnviroment},
 			},
 		},
 		PostFilter: schedulerapis.PluginSet{},

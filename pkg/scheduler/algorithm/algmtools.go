@@ -101,6 +101,26 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 	return rbapps
 }
 
+// makeAffinityDaemonPlan return affinitydaemon plan
+func makeAffinityDaemonPlan(capability []*framework.ClusterInfo) (mat.Matrix, bool) {
+	result := mat.NewDense(1, len(capability), nil)
+	numResult := make([]float64, len(capability))
+	success := false
+	for i, item := range capability {
+		if item.Total > 0 {
+			numResult[i] = 1
+			success = true
+			break
+		}
+	}
+	if success {
+		result.SetRow(0, numResult)
+	} else {
+		result.Zero()
+	}
+	return result, success
+}
+
 // makeServelessPlan return serverless plan
 func makeServelessPlan(capability []*framework.ClusterInfo, replicas int64) mat.Matrix {
 	result := mat.NewDense(1, len(capability), nil)
@@ -120,24 +140,22 @@ func makeServelessPlan(capability []*framework.ClusterInfo, replicas int64) mat.
 	return result
 }
 
-// makeComponentPlans make plans for specific component
-func makeComponentPlans(capability []*framework.ClusterInfo, componentTotal, spreadOver int64) mat.Matrix {
+// makeDeployPlans make plans for specific component
+func makeDeployPlans(capability []*framework.ClusterInfo, componentTotal, spreadOver int64) mat.Matrix {
 	if componentTotal == 0 {
 		result := mat.NewDense(1, len(capability), nil)
 		result.Zero()
 		return result
 	}
-	// 1. check param
-	if int(spreadOver) > len(capability) {
-		return nil
-	} else if int(spreadOver) == len(capability) {
+	// 1. check param,
+	if int(spreadOver) >= len(capability) {
 		result := mat.NewDense(1, len(capability), nil)
 		result.SetRow(0, plan(capability, componentTotal))
 		return result
 	} else {
 		result := mat.NewDense(2, len(capability), nil)
 		result.Zero()
-		// 2. random 2
+		// 2. random 2 	may be duplicate but have no way to avoid.
 		i := 0
 		for i < 2 {
 			randomClusterInfo, err := GenerateRandomClusterInfos(capability, int(spreadOver))

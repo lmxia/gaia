@@ -384,8 +384,8 @@ type Fields struct {
 }
 
 //getHypernodeLabelsMapFromManagedCluster returns hypernode labels of the current cluster from the managedCluster
-func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (nodeRoleMap, resFormMap, runtimeStateMap, snMap map[string]struct{}) {
-	nodeRoleMap, resFormMap, runtimeStateMap, snMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
+func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap map[string]struct{}) {
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
 	var labelValueArray []string
 	clusterLabels := cluster.GetLabels()
 	for labelKey, labelValue := range clusterLabels {
@@ -395,7 +395,11 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (nodeRo
 			} else {
 				labelValueArray = []string{labelValue}
 			}
-			if strings.HasPrefix(labelKey, ParsedNodeRoleKey) {
+			if strings.HasPrefix(labelKey, ParsedNetEnvironmentKey) {
+				for _, v := range labelValueArray {
+					netEnvironmentMap[v] = struct{}{}
+				}
+			} else if strings.HasPrefix(labelKey, ParsedNodeRoleKey) {
 				for _, v := range labelValueArray {
 					nodeRoleMap[v] = struct{}{}
 				}
@@ -412,7 +416,7 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (nodeRo
 			}
 		}
 	}
-	return nodeRoleMap, resFormMap, runtimeStateMap, snMap
+	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap
 }
 
 var (

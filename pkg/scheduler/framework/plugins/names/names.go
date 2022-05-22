@@ -1,8 +1,9 @@
 package names
 
 const (
-	DefaultBinder = "DefaultBinder"
-
-	TaintToleration = "TaintToleration"
-	CorePriority    = "CorePriority"
+	TaintToleration  = "TaintToleration"
+	CorePriority     = "CorePriority"
+	AffinityDaemon   = "AffinityDaemon"
+	SpecificResource = "SpecificResource"
+	NetEnviroment    = "NetEnviroment"
 )

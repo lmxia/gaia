@@ -28,6 +28,10 @@ spec:
     - name: component2
       namespace: test2
       runtimeType: runc
+      schedulepolicy:
+        specificResource:
+            matchExpressions:
+              - { key: sn, operator: In, values: [ "sn1", "sn2" ] }
       workload:
         workloadtype: deployment
         traitDeployment:

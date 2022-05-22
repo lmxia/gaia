@@ -54,7 +54,7 @@ func (suite *DeploymentSuite) SetupTest() {
 					ClusterID: "2",
 				},
 			},
-			Total: 27,
+			Total: 10,
 		},
 		3: {
 			Cluster: &platformv1alpha1.ManagedCluster{
@@ -65,7 +65,7 @@ func (suite *DeploymentSuite) SetupTest() {
 					ClusterID: "3",
 				},
 			},
-			Total: 19,
+			Total: 0,
 		},
 		4: {
 			Cluster: &platformv1alpha1.ManagedCluster{
@@ -192,13 +192,13 @@ func (suite *DeploymentSuite) TestGetComponentClusterTotal() {
 }
 
 func (suite *DeploymentSuite) TestCalculatePlans() {
-	mat := makeComponentPlans(suite.capability, 10, 2)
+	mat := makeDeployPlans(suite.capability, 10, 1)
 	fmt.Printf("%v", mat)
 	suite.Equal(5, 5, "test")
 }
 
 func (suite *DeploymentSuite) TestGenerateRandomNumber() {
-	result, err := GenerateRandomClusterInfos(suite.capability, 4)
+	result, err := GenerateRandomClusterInfos(suite.capability, 1)
 	if err != nil {
 		fmt.Printf("%v", result)
 	}

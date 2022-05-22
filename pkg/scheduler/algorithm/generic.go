@@ -98,28 +98,36 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			}
 		}
 		// spread level info: full level, 2 level, 1 level
-		spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}
+		//spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}
+		// todo only 1 as default spread level
+		spreadLevels := []int64{1}
 		allPlan := nomalizeClusters(feasibleClusters, allClusters)
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {
-			for j, spreadLevel := range spreadLevels {
+			for j, _ := range spreadLevels {
 				if comm.Workload.Workloadtype == common.WorkloadTypeDeployment {
-					componentMat := makeComponentPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), spreadLevel)
+					componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
 					allResultGlobal[j][i] = componentMat
 				} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless {
 					componentMat := makeServelessPlan(allPlan, 1)
+					allResultGlobal[j][i] = componentMat
+				} else if comm.Workload.Workloadtype == common.WorkloadTypeAffinityDaemon {
+					componentMat, _ := makeAffinityDaemonPlan(allPlan)
 					allResultGlobal[j][i] = componentMat
 				}
 			}
 		} else {
 			for j, rb := range rbs {
 				replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
-				for k, spreadLevel := range spreadLevels {
+				for k, _ := range spreadLevels {
 					if comm.Workload.Workloadtype == common.WorkloadTypeDeployment {
-						componentMat := makeComponentPlans(allPlan, replicas, spreadLevel)
+						componentMat := makeDeployPlans(allPlan, replicas, int64(comm.Dispersion))
 						allResultWithRB[j][k][i] = componentMat
 					} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless {
 						componentMat := makeServelessPlan(allPlan, replicas)
+						allResultWithRB[j][k][i] = componentMat
+					} else if comm.Workload.Workloadtype == common.WorkloadTypeAffinityDaemon {
+						componentMat, _ := makeAffinityDaemonPlan(allPlan)
 						allResultWithRB[j][k][i] = componentMat
 					}
 				}
@@ -276,73 +284,7 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 	}
 
 	var allClusters []*clusterapi.ManagedCluster
-	// 1. Geo labels
-	mergedSelector := &metav1.LabelSelector{}
-
-	if comm.SchedulePolicy.GeoLocation != nil {
-		mergedSelector.MatchLabels = comm.SchedulePolicy.GeoLocation.MatchLabels
-		mergedSelector.MatchExpressions = comm.SchedulePolicy.GeoLocation.MatchExpressions
-	}
-	// 2. Net labels
-	if comm.SchedulePolicy.NetEnvironment != nil {
-		if mergedSelector.MatchLabels != nil {
-			for key := range comm.SchedulePolicy.NetEnvironment.MatchLabels {
-				if val, ok := mergedSelector.MatchLabels[key]; !ok {
-					mergedSelector.MatchLabels[key] = val
-				}
-			}
-		} else {
-			mergedSelector.MatchLabels = comm.SchedulePolicy.NetEnvironment.MatchLabels
-		}
-
-		if mergedSelector.MatchExpressions != nil {
-			mergedSelector.MatchExpressions = append(mergedSelector.MatchExpressions,
-				comm.SchedulePolicy.NetEnvironment.MatchExpressions...)
-		} else {
-			mergedSelector.MatchExpressions = comm.SchedulePolicy.NetEnvironment.MatchExpressions
-		}
-	}
-
-	// 3. specific sn
-	if comm.SchedulePolicy.SpecificResource != nil {
-		if mergedSelector.MatchLabels != nil {
-			for key := range comm.SchedulePolicy.SpecificResource.MatchLabels {
-				if val, ok := mergedSelector.MatchLabels[key]; !ok {
-					mergedSelector.MatchLabels[key] = val
-				}
-			}
-		} else {
-			mergedSelector.MatchLabels = comm.SchedulePolicy.SpecificResource.MatchLabels
-		}
-		if mergedSelector.MatchExpressions != nil {
-			mergedSelector.MatchExpressions = append(mergedSelector.MatchExpressions,
-				comm.SchedulePolicy.SpecificResource.MatchExpressions...)
-		} else {
-			mergedSelector.MatchExpressions = comm.SchedulePolicy.SpecificResource.MatchExpressions
-		}
-	}
-
-	// 4. provider
-	if comm.SchedulePolicy.Provider != nil {
-		if mergedSelector.MatchLabels != nil {
-			for key := range comm.SchedulePolicy.Provider.MatchLabels {
-				if val, ok := mergedSelector.MatchLabels[key]; !ok {
-					mergedSelector.MatchLabels[key] = val
-				}
-			}
-		} else {
-			mergedSelector.MatchLabels = comm.SchedulePolicy.Provider.MatchLabels
-		}
-
-		if mergedSelector.MatchExpressions != nil {
-			mergedSelector.MatchExpressions = append(mergedSelector.MatchExpressions,
-				comm.SchedulePolicy.Provider.MatchExpressions...)
-		} else {
-			mergedSelector.MatchExpressions = comm.SchedulePolicy.Provider.MatchExpressions
-		}
-	}
-
-	clusters, err := g.cache.ListClusters(mergedSelector)
+	clusters, err := g.cache.ListClusters(nil)
 
 	if err != nil {
 		return nil, diagnosis, err

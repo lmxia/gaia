@@ -199,7 +199,7 @@ func DomainLinkTopoAddFromScache(topoContents map[string][]byte) {
 
 	local := GetCoreLocal()
 	baseDomainGraph := local.BaseGraphPoint.BaseDomainGraphPoint
-	
+
 	for filedName, topoMsg := range topoContents {
 		domainTopoCache := new(ncsnp.DomainTopoCacheNotify)
 		err := proto.Unmarshal(topoMsg, domainTopoCache)

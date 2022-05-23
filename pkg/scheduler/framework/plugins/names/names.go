@@ -6,4 +6,7 @@ const (
 	AffinityDaemon   = "AffinityDaemon"
 	SpecificResource = "SpecificResource"
 	NetEnviroment    = "NetEnviroment"
+	Geolocation      = "GeoLocation"
+	SupplierName     = "SupplierName"
+	ResForm          = "ResForm"
 )

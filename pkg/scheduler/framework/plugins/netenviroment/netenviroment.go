@@ -24,7 +24,7 @@ func (n NetEnviroment) Name() string {
 
 func (n NetEnviroment) Filter(ctx context.Context, com *v1alpha1.Component, cluster *clusterapi.ManagedCluster) *framework.Status {
 	netEnviroments := com.SchedulePolicy.NetEnvironment.MatchExpressions[0].Values
-	netEnvirmentMap, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
+	netEnvirmentMap, _, _, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
 	for _, netEnviroment := range netEnviroments {
 		if _, exist := netEnvirmentMap[netEnviroment]; exist {
 			return nil

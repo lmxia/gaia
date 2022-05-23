@@ -24,7 +24,7 @@ func (s SpecificResource) Name() string {
 
 func (s SpecificResource) Filter(ctx context.Context, com *v1alpha1.Component, cluster *platformv1.ManagedCluster) *framework.Status {
 	sns := com.SchedulePolicy.SpecificResource.MatchExpressions[0].Values
-	_, _, _, _, snMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
+	_, _, _, _, snMap, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
 	for _, sn := range sns {
 		if _, exist := snMap[sn]; exist {
 			return nil

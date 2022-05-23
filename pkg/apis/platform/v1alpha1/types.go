@@ -384,8 +384,8 @@ type Fields struct {
 }
 
 //getHypernodeLabelsMapFromManagedCluster returns hypernode labels of the current cluster from the managedCluster
-func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap map[string]struct{}) {
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
+func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers map[string]struct{}) {
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
 	var labelValueArray []string
 	clusterLabels := cluster.GetLabels()
 	for labelKey, labelValue := range clusterLabels {
@@ -413,10 +413,14 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 				}
 			} else if strings.HasPrefix(labelKey, ParsedSNKey) {
 				snMap[labelValue] = struct{}{}
+			} else if strings.HasPrefix(labelKey, ParsedGeoLocationKey) {
+				geolocationMap[labelValue] = struct{}{}
+			} else if strings.HasPrefix(labelKey, ParsedProviderKey) {
+				providers[labelValue] = struct{}{}
 			}
 		}
 	}
-	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap
+	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers
 }
 
 var (
@@ -444,7 +448,7 @@ var (
 	ParsedResFormKey        = common.SpecificNodeLabelsKeyPrefix + "res-form"
 	ParsedRuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "runtime-state"
 	ParsedSNKey             = common.SpecificNodeLabelsKeyPrefix + "sn"
-	ParsedNetworkEnvKey     = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
+	ParsedProviderKey       = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
 
 	ParsedHypernodeLableKeyList = []string{
 		ParsedGeoLocationKey,
@@ -453,7 +457,7 @@ var (
 		ParsedResFormKey,
 		ParsedRuntimeStateKey,
 		ParsedSNKey,
-		ParsedNetworkEnvKey,
+		ParsedProviderKey,
 	}
 
 	HypernodeLableKeyToStandardLabelKey = map[string]string{
@@ -463,6 +467,6 @@ var (
 		ResFormKey:        ParsedResFormKey,
 		RuntimeStateKey:   ParsedRuntimeStateKey,
 		SNKey:             ParsedSNKey,
-		NetworkEnvKey:     ParsedNetworkEnvKey,
+		NetworkEnvKey:     ParsedProviderKey,
 	}
 )

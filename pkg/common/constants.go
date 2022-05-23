@@ -62,6 +62,9 @@ const (
 
 	TopoSyncBaseUrl = "http://ssiexpose.synccontroller.svc:8080"
 	TopoSyncUrlPath = "/v1.0/globalsync/topo"
+
+	// env
+	ResourceBindMergePostURL = "RESOURCEBINDING_MERGER_POST_URL"
 )
 
 // lease lock

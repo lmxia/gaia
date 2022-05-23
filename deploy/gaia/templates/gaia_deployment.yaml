@@ -60,6 +60,9 @@ spec:
             requests:
               cpu: 100m
               memory: 20Mi
+          env:
+            - name: RESOURCEBINDING_MERGER_POST_URL
+              value: {{ .Values.common.resourceBindingMergePostURL }}
       serviceAccountName: gaia
 
 ---

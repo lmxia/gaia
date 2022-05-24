@@ -12,6 +12,7 @@ import (
 	"github.com/lmxia/gaia/pkg/common"
 	known "github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllermanager/approver"
+	"github.com/lmxia/gaia/pkg/controllermanager/rbmerger"
 	"github.com/lmxia/gaia/pkg/controllers/apps/resourcebinding"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
@@ -57,6 +58,7 @@ type ControllerManager struct {
 	statusManager       *Manager
 	crrApprover         *approver.CRRApprover
 	rbController        *resourcebinding.RBController
+	rbMerger            *rbmerger.RBMerger
 	gaiaInformerFactory gaiainformers.SharedInformerFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
 	triggerFunc         func(metav1.Object)
@@ -109,6 +111,10 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		klog.Error(rberr)
 	}
 	statusManager := NewStatusManager(ctx, localKubeConfig.Host, clusterHostName, managedCluster, localKubeClientSet, localGaiaClientSet, hypernodeClientSet)
+	rbMerger, nil := rbmerger.NewRBMerger(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory)
+	if err != nil {
+		klog.Error(err)
+	}
 
 	agent := &ControllerManager{
 		ctx:                 ctx,
@@ -120,6 +126,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		kubeInformerFactory: localKubeInformerFactory,
 		crrApprover:         approver,
 		rbController:        rbController,
+		rbMerger:            rbMerger,
 		statusManager:       statusManager,
 	}
 	return agent, nil
@@ -143,32 +150,47 @@ func (controller *ControllerManager) Run() {
 					controller.crrApprover.Run(common.DefaultThreadiness, ctx.Done())
 				}()
 
-				// 3. wait for target to join into a parent cluster.
+				// 3. start rbMerger
 				go func() {
-					klog.Info("start 3. wait for target to join into a parent cluster")
-					// 3.1 will wait, need period report only when register successfully.
+					klog.Info("start 3. start rbMerger Controller...")
+					controller.rbMerger.RunToLocalResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
+				}()
+
+				// 4. wait for target to join into a parent cluster.
+				go func() {
+					klog.Info("start 4. wait for target to join into a parent cluster")
+					// 4.1 will wait, need period report only when register successfully.
 					controller.registerSelfCluster(ctx)
-					// 3.2 report periodly.
+
+					// 4.2 report periodly.
 					go wait.UntilWithContext(ctx, func(ctx context.Context) {
 						controller.statusManager.Run(ctx, controller.parentKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
 					}, time.Duration(0))
 				}()
 
-				// 4. start local description
+				// 5. start local description
 				go func() {
 					// set parent config
 					controller.rbController.SetLocalDescriptionController()
-					klog.Info("start 4. start local description informers...")
+					klog.Info("start 5. start local description informers...")
 					controller.rbController.RunLocalDescription(common.DefaultThreadiness, ctx.Done())
 				}()
 
-				// 5. start parent resourcebinding and description
+				// 6. start parent resourcebinding and description
 				go func() {
 					// set parent config
 					controller.rbController.SetParentRBController()
-					klog.Info("start 5. start parent resourcebinding and description informers...")
+					klog.Info("start 6. start parent resourcebinding and description informers...")
 					controller.rbController.RunParentResourceBinding(common.DefaultThreadiness, ctx.Done())
 				}()
+
+				// 7. start rbMerger
+				go func() {
+					controller.rbMerger.SetParentRBController()
+					klog.Info("start 7. start rbMerger Controller...")
+					controller.rbMerger.RunToParentResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
+				}()
+
 			},
 			OnStoppedLeading: func() {
 				klog.Error("leader election got lost")

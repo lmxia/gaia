@@ -30,8 +30,8 @@ const (
 	ClusterIDLabel            = "clusters.gaia.io/cluster-id"
 	ClusterNameLabel          = "clusters.gaia.io/cluster-name"
 	ClusterBootstrappingLabel = "clusters.gaia.io/bootstrapping"
-
-	CredentialsAuto = "credentials-auto"
+	RBMergerLabel             = "clusters.gaia.io/merger"
+	CredentialsAuto           = "credentials-auto"
 
 	AppsNameLabel = "apps.gaia.io/description-name"
 	AppFinalizer  = "apps.gaia.io/finalizer"

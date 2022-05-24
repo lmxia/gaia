@@ -53,12 +53,12 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: desc.Namespace}, utiltrace.Field{Key: "name", Value: desc.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
 
-	//1. get rbs, if has
+	// 1. get rbs, if has
 	rbs := make([]*v1alpha1.ResourceBinding, 0)
 	if desc.Namespace != common.GaiaReservedNamespace {
 		rbs = g.cache.ListResourceBindings(desc, common.StatusScheduling)
 	}
-	//2. get backup clusters.
+	// 2. get backup clusters.
 	if g.cache.NumClusters() == 0 {
 		return result, ErrNoClustersAvailable
 	}
@@ -73,7 +73,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	// first dim means resouce binding, second means component, third means spread level.
 	allResultWithRB := make([][][]mat.Matrix, len(rbs))
 	if desc.Namespace != common.GaiaReservedNamespace {
-		//desc has resource binding
+		// desc has resource binding
 		for i := 0; i < len(rbs); i++ {
 			allResultWithRB[i] = make([][]mat.Matrix, 3)
 			for j := 0; j < 3; j++ {
@@ -170,15 +170,16 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 
 				rbNew := &v1alpha1.ResourceBinding{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex),
+						Name: fmt.Sprintf("%s-%d", rbOld.Name, rbIndex),
 						Labels: map[string]string{
 							common.GaiaDescriptionLabel: desc.Name,
 						},
 					},
 					Spec: v1alpha1.ResourceBindingSpec{
-						AppID:    desc.Name,
-						ParentRB: rbOld.Name,
-						RbApps:   subRBApps,
+						AppID:     desc.Name,
+						ParentRB:  rbOld.Name,
+						RbApps:    subRBApps,
+						TotalPeer: getTotalPeer(len(rbForrb), 2),
 					},
 				}
 				rbNew.Kind = "ResourceBinding"
@@ -210,7 +211,7 @@ func (g *genericScheduler) getTopologyInfoMap() (networkInfoMap map[string]clust
 }
 
 func prioritizeResourcebindings(ctx context.Context, fwk framework.Framework, _ *v1alpha1.Description,
-	clusters []*clusterapi.ManagedCluster, rbs []*v1alpha1.ResourceBinding) (framework.ResourceBindingScoreList, error) {
+		clusters []*clusterapi.ManagedCluster, rbs []*v1alpha1.ResourceBinding) (framework.ResourceBindingScoreList, error) {
 	if !fwk.HasScorePlugins() {
 		result := make(framework.ResourceBindingScoreList, 0, len(rbs))
 		for i := range rbs {
@@ -327,8 +328,8 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 
 // findClustersThatPassFilters finds the clusters that fit the filter plugins.
 func (g *genericScheduler) findClustersThatPassFilters(ctx context.Context, fwk framework.Framework,
-	com *v1alpha1.Component, diagnosis framework.Diagnosis,
-	clusters []*clusterapi.ManagedCluster) ([]*clusterapi.ManagedCluster, error) {
+		com *v1alpha1.Component, diagnosis framework.Diagnosis,
+		clusters []*clusterapi.ManagedCluster) ([]*clusterapi.ManagedCluster, error) {
 	if !fwk.HasFilterPlugins() {
 		return clusters, nil
 	}
@@ -404,4 +405,11 @@ func normalizedClusters(clusters []*clusterapi.ManagedCluster) []*clusterapi.Man
 		}
 	}
 	return uniqueClusters
+}
+
+func getTotalPeer(rbsResultNum, threshold int) int {
+	if rbsResultNum < threshold {
+		return rbsResultNum
+	}
+	return threshold
 }

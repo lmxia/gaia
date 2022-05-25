@@ -10,4 +10,6 @@ const (
 	SupplierName     = "SupplierName"
 	ResForm          = "ResForm"
 	RuntimeType      = "RuntimeType"
+	NodeRole         = "NodeRole"
+	VirtualNode      = "VirtualNode"
 )

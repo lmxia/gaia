@@ -19,6 +19,7 @@ func getDefaultPlugins() *schedulerapis.Plugins {
 				{Name: names.SupplierName},
 				{Name: names.ResForm},
 				{Name: names.RuntimeType},
+				{Name: names.NodeRole},
 			},
 		},
 		PostFilter: schedulerapis.PluginSet{},
@@ -26,6 +27,7 @@ func getDefaultPlugins() *schedulerapis.Plugins {
 		Score: schedulerapis.PluginSet{
 			Enabled: []schedulerapis.Plugin{
 				{Name: names.CorePriority, Weight: 3},
+				{Name: names.VirtualNode, Weight: 3},
 			},
 		},
 	}

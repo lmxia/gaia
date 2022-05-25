@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"fmt"
+	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"strings"
 	"sync"
 
@@ -487,7 +488,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 							Preference: corev1.NodeSelectorTerm{
 								MatchExpressions: []corev1.NodeSelectorRequirement{
 									{
-										Key:      known.SpecificNodeLabelsKeyVirtualnode,
+										Key:      v1alpha1.ParsedResFormKey,
 										Operator: corev1.NodeSelectorOpIn,
 										Values:   []string{"pool", "Pool"},
 									},

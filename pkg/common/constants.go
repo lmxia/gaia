@@ -45,8 +45,7 @@ const (
 	// GaiaAppSA is the service account where we store credentials to deploy resources
 	GaiaAppSA = "gaia-resource-deployer"
 
-	SpecificNodeLabelsKeyPrefix      = "hypernode.cluster.pml.com.cn/"
-	SpecificNodeLabelsKeyVirtualnode = "hypernode.cluster.pml.com.cn/res-form"
+	SpecificNodeLabelsKeyPrefix = "hypernode.cluster.pml.com.cn/"
 
 	ManagedClusterSourceFromInformer   = "informer"
 	ManagedClusterSourceFromPrometheus = "prometheus"
@@ -55,6 +54,7 @@ const (
 	GaiaDescriptionLabel = "apps.gaia.io/description"
 	StatusScheduling     = "scheduling"
 	NetworkLocationCore  = "core"
+	NodeResourceForm     = "pool"
 
 	ResourceBindingRed   string = "Red"
 	ResourceBindingGreen string = "Green"

@@ -65,6 +65,8 @@ const (
 
 	// env
 	ResourceBindMergePostURL = "RESOURCEBINDING_MERGER_POST_URL"
+
+	MetricConfigMapAbsFilePath = "/etc/config/gaia-prometheus_metrics.conf"
 )
 
 // lease lock

@@ -7,6 +7,7 @@ common:
   mcSource: informer
   promUrlPrefix: ""
   useHypernodeController: false
+  resourceBindingMergePostURL: http://127.0.0.1:8080
 
 replicaCount: 3
 

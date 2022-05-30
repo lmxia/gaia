@@ -13,7 +13,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -436,35 +435,31 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 			return
 		}
 		secret, err := sched.childKubeClientSet.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx, common.ParentClusterSecretName, metav1.GetOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
+		if err != nil {
 			klog.Errorf("set parentDedicatedKubeConfig failed to get secretFromParentCluster: %v", err)
 			return
 		}
 		if err == nil {
 			klog.Infof("found existing secretFromParentCluster '%s/%s' that can be used to access parent cluster", common.GaiaSystemNamespace, common.ParentClusterSecretName)
 
-			if string(secret.Data[common.ClusterAPIServerURLKey]) != target.Spec.ParentURL {
-				klog.Warningf("the parent url got changed from %q to %q", secret.Data[known.ClusterAPIServerURLKey], target.Spec.ParentURL)
-				klog.Warningf("will try to re-get current cluster secret")
+			parentDedicatedKubeConfig, err := utils.GenerateKubeConfigFromToken(target.Spec.ParentURL, string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
+			if err == nil {
+				sched.parentDedicatedKubeConfig = parentDedicatedKubeConfig
+				sched.dedicatedNamespace = string(secret.Data[corev1.ServiceAccountNamespaceKey])
+				sched.selfClusterName = secret.Labels[common.ClusterNameLabel]
+				sched.parentGaiaClient = gaiaClientSet.NewForConfigOrDie(sched.parentDedicatedKubeConfig)
+				sched.parentInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(
+					sched.parentGaiaClient, known.DefaultResync, gaiainformers.WithNamespace(sched.dedicatedNamespace))
+				sched.parentDescriptionLister = sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Lister()
+				sched.parentResourceBindingLister = sched.parentInformerFactory.Apps().V1alpha1().ResourceBindings().Lister()
+				sched.scheduleAlgorithm.SetRBLister(sched.parentResourceBindingLister)
+				sched.scheduleAlgorithm.SetSelfClusterName(sched.selfClusterName)
+				sched.addParentAllEventHandlers()
 			} else {
-				parentDedicatedKubeConfig, err := utils.GenerateKubeConfigFromToken(target.Spec.ParentURL, string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
-				if err == nil {
-					sched.parentDedicatedKubeConfig = parentDedicatedKubeConfig
-					sched.dedicatedNamespace = string(secret.Data[corev1.ServiceAccountNamespaceKey])
-					sched.selfClusterName = secret.Labels[common.ClusterNameLabel]
-					sched.parentGaiaClient = gaiaClientSet.NewForConfigOrDie(sched.parentDedicatedKubeConfig)
-					sched.parentInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(
-						sched.parentGaiaClient, known.DefaultResync, gaiainformers.WithNamespace(sched.dedicatedNamespace))
-					sched.parentDescriptionLister = sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Lister()
-					sched.parentResourceBindingLister = sched.parentInformerFactory.Apps().V1alpha1().ResourceBindings().Lister()
-					sched.scheduleAlgorithm.SetRBLister(sched.parentResourceBindingLister)
-					sched.scheduleAlgorithm.SetSelfClusterName(sched.selfClusterName)
-					sched.addParentAllEventHandlers()
-				}
+				klog.Errorf("set parentkubeconfig failed to get sa and secretFromParentCluster: %v", err)
+				return
 			}
 		}
-
-		klog.V(4).Infof("set parentDedicatedKubeConfig still waiting for getting secret...", target.Name)
 		cancel()
 	}, known.DefaultRetryPeriod*4, 0.3, true)
 

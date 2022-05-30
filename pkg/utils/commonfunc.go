@@ -74,21 +74,16 @@ func NewParentConfig(ctx context.Context, kubeclient *kubernetes.Clientset, gaia
 			return
 		}
 		secret, err := kubeclient.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx, common.ParentClusterSecretName, metav1.GetOptions{})
-		if err != nil && !apierrors.IsNotFound(err) {
+		if err != nil {
 			klog.Errorf("set parentkubeconfig failed to get secretFromParentCluster: %v", err)
 			return
 		}
 		if err == nil {
 			klog.Infof("found existing secretFromParentCluster '%s/%s' that can be used to access parent cluster", common.GaiaSystemNamespace, common.ParentClusterSecretName)
-			if string(secret.Data[common.ClusterAPIServerURLKey]) != target.Spec.ParentURL {
-				klog.Warningf("the parent url have changed from %q to %q", secret.Data[common.ClusterAPIServerURLKey], target.Spec.ParentURL)
-				klog.Warningf("will retry to get current cluster secret")
-			} else {
-				parentKubeConfig, err = GenerateKubeConfigFromToken(target.Spec.ParentURL, string(secret.Data[v1.ServiceAccountTokenKey]), secret.Data[v1.ServiceAccountRootCAKey], 2)
-				if err != nil {
-					klog.Errorf("set parentkubeconfig failed to get sa and secretFromParentCluster: %v", err)
-					return
-				}
+			parentKubeConfig, err = GenerateKubeConfigFromToken(target.Spec.ParentURL, string(secret.Data[v1.ServiceAccountTokenKey]), secret.Data[v1.ServiceAccountRootCAKey], 2)
+			if err != nil {
+				klog.Errorf("set parentkubeconfig failed to get sa and secretFromParentCluster: %v", err)
+				return
 			}
 		}
 		cancel()

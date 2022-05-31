@@ -6,8 +6,6 @@ import (
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/geolocation"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/names"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/netenviroment"
-	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/noderole"
-	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/resform"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/runtimetype"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/specificresource"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/supplier"
@@ -26,9 +24,9 @@ func NewInTreeRegistry() runtime.Registry {
 		names.NetEnviroment:    netenviroment.New,
 		names.Geolocation:      geolocation.New,
 		names.SupplierName:     supplier.New,
-		names.ResForm:          resform.New,
+		//names.ResForm:          resform.New,
 		names.RuntimeType:      runtimetype.New,
-		names.NodeRole:         noderole.New,
+		//names.NodeRole:         noderole.New,
 		names.VirtualNode:      virtualnode.New,
 	}
 }

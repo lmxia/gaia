@@ -15,6 +15,7 @@ spec:
       runtimeType: runc
       workload:
         workloadtype: serverless
+      schedulePolicy:
       module:
         metadata:
           labels:

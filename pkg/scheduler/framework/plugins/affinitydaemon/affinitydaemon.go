@@ -34,6 +34,8 @@ func (a AffinityDaemon) Filter(ctx context.Context, com *v1alpha1.Component, clu
 		if _, exist := snMap[com.Workload.TraitAffinityDaemon.SN]; exist {
 			return nil
 		}
+	} else {
+		return nil
 	}
 
 	errReason := fmt.Sprintf("this cluster {%s}, has no sn {%s}", cluster.Name, com.Workload.TraitAffinityDaemon.SN)

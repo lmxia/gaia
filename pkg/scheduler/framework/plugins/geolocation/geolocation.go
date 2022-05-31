@@ -28,6 +28,10 @@ func (pl *Geolocation) Filter(ctx context.Context, com *v1alpha1.Component, clus
 	if cluster == nil {
 		return framework.AsStatus(fmt.Errorf("geolocation invalid cluster "))
 	}
+	if com.SchedulePolicy.GeoLocation == nil {
+		return nil
+	}
+
 	geoLocations := com.SchedulePolicy.GeoLocation.MatchExpressions[0].Values
 	_, _, _, _, _, geoLocationMap, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
 	for _, location := range geoLocations {

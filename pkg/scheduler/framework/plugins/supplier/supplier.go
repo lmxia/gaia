@@ -26,6 +26,9 @@ func (s SupplierName) Filter(ctx context.Context, com *v1alpha1.Component, clust
 	if cluster == nil {
 		return framework.AsStatus(fmt.Errorf("supplier name invalid cluster "))
 	}
+	if com.SchedulePolicy.Provider == nil {
+		return nil
+	}
 	providers := com.SchedulePolicy.Provider.MatchExpressions[0].Values
 	_, _, _, _, _, _, providerMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
 	for _, provider := range providers {

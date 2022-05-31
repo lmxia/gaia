@@ -285,7 +285,8 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 	}
 
 	var allClusters []*clusterapi.ManagedCluster
-	clusters, err := g.cache.ListClusters(nil)
+	mergedSelector := &metav1.LabelSelector{}
+	clusters, err := g.cache.ListClusters(mergedSelector)
 
 	if err != nil {
 		return nil, diagnosis, err

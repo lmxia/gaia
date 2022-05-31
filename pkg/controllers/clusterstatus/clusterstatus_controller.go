@@ -296,7 +296,7 @@ func parseHypernodeLabels(nodeLabels, inLabels map[string]string, nodeName strin
 			nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]+"__"+nodeName] = labelValue
 		} else if utils.ContainsString(clusterapi.HypernodeLableKeyList, labelKey) {
 			if _, ok := nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]]; ok {
-				existedLabelValueArray := strings.Split(nodeLabels[labelKey], "__")
+				existedLabelValueArray := strings.Split(nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]], "__")
 				if !utils.ContainsString(existedLabelValueArray, labelValue) {
 					nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] = nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] + "__" + labelValue
 				}

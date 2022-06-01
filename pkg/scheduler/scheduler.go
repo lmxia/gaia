@@ -384,7 +384,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	} else {
 		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, desc)
 		if err != nil {
-			sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
+			sched.recordParentSchedulingFailure(desc, err, ReasonUnschedulable)
 			return
 		}
 
@@ -488,6 +488,18 @@ func (sched *Scheduler) recordSchedulingFailure(sub *appsapi.Description, err er
 	// re-added to the queue for re-processing
 	sched.localSchedulingQueue.AddRateLimited(klog.KObj(sub).String())
 }
+
+// recordSchedulingFailure records an event for the subscription that indicates the
+// Description has failed to schedule. Also, update the subscription condition.
+func (sched *Scheduler) recordParentSchedulingFailure(sub *appsapi.Description, err error, _ string) {
+	klog.V(2).InfoS("Unable to schedule Description; waiting", "Description", klog.KObj(sub), "err", err)
+
+	msg := truncateMessage(err.Error())
+	sched.framework.EventRecorder().Event(sub, corev1.EventTypeWarning, "FailedScheduling", msg)
+	// re-added to the queue for re-processing
+	sched.parentSchedulingQueue.AddRateLimited(klog.KObj(sub).String())
+}
+
 
 // addLocalAllEventHandlers is a helper function used in Scheduler
 // to add event handlers for various local informers.

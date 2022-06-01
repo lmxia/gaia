@@ -85,18 +85,18 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	for i, comm := range desc.Spec.Components {
 		localComponent := &comm
 		// NO.1 pre filter
-		feasibleClusters, diagnosis, err := g.findClustersThatFitComponent(ctx, fwk, localComponent)
-		if err != nil {
-			return result, err
-		}
-
-		if len(feasibleClusters) == 0 {
-			return result, &framework.FitError{
-				Description:    desc,
-				NumAllClusters: g.cache.NumClusters(),
-				Diagnosis:      diagnosis,
-			}
-		}
+		feasibleClusters, _, _ := g.findClustersThatFitComponent(ctx, fwk, localComponent)
+		//if err != nil {
+		//	return result, err
+		//}
+		//
+		//if len(feasibleClusters) == 0 {
+		//	return result, &framework.FitError{
+		//		Description:    desc,
+		//		NumAllClusters: g.cache.NumClusters(),
+		//		Diagnosis:      diagnosis,
+		//	}
+		//}
 		// spread level info: full level, 2 level, 1 level
 		//spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}
 		// todo only 1 as default spread level
@@ -376,11 +376,7 @@ func (g *genericScheduler) findClustersThatPassFilters(ctx context.Context, fwk 
 		statusCode = framework.Error
 		return nil, err
 	}
-	for i, cluster := range feasibleClusters {
-		if cluster == nil {
-			return feasibleClusters[:i-1], nil
-		}
-	}
+	feasibleClusters = feasibleClusters[:feasibleClustersLen]
 	return feasibleClusters, nil
 }
 

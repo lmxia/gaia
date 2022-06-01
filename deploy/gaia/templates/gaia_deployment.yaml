@@ -47,7 +47,7 @@ spec:
     spec:
       containers:
         - name: gaia
-          image: lmxia/gaia:{{ .Values.image.tag }}
+          image: 172.17.21.119:30080/library/vklink/gaia:{{ .Values.image.tag }}
           args:
             - --clustername={{ .Values.common.clusterName }}
             - --mcSource={{ .Values.common.mcSource }}
@@ -85,7 +85,7 @@ spec:
     spec:
       containers:
         - name: gaia
-          image: lmxia/gaia-scheduler:{{ .Values.image.tag }}
+          image: 172.17.21.119:30080/library/vklink/gaia-scheduler:{{ .Values.image.tag }}
           resources:
             limits:
               cpu: 100m

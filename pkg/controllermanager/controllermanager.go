@@ -453,7 +453,7 @@ func newClusterRegistrationRequest(clusterID types.UID, clusterNamePrefix, clust
 		},
 		Spec: platformv1alpha1.ClusterRegistrationRequestSpec{
 			ClusterID:         clusterID,
-			ClusterNamePrefix: clusterNamePrefix,
+			ClusterNamePrefix: fmt.Sprintf("%s-", clusterNamePrefix),
 			ClusterName:       clusterName,
 			ClusterLabels:     parseClusterLabels(clusterLabels),
 		},
@@ -476,24 +476,27 @@ func parseClusterLabels(clusterLabels string) map[string]string {
 
 func generateClusterNamePrefix(targetClusterName, optsClusterName, clusterNamePrefix string) string {
 	if len(targetClusterName) != 0 {
-		clusterNamePrefix = fmt.Sprintf("%s%s%s", clusterNamePrefix, targetClusterName, "-")
-	} else if len(optsClusterName) != 0 {
-		clusterNamePrefix = fmt.Sprintf("%s%s%s", clusterNamePrefix, optsClusterName, "-")
-	} else {
-		clusterNamePrefix = fmt.Sprintf("%s", clusterNamePrefix)
+		return targetClusterName
+	}
+	if len(optsClusterName) != 0 {
+		return optsClusterName
 	}
 	return clusterNamePrefix
 }
 
 func generateClusterRegistrationRequestName(clusterID types.UID, clusterNamePrefix string) string {
 	if len(clusterNamePrefix) != 0 {
-		return fmt.Sprintf("%s%s", clusterNamePrefix, string(clusterID))
+		return fmt.Sprintf("%s-%s", clusterNamePrefix, string(clusterID))
 	}
 	return fmt.Sprintf("%s%s", common.NamePrefixForGaiaObjects, string(clusterID))
 }
 
 func generateClusterName(clusterNamePrefix string) string {
-	clusterName := fmt.Sprintf("%s%s", clusterNamePrefix, utilrand.String(common.DefaultRandomUIDLength))
+	if len(clusterNamePrefix) != 0 {
+		return clusterNamePrefix
+	}
+
+	clusterName := fmt.Sprintf("%s%s", common.NamePrefixForGaiaObjects, utilrand.String(common.DefaultRandomUIDLength))
 	klog.V(4).Infof("generate a random string %q as cluster name for later use", clusterName)
 	return clusterName
 }

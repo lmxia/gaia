@@ -31,12 +31,14 @@ import (
 	"github.com/lmxia/gaia/pkg/utils"
 	"github.com/lmxia/gaia/pkg/utils/cartesian"
 	"io/ioutil"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 )
 
@@ -160,15 +162,15 @@ func (rbMerger *RBMerger) handleToParentResourceBinding(rb *appv1alpha1.Resource
 
 	if len(clusters) == 0 {
 
-		err := rbMerger.reCreateRBtoParent(rb)
-		if err != nil {
+		err = rbMerger.reCreateRBtoParent(rb)
+		if apierrors.IsAlreadyExists(err) || err == nil {
+			err = rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).Delete(context.TODO(), rb.Name, metav1.DeleteOptions{})
+			if err != nil {
+				klog.V(4).Infof("Resource Binding %q failed to delete. error: ", rb.Name, err)
+				return err
+			}
+		} else {
 			klog.V(4).Infof("Failed to create ResourceBinding %q to parent.", rb.Name, err)
-			return err
-		}
-
-		err = rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).Delete(context.TODO(), rb.Name, metav1.DeleteOptions{})
-		if err != nil {
-			klog.V(4).Infof("Resource Binding %q failed to delete. error: ", rb.Name, err)
 			return err
 		}
 
@@ -351,12 +353,12 @@ func (rbMerger *RBMerger) createCollectedRBs(rb *appv1alpha1.ResourceBinding) bo
 		rbApps = append(rbApps, rbApp)
 	}
 
-	// totalPeer, err := strconv.Atoi(rb.Labels[common.TotalPeerOfParentRB])
-	// if err != nil {
-	// 	klog.V(5).Infof("Failed to get totalPeer from label.")
-	// 	totalPeer = 0
-	// }
-	totalPeer := 2
+	totalPeer, err := strconv.Atoi(rb.GetLabels()[common.TotalPeerOfParentRB])
+	if err != nil {
+		klog.V(5).Infof("Failed to get totalPeer from label.")
+		totalPeer = 0
+	}
+
 	// create new result ResourceBinding in parent cluster
 	newResultRB := &appv1alpha1.ResourceBinding{
 		ObjectMeta: metav1.ObjectMeta{
@@ -377,9 +379,9 @@ func (rbMerger *RBMerger) createCollectedRBs(rb *appv1alpha1.ResourceBinding) bo
 	newResultRB.Kind = "ResourceBinding"
 	newResultRB.APIVersion = "apps.gaia.io/v1alpha1"
 
-	_, err := rbMerger.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).Create(context.TODO(), newResultRB, metav1.CreateOptions{})
-	if err != nil {
-		klog.V(4).InfoS("Failed to create ResourceBinding  %q.", newResultRB.Name, err)
+	_, err = rbMerger.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).Create(context.TODO(), newResultRB, metav1.CreateOptions{})
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		klog.Infof("Failed to create ResourceBinding  %q.", newResultRB.Name, err)
 		return false
 	}
 	return true

@@ -291,7 +291,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 			for rbIndex, itemRb := range scheduleResult.ResourceBindings {
 				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 				itemRb.Namespace = itemCluster.Namespace
-				// itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
+				itemRb.Spec.TotalPeer = getTotal(itemRb.Spec.TotalPeer, len(scheduleResult.ResourceBindings))
 				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
@@ -500,7 +500,6 @@ func (sched *Scheduler) recordParentSchedulingFailure(sub *appsapi.Description, 
 	sched.parentSchedulingQueue.AddRateLimited(klog.KObj(sub).String())
 }
 
-
 // addLocalAllEventHandlers is a helper function used in Scheduler
 // to add event handlers for various local informers.
 func (sched *Scheduler) addLocalAllEventHandlers() {
@@ -625,4 +624,11 @@ func truncateMessage(message string) string {
 	}
 	suffix := " ..."
 	return message[:max-len(suffix)] + suffix
+}
+
+func getTotal(spec, lenResult int) int {
+	if spec == 0 {
+		return lenResult
+	}
+	return spec
 }

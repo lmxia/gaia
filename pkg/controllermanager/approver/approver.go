@@ -84,11 +84,11 @@ func NewCRRApprover(localkubeclient *kubernetes.Clientset, localgaiaclient *gaia
 }
 
 func (crrApprover *CRRApprover) SetParentClient() {
-	//parentGaiaClient, parentDynamicClient, parentgaiaInformerFactory := utils.SetParentClient(crrApprover.localkubeclient, crrApprover.localgaiaclient)
+	// parentGaiaClient, parentDynamicClient, parentgaiaInformerFactory := utils.SetParentClient(crrApprover.localkubeclient, crrApprover.localgaiaclient)
 	parentGaiaClient, parentDynamicClient, _ := utils.SetParentClient(crrApprover.localkubeclient, crrApprover.localgaiaclient)
 
 	crrApprover.parentgaiaclient = parentGaiaClient
-	//crrApprover.descLister = parentgaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister()
+	// crrApprover.descLister = parentgaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister()
 	crrApprover.parentDynamicClient = parentDynamicClient
 }
 func (crrApprover *CRRApprover) Run(threadiness int, stopCh <-chan struct{}) {
@@ -505,7 +505,7 @@ func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespac
 			defer wg.Done()
 			err := utils.EnsureRoleBinding(context.TODO(), rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        r.Name,
+					Name:        fmt.Sprintf("%s-%s", r.Name, serviceAccountName),
 					Namespace:   r.Namespace,
 					Annotations: map[string]string{known.AutoUpdateAnnotation: "true"},
 					Labels: map[string]string{

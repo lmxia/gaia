@@ -459,13 +459,23 @@ func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable, Av
 	Capacity, Allocatable, Available = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
 	var valueList [6]string
 
-	for index, metric := range ClusterMetricList[:6] {
-		result, err := getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
-		if err == nil {
-			valueList[index] = result.(model.Vector)[0].Value.String()
-		} else {
-			valueList[index] = "0"
+	QueryMetricSet, ClusterMetricList, err := utils.InitConfig(known.MetricConfigMapAbsFilePath)
+	if err == nil && len(ClusterMetricList) == 6 {
+		for index, metric := range ClusterMetricList[:6] {
+			result, err := getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
+			if err == nil {
+				valueList[index] = result.(model.Vector)[0].Value.String()
+			} else {
+				valueList[index] = "0"
+			}
 		}
+	} else {
+		if err != nil {
+			klog.Warningf("Wrong metrics, err: %v", err)
+		} else {
+			klog.Warningf("The length of ClusterMetricList is %v, it is less then 6. Wrong metrics %v", len(ClusterMetricList), QueryMetricSet)
+		}
+		valueList = [6]string{"0", "0", "0", "0", "0", "0"}
 	}
 
 	capacityCPU.Add(resource.MustParse(valueList[0]))
@@ -499,23 +509,3 @@ func getSubStringWithSpecifiedDecimalPlace(inputString string, m int) string {
 	}
 	return newString[0] + "." + newString[1][:m]
 }
-
-var (
-	ClusterCPUCapacity    = "ClusterCPUCapacity"
-	ClusterMemCapacity    = "ClusterMemCapacity"
-	ClusterCPUAllocatable = "ClusterCPUAllocatable"
-	ClusterMemAllocatable = "ClusterMemAllocatable"
-	ClusterCPUAvailable   = "ClusterCPUAvailable"
-	ClusterMemAvailable   = "ClusterMemAvailable"
-
-	ClusterMetricList = []string{ClusterCPUCapacity, ClusterMemCapacity, ClusterCPUAllocatable, ClusterMemAllocatable, ClusterCPUAvailable, ClusterMemAvailable}
-
-	QueryMetricSet = map[string]string{
-		ClusterCPUCapacity:    `sum(kube_node_status_capacity{resource="cpu"})`,
-		ClusterMemCapacity:    `sum(kube_node_status_capacity{resource="memory"})/1024`,
-		ClusterCPUAllocatable: `sum(kube_node_status_allocatable{resource="cpu"})`,
-		ClusterMemAllocatable: `sum(kube_node_status_allocatable{resource="memory"})/1024`,
-		ClusterCPUAvailable:   `sum(kube_node_status_allocatable{resource="cpu"})-sum(kube_pod_container_resource_requests{resource="cpu"})`,
-		ClusterMemAvailable:   `(sum(kube_node_status_allocatable{resource="memory"})-sum(kube_pod_container_resource_requests{resource="memory"}))/1024`,
-	}
-)

@@ -63,7 +63,15 @@ spec:
           env:
             - name: RESOURCEBINDING_MERGER_POST_URL
               value: {{ .Values.common.resourceBindingMergePostURL }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/config/
+              readOnly: true
       serviceAccountName: gaia
+      volumes:
+        - name: config
+          configMap:
+            name: gaia-config
 
 ---
 apiVersion: apps/v1
@@ -94,3 +102,18 @@ spec:
               cpu: 100m
               memory: 20Mi
       serviceAccountName: gaia
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gaia-config
+  namespace: {{ .Release.Namespace }}
+data:
+  gaia-prometheus_metrics.conf: |
+    clusterCPUCapacity: sum(kube_node_status_capacity{resource="cpu"})
+    clusterMemCapacity: sum(kube_node_status_capacity{resource="memory"})/1024
+    clusterCPUAllocatable: sum(kube_node_status_allocatable{resource="cpu"})
+    clusterMemAllocatable: sum(kube_node_status_allocatable{resource="memory"})/1024
+    clusterCPUAvailable: sum(kube_node_status_allocatable{resource="cpu"})-sum(kube_pod_container_resource_requests{resource="cpu"})
+    clusterMemAvailable: (sum(kube_node_status_allocatable{resource="memory"})-sum(kube_pod_container_resource_requests{resource="memory"}))/1024

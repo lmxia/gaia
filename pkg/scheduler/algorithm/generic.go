@@ -86,19 +86,19 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		localComponent := &comm
 		// NO.1 pre filter
 		feasibleClusters, _, _ := g.findClustersThatFitComponent(ctx, fwk, localComponent)
-		//if err != nil {
+		// if err != nil {
 		//	return result, err
-		//}
+		// }
 		//
-		//if len(feasibleClusters) == 0 {
+		// if len(feasibleClusters) == 0 {
 		//	return result, &framework.FitError{
 		//		Description:    desc,
 		//		NumAllClusters: g.cache.NumClusters(),
 		//		Diagnosis:      diagnosis,
 		//	}
-		//}
+		// }
 		// spread level info: full level, 2 level, 1 level
-		//spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}
+		// spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}
 		// todo only 1 as default spread level
 		spreadLevels := []int64{1}
 		allPlan := nomalizeClusters(feasibleClusters, allClusters)
@@ -147,7 +147,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			klog.Infof("Log: networkInfoMap is %v", networkInfoMap)
 			rbsResultFinal = npcore.NetworkFilter(rbsResultFinal, nwr, networkInfoMap)
 		}
-		if len(rbsResultFinal) > 2 {
+		if len(rbsResultFinal) > common.DefaultResouceBindingNumber {
 			// score plugins.
 			priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResultFinal)
 			// select 2
@@ -173,13 +173,14 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						Name: fmt.Sprintf("%s-%d", rbOld.Name, rbIndex),
 						Labels: map[string]string{
 							common.GaiaDescriptionLabel: desc.Name,
+							common.TotalPeerOfParentRB:  fmt.Sprintf("%d", rbOld.Spec.TotalPeer),
 						},
 					},
 					Spec: v1alpha1.ResourceBindingSpec{
 						AppID:     desc.Name,
 						ParentRB:  rbOld.Name,
 						RbApps:    subRBApps,
-						TotalPeer: getTotalPeer(len(rbForrb), 2),
+						TotalPeer: getTotalPeer(len(rbForrb), common.DefaultResouceBindingNumber),
 					},
 				}
 				rbNew.Kind = "ResourceBinding"
@@ -187,7 +188,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				rbIndex += 1
 				rbsResult = append(rbsResult, rbNew)
 			}
-			if len(rbsResult) > 2 {
+			if len(rbsResult) > common.DefaultResouceBindingNumber {
 				// score plugins.
 				priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResult)
 				// select prioritize

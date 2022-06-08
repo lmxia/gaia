@@ -1,0 +1,71 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case4
+  namespace: gaia-reserved
+spec:
+  appID: appID-case4
+  components:
+    - name: component1
+      namespace: test1
+      runtimeType: docker
+      schedulePolicy:
+        specificResource:
+            matchExpressions:
+              - { key: sn, operator: In, values: [ "sn3" ] }
+      workload:
+        workloadtype: userapp
+      module:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+              ports:
+                - containerPort: 80
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: "1Gi"
+                requests:
+                  cpu: "1"
+                  memory: "10Mi"
+    - name: component2
+      namespace: test2
+      runtimeType: kata
+      schedulePolicy:
+        netenvironment:
+            matchExpressions:
+              - { key: net-environment, operator: In, values: [ "edge-cloud", "edge-cloud" ] }
+        geolocation:
+            matchExpressions:
+              - { key: geo-location, operator: In, values: [ "nanjing", "suzhou", "shenzhen" ] }
+        provider:
+            matchExpressions:
+              - { key: supplier-name, operator: In, values: [ "china-telecom", "china-unicom", "tencent" ] }
+        specificResource:
+            matchExpressions:
+      workload:
+        workloadtype: serverless
+        # 更改
+        trait: 
+          mini-instancenumber: 1 per cluster 
+          threshold: average cpu 60% or memory 60% 
+          step: 1
+      module:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+              ports:
+                - containerPort: 80
+              resources:
+                limits:
+                  cpu: "2"
+                requests:
+                  cpu: "1"

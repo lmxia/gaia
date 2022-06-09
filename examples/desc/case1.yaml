@@ -7,14 +7,12 @@ spec:
   appID: appID-case1
   components:
     - name: component1
-      namespace: test2
+      namespace: test1
       runtimeType: runc
-      schedulePolicy:
-        specificResource:
-            matchExpressions:
-              - { key: sn, operator: In, values: [ "sn1", "sn2" ] }
       workload:
         workloadtype: affinitydaemon
+        traitaffinitydaemon:
+          sn: sn1
       module:
         metadata:
           labels:
@@ -27,26 +25,24 @@ spec:
                 - containerPort: 80
               resources:
                 limits:
-                  cpu: "2"
-                  memory: "1Gi"
+                  cpu: "500m"
+                  memory: "100Mi"
                 requests:
-                  cpu: "1"
-                  memory: "10Mi"
+                  cpu: "500m"
+                  memory: "100Mi"
     - name: component2
       namespace: test2
-      runtimeType: kata
+      runtimeType: runc
       schedulePolicy:
         netenvironment:
-            matchExpressions:
-              - { key: net-environment, operator: In, values: [ "core-cloud" ] }
+          matchExpressions:
+            - { key: net-environment, operator: In, values: [ "core" ] }
         geolocation:
-            matchExpressions:
-              - { key: geo-location, operator: In, values: [ "beijing" ] }
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "beijing" ] }
         provider:
-            matchExpressions:
-              - { key: supplier-name, operator: In, values: [ "aliyun" ] }
-        specificResource:
-            matchExpressions:
+          matchExpressions:
+            - { key: supplier-name, operator: In, values: [ "aliyun" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -63,6 +59,8 @@ spec:
                 - containerPort: 80
               resources:
                 limits:
-                  cpu: "2"
+                  cpu: "500m"
+                  memory: "100Mi"
                 requests:
-                  cpu: "1"
+                  cpu: "500m"
+                  memory: "100Mi"

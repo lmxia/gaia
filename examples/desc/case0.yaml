@@ -25,11 +25,11 @@ spec:
                 - containerPort: 80
               resources:
                 limits:
-                  cpu: "2"
-                  memory: "1Gi"
+                  cpu: "500m"
+                  memory: "100Mi"
                 requests:
-                  cpu: "1"
-                  memory: "10Mi"
+                  cpu: "500m"
+                  memory: "100Mi"
     - name: component2
       namespace: test2
       runtimeType: kata
@@ -49,8 +49,8 @@ spec:
                 - containerPort: 80
               resources:
                 limits:
-                  cpu: "2"
-                  memory: "1Gi"
+                  cpu: "500m"
+                  memory: "100Mi"
                 requests:
-                  cpu: "1"
-                  memory: "10Mi"
+                  cpu: "500m"
+                  memory: "100Mi"

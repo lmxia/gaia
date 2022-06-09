@@ -1,0 +1,68 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case1
+  namespace: gaia-reserved
+spec:
+  appID: appID-case1
+  components:
+    - name: component1
+      namespace: test2
+      runtimeType: runc
+      schedulePolicy:
+        specificResource:
+            matchExpressions:
+              - { key: sn, operator: In, values: [ "sn1", "sn2" ] }
+      workload:
+        workloadtype: affinitydaemon
+      module:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+              ports:
+                - containerPort: 80
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: "1Gi"
+                requests:
+                  cpu: "1"
+                  memory: "10Mi"
+    - name: component2
+      namespace: test2
+      runtimeType: kata
+      schedulePolicy:
+        netenvironment:
+            matchExpressions:
+              - { key: net-environment, operator: In, values: [ "core-cloud" ] }
+        geolocation:
+            matchExpressions:
+              - { key: geo-location, operator: In, values: [ "beijing" ] }
+        provider:
+            matchExpressions:
+              - { key: supplier-name, operator: In, values: [ "aliyun" ] }
+        specificResource:
+            matchExpressions:
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 10
+      module:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+              ports:
+                - containerPort: 80
+              resources:
+                limits:
+                  cpu: "2"
+                requests:
+                  cpu: "1"

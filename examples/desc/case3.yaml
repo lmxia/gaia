@@ -1,0 +1,86 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case3
+  namespace: gaia-reserved
+spec:
+  appID: appID-case3
+  components:
+    - name: component1
+      namespace: test1
+      runtimeType: docker
+      schedulePolicy:
+        specificResource:
+            matchExpressions:
+              - { key: sn, operator: In, values: [ "sn3" ] }
+      workload:
+        workloadtype: affinitydaemon
+      module:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+              ports:
+                - containerPort: 80
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: "1Gi"
+                requests:
+                  cpu: "1"
+                  memory: "10Mi"
+    - name: component2
+      namespace: test2
+      runtimeType: docker
+      schedulePolicy:
+        specificResource:
+            matchExpressions:
+              - { key: sn, operator: In, values: [ "sn3" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 10
+      module:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+              ports:
+                - containerPort: 80
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: "1Gi"
+                requests:
+                  cpu: "1"
+                  memory: "10Mi"
+    - name: component3
+      namespace: test3
+      runtimeType: kata
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 10
+      module:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+            - name: nginx
+              image: nginx:1.14.2
+              ports:
+                - containerPort: 80
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: "1Gi"
+                requests:
+                  cpu: "1"
+                  memory: "10Mi"

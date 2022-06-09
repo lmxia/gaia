@@ -34,7 +34,7 @@ message DomainVLink {
     VLinkSla   VLinkSlaAttr  = 9;
     string OpaqueValue       = 10; //underlay数据结构序列化字符串，控制器仅仅透传
     string AttachDomainName  = 11; //AttachDomainId对应的Fabric名称
-
+    string PeerSN            = 12; //连接的Fabric内的设备SN号
 }
 
 /**********************************************上报融合管理接口 Begin ******************************************************************/

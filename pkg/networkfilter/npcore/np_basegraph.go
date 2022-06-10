@@ -122,6 +122,11 @@ func (domainLinkKey DomainLinkKey) Equals(other types.Equatable) bool {
 		if domainLinkKey.AttachId != o.AttachId {
 			return false
 		}
+
+		if domainLinkKey.AttachDomainId != o.AttachDomainId {
+			return false
+		}
+
 	}
 	return true
 }
@@ -131,6 +136,12 @@ func (domainLinkKey DomainLinkKey) Less(other types.Sortable) bool {
 		if domainLinkKey.AttachId < o.AttachId {
 			return true
 		} else if domainLinkKey.AttachId > o.AttachId {
+			return false
+		}
+
+		if domainLinkKey.AttachDomainId < o.AttachDomainId {
+			return true
+		} else if domainLinkKey.AttachDomainId > o.AttachDomainId {
 			return false
 		}
 
@@ -157,12 +168,13 @@ func (domainLinkKey DomainLinkKey) Less(other types.Sortable) bool {
 		} else if domainLinkKey.DstNodeSN > o.DstNodeSN {
 			return false
 		}
+
 	}
 	return false
 }
 
 func (domainLinkKey DomainLinkKey) Hash() int {
-	return int(domainLinkKey.AttachId)
+	return int(domainLinkKey.AttachId) + int(domainLinkKey.AttachDomainId)
 }
 
 /**********************************************************************************************/
@@ -318,6 +330,10 @@ func (baseDomainGraph *BaseDomainGraph) GetReverseBaseDomainLink(domainLinkKey D
 	reverseDomainLinkKey.DstDomainId = domainLinkKey.SrcDomainId
 	reverseDomainLinkKey.DstNodeSN = domainLinkKey.SrcNodeSN
 	reverseDomainLinkKey.AttachId = domainLinkKey.AttachId
+	reverseDomainLinkKey.AttachDomainId = domainLinkKey.AttachDomainId
+
+	infoString := fmt.Sprintf("domainLinkKey(%+v) , reverseDomainLinkKey(%+v)", domainLinkKey, reverseDomainLinkKey)
+	nputil.TraceInfo(infoString)
 
 	reverseDomainLink := reverseDomain.BaseDomainLinkFindByKey(reverseDomainLinkKey)
 	if reverseDomainLink == nil {

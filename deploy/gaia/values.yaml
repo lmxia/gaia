@@ -12,10 +12,10 @@ common:
 replicaCount: 3
 
 image:
-  repository: 172.17.9.231:8880
+  repository: 172.17.9.231:8880/gaia
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.1.8
+  tag: 0.1.14
 
 imagePullSecrets: []
 nameOverride: ""

@@ -1,0 +1,97 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: NetworkRequirement
+metadata:
+  name: case9
+  namespace: gaia-reserved
+spec:
+  - name: component1
+    selfID:
+      - SCNID_C1_1
+      - SCNID_C1_2
+      - SCNID_C1_3
+      - SCNID_C1_4
+      - SCNID_C1_5
+      - SCNID_C1_6
+    interSCNID:
+      - source:
+          id: SCNID_C1_1
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        destination:
+          id: SCNID_C2_1
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        sla:
+          delay: 20
+          lost: 10
+          jitter: 5
+          bandwidth: 200
+        providers:
+          - a
+          - b
+          - c
+      - source:
+          id: SCNID_C1_3
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        destination:
+          id: SCNID_C4_1
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        sla:
+          delay: 20
+          lost: 10
+          jitter: 5
+          bandwidth: 200
+        providers:
+          - a
+          - b
+          - c
+      - source:
+          id: SCNID_C1_4
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        destination:
+          id: SCNID_C5_1
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        sla:
+          delay: 20
+          lost: 10
+          jitter: 5
+          bandwidth: 200
+        providers:
+          - a
+          - b
+          - c
+  - name: component2
+    selfID:
+      - SCNID_C2_1
+  - name: component3
+    selfID:
+      - SCNID_C3_1
+  - name: component4
+    selfID:
+      - SCNID_C4_1
+  - name: component5
+    selfID:
+      - SCNID_C5_1
+

@@ -85,18 +85,21 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	for i, comm := range desc.Spec.Components {
 		localComponent := &comm
 		// NO.1 pre filter
-		feasibleClusters, _, _ := g.findClustersThatFitComponent(ctx, fwk, localComponent)
+		feasibleClusters, diagnosis, _ := g.findClustersThatFitComponent(ctx, fwk, localComponent)
 		// if err != nil {
 		//	return result, err
 		// }
-		//
-		// if len(feasibleClusters) == 0 {
-		//	return result, &framework.FitError{
-		//		Description:    desc,
-		//		NumAllClusters: g.cache.NumClusters(),
-		//		Diagnosis:      diagnosis,
-		//	}
-		// }
+		// case global
+		if desc.Namespace == common.GaiaReservedNamespace {
+			if len(feasibleClusters) == 0 {
+				return result, &framework.FitError{
+					Description:    desc,
+					NumAllClusters: g.cache.NumClusters(),
+					Diagnosis:      diagnosis,
+				}
+			}
+		}
+
 		// spread level info: full level, 2 level, 1 level
 		// spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}
 		// todo only 1 as default spread level
@@ -145,7 +148,9 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		if nwr, err := g.cache.GetNetworkRequirement(desc); err == nil {
 			networkInfoMap := g.getTopologyInfoMap()
 			klog.Infof("Log: networkInfoMap is %v", networkInfoMap)
+			klog.Infof("resource binding before net filter %v", rbsResultFinal)
 			rbsResultFinal = npcore.NetworkFilter(rbsResultFinal, nwr, networkInfoMap)
+			klog.Infof("resource binding after net filter %v", rbsResultFinal)
 		}
 		if len(rbsResultFinal) > common.DefaultResouceBindingNumber {
 			// score plugins.
@@ -203,7 +208,8 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	}, err
 }
 
-func (g *genericScheduler) getTopologyInfoMap() (networkInfoMap map[string]clusterapi.Topo) {
+func (g *genericScheduler) getTopologyInfoMap() map[string]clusterapi.Topo {
+	networkInfoMap := make(map[string]clusterapi.Topo, 0)
 	clusters, _ := g.cache.ListClusters(&metav1.LabelSelector{})
 	for _, cluster := range clusters {
 		networkInfoMap[cluster.GetClusterName()] = cluster.Status.TopologyInfo

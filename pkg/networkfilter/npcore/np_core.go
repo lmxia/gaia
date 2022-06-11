@@ -1,6 +1,7 @@
 package npcore
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
@@ -280,7 +281,12 @@ func NetworkFilter(rbs []*v1alpha1.ResourceBinding, networkReq *v1alpha1.Network
 	var topoContents map[string][]byte
 	topoContents = make(map[string][]byte)
 	for _, topoInfo := range networkInfoMap {
-		topoContents[topoInfo.Field] = nputil.Str2bytes((topoInfo.Content))
+		infoString := fmt.Sprintf("Field(%s)'s topoContents string is:(%+v)", topoInfo.Field, topoInfo.Content)
+		nputil.TraceInfo(infoString)
+		byteArray, _ := base64.StdEncoding.DecodeString(topoInfo.Content)
+		topoContents[topoInfo.Field] = byteArray
+		infoString = fmt.Sprintf("Field(%s)'s topoContents byteArray is:(%+v)", topoInfo.Field, topoContents[topoInfo.Field])
+		nputil.TraceInfo(infoString)
 	}
 	//Add DomainLink topo from cache
 	DomainLinkTopoAddFromScache(topoContents)

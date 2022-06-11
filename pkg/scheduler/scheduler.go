@@ -268,7 +268,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 		utilruntime.HandleError(err)
 		return
 	}
-	klog.V(3).InfoS("Attempting to schedule description", "description", klog.KObj(desc))
+	klog.InfoS("Attempting to schedule description", "description", klog.KObj(desc))
 
 	// Synchronously attempt to find a fit for the description.
 	start := time.Now()
@@ -279,12 +279,15 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, desc)
 	if err != nil {
 		sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
+		desc.Status.Phase = appsapi.DescriptionPhaseFailure
+		sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+		klog.Warningf("scheduler failed %v", err)
 		return
 	}
 
 	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
 	if len(mcls.Items) == 0 {
-		klog.V(3).InfoS("scheduler success but do nothing because there is no child clusters.", scheduleResult)
+		klog.Warningf("scheduler success but do nothing because there is no child clusters.")
 	} else {
 		// 1. create rbs in sub children cluster namespace.
 		for _, itemCluster := range mcls.Items {
@@ -295,7 +298,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
-					klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
+					klog.Infof("scheduler success, but some rb not created success", rb)
 				}
 			}
 			// 2. create desc in to child cluster namespace
@@ -303,7 +306,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 			newDesc.Namespace = itemCluster.Namespace
 			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
 			if err != nil {
-				klog.V(3).InfoS("scheduler success, but desc not created success in sub child cluster.", err)
+				klog.InfoS("scheduler success, but desc not created success in sub child cluster.", err)
 			}
 		}
 		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
@@ -311,7 +314,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 		sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
 		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 		metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
-		klog.V(3).InfoS("scheduler success", scheduleResult)
+		klog.Infof("scheduler success %v", scheduleResult)
 	}
 }
 
@@ -338,7 +341,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		utilruntime.HandleError(err)
 		return
 	}
-	klog.V(3).InfoS("Attempting to schedule description", "description", klog.KObj(desc))
+	klog.InfoS("Attempting to schedule description", "description", klog.KObj(desc))
 
 	// Synchronously attempt to find a fit for the description.
 	start := time.Now()
@@ -418,7 +421,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
-	klog.V(3).InfoS("scheduler success")
+	klog.Info("scheduler success")
 }
 
 func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
@@ -431,12 +434,12 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 	wait.JitterUntilWithContext(waitingCtx, func(ctx context.Context) {
 		target, err := sched.localGaiaClient.PlatformV1alpha1().Targets().Get(ctx, common.ParentClusterTargetName, metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("set parentDedicatedKubeConfig failed to get targets: %v wait for next loop", err)
+			//klog.Errorf("set parentDedicatedKubeConfig failed to get targets: %v wait for next loop", err)
 			return
 		}
 		secret, err := sched.childKubeClientSet.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx, common.ParentClusterSecretName, metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("set parentDedicatedKubeConfig failed to get secretFromParentCluster: %v", err)
+			//klog.Errorf("set parentDedicatedKubeConfig failed to get secretFromParentCluster: %v", err)
 			return
 		}
 		if err == nil {
@@ -513,7 +516,7 @@ func (sched *Scheduler) addLocalAllEventHandlers() {
 					defer sched.lockLocal.Unlock()
 					return false
 				}
-				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending {
+				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending || desc.Status.Phase == appsapi.DescriptionPhaseFailure{
 					// TODO: filter scheduler name
 					return true
 				} else {

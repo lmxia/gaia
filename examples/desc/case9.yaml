@@ -1,10 +1,10 @@
 apiVersion: apps.gaia.io/v1alpha1
 kind: Description
 metadata:
-  name: case2
+  name: case9
   namespace: gaia-reserved
 spec:
-  appID: appID-case2
+  appID: appID-case9
   components:
     - name: component1
       namespace: test1
@@ -29,6 +29,18 @@ spec:
               env:
                 - name: SCNID
                   value: "SCNID_C1_1"
+                - name: SCNID
+                  value: "SCNID_C1_2"
+                - name: SCNID
+                  value: "SCNID_C1_3"
+                - name: SCNID
+                  value: "SCNID_C1_4"
+                - name: SCNID
+                  value: "SCNID_C1_5"
+                - name: SCNID
+                  value: "SCNID_C1_6"
+                - name: IOCLIENT_ADDRESS
+                  value:
               resources:
                 limits:
                   cpu: "100m"
@@ -43,16 +55,16 @@ spec:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-              hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
+                hostPath:
+                  path: /tmp
+                  type: DirectoryOrCreate
     - name: component2
       namespace: test2
       runtimeType: runc
       workload:
-        workloadtype: deployment
-        traitDeployment:
-          replicas: 3
+        workloadtype: affinitydaemon
+        traitaffinitydaemon:
+          sn: cluster1sn2
       module:
         metadata:
           labels:
@@ -85,16 +97,16 @@ spec:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-              hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
+                hostPath:
+                  path: /tmp
+                  type: DirectoryOrCreate
     - name: component3
       namespace: test3
       runtimeType: runc
       workload:
-        workloadtype: deployment
-        traitDeployment:
-          replicas: 3
+        workloadtype: affinitydaemon
+        traitaffinitydaemon:
+          sn: cluster2sn1
       module:
         metadata:
           labels:
@@ -127,16 +139,20 @@ spec:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-              hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
+                hostPath:
+                  path: /tmp
+                  type: DirectoryOrCreate
     - name: component4
       namespace: test4
       runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "beijing", "nanjing" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
-          replicas: 3
+          replicas: 1
       module:
         metadata:
           labels:
@@ -169,16 +185,20 @@ spec:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-              hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
+                hostPath:
+                  path: /tmp
+                  type: DirectoryOrCreate
     - name: component5
       namespace: test5
       runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "beijing", "nanjing" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
-          replicas: 3
+          replicas: 2
       module:
         metadata:
           labels:
@@ -211,23 +231,27 @@ spec:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-              hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
+                hostPath:
+                  path: /tmp
+                  type: DirectoryOrCreate
     - name: component6
       namespace: test6
       runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "beijing", "nanjing" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
-          replicas: 3
+          replicas: 1
       module:
         metadata:
           labels:
             app: appcase2
         spec:
           containers:
-            - name: appcase2comp6
+            - name: appcase2comp5
               image: 172.17.9.231:8880/hyperio/app:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
@@ -236,7 +260,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C6_1"
+                  value: "SCNID_C5_1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -253,6 +277,6 @@ spec:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-              hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
+                hostPath:
+                  path: /tmp
+                  type: DirectoryOrCreate

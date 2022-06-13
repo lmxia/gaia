@@ -280,7 +280,7 @@ func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
 // parseNodeLabels returns the nodeLabels that belong to specific string list.
 func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
 	for labelKey, labelValue := range inLabels {
-		if labelKey == clusterapi.ParsedSNKey {
+		if labelKey == clusterapi.ParsedSNKey || labelKey == clusterapi.ParsedGeoLocationKey {
 			nodeLabels[labelKey+"__"+nodeName] = labelValue
 		} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
 			nodeLabels[labelKey] = labelValue
@@ -292,7 +292,7 @@ func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) ma
 // parseHypernodeLabels returns the HypernodeLabels that belong to specific string list.
 func parseHypernodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
 	for labelKey, labelValue := range inLabels {
-		if labelKey == clusterapi.SNKey {
+		if labelKey == clusterapi.SNKey || labelKey == clusterapi.GeoLocationKey {
 			nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]+"__"+nodeName] = labelValue
 		} else if utils.ContainsString(clusterapi.HypernodeLableKeyList, labelKey) {
 			if _, ok := nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]]; ok {
@@ -313,7 +313,7 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 	nodeLabels = make(map[string]string)
 	for _, cluster := range clusters {
 		for labelKey, labelValue := range cluster.GetLabels() {
-			if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) {
+			if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) || strings.HasPrefix(labelKey, clusterapi.ParsedGeoLocationKey) {
 				nodeLabels[labelKey] = labelValue
 			} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
 				if _, ok := nodeLabels[labelKey]; ok {

@@ -61,7 +61,7 @@ type Controller struct {
 
 // NewController creates and initializes a new ResourceBindingMergerController
 func NewController(clusternetClient gaiaClientSet.Interface,
-		rbsInformer rbsInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+	rbsInformer rbsInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}

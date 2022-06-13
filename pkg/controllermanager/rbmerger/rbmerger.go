@@ -273,9 +273,13 @@ func (rbMerger *RBMerger) handleToLocalResourceBinding(rb *appv1alpha1.ResourceB
 				klog.Infof("Successful merged RB from %q, but failed to delete RBs locally.", rb.Spec.ParentRB)
 				return err
 			}
-		}
-		if rbMerger.canDeleteAppID(rb.Spec.AppID, rb.Spec.TotalPeer) {
-			rbMerger.deleteGlobalAppIDKey(rb.Spec.AppID)
+			if rbMerger.canDeleteAppID(rb.Spec.AppID, rb.Spec.TotalPeer) {
+				rbMerger.deleteGlobalAppIDKey(rb.Spec.AppID)
+				postErr := rbMerger.postMergedRBs(rb.Spec.AppID)
+				if postErr != nil {
+					return postErr
+				}
+			}
 		}
 		rbMerger.mu.Unlock()
 	}
@@ -496,7 +500,6 @@ func (rbMerger *RBMerger) postMergedRBs(descName string) error {
 	if err != nil {
 		return nil
 	}
-
 	for _, rb := range rbs {
 		rbList = append(rbList, *rb)
 	}
@@ -514,11 +517,11 @@ func (rbMerger *RBMerger) postMergedRBs(descName string) error {
 	res, err := http.Post(rbMerger.postURL, "application/json", bytes.NewReader(postBody))
 	defer func() { _ = res.Body.Close() }()
 	if err != nil {
+		klog.Infof("PostHyperOM: ERROR: post to HyperOM error %q.", err)
 		return err
 	}
-
 	content, _ := ioutil.ReadAll(res.Body)
-	klog.Infof("Successful post the ResourceBindings of desc %q to HyperOM, Response: %s", descName, content)
+	klog.Infof("PostHyperOM: post the ResourceBindings of desc %q to HyperOM, Response: %s", descName, content)
 
 	return nil
 }
@@ -540,7 +543,6 @@ func (rbMerger *RBMerger) canDeleteAppID(appID string, totalPeer int) bool {
 		}
 		return true
 	}
-
 	return false
 }
 

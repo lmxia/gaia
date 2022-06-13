@@ -80,7 +80,7 @@ type FieldsRBs struct {
 
 // NewRBMerger returns a new RBMerger for ResourceBinding.
 func NewRBMerger(kubeclient *kubernetes.Clientset, gaiaclient *gaiaClientSet.Clientset,
-	gaiaInformerFactory gaiainformers.SharedInformerFactory) (*RBMerger, error) {
+		gaiaInformerFactory gaiainformers.SharedInformerFactory) (*RBMerger, error) {
 
 	postUrl := os.Getenv(common.ResourceBindMergePostURL)
 	rbMerger := &RBMerger{
@@ -164,6 +164,7 @@ func (rbMerger *RBMerger) handleToParentResourceBinding(rb *appv1alpha1.Resource
 
 		err = rbMerger.reCreateRBtoParent(rb)
 		if apierrors.IsAlreadyExists(err) || err == nil {
+			klog.Infof("successfully create ResourceBinding %q to ParentCluster", rb.Name)
 			err = rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).Delete(context.TODO(), rb.Name, metav1.DeleteOptions{})
 			if err != nil {
 				klog.V(4).Infof("Resource Binding %q failed to delete. error: ", rb.Name, err)
@@ -201,9 +202,9 @@ func (rbMerger *RBMerger) handleToParentResourceBinding(rb *appv1alpha1.Resource
 				rbMerger.descResourceID[string(desc.GetUID())] = true
 
 				err = rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
-					DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-						common.GaiaDescriptionLabel: rb.Spec.AppID,
-					}).String()})
+						DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+							common.GaiaDescriptionLabel: rb.Spec.AppID,
+						}).String()})
 				if err != nil {
 					klog.Infof("failed to delete rbs in %s namespace", common.GaiaRBMergedReservedNamespace, err)
 					return err
@@ -319,7 +320,10 @@ func (rbMerger *RBMerger) getMergedResourceBindings(chanResult chan []*appv1alph
 			},
 			Spec: appv1alpha1.ResourceBindingSpec{
 				AppID:           rb.Spec.AppID,
+				TotalPeer:       rb.Spec.TotalPeer,
+				ParentRB:        rb.Spec.ParentRB,
 				RbApps:          rbN,
+				NetworkPath:     rb.Spec.NetworkPath,
 				StatusScheduler: appv1alpha1.ResourceBindingmerged,
 			},
 		}
@@ -329,6 +333,8 @@ func (rbMerger *RBMerger) getMergedResourceBindings(chanResult chan []*appv1alph
 		_, err := rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).Create(context.TODO(), newResultRB, metav1.CreateOptions{})
 		if err != nil {
 			klog.V(3).InfoS("ResourceBinding of %q merge success, but not created success %q.", *parentRBName, common.GaiaRSToBeMergedReservedNamespace, err)
+		} else {
+			klog.Infof("ResourceBinding %q successfully merged and created.", *parentRBName)
 		}
 
 		index += 1
@@ -392,6 +398,7 @@ func (rbMerger *RBMerger) createCollectedRBs(rb *appv1alpha1.ResourceBinding) bo
 				TotalPeer:       totalPeer,
 				ParentRB:        parentRB,
 				RbApps:          rbApps,
+				NetworkPath:     rb.Spec.NetworkPath,
 				StatusScheduler: appv1alpha1.ResourceBindingMerging,
 			},
 		}
@@ -402,6 +409,8 @@ func (rbMerger *RBMerger) createCollectedRBs(rb *appv1alpha1.ResourceBinding) bo
 		if err != nil && !apierrors.IsAlreadyExists(err) {
 			klog.Infof("Failed to create ResourceBinding  %q.", newResultRB.Name, err)
 			return false
+		} else {
+			klog.Infof("successfully create ResourceBinding %q to ParentCluster", newResultRB.Name)
 		}
 
 	}
@@ -421,10 +430,10 @@ func (rbMerger *RBMerger) deleteRBsUnselected(rb *appv1alpha1.ResourceBinding) e
 
 	descName := rb.GetLabels()[common.GaiaDescriptionLabel]
 	err = rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
-		DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-			common.StatusScheduler:      string(appv1alpha1.ResourceBindingmerged),
-			common.GaiaDescriptionLabel: descName,
-		}).String()})
+			DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+				common.StatusScheduler:      string(appv1alpha1.ResourceBindingmerged),
+				common.GaiaDescriptionLabel: descName,
+			}).String()})
 	if err != nil {
 		klog.Infof("failed to delete rbs in %s namespace", common.GaiaRBMergedReservedNamespace, err)
 		return err
@@ -450,7 +459,14 @@ func (rbMerger *RBMerger) reCreateRBtoParent(rb *appv1alpha1.ResourceBinding) er
 			Namespace: common.GaiaRSToBeMergedReservedNamespace,
 			Labels:    rb.Labels,
 		},
-		Spec: rb.Spec,
+		Spec: appv1alpha1.ResourceBindingSpec{
+			AppID:           rb.Spec.AppID,
+			TotalPeer:       rb.Spec.TotalPeer,
+			ParentRB:        rb.Spec.ParentRB,
+			RbApps:          rb.Spec.RbApps,
+			NetworkPath:     rb.Spec.NetworkPath,
+			StatusScheduler: rb.Spec.StatusScheduler,
+		},
 	}
 	rb.Kind = "ResourceBinding"
 	rb.APIVersion = "apps.gaia.io/v1alpha1"

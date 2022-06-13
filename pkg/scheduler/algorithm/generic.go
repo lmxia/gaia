@@ -212,7 +212,7 @@ func (g *genericScheduler) getTopologyInfoMap() map[string]clusterapi.Topo {
 	networkInfoMap := make(map[string]clusterapi.Topo, 0)
 	clusters, _ := g.cache.ListClusters(&metav1.LabelSelector{})
 	for _, cluster := range clusters {
-		networkInfoMap[cluster.GetClusterName()] = cluster.Status.TopologyInfo
+		networkInfoMap[cluster.GetName()] = cluster.Status.TopologyInfo
 	}
 	return networkInfoMap
 }

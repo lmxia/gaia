@@ -182,10 +182,11 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						},
 					},
 					Spec: v1alpha1.ResourceBindingSpec{
-						AppID:     desc.Name,
-						ParentRB:  rbOld.Name,
-						RbApps:    subRBApps,
-						TotalPeer: getTotalPeer(len(rbForrb), common.DefaultResouceBindingNumber),
+						AppID:       desc.Name,
+						ParentRB:    rbOld.Name,
+						RbApps:      subRBApps,
+						TotalPeer:   getTotalPeer(len(rbForrb), common.DefaultResouceBindingNumber),
+						NetworkPath: rbOld.Spec.NetworkPath,
 					},
 				}
 				rbNew.Kind = "ResourceBinding"
@@ -218,7 +219,7 @@ func (g *genericScheduler) getTopologyInfoMap() map[string]clusterapi.Topo {
 }
 
 func prioritizeResourcebindings(ctx context.Context, fwk framework.Framework, _ *v1alpha1.Description,
-		clusters []*clusterapi.ManagedCluster, rbs []*v1alpha1.ResourceBinding) (framework.ResourceBindingScoreList, error) {
+	clusters []*clusterapi.ManagedCluster, rbs []*v1alpha1.ResourceBinding) (framework.ResourceBindingScoreList, error) {
 	if !fwk.HasScorePlugins() {
 		result := make(framework.ResourceBindingScoreList, 0, len(rbs))
 		for i := range rbs {
@@ -336,8 +337,8 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 
 // findClustersThatPassFilters finds the clusters that fit the filter plugins.
 func (g *genericScheduler) findClustersThatPassFilters(ctx context.Context, fwk framework.Framework,
-		com *v1alpha1.Component, diagnosis framework.Diagnosis,
-		clusters []*clusterapi.ManagedCluster) ([]*clusterapi.ManagedCluster, error) {
+	com *v1alpha1.Component, diagnosis framework.Diagnosis,
+	clusters []*clusterapi.ManagedCluster) ([]*clusterapi.ManagedCluster, error) {
 	if !fwk.HasFilterPlugins() {
 		return clusters, nil
 	}

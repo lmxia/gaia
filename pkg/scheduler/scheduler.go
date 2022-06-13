@@ -362,11 +362,11 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 				rb.Namespace = common.GaiaRSToBeMergedReservedNamespace
 				rb.Labels = item.Labels
 				rb.Spec = appsapi.ResourceBindingSpec{
-					AppID:     desc.Name,
-					ParentRB:  item.Spec.ParentRB,
-					RbApps:    item.Spec.RbApps,
-					TotalPeer: item.Spec.TotalPeer,
-					// TotalPeer: len(rbs),
+					AppID:       desc.Name,
+					ParentRB:    item.Spec.ParentRB,
+					RbApps:      item.Spec.RbApps,
+					TotalPeer:   item.Spec.TotalPeer,
+					NetworkPath: item.Spec.NetworkPath,
 				}
 				_, errCreate := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
 					Create(ctx, rb, metav1.CreateOptions{})
@@ -376,9 +376,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 			}
 			klog.V(3).InfoS("scheduler success just change rb namespace.")
 			err := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
-					DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-						common.GaiaDescriptionLabel: desc.Name,
-					}).String()})
+				DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+					common.GaiaDescriptionLabel: desc.Name,
+				}).String()})
 			if err != nil {
 				klog.Infof("faild to delete rbs in parent cluster", err)
 			}
@@ -413,9 +413,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	}
 
 	sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
-			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-				common.GaiaDescriptionLabel: desc.Name,
-			}).String()})
+		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+			common.GaiaDescriptionLabel: desc.Name,
+		}).String()})
 	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 	// TODO check if failed
 	sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
@@ -516,7 +516,7 @@ func (sched *Scheduler) addLocalAllEventHandlers() {
 					defer sched.lockLocal.Unlock()
 					return false
 				}
-				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending || desc.Status.Phase == appsapi.DescriptionPhaseFailure{
+				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending || desc.Status.Phase == appsapi.DescriptionPhaseFailure {
 					// TODO: filter scheduler name
 					return true
 				} else {

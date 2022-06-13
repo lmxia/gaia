@@ -25,8 +25,8 @@ func NewInTreeRegistry() runtime.Registry {
 		names.Geolocation:      geolocation.New,
 		names.SupplierName:     supplier.New,
 		//names.ResForm:          resform.New,
-		names.RuntimeType:      runtimetype.New,
+		names.RuntimeType: runtimetype.New,
 		//names.NodeRole:         noderole.New,
-		names.VirtualNode:      virtualnode.New,
+		names.VirtualNode: virtualnode.New,
 	}
 }

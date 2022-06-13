@@ -1,6 +1,7 @@
 package npcore
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
@@ -749,8 +750,21 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 				nputil.TraceErrorWithStack(err)
 				return nil
 			}
-			rb.Spec.NetworkPath = append(rb.Spec.NetworkPath, content)
+			infoString = fmt.Sprintf("Proto marshal content bytes is: [%+v]", content)
+			nputil.TraceInfo(infoString)
+			NpContentBase64 := make([]byte, base64.StdEncoding.EncodedLen(len(content)))
+			base64.StdEncoding.Encode(NpContentBase64, content)
+			infoString = fmt.Sprintf("Proto marshal content base64 is: [%+v], stringbase64 is (%+v)", NpContentBase64, string(NpContentBase64))
+			nputil.TraceInfo(infoString)
+			rb.Spec.NetworkPath = append(rb.Spec.NetworkPath, NpContentBase64)
+
 			//test
+			dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(NpContentBase64)))
+			n, _ := base64.StdEncoding.Decode(dbuf, []byte(NpContentBase64))
+			npConentByteConvert := dbuf[:n]
+			infoString = fmt.Sprintf("npConentByteConvert bytes is: [%+v]", npConentByteConvert)
+			nputil.TraceInfo(infoString)
+
 			TmpRbDomainPaths := new(ncsnp.BindingSelectedDomainPath)
 			err = proto.Unmarshal(content, TmpRbDomainPaths)
 			infoString = fmt.Sprintf("TmpRbDomainPaths is: [%+v]", TmpRbDomainPaths)

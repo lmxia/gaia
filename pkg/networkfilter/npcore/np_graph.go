@@ -519,11 +519,16 @@ func (domainGraph *DomainGraph) SpfGraphEdgeCreateForSla() error {
 				nputil.TraceErrorStringWithStack("baseDomainLink is nil")
 				continue
 			}
-			_ = domainGraph.SetGraphEdge(domainLinkKey)
+			err := domainGraph.SetGraphEdge(domainLinkKey)
+			if err != nil {
+				rtnErr := errors.New("SetGraphEdge failed")
+				nputil.TraceErrorWithStack(rtnErr)
+				continue
+			}
 		}
 	}
 	for i, domainEdge := range domainGraph.DomainEdgeArry {
-		fmt.Printf("DomainEdge[%d] is (%+vv)\n", i, domainEdge)
+		fmt.Printf("DomainEdge[%d] is (%+v)\n", i, domainEdge)
 	}
 	//Build WeightedEdge of domainGraph to calc ksp
 	for _, domainEdge := range domainGraph.DomainEdgeArry {
@@ -546,7 +551,17 @@ func (domainGraph *DomainGraph) SetGraphEdge(domainLinkKey DomainLinkKey) error 
 	nputil.TraceInfoBegin("")
 	fmt.Printf("domainLinkKey detail is :(%+v)\n", domainLinkKey)
 	srcDomain := domainGraph.DomainFindById(domainLinkKey.SrcDomainId)
+	if srcDomain == nil {
+		rtnErr := errors.New("error: srcDomain cannot be found")
+		nputil.TraceInfo("Error: srcDomain cannot be found!")
+		return rtnErr
+	}
 	dstDomain := domainGraph.DomainFindById(domainLinkKey.DstDomainId)
+	if dstDomain == nil {
+		rtnErr := errors.New("error: dstDomain cannot be found")
+		nputil.TraceInfo("Error: dstDomain cannot be found!")
+		return rtnErr
+	}
 
 	linkCost := DomainLinkCostGetByDomainLinkKey(domainLinkKey)
 

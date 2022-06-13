@@ -1,6 +1,7 @@
 package npcore
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
@@ -671,7 +672,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 		return nil
 	}
 	topoInfo.Field = domainTopoCache1.LocalDomainName
-	topoInfo.Content = nputil.Bytes2str(content)
+	topoInfo.Content = base64.StdEncoding.EncodeToString(content)
 	domainTopoMsg[domainTopoCache1.LocalDomainName] = topoInfo
 
 	topoInfo = clusterapi.Topo{}
@@ -717,7 +718,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 		return nil
 	}
 	topoInfo.Field = domainTopoCache2.LocalDomainName
-	topoInfo.Content = nputil.Bytes2str(content)
+	topoInfo.Content = base64.StdEncoding.EncodeToString(content)
 	domainTopoMsg[domainTopoCache2.LocalDomainName] = topoInfo
 
 	topoInfo = clusterapi.Topo{}
@@ -762,7 +763,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 		return nil
 	}
 	topoInfo.Field = domainTopoCache3.LocalDomainName
-	topoInfo.Content = nputil.Bytes2str(content)
+	topoInfo.Content = base64.StdEncoding.EncodeToString(content)
 	domainTopoMsg[domainTopoCache3.LocalDomainName] = topoInfo
 
 	topoInfo = clusterapi.Topo{}
@@ -808,7 +809,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 		return nil
 	}
 	topoInfo.Field = domainTopoCache4.LocalDomainName
-	topoInfo.Content = nputil.Bytes2str(content)
+	topoInfo.Content = base64.StdEncoding.EncodeToString(content)
 	domainTopoMsg[domainTopoCache4.LocalDomainName] = topoInfo
 
 	fmt.Printf("Len of domainTopoMsg is (+%d)\n", len(domainTopoMsg))
@@ -871,7 +872,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 		return nil
 	}
 	topoInfo.Field = domainTopoCache1.LocalDomainName
-	topoInfo.Content = nputil.Bytes2str(content)
+	topoInfo.Content = base64.StdEncoding.EncodeToString(content)
 	domainTopoMsg[domainTopoCache1.LocalDomainName] = topoInfo
 
 	topoInfo = clusterapi.Topo{}
@@ -917,7 +918,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 		return nil
 	}
 	topoInfo.Field = domainTopoCache2.LocalDomainName
-	topoInfo.Content = nputil.Bytes2str(content)
+	topoInfo.Content = base64.StdEncoding.EncodeToString(content)
 	domainTopoMsg[domainTopoCache2.LocalDomainName] = topoInfo
 
 	topoInfo = clusterapi.Topo{}
@@ -962,7 +963,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 		return nil
 	}
 	topoInfo.Field = domainTopoCache4.LocalDomainName
-	topoInfo.Content = nputil.Bytes2str(content)
+	topoInfo.Content = base64.StdEncoding.EncodeToString(content)
 	domainTopoMsg[domainTopoCache4.LocalDomainName] = topoInfo
 
 	fmt.Printf("Len of domainTopoMsg is (+%d)\n", len(domainTopoMsg))

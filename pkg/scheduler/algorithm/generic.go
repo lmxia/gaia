@@ -109,7 +109,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {
 			for j, _ := range spreadLevels {
-				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
+				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
 					componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
 					allResultGlobal[j][i] = componentMat
 				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {

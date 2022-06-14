@@ -28,7 +28,7 @@ func (a AffinityDaemon) Filter(ctx context.Context, com *v1alpha1.Component, clu
 		return framework.AsStatus(fmt.Errorf("invalid cluster"))
 	}
 
-	if com.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
+	if com.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
 		_, _, _, _, snMap, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
 		if _, exist := snMap[com.Workload.TraitAffinityDaemon.SN]; exist {
 			return nil

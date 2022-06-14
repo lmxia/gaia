@@ -363,9 +363,9 @@ func (c *RBController) RunParentResourceBinding(threadiness int, stopCh <-chan s
 	defer klog.Info("shutting parent scheduler")
 	c.parentGaiaInformerFactory.Start(stopCh)
 
-	c.rbParentController.Run(threadiness, stopCh)
-	c.descParentController.Run(threadiness, stopCh)
-	return
+	go c.rbParentController.Run(threadiness, stopCh)
+	go c.descParentController.Run(threadiness, stopCh)
+	<-stopCh
 }
 
 func (c *RBController) RunLocalDescription(threadiness int, stopCh <-chan struct{}) {

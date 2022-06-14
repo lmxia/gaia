@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/lmxia/gaia/pkg/networkfilter/npksp"
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
-	"math"
 	"sort"
 
 	"gonum.org/v1/gonum/graph"
@@ -31,50 +30,6 @@ func NewDomainLinkKspGraph() *DomainLinkKspGraph {
 
 	nputil.TraceInfoEnd("")
 	return domainLinkKspGraph
-}
-
-func BuildDomainLinkEgde() []simple.WeightedEdge {
-	//var edges []simple.WeightedEdge
-	var edges = []simple.WeightedEdge{
-		{F: simple.Node(1), T: simple.Node(2), W: 1},
-		{F: simple.Node(2), T: simple.Node(3), W: 2},
-		{F: simple.Node(3), T: simple.Node(4), W: 3},
-		{F: simple.Node(1), T: simple.Node(3), W: 1},
-		{F: simple.Node(4), T: simple.Node(3), W: 3},
-		{F: simple.Node(3), T: simple.Node(2), W: 2},
-		{F: simple.Node(2), T: simple.Node(1), W: 1},
-		{F: simple.Node(4), T: simple.Node(2), W: 2},
-	}
-	/*var edges = []simple.WeightedEdge([]simple.WeightedEdge{
-		{F: simple.Node('A'), T: simple.Node('B'), W: 1},
-		{F: simple.Node('B'), T: simple.Node('C'), W: 2},
-		{F: simple.Node('C'), T: simple.Node('D'), W: 3},
-		{F: simple.Node('A'), T: simple.Node('C'), W: 1},
-		{F: simple.Node('D'), T: simple.Node('C'), W: 3},
-		{F: simple.Node('C'), T: simple.Node('B'), W: 2},
-		{F: simple.Node('B'), T: simple.Node('A'), W: 1},
-		{F: simple.Node('D'), T: simple.Node('B'), W: 2},
-	})*/
-	/*var edges = []simple.WeightedEdge{}*/
-	/*var edges = []simple.WeightedEdge{
-		{F: simple.Node(0), T: simple.Node(1), W: 3},
-		{F: simple.Node(0), T: simple.Node(2), W: 3},
-		{F: simple.Node(0), T: simple.Node(3), W: 3},
-	}*/
-	/*var edges = []simple.WeightedEdge{
-		{F: simple.Node(0), T: simple.Node(1), W: 1},
-		{F: simple.Node(1), T: simple.Node(2), W: 1},
-		{F: simple.Node(1), T: simple.Node(3), W: 1},
-		{F: simple.Node(1), T: simple.Node(5), W: 1},
-		{F: simple.Node(2), T: simple.Node(4), W: 1},
-		{F: simple.Node(2), T: simple.Node(5), W: 1},
-		{F: simple.Node(3), T: simple.Node(6), W: 1},
-		{F: simple.Node(4), T: simple.Node(6), W: 1},
-		{F: simple.Node(5), T: simple.Node(6), W: 1},
-		{F: simple.Node(5), T: simple.Node(6), W: 1},
-	    }*/
-	fmt.Printf("BuildDomainLinkEgde are:%+v\n", edges)
-	return edges
 }
 
 func GetPathList(paths [][]graph.Node, g graph.Weighted) []PathAttr {
@@ -123,43 +78,29 @@ func SortPathValues(pathAttr []PathAttr) {
 	nputil.TraceInfoEnd("")
 }
 
-func BuildDomainLinkGraph() {
-	nputil.TraceInfoBegin("")
-
-	var domainLinkKspGraph = NewDomainLinkKspGraph()
-	domainLinkKspGraph.graph = func() graph.WeightedEdgeAdder { return simple.NewWeightedDirectedGraph(0, math.Inf(1)) }
-
-	edges := BuildDomainLinkEgde()
-	domainLinkKspGraph.edges = edges
-	fmt.Printf("domainLinkKspGraph  is:%+v\n", domainLinkKspGraph)
-
-	query := simple.Edge{F: simple.Node(1), T: simple.Node(4)}
-	paths := KspCalcDomainPath(domainLinkKspGraph, 10, query)
-	fmt.Printf("networkPlugin paths are:%+v\n", paths)
-
-	nputil.TraceInfoEnd("")
-}
-
 func KspCalcDomainPath(domainLinkGraph *DomainLinkKspGraph, spfCalcMaxNum int, query simple.Edge) []PathAttr {
 	nputil.TraceInfoBegin("")
 
 	g := domainLinkGraph.graph()
 	for _, e := range domainLinkGraph.edges {
-		fmt.Printf(" domainLinkGraph.edge is (%+v)\n", e)
+		infoString := fmt.Sprintf(" domainLinkGraph.edge is (%+v)", e)
+		nputil.TraceInfo(infoString)
 		g.SetWeightedEdge(e)
 	}
 	got := npksp.YenKShortestPaths(g.(graph.Graph), spfCalcMaxNum, query.From(), query.To())
-	fmt.Printf("got origin is:%+v\n", got)
+	infoString := fmt.Sprintf("got origin is:%+v", got)
+	nputil.TraceInfo(infoString)
 	PathList := GetPathList(got, g.(graph.Weighted))
-	fmt.Printf("PathList origin is:%+v\n", PathList)
+	infoString = fmt.Sprintf("PathList origin is:%+v", PathList)
+	nputil.TraceInfo(infoString)
 
 	paths := make(npksp.ByPathWeight, len(PathList))
 	for i, p := range got {
 		paths[i] = npksp.YenShortest{Path: p, Weight: npksp.PathWeight(p, g.(graph.Weighted))}
-		fmt.Printf("paths[%d] is:%+v\n", i, paths[i])
 	}
 	if !sort.IsSorted(paths) {
-		fmt.Printf("unexpected result got:%+v\n", paths)
+		infoString = fmt.Sprintf("unexpected result got:%+v", paths)
+		nputil.TraceInfo(infoString)
 	}
 	if len(PathList) != 0 {
 		first := 0
@@ -175,19 +116,21 @@ func KspCalcDomainPath(domainLinkGraph *DomainLinkKspGraph, spfCalcMaxNum int, q
 		}
 		SortPathValues(PathList[first:])
 	}
-	fmt.Printf("PathList modify is:%+v\n", PathList)
+	infoString = fmt.Sprintf("PathList modify is:%+v", PathList)
+	nputil.TraceInfo(infoString)
 
 	var PathsGroupNoLoop []PathAttr
 	for _, Path := range PathList {
-		fmt.Printf("Path is:%+v\n", Path)
 		gotIDModify := npksp.RemoveDuplicateElement(Path.PathIds)
-		fmt.Printf("gotIDModify is:%+v\n", gotIDModify)
+		infoString = fmt.Sprintf("gotIDModify is:%+v", gotIDModify)
+		nputil.TraceInfo(infoString)
 		if len(Path.PathIds) == len(gotIDModify) {
 			PathsGroupNoLoop = append(PathsGroupNoLoop, Path)
 		}
 	}
 	//Path为domainspfid list
-	fmt.Printf("PathsGroupNoLoop is:%+v\n", PathsGroupNoLoop)
+	infoString = fmt.Sprintf("PathsGroupNoLoop is:%+v", PathsGroupNoLoop)
+	nputil.TraceInfo(infoString)
 
 	nputil.TraceInfoEnd("")
 	return PathsGroupNoLoop

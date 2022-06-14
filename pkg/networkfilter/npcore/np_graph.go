@@ -126,7 +126,8 @@ func GetDomainLinkByDomainId(srcDomainId uint32, dstDomainId uint32, domainGraph
 func GetMiniDalyDomainLink(srcDomainId uint32, dstDomainId uint32, domainGraph *DomainGraph) (*DomainLink, uint32) {
 	nputil.TraceInfoBegin("")
 
-	fmt.Printf(" srcDomainId is (%+v), dstDomainId is ((%+v)\n", srcDomainId, dstDomainId)
+	infoString := fmt.Sprintf(" srcDomainId is (%+v), dstDomainId is ((%+v)", srcDomainId, dstDomainId)
+	nputil.TraceInfo(infoString)
 	srcDomain := domainGraph.DomainFindById(srcDomainId)
 	if srcDomain == nil {
 		nputil.TraceInfoEnd("srcDomain is nil")
@@ -146,8 +147,11 @@ func GetMiniDalyDomainLink(srcDomainId uint32, dstDomainId uint32, domainGraph *
 			}
 		}
 	}
+
+	infoString = fmt.Sprintf(" domainLink is (%+v), MinDomainlinkDelay is ((%+v)", domainLink, MinDomainlinkDelay)
+	nputil.TraceInfo(infoString)
+
 	nputil.TraceInfoEnd("")
-	fmt.Printf(" domainLink is (%+v), MinDomainlinkDelay is ((%+v)\n", domainLink, MinDomainlinkDelay)
 	return domainLink, MinDomainlinkDelay
 }
 
@@ -323,7 +327,8 @@ func (domain *Domain) DomainLinkAddByKey(domainLinkKey DomainLinkKey) (*DomainLi
 
 	//1 创建baseNodeLink控制块
 	domainLink := domainLinkCreateByKey(domainLinkKey, domain)
-	fmt.Printf("domainLinkKey is (%+v), domainLink is (%+v)\n", domainLinkKey, domainLink)
+	infoString := fmt.Sprintf("domainLinkKey is (%+v), domainLink is (%+v)\n", domainLinkKey, domainLink)
+	nputil.TraceInfo(infoString)
 	//2 挂树，写DB
 	err := domain.DomainLinkTree.Put(domainLink.Key, domainLink)
 	if err != nil {
@@ -434,7 +439,8 @@ func (domainGraph *DomainGraph) DomainLinkAddByKey(domainLinkKey DomainLinkKey) 
 	}
 
 	domainLink, rtnErr := domain.DomainLinkAddByKey(domainLinkKey)
-	fmt.Printf("domain is (%+v), domainlink is  (%+v)\n", *domain, *domainLink)
+	infoString := fmt.Sprintf("domain is (%+v), domainlink is  (%+v)", *domain, *domainLink)
+	nputil.TraceInfo(infoString)
 
 	nputil.TraceInfoEnd("")
 	return domainLink, rtnErr
@@ -495,7 +501,9 @@ func (domainGraph *DomainGraph) MapDomainKey2SpfID() error {
 		libID++
 	}
 
-	fmt.Printf("domainGraph.SpfID2DomainKey is (%+v)\n", domainGraph.SpfID2DomainKey)
+	infoString := fmt.Sprintf("domainGraph.SpfID2DomainKey is (%+v)\n", domainGraph.SpfID2DomainKey)
+	nputil.TraceInfo(infoString)
+
 	nputil.TraceInfoEnd("")
 	return nil
 }
@@ -513,7 +521,8 @@ func (domainGraph *DomainGraph) SpfGraphEdgeCreateForSla() error {
 		tmpDomain := v.(*Domain)
 		for i := 0; i < len(tmpDomain.DomainLinkKeyArray); i++ {
 			domainLinkKey := tmpDomain.DomainLinkKeyArray[i]
-			fmt.Printf("domainLinkKey is (%+v)\n", domainLinkKey)
+			infoString := fmt.Sprintf("domainLinkKey is (%+v)", domainLinkKey)
+			nputil.TraceInfo(infoString)
 			baseDomainLink := BaseDomainLinkFindByKeyWithoutBaseDomain(domainLinkKey)
 			if baseDomainLink == nil {
 				nputil.TraceErrorStringWithStack("baseDomainLink is nil")
@@ -528,7 +537,8 @@ func (domainGraph *DomainGraph) SpfGraphEdgeCreateForSla() error {
 		}
 	}
 	for i, domainEdge := range domainGraph.DomainEdgeArry {
-		fmt.Printf("DomainEdge[%d] is (%+v)\n", i, domainEdge)
+		infoString := fmt.Sprintf("DomainEdge[%d] is (%+v)", i, domainEdge)
+		nputil.TraceInfo(infoString)
 	}
 	//Build WeightedEdge of domainGraph to calc ksp
 	for _, domainEdge := range domainGraph.DomainEdgeArry {
@@ -540,7 +550,8 @@ func (domainGraph *DomainGraph) SpfGraphEdgeCreateForSla() error {
 		domainGraph.DomainWeightedEdgeArry = append(domainGraph.DomainWeightedEdgeArry, edge)
 	}
 	for i, domainWeightedEdge := range domainGraph.DomainWeightedEdgeArry {
-		fmt.Printf("domainWeightedEdge[%d] is (%+v)\n", i, domainWeightedEdge)
+		infoString := fmt.Sprintf("domainWeightedEdge[%d] is (%+v)\n", i, domainWeightedEdge)
+		nputil.TraceInfo(infoString)
 	}
 	nputil.TraceInfoEnd("")
 	return nil
@@ -549,7 +560,9 @@ func (domainGraph *DomainGraph) SpfGraphEdgeCreateForSla() error {
 func (domainGraph *DomainGraph) SetGraphEdge(domainLinkKey DomainLinkKey) error {
 
 	nputil.TraceInfoBegin("")
-	fmt.Printf("domainLinkKey detail is :(%+v)\n", domainLinkKey)
+
+	infoString := fmt.Sprintf("domainLinkKey detail is :(%+v)", domainLinkKey)
+	nputil.TraceInfo(infoString)
 	srcDomain := domainGraph.DomainFindById(domainLinkKey.SrcDomainId)
 	if srcDomain == nil {
 		rtnErr := errors.New("error: srcDomain cannot be found")
@@ -594,7 +607,6 @@ func (domainGraph *DomainGraph) CreateDomainLinkKspGraph() {
 	domainLinkKspGraph := NewDomainLinkKspGraph()
 	domainLinkKspGraph.graph = func() kspGraph.WeightedEdgeAdder { return simple.NewWeightedDirectedGraph(0, math.Inf(1)) }
 	domainLinkKspGraph.edges = domainGraph.DomainWeightedEdgeArry
-	fmt.Printf("domainLinkKspGraph is:%+v\n", domainLinkKspGraph)
 	domainGraph.DomainLinkKspGraph = domainLinkKspGraph
 
 	nputil.TraceInfoEnd("")
@@ -622,12 +634,15 @@ func (domainGraph *DomainGraph) DomainSrPathCreateByKspPath(path PathAttr) *Doma
 		nputil.TraceInfoEnd("No shortest path!")
 		return nil
 	}
-	fmt.Printf("DomainSrPathCreateByKspPath path is (%+v)\n", path)
+	infoString := fmt.Sprintf("DomainSrPathCreateByKspPath path is (%+v)", path)
+	nputil.TraceInfo(infoString)
+
 	domainSrPath.DomainSidArray = make([]DomainSid, len(path.PathIds))
 	for j := 0; j < len(path.PathIds); j++ {
 
 		domainKey := domainGraph.SpfID2DomainKey[path.PathIds[j]]
-		fmt.Printf(" DomainSrPathCreateByKspPath domainKey is : (%+v)\n", domainKey)
+		infoString := fmt.Sprintf(" DomainSrPathCreateByKspPath domainKey is : (%+v)", domainKey)
+		nputil.TraceInfo(infoString)
 		domainSrPath.DomainSidArray[j].DomainId = domainKey.DomainId
 		domainSrPath.DomainSidArray[j].DomainType = String2DomainType(domainTypeString_Field)
 	}
@@ -653,7 +668,9 @@ func (domainGraph *DomainGraph) DomainSrPathCreateByKspPath(path PathAttr) *Doma
 	domainLink, _ := GetMiniDalyDomainLink(domainSrPath.DomainSidArray[0].DomainId, domainSrPath.DomainSidArray[1].DomainId, domainGraph)
 	domainSrPath.DomainSidArray[0].SrcNodeSN = domainLink.Key.SrcNodeSN
 
-	fmt.Printf("domainSrPath is %+v\n", domainSrPath)
+	infoString = fmt.Sprintf("domainSrPath is %+v", domainSrPath)
+	nputil.TraceInfo(infoString)
+
 	nputil.TraceInfoEnd("")
 	return domainSrPath
 }
@@ -679,7 +696,6 @@ func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainL
 		infoString := fmt.Sprintf("Calc Domain path for AppConnect is not satisified.")
 		nputil.TraceInfo(infoString)
 	}
-	fmt.Printf("SpfCalcDomainPathForAppConnect: domainSrPathArray is (%+v)!\n", domainSrPathArray)
 	infoString := fmt.Sprintf("SpfCalcDomainPathForAppConnect: domainSrPathArray is (%+v)!\n", domainSrPathArray)
 	nputil.TraceInfo(infoString)
 	nputil.TraceInfoEnd("")
@@ -691,7 +707,8 @@ func (graph *Graph) GetDomainPathNameWithFaric(domainSrPath DomainSrPath) []Doma
 
 	domainGraph := graph.DomainGraphPoint
 
-	fmt.Printf("domainSrPath is (%+v)\n", domainSrPath)
+	infoString := fmt.Sprintf("domainSrPath is (%+v)", domainSrPath)
+	nputil.TraceInfo(infoString)
 	var domainSrNamePath []DomainInfo
 	var domaininfo = DomainInfo{}
 	//在同一个域内
@@ -721,8 +738,7 @@ func (graph *Graph) GetDomainPathNameWithFaric(domainSrPath DomainSrPath) []Doma
 	domaininfo.DomainType = uint32(String2DomainType(domainTypeString_Field))
 	domainSrNamePath = append(domainSrNamePath, domaininfo)
 
-	fmt.Printf("domainSrPathWithFabricArray is (%+v)\n", domainSrNamePath)
-	infoString := fmt.Sprintf("domainSrPathWithFabricArray is (%+v)\n", domainSrNamePath)
+	infoString = fmt.Sprintf("domainSrPathWithFabricArray is (%+v)\n", domainSrNamePath)
 	nputil.TraceInfo(infoString)
 	nputil.TraceInfoEnd("")
 	return domainSrNamePath

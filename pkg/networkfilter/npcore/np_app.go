@@ -106,11 +106,9 @@ func getComponentReplicas(rbApp *v1alpha1.ResourceBindingApps, componentName str
 
 	var replicasVal int32
 	if replicas, ok := rbApp.Replicas[componentName]; ok {
-		fmt.Printf("The replicas of component (%s) is (%d)\n", componentName, replicas)
 		replicasVal = replicas
 
 	} else {
-		fmt.Printf("The component (%s) doesn't exist!\n", componentName)
 		infoString := fmt.Sprintf("The component (%s) doesn't exist!\n", componentName)
 		nputil.TraceInfo(infoString)
 	}
@@ -129,7 +127,6 @@ func GetFiledNamebyComponent(rbApp *v1alpha1.ResourceBindingApps, componentName 
 		ret = true
 
 	} else {
-		fmt.Printf("The field(%s) doesn't have the component (%s)!\n", rbApp.ClusterName, componentName)
 		infoString := fmt.Sprintf("The field(%s) doesn't have the component (%s)!\n", rbApp.ClusterName, componentName)
 		nputil.TraceInfo(infoString)
 		ret = false
@@ -148,7 +145,7 @@ func SetSelfId2Component(networkReq v1alpha1.NetworkRequirement) {
 			local.selfId2Component[selfId] = netCom.Name
 		}
 	}
-	fmt.Printf("local.selfId2Component is: (%+v).\n", local.selfId2Component)
+
 	infoString := fmt.Sprintf("local.selfId2Component is: (%+v).\n", local.selfId2Component)
 	nputil.TraceInfo(infoString)
 
@@ -175,7 +172,6 @@ func SetComponentByNetReq(networkReq v1alpha1.NetworkRequirement) {
 	SetAppConnectReqList(networkReq)
 
 	for comName, Component := range local.ComponentArray {
-		fmt.Printf("After set by networkReq, the local.ComponentArray[%s] is: (%+v).\n", comName, Component)
 		infoString := fmt.Sprintf("After set by networkReq, the local.ComponentArray[%s] is: (%+v).\n", comName, Component)
 		nputil.TraceInfo(infoString)
 	}
@@ -195,7 +191,6 @@ func SetComponentByRb(rb v1alpha1.ResourceBinding) {
 				continue
 			}
 			filedName := rbApp.ClusterName
-			fmt.Printf("filedName is [%s], local.ComponentArray[%s] is (%+v).\n", filedName, comName, local.ComponentArray[comName])
 			infoString := fmt.Sprintf("filedName is [%s], local.ComponentArray[%s] is (%+v).", filedName, comName, local.ComponentArray[comName])
 			nputil.TraceInfo(infoString)
 			//component不存在
@@ -212,7 +207,6 @@ func SetComponentByRb(rb v1alpha1.ResourceBinding) {
 	}
 
 	for comName, Component := range local.ComponentArray {
-		fmt.Printf("After set by rb, the local.ComponentArray[%s] is: (%+v).\n", comName, Component)
 		infoString := fmt.Sprintf("After set by rb, the local.ComponentArray[%s] is: (%+v).\n", comName, Component)
 		nputil.TraceInfo(infoString)
 	}
@@ -247,7 +241,6 @@ func SetAppConnectReqList(networkReq v1alpha1.NetworkRequirement) {
 	}
 
 	for comName, Component := range local.ComponentArray {
-		fmt.Printf("After set AppConnectReqList, the local.ComponentArray[%s] is: (%+v).\n", comName, Component)
 		infoString := fmt.Sprintf("local.ComponentArray[%s] is: (%+v).\n", comName, Component)
 		nputil.TraceInfo(infoString)
 	}
@@ -273,7 +266,6 @@ func CreateScnIdInstanceForScnId(comName string, scnID string) ScnIdInstanceArra
 			ScnIdInstList.ScnIdInstList = append(ScnIdInstList.ScnIdInstList, scnIdInt)
 		}
 	}
-	fmt.Printf("ScnIdInstList is: (%+v).\n", ScnIdInstList)
 	infoString := fmt.Sprintf("ScnIdInstList is: (%+v).\n", ScnIdInstList)
 	nputil.TraceInfo(infoString)
 
@@ -289,13 +281,13 @@ func SetScnIdInstanceForComponent(component APPComponent) {
 	tmpComp := local.ComponentArray[component.Name]
 	for _, scnId := range component.SelfID {
 		ScnIdInstList := CreateScnIdInstanceForScnId(component.Name, scnId)
-		fmt.Printf("local.ComponentArray[%s] is (%+v).\n", component.Name, local.ComponentArray[component.Name])
+		infoString := fmt.Sprintf("local.ComponentArray[%s] is (%+v).", component.Name, local.ComponentArray[component.Name])
+		nputil.TraceInfo(infoString)
 		tmpInstList[scnId] = ScnIdInstList
 	}
 	tmpComp.ScnIdInstList = tmpInstList
 	local.ComponentArray[component.Name] = tmpComp
 
-	fmt.Printf("local.ComponentArray[%s] is (%+v) after create ScnIdInstance.\n", component.Name, local.ComponentArray[component.Name])
 	infoString := fmt.Sprintf("local.ComponentArray[%s] is (%+v) after create ScnIdInstance.\n", component.Name, local.ComponentArray[component.Name])
 	nputil.TraceInfo(infoString)
 
@@ -331,7 +323,6 @@ func SetScnIdInstances() {
 	}
 
 	for comName, Component := range local.ComponentArray {
-		fmt.Printf("After set ScnIdInstances, the local.ComponentArray[%s] is: (%+v).\n", comName, Component)
 		infoString := fmt.Sprintf("local.ComponentArray[%s] is: (%+v).\n", comName, Component)
 		nputil.TraceInfo(infoString)
 	}
@@ -349,7 +340,6 @@ func CreateAppConnectAttrByScnInst(srcInst ScnIdInstance, dstInst ScnIdInstance)
 	appConnect.Key.DstID = dstInst.Id
 	srcDomainId, flag := getDomainIDbyName(srcInst.Filed)
 	if flag == false {
-		fmt.Printf("The source domain (%s) doesn't exist!\n", srcInst.Filed)
 		infoString := fmt.Sprintf("The source domain (%s) doesn't exist!\n", srcInst.Filed)
 		nputil.TraceInfo(infoString)
 		nputil.TraceInfoEnd("")
@@ -357,7 +347,6 @@ func CreateAppConnectAttrByScnInst(srcInst ScnIdInstance, dstInst ScnIdInstance)
 	}
 	dstDomainId, flag := getDomainIDbyName(dstInst.Filed)
 	if flag == false {
-		fmt.Printf("The source domain (%s) doesn't exist!\n", dstInst.Filed)
 		infoString := fmt.Sprintf("The component (%s) doesn't exist!\n", dstInst.Filed)
 		nputil.TraceInfo(infoString)
 		nputil.TraceInfoEnd("")
@@ -367,7 +356,6 @@ func CreateAppConnectAttrByScnInst(srcInst ScnIdInstance, dstInst ScnIdInstance)
 	appConnect.Key.DstDomainId = dstDomainId
 	AppReq, flag := getAppConnectionByScnId(srcInst.ScnId, dstInst.ScnId)
 	if flag == false {
-		fmt.Printf("The AppConnectReq cannot find by srcScnID(%+v) and dstInst(%+v)!\n", srcInst, dstInst)
 		infoString := fmt.Sprintf("The AppConnectReq cannot find by srcScnID(%+v) and dstInst(%+v)!\n", srcInst, dstInst)
 		nputil.TraceInfo(infoString)
 		nputil.TraceInfoEnd("")
@@ -463,7 +451,8 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 		for i, appConnectReqList := range component.AppConnectReqList {
 			//AppRequest下所有的副本实例的多条domainPath
 			//清空内容
-			fmt.Printf("component[%s].AppConnectReqList[%d] is: (%+v)\n", comName, i, appConnectReqList)
+			infoString := fmt.Sprintf("component[%s].AppConnectReqList[%d] is: (%+v)", comName, i, appConnectReqList)
+			nputil.TraceInfo(infoString)
 			//scnIdAppDomainPathGroup指定源连接属性的所有实例的domainPathGroup
 			for _, scnIdAppDomainPathGroup := range appConnectReqList.ScnIdDomainPathGroup {
 				//带实例号的连接属性的多条domainPath路径为一维数组
@@ -486,14 +475,12 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 		}
 	}
 	for i, appConnectDomainPathArray := range appConnectDomainPathMatrix {
-		fmt.Printf("The appConnectDomainPathMatrix[%d], is: (%+v)\n\n", i, appConnectDomainPathArray)
 		infoString := fmt.Sprintf("appConnectDomainPathMatrix[%d], is: (%+v)\n\n", i, appConnectDomainPathArray)
 		nputil.TraceInfo(infoString)
 	}
 	// Number of arrays
 	n := len(appConnectDomainPathMatrix)
 	if n == 0 {
-		fmt.Printf("The InterScnIDDomainPathMatrix is empty!\n")
 		infoString := fmt.Sprintf("The InterScnIDDomainPathMatrix is empty!\n")
 		nputil.TraceInfo(infoString)
 		nputil.TraceInfoEnd("")
@@ -509,7 +496,6 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 	for {
 		if index > DomainPathGroupMaxNum-1 {
 			for _, combPath := range combGroup {
-				fmt.Printf("The combPath is (%+v)!\n", combPath)
 				infoString := fmt.Sprintf("The combPath is (%+v)!\n", combPath)
 				nputil.TraceInfo(infoString)
 			}
@@ -519,7 +505,8 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 		// combine domainpath for different interSCNID connections
 		combPath = []AppDomainPath{}
 		for j := 0; j < n; j++ {
-			fmt.Printf("appConnectDomainPathMatrix[%d][indices[%d]] is (%+v)\n", j, j, appConnectDomainPathMatrix[j][indices[j]])
+			infoString := fmt.Sprintf("appConnectDomainPathMatrix[%d][indices[%d]] is (%+v)", j, j, appConnectDomainPathMatrix[j][indices[j]])
+			nputil.TraceInfo(infoString)
 			combPath = append(combPath, appConnectDomainPathMatrix[j][indices[j]])
 		}
 		combGroup[index] = combPath
@@ -532,7 +519,6 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 		// no such array is found so no more combinations left
 		if next < 0 {
 			for _, combPath := range combGroup {
-				fmt.Printf("The combPath is (%+v)!\n", combPath)
 				infoString := fmt.Sprintf("The combPath is (%+v)!\n", combPath)
 				nputil.TraceInfo(infoString)
 			}
@@ -583,8 +569,6 @@ func CalAppConnectAttrForInterSCNID(interSCNID v1alpha1.InterSCNID) bool {
 			if appConnectAttr == nil {
 				continue
 			}
-			fmt.Printf("srcScnIdInstList[%d] is: (%+v).\n dstScnIdInstList[%d] is: (%+v).\n appConnectAttr is: (%+v)",
-				i, srcScnIdInstList[i], j, dstScnIdInstList[j], appConnectAttr)
 			infoString := fmt.Sprintf("srcScnIdInstList[%d] is: (%+v).\n dstScnIdInstList[%d] is: (%+v).\n appConnectAttr is: (%+v)",
 				i, srcScnIdInstList[i], j, dstScnIdInstList[j], appConnectAttr)
 			nputil.TraceInfo(infoString)
@@ -628,17 +612,14 @@ func CalAppConnectAttrForInterSCNID(interSCNID v1alpha1.InterSCNID) bool {
 			//只计算以时延为权重的domainPath
 			domainSrPathArray := graph.AppConnect(domainGraph.DomainLinkKspGraph, KspCalcMaxNum, query, *appConnectAttr)
 			domainSrNamePath := graph.GetDomainPathNameArrayWithFaric(domainSrPathArray)
-			fmt.Printf("domainSrNamePath is (%+v)\n", domainSrNamePath)
 			infoString = fmt.Sprintf("domainSrNamePath is (%+v)\n", domainSrNamePath)
 			nputil.TraceInfo(infoString)
 			if len(domainSrPathArray) != 0 {
-				fmt.Printf("AppConnect (%+v) domainSrPath are:%+v\n", *appConnectAttr, domainSrPathArray)
 				appDomainPath := AppDomainPathArray{}
 				appDomainPath.DomainSrPathArray = domainSrPathArray
 				appDomainPath.AppConnect = *appConnectAttr
 				//附加一个具体实例AppConnect的多条路径
 				ScnIdDomainPathGroup.AppDomainPathArray = append(ScnIdDomainPathGroup.AppDomainPathArray, appDomainPath)
-				fmt.Printf("ScnIdDomainPathGroup.AppDomainPathArray is (%+v)\n", ScnIdDomainPathGroup.AppDomainPathArray)
 				infoString = fmt.Sprintf("ScnIdDomainPathGroup.AppDomainPathArray is (%+v)\n", ScnIdDomainPathGroup.AppDomainPathArray)
 				nputil.TraceInfo(infoString)
 			}
@@ -647,7 +628,6 @@ func CalAppConnectAttrForInterSCNID(interSCNID v1alpha1.InterSCNID) bool {
 		//判断该源副本实例是否存在可达路径
 		//当每个副本都的链接属性都可达时，才认为该链接属性可达，只要有一个链接属性不可达，ResourceBinding方案无效
 		if len(ScnIdDomainPathGroup.AppDomainPathArray) == 0 {
-			fmt.Printf("The interCommunication (%+v) is unavailable!\n", interSCNID)
 			infoString := fmt.Sprintf("The interCommunication (%+v) is unavailable!\n", interSCNID)
 			nputil.TraceInfo(infoString)
 			nputil.TraceInfoEnd("false")
@@ -658,8 +638,6 @@ func CalAppConnectAttrForInterSCNID(interSCNID v1alpha1.InterSCNID) bool {
 				if interSCNID.Source.Id == tmpAppReq.Key.SrcUrl && interSCNID.Destination.Id == tmpAppReq.Key.DstUrl {
 					ScnIdDomainPathGroupArray = append(ScnIdDomainPathGroupArray, ScnIdDomainPathGroup)
 					local.ComponentArray[srcCom].AppConnectReqList[i].ScnIdDomainPathGroup = ScnIdDomainPathGroupArray
-					fmt.Printf("The local.ComponentArray[%s].AppConnectReqList[%d].ScnIdDomainPathGroupArray is (%+v)!\n",
-						srcCom, i, ScnIdDomainPathGroupArray)
 					infoString := fmt.Sprintf("The local.ComponentArray[%s].AppConnectReqList[%d].ScnIdDomainPathGroupArray is (%+v)!\n",
 						srcCom, i, ScnIdDomainPathGroupArray)
 					nputil.TraceInfo(infoString)
@@ -730,13 +708,9 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 		}
 		//构造message数据
 		for i, bindDomainPath := range rbDomainPathArray {
-			fmt.Printf("---------bindDomainPath SelectedDomainPath [%d] ---------\n", i)
 			infoString := fmt.Sprintf("---------bindDomainPath SelectedDomainPath [%d] ---------\n", i)
 			nputil.TraceInfo(infoString)
 			for _, appDomainPath := range bindDomainPath.SelectedDomainPath {
-				fmt.Printf("AppConnectAttr is: [%+v]\n\n", appDomainPath.AppConnectAttr)
-				fmt.Printf("DomainSrPath is: [%+v]\n\n", appDomainPath.DomainSrPath)
-				fmt.Printf("DomainInfoPath is: [%+v]\n\n", appDomainPath.DomainInfoPath)
 				infoString := fmt.Sprintf("AppConnectAttr is: [%+v]", appDomainPath.AppConnectAttr)
 				nputil.TraceInfo(infoString)
 				infoString = fmt.Sprintf("DomainSrPath is: [%+v]", appDomainPath.DomainSrPath)

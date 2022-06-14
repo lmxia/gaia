@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 
+	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/iterator"
 	"gonum.org/v1/gonum/graph/simple"
@@ -29,7 +30,8 @@ func YenKShortestPaths(g graph.Graph, k int, s, t graph.Node) [][]graph.Node {
 	}
 
 	shortest, _ := DijkstraFrom(s, yk).To(t.ID())
-	fmt.Printf("shortest  is:%+v\n", shortest)
+	infoString := fmt.Sprintf("shortest  is:%+v", shortest)
+	nputil.TraceInfo(infoString)
 	switch len(shortest) {
 	case 0:
 		return nil
@@ -38,7 +40,8 @@ func YenKShortestPaths(g graph.Graph, k int, s, t graph.Node) [][]graph.Node {
 	}
 	paths := [][]graph.Node{shortest}
 	for _, path := range paths {
-		fmt.Printf("Path origin is:%+v\n", path)
+		infoString := fmt.Sprintf("Path origin is:%+v", path)
+		nputil.TraceInfo(infoString)
 	}
 	var pot []YenShortest
 	var root []graph.Node
@@ -89,12 +92,14 @@ func YenKShortestPaths(g graph.Graph, k int, s, t graph.Node) [][]graph.Node {
 		if len(best) <= 1 {
 			break
 		}
-		fmt.Printf("best Path is:%+v, weight is: %+v\n", best, pot[0].Weight)
+		infoString := fmt.Sprintf("best Path is:%+v, weight is: %+v", best, pot[0].Weight)
+		nputil.TraceInfo(infoString)
 		paths = append(paths, best)
 		pot = pot[1:]
 	}
 	for _, path := range paths {
-		fmt.Printf("YenKShortestPaths Path is:%+v\n", path)
+		infoString := fmt.Sprintf("YenKShortestPaths Path is:%+v", path)
+		nputil.TraceInfo(infoString)
 	}
 	return paths
 }

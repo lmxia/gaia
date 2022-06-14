@@ -115,10 +115,11 @@ func (domainSrPath *DomainSrPath) isSatisfiedThroughput(appSlaAttr AppSlaAttr) b
 	for j := 0; j < len(domainSrPath.DomainSidArray)-1; j++ {
 		srcDomainSid := domainSrPath.DomainSidArray[j]
 		dstDomainSid := domainSrPath.DomainSidArray[j+1]
-		fmt.Printf("srcDomainSid(%+v), dstDomainSid(%+v)", srcDomainSid, dstDomainSid)
+		infoString := fmt.Sprintf("srcDomainSid(%+v), dstDomainSid(%+v)", srcDomainSid, dstDomainSid)
+		nputil.TraceInfo(infoString)
 
 		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.SrcNodeSN, dstDomainSid.DomainId, dstDomainSid.DstNodeSN)
-		infoString := fmt.Sprintf("baseDomainLink.BaseDomainLinkDbV(%+v), slaAttr(%+v)", baseDomainLink.BaseDomainLinkDbV, appSlaAttr)
+		infoString = fmt.Sprintf("baseDomainLink.BaseDomainLinkDbV(%+v), slaAttr(%+v)", baseDomainLink.BaseDomainLinkDbV, appSlaAttr)
 		nputil.TraceInfo(infoString)
 		//If free-bandwidth is lower than requirement, return false
 		if appSlaAttr.ThroughputValue > baseDomainLink.BaseDomainLinkDbV.Sla.FreeThroughputValue {
@@ -151,10 +152,11 @@ func (domainSrPath *DomainSrPath) isSatisfiedThroughputAndUpdate(appSlaAttr AppS
 	for j := 0; j < len(domainSrPath.DomainSidArray)-1; j++ {
 		srcDomainSid := domainSrPath.DomainSidArray[j]
 		dstDomainSid := domainSrPath.DomainSidArray[j+1]
-		fmt.Printf("srcDomainSid(%+v), dstDomainSid(%+v)", srcDomainSid, dstDomainSid)
+		infoString := fmt.Sprintf("srcDomainSid(%+v), dstDomainSid(%+v)", srcDomainSid, dstDomainSid)
+		nputil.TraceInfo(infoString)
 
 		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.SrcNodeSN, dstDomainSid.DomainId, dstDomainSid.DstNodeSN)
-		infoString := fmt.Sprintf("baseDomainLink.BaseDomainLinkDbV(%+v), slaAttr(%+v)", baseDomainLink.BaseDomainLinkDbV, appSlaAttr)
+		infoString = fmt.Sprintf("baseDomainLink.BaseDomainLinkDbV(%+v), slaAttr(%+v)", baseDomainLink.BaseDomainLinkDbV, appSlaAttr)
 		nputil.TraceInfo(infoString)
 		//If free-bandwidth is lower than requirement, return false
 		if appSlaAttr.ThroughputValue > baseDomainLink.BaseDomainLinkDbV.Sla.FreeThroughputValue {

@@ -180,8 +180,9 @@ func (rbMerger *RBMerger) handleToParentResourceBinding(rb *appv1alpha1.Resource
 	} else if rbMerger.parentGaiaClient != nil {
 
 		rbMerger.mu.Lock()
-		if !utils.ContainsString(rbMerger.parentsRBsOfAPPid[rb.Spec.AppID], rb.Spec.ParentRB) {
-			rbMerger.parentsRBsOfAPPid[rb.Spec.AppID] = append(rbMerger.parentsRBsOfAPPid[rb.Spec.AppID], rb.Spec.ParentRB)
+		descName := rb.GetLabels()[common.GaiaDescriptionLabel]
+		if !utils.ContainsString(rbMerger.parentsRBsOfAPPid[descName], rb.Spec.ParentRB) {
+			rbMerger.parentsRBsOfAPPid[descName] = append(rbMerger.parentsRBsOfAPPid[descName], rb.Spec.ParentRB)
 		}
 		if rbMerger.rbsOfParentRB[rb.Spec.ParentRB] == nil {
 			rbMerger.rbsOfParentRB[rb.Spec.ParentRB] = &RBsOfParentRB{}
@@ -194,16 +195,16 @@ func (rbMerger *RBMerger) handleToParentResourceBinding(rb *appv1alpha1.Resource
 			}
 		}
 
-		desc, _ := rbMerger.parentGaiaClient.AppsV1alpha1().Descriptions(rbMerger.parentNameSpace).Get(context.TODO(), rb.Spec.AppID, metav1.GetOptions{})
+		desc, _ := rbMerger.parentGaiaClient.AppsV1alpha1().Descriptions(rbMerger.parentNameSpace).Get(context.TODO(), descName, metav1.GetOptions{})
 		v, exist := rbMerger.descResourceID[string(desc.GetUID())]
 		if rbMerger.canCreateCollectedRBs(rb) && v != true {
 			if rbMerger.createCollectedRBs(rb) {
-				rbMerger.deleteFieldAppIDKey(rb.Spec.AppID)
+				rbMerger.deleteFieldAppIDKey(descName)
 				rbMerger.descResourceID[string(desc.GetUID())] = true
 
 				err = rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
 						DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-							common.GaiaDescriptionLabel: rb.Spec.AppID,
+							common.GaiaDescriptionLabel: descName,
 						}).String()})
 				if err != nil {
 					klog.Infof("failed to delete rbs in %s namespace", common.GaiaRBMergedReservedNamespace, err)
@@ -243,6 +244,7 @@ func (rbMerger *RBMerger) handleToLocalResourceBinding(rb *appv1alpha1.ResourceB
 		if err != nil {
 			klog.Warningf("failed to list managed clusters: %v", err)
 		}
+		descName := rb.GetLabels()[common.GaiaDescriptionLabel]
 
 		// var fieldRBs *FieldRBs
 		chanResult := make(chan []*appv1alpha1.ResourceBindingApps)
@@ -263,8 +265,8 @@ func (rbMerger *RBMerger) handleToLocalResourceBinding(rb *appv1alpha1.ResourceB
 		rbMerger.fieldsRBsOfParentRB[rb.Spec.ParentRB].countCls = len(clusters.Items)
 		rbMerger.fieldsRBsOfParentRB[rb.Spec.ParentRB].NamesOfFiledRBs = append(rbMerger.fieldsRBsOfParentRB[rb.Spec.ParentRB].NamesOfFiledRBs, rb.Name)
 		rbMerger.fieldsRBsOfParentRB[rb.Spec.ParentRB].rbsOfFields = append(rbMerger.fieldsRBsOfParentRB[rb.Spec.ParentRB].rbsOfFields, rbMerger.rbsOfParentRB[rb.Name])
-		if !utils.ContainsString(rbMerger.parentsRBsOfAPPid[rb.Spec.AppID], rb.Spec.ParentRB) {
-			rbMerger.parentsRBsOfAPPid[rb.Spec.AppID] = append(rbMerger.parentsRBsOfAPPid[rb.Spec.AppID], rb.Spec.ParentRB)
+		if !utils.ContainsString(rbMerger.parentsRBsOfAPPid[descName], rb.Spec.ParentRB) {
+			rbMerger.parentsRBsOfAPPid[descName] = append(rbMerger.parentsRBsOfAPPid[descName], rb.Spec.ParentRB)
 		}
 
 		if rbMerger.mergeResourceBinding(rb.Spec.ParentRB, rbMerger.fieldsRBsOfParentRB, chanResult, rb) {
@@ -273,9 +275,9 @@ func (rbMerger *RBMerger) handleToLocalResourceBinding(rb *appv1alpha1.ResourceB
 				klog.Infof("Successful merged RB from %q, but failed to delete RBs locally.", rb.Spec.ParentRB)
 				return err
 			}
-			if rbMerger.canDeleteAppID(rb.Spec.AppID, rb.Spec.TotalPeer) {
-				rbMerger.deleteGlobalAppIDKey(rb.Spec.AppID)
-				postErr := rbMerger.postMergedRBs(rb.Spec.AppID)
+			if rbMerger.canDeleteAppID(descName, rb.Spec.TotalPeer) {
+				rbMerger.deleteGlobalAppIDKey(descName)
+				postErr := rbMerger.postMergedRBs(descName)
 				if postErr != nil {
 					return postErr
 				}
@@ -310,7 +312,7 @@ func (rbMerger *RBMerger) mergeResourceBinding(parentRBName string, fieldsRBsOfP
 func (rbMerger *RBMerger) getMergedResourceBindings(chanResult chan []*appv1alpha1.ResourceBindingApps, parentRBName *string, rb *appv1alpha1.ResourceBinding) {
 	// deploy the Merged ResourceBinding
 	index := 0
-
+	descName := rb.GetLabels()[common.GaiaDescriptionLabel]
 	for rbN := range chanResult {
 		// create new result ResourceBinding
 		newResultRB := &appv1alpha1.ResourceBinding{
@@ -323,7 +325,7 @@ func (rbMerger *RBMerger) getMergedResourceBindings(chanResult chan []*appv1alph
 				},
 			},
 			Spec: appv1alpha1.ResourceBindingSpec{
-				AppID:           rb.Spec.AppID,
+				AppID:           descName,
 				TotalPeer:       rb.Spec.TotalPeer,
 				ParentRB:        rb.Spec.ParentRB,
 				RbApps:          rbN,
@@ -351,13 +353,14 @@ func (rbMerger *RBMerger) getMergedResourceBindings(chanResult chan []*appv1alph
 }
 
 func (rbMerger *RBMerger) canCreateCollectedRBs(rb *appv1alpha1.ResourceBinding) bool {
+	descName := rb.GetLabels()[common.GaiaDescriptionLabel]
 	totalPeer, err := strconv.Atoi(rb.GetLabels()[common.TotalPeerOfParentRB])
 	if err != nil {
 		klog.V(5).Infof("Failed to get totalPeer from label.")
 		totalPeer = 0
 	}
-	if rb.Spec.TotalPeer != 0 && totalPeer == len(rbMerger.parentsRBsOfAPPid[rb.Spec.AppID]) && len(rbMerger.rbsOfParentRB[rb.Spec.ParentRB].rbsOfParentRB) == rb.Spec.TotalPeer {
-		for _, parentRB := range rbMerger.parentsRBsOfAPPid[rb.Spec.AppID] {
+	if rb.Spec.TotalPeer != 0 && totalPeer == len(rbMerger.parentsRBsOfAPPid[descName]) && len(rbMerger.rbsOfParentRB[rb.Spec.ParentRB].rbsOfParentRB) == rb.Spec.TotalPeer {
+		for _, parentRB := range rbMerger.parentsRBsOfAPPid[descName] {
 			if len(rbMerger.rbsOfParentRB[parentRB].rbNames) != rbMerger.rbsOfParentRB[parentRB].count {
 				return false
 			}
@@ -369,8 +372,9 @@ func (rbMerger *RBMerger) canCreateCollectedRBs(rb *appv1alpha1.ResourceBinding)
 
 func (rbMerger *RBMerger) createCollectedRBs(rb *appv1alpha1.ResourceBinding) bool {
 
+	descName := rb.GetLabels()[common.GaiaDescriptionLabel]
 	// field: all rb collected by parentRB
-	for _, parentRB := range rbMerger.parentsRBsOfAPPid[rb.Spec.AppID] {
+	for _, parentRB := range rbMerger.parentsRBsOfAPPid[descName] {
 
 		var rbApps []*appv1alpha1.ResourceBindingApps
 		for index, rbAppChild := range rbMerger.rbsOfParentRB[parentRB].rbsOfParentRB {
@@ -398,7 +402,7 @@ func (rbMerger *RBMerger) createCollectedRBs(rb *appv1alpha1.ResourceBinding) bo
 				},
 			},
 			Spec: appv1alpha1.ResourceBindingSpec{
-				AppID:           rb.Spec.AppID,
+				AppID:           descName,
 				TotalPeer:       totalPeer,
 				ParentRB:        parentRB,
 				RbApps:          rbApps,
@@ -464,7 +468,7 @@ func (rbMerger *RBMerger) reCreateRBtoParent(rb *appv1alpha1.ResourceBinding) er
 			Labels:    rb.Labels,
 		},
 		Spec: appv1alpha1.ResourceBindingSpec{
-			AppID:           rb.Spec.AppID,
+			AppID:           rb.GetLabels()[common.GaiaDescriptionLabel],
 			TotalPeer:       rb.Spec.TotalPeer,
 			ParentRB:        rb.Spec.ParentRB,
 			RbApps:          rb.Spec.RbApps,
@@ -480,11 +484,11 @@ func (rbMerger *RBMerger) reCreateRBtoParent(rb *appv1alpha1.ResourceBinding) er
 	return err
 }
 
-func (rbMerger *RBMerger) deleteMapAppID(appID string) {
-	for _, parentRB := range rbMerger.parentsRBsOfAPPid[appID] {
+func (rbMerger *RBMerger) deleteMapAppID(descName string) {
+	for _, parentRB := range rbMerger.parentsRBsOfAPPid[descName] {
 		delete(rbMerger.fieldsRBsOfParentRB, parentRB)
 	}
-	delete(rbMerger.parentsRBsOfAPPid, appID)
+	delete(rbMerger.parentsRBsOfAPPid, descName)
 }
 
 func (rbMerger *RBMerger) postMergedRBs(descName string) error {
@@ -534,9 +538,9 @@ func (rbMerger *RBMerger) deleteRB(rb *appv1alpha1.ResourceBinding) error {
 	return err
 }
 
-func (rbMerger *RBMerger) canDeleteAppID(appID string, totalPeer int) bool {
-	if len(rbMerger.parentsRBsOfAPPid[appID]) == totalPeer {
-		for _, parentRB := range rbMerger.parentsRBsOfAPPid[appID] {
+func (rbMerger *RBMerger) canDeleteAppID(descName string, totalPeer int) bool {
+	if len(rbMerger.parentsRBsOfAPPid[descName]) == totalPeer {
+		for _, parentRB := range rbMerger.parentsRBsOfAPPid[descName] {
 			if len(rbMerger.fieldsRBsOfParentRB[parentRB].rbsOfFields) != rbMerger.fieldsRBsOfParentRB[parentRB].countCls {
 				return false
 			}
@@ -546,19 +550,19 @@ func (rbMerger *RBMerger) canDeleteAppID(appID string, totalPeer int) bool {
 	return false
 }
 
-func (rbMerger *RBMerger) deleteGlobalAppIDKey(appID string) {
-	for _, parentRB := range rbMerger.parentsRBsOfAPPid[appID] {
+func (rbMerger *RBMerger) deleteGlobalAppIDKey(descName string) {
+	for _, parentRB := range rbMerger.parentsRBsOfAPPid[descName] {
 		for _, rbName := range rbMerger.fieldsRBsOfParentRB[parentRB].NamesOfFiledRBs {
 			delete(rbMerger.rbsOfParentRB, rbName)
 		}
 		delete(rbMerger.fieldsRBsOfParentRB, parentRB)
 	}
-	delete(rbMerger.parentsRBsOfAPPid, appID)
+	delete(rbMerger.parentsRBsOfAPPid, descName)
 }
 
-func (rbMerger *RBMerger) deleteFieldAppIDKey(appID string) {
-	for _, parentRB := range rbMerger.parentsRBsOfAPPid[appID] {
+func (rbMerger *RBMerger) deleteFieldAppIDKey(descName string) {
+	for _, parentRB := range rbMerger.parentsRBsOfAPPid[descName] {
 		delete(rbMerger.rbsOfParentRB, parentRB)
 	}
-	delete(rbMerger.parentsRBsOfAPPid, appID)
+	delete(rbMerger.parentsRBsOfAPPid, descName)
 }

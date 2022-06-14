@@ -46,11 +46,19 @@ func YenKShortestPaths(g graph.Graph, k int, s, t graph.Node) [][]graph.Node {
 	var pot []YenShortest
 	var root []graph.Node
 	for i := int64(1); i < int64(k); i++ {
-		for n := 0; n < len(paths[i-1])-2; n++ {
+		var num int
+		if len(paths[i-1]) > 2 {
+			num = len(paths[i-1]) - 2
+		} else {
+			num = len(paths[i-1]) - 1
+		}
+		for n := 0; n < num; n++ {
 			yk.reset()
 
 			spur := paths[i-1][n]
 			root := append(root[:0], paths[i-1][:n+1]...)
+			infoString := fmt.Sprintf("root1 is:%+v", root)
+			nputil.TraceInfo(infoString)
 
 			for _, path := range paths {
 				if len(path) <= n {
@@ -64,6 +72,8 @@ func YenKShortestPaths(g graph.Graph, k int, s, t graph.Node) [][]graph.Node {
 					}
 				}
 				if ok {
+					infoString := fmt.Sprintf("path[%d].ID() is:%+v, path[%d+1].ID() is:%+v,", n, path[n].ID(), n, path[n+1].ID())
+					nputil.TraceInfo(infoString)
 					yk.removeEdge(path[n].ID(), path[n+1].ID())
 				}
 			}
@@ -76,6 +86,8 @@ func YenKShortestPaths(g graph.Graph, k int, s, t graph.Node) [][]graph.Node {
 					rootWeight += w
 				}
 				root = append(root[:len(root)-1], spath...)
+				infoString = fmt.Sprintf("root2 is:%+v", root)
+				nputil.TraceInfo(infoString)
 				pot = append(pot, YenShortest{root, weight + rootWeight})
 			} else {
 				pot = append(pot, YenShortest{spath, weight})

@@ -812,9 +812,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	topoInfo.Content = base64.StdEncoding.EncodeToString(content)
 	domainTopoMsg[domainTopoCache4.LocalDomainName] = topoInfo
 
-	fmt.Printf("Len of domainTopoMsg is (+%d)\n", len(domainTopoMsg))
 	for domainName, domainTopoCache := range domainTopoMsg {
-		fmt.Printf("domainTopoMsg of domain (%s) is (%+v)\n", domainName, domainTopoCache)
 		infoString := fmt.Sprintf("domainTopoMsg of domain (%s) is (%+v)\n", domainName, domainTopoCache)
 		nputil.TraceInfo(infoString)
 	}
@@ -966,9 +964,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	topoInfo.Content = base64.StdEncoding.EncodeToString(content)
 	domainTopoMsg[domainTopoCache4.LocalDomainName] = topoInfo
 
-	fmt.Printf("Len of domainTopoMsg is (+%d)\n", len(domainTopoMsg))
 	for domainName, domainTopoCache := range domainTopoMsg {
-		fmt.Printf("domainTopoMsg of domain (%s) is (%+v)\n", domainName, domainTopoCache)
 		infoString := fmt.Sprintf("domainTopoMsg of domain (%s) is (%+v)\n", domainName, domainTopoCache)
 		nputil.TraceInfo(infoString)
 	}

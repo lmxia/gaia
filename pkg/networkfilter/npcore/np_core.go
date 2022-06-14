@@ -154,7 +154,6 @@ func (local *Local) LocalStructInit() {
 }
 
 func Register() {
-	fmt.Printf("ncscoreRegister!\n")
 	local = newLocal()
 	local.init()
 }
@@ -265,7 +264,8 @@ func buildSpfGraphEdge() {
 		_ = domainGraph.SpfGraphEdgeCreateForSla()
 
 		for i, domainWeightedEdge := range domainGraph.DomainWeightedEdgeArry {
-			fmt.Printf("domainGraph.DomainWeightedEdge[%d] is (%+v).\n", i, domainWeightedEdge)
+			infoString := fmt.Sprintf("domainGraph.DomainWeightedEdge[%d] is (%+v).\n", i, domainWeightedEdge)
+			nputil.TraceInfo(infoString)
 		}
 	}
 	nputil.TraceInfoEnd("------------------------------------------------------")

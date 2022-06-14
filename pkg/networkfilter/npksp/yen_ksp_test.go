@@ -1,7 +1,6 @@
 package npksp
 
 import (
-	"fmt"
 	"math"
 	"reflect"
 	"sort"
@@ -204,12 +203,10 @@ func TestYenKSP(t *testing.T) {
 
 		got := YenKShortestPaths(g.(graph.Graph), test.k, test.query.From(), test.query.To())
 		gotIDs := PathIDs(got)
-		fmt.Printf("gotIDs origin is:%+v\n", gotIDs)
 
 		paths := make(ByPathWeight, len(gotIDs))
 		for i, p := range got {
 			paths[i] = YenShortest{Path: p, Weight: PathWeight(p, g.(graph.Weighted))}
-			fmt.Printf("paths[%d] is:%+v\n", i, paths[i])
 		}
 		if !sort.IsSorted(paths) {
 			t.Errorf("unexpected result for %q: got:%+v", test.name, paths)
@@ -232,18 +229,14 @@ func TestYenKSP(t *testing.T) {
 			}
 			BySliceValues(gotIDs[first:])
 		}
-		fmt.Printf("gotIDs modify is:%+v\n", gotIDs)
 
 		var gotIDsNoLoop [][]int64
 		for _, gotID := range gotIDs {
-			fmt.Printf("gotID is:%+v\n", gotID)
 			gotIDModify := RemoveDuplicateElement(gotID)
-			fmt.Printf("gotIDModify is:%+v\n", gotIDModify)
 			if len(gotID) == len(gotIDModify) {
 				gotIDsNoLoop = append(gotIDsNoLoop, gotIDModify)
 			}
 		}
-		fmt.Printf("gotIDsWithoutLoop is:%+v\n", gotIDsNoLoop)
 		if !reflect.DeepEqual(test.wantPaths, gotIDsNoLoop) {
 			t.Errorf("unexpected result for %q:\ngot: %v\nwant:%v", test.name, gotIDsNoLoop, test.wantPaths)
 		}

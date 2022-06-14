@@ -304,7 +304,8 @@ func DomainAddForAllGraph(domainID uint32, domainName string, domainTypeString s
 func (baseDomain *BaseDomain) BaseDomainLinkFindByKey(domainLinkKey DomainLinkKey) *BaseDomainLink {
 	nputil.TraceInfoBegin("")
 
-	fmt.Printf("baseDomain is (%+v), DomainLinkKey is (%+v)!\n", baseDomain, domainLinkKey)
+	infoString := fmt.Sprintf("baseDomain is (%+v), DomainLinkKey is (%+v)!", baseDomain, domainLinkKey)
+	nputil.TraceInfo(infoString)
 	val, _ := baseDomain.BaseDomainLinkTree.Get(domainLinkKey)
 	if val == nil {
 		nputil.TraceInfoEnd("BaseDomainLinkTree not find")
@@ -347,7 +348,9 @@ func (baseDomainGraph *BaseDomainGraph) GetReverseBaseDomainLink(domainLinkKey D
 
 func DomainLinkKeyCreateFromCache(domainVlink *ncsnp.DomainVLink) *DomainLinkKey {
 	nputil.TraceInfoBegin("")
-	fmt.Printf("domainVlink is (%+v)!\n", domainVlink)
+
+	infoString := fmt.Sprintf("domainVlink is (%+v)!", domainVlink)
+	nputil.TraceInfo(infoString)
 	domainLinkKey := new(DomainLinkKey)
 	domainLinkKey.SrcDomainId = domainVlink.LocalDomainId
 	domainLinkKey.SrcNodeSN = domainVlink.LocalNodeSN
@@ -356,7 +359,6 @@ func DomainLinkKeyCreateFromCache(domainVlink *ncsnp.DomainVLink) *DomainLinkKey
 	domainLinkKey.AttachId = 0
 	domainLinkKey.AttachDomainId = domainVlink.AttachDomainId
 
-	fmt.Printf("domainLinkKey is (%+v)!\n", domainLinkKey)
 	nputil.TraceInfoEnd("")
 	return domainLinkKey
 }
@@ -467,7 +469,6 @@ func (baseDomain *BaseDomain) BaseDomainLinkAdd(domainLinkKey DomainLinkKey, dom
 		nputil.TraceErrorWithStack(rtnErr)
 		return rtnErr
 	}
-	fmt.Printf("baseDomainLink is (%+v)!\n", baseDomainLink)
 
 	// Add domainlink in graph
 	local := GetCoreLocal()

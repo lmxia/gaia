@@ -53,6 +53,7 @@ spec:
             - --mcSource={{ .Values.common.mcSource }}
             - --promUrlPrefix={{ .Values.common.promUrlPrefix }}
             - --useHypernodeController={{ .Values.common.useHypernodeController }}
+            - --topoSyncBaseUrl={{ .Values.common.topoSyncBaseUrl }}
           resources:
             limits:
               cpu: 100m

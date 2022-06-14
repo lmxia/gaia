@@ -133,7 +133,13 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 
 		nodeStatistics = getManagedClusterNodeStatistics(clusters)
 		capacity, allocatable = getManagedClusterResource(clusters)
-		topoInfo = getTopoInfo(ctx, c.clusterName, c.topoSyncBaseUrl)
+
+		selfClusterName, _, errClusterName := utils.GetLocalClusterName(c.kubeClient.(*kubernetes.Clientset))
+		if errClusterName != nil {
+			klog.Warningf("failed to get self clusterName from secret: %v", errClusterName)
+			selfClusterName = c.clusterName
+		}
+		topoInfo = getTopoInfo(ctx, selfClusterName, c.topoSyncBaseUrl)
 	}
 
 	clusterCIDR, err := c.discoverClusterCIDR()

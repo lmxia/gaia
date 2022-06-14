@@ -26,8 +26,8 @@ func getDefaultPlugins() *schedulerapis.Plugins {
 		PreScore:   schedulerapis.PluginSet{},
 		Score: schedulerapis.PluginSet{
 			Enabled: []schedulerapis.Plugin{
-				{Name: names.CorePriority, Weight: 3},
-				{Name: names.VirtualNode, Weight: 3},
+				{Name: names.CorePriority, Weight: 1},
+				{Name: names.VirtualNode, Weight: 1},
 			},
 		},
 	}

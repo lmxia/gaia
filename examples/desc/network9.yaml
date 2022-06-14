@@ -4,94 +4,87 @@ metadata:
   name: case9
   namespace: gaia-reserved
 spec:
+  networkCommunication:
   - name: component1
     selfID:
-      - SCNID_C1_1
-      - SCNID_C1_2
-      - SCNID_C1_3
-      - SCNID_C1_4
-      - SCNID_C1_5
-      - SCNID_C1_6
+      - /pml/case9/c1/1
     interSCNID:
       - source:
-          id: SCNID_C1_1
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
+          id: /pml/case9/c1/1
         destination:
-          id: SCNID_C2_1
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
+          id: /pml/case9/c4/1
         sla:
           delay: 20
-          lost: 10
-          jitter: 5
-          bandwidth: 200
+          lost: 100
+          jitter: 999999
+          bandwidth: 10
         providers:
-          - a
-          - b
-          - c
-      - source:
-          id: SCNID_C1_3
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        destination:
-          id: SCNID_C4_1
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        sla:
-          delay: 20
-          lost: 10
-          jitter: 5
-          bandwidth: 200
-        providers:
-          - a
-          - b
-          - c
-      - source:
-          id: SCNID_C1_4
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        destination:
-          id: SCNID_C5_1
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        sla:
-          delay: 20
-          lost: 10
-          jitter: 5
-          bandwidth: 200
-        providers:
-          - a
-          - b
-          - c
+          - jiangnan-fabric-101
+          - jiangnan-fabric-102
+          - jiangnan-fabric-103
   - name: component2
     selfID:
-      - SCNID_C2_1
+      - /pml/case9/c2/1
+    interSCNID:
+      - source:
+          id: /pml/case9/c2/1
+        destination:
+          id: /pml/case9/c3/1
+        sla:
+          delay: 10
+          lost: 100
+          jitter: 999999
+          bandwidth: 10
+        providers:
+          - jiangnan-fabric-101
+          - jiangnan-fabric-102
+          - jiangnan-fabric-103
+      - source:
+          id: /pml/case9/c2/1
+        destination:
+          id: /pml/case9/c4/1
+        sla:
+          delay: 100
+          lost: 100
+          jitter: 999999
+          bandwidth: 10
+        providers:
+          - jiangnan-fabric-101
+          - jiangnan-fabric-102
+          - jiangnan-fabric-103
+      - source:
+          id: /pml/case9/c2/1
+        destination:
+          id: /pml/case9/c5/1
+        sla:
+          delay: 100
+          lost: 100
+          jitter: 999999
+          bandwidth: 10
+        providers:
+          - jiangnan-fabric-101
+          - jiangnan-fabric-102
+          - jiangnan-fabric-103
   - name: component3
     selfID:
-      - SCNID_C3_1
+      - /pml/case9/c3/1
+    interSCNID:
+      - source:
+          id: /pml/case9/c3/1
+        destination:
+          id: /pml/case9/c5/1
+        sla:
+          delay: 40
+          lost: 100
+          jitter: 999999
+          bandwidth: 10
+        providers:
+          - jiangnan-fabric-101
+          - jiangnan-fabric-102
+          - jiangnan-fabric-103
   - name: component4
     selfID:
-      - SCNID_C4_1
+      - /pml/case9/c4/1
   - name: component5
     selfID:
-      - SCNID_C5_1
-
+      - /pml/case9/c5/1

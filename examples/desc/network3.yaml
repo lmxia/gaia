@@ -1,0 +1,123 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: NetworkRequirement
+metadata:
+  name: case3
+  namespace: gaia-reserved
+spec:
+  networkCommunication:
+    - name: component1
+      selfID:
+        - SCNID_C1_1
+        - SCNID_C1_2
+        - SCNID_C1_3
+        - SCNID_C1_4
+        - SCNID_C1_5
+        - SCNID_C1_6
+      interSCNID:
+        - source:
+            id: SCNID_C1_1
+            attributes:
+              - key: Instance_NO
+                value:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: SCNID_C2_1
+            attributes:
+              - key: Instance_NO
+                value:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            - a
+            - b
+            - c
+        - source:
+            id: SCNID_C1_3
+            attributes:
+              - key: Instance_NO
+                value:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: SCNID_C4_1
+            attributes:
+              - key: Instance_NO
+                value:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            - a
+            - b
+            - c
+        - source:
+            id: SCNID_C1_4
+            attributes:
+              - key: Instance_NO
+                value:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: SCNID_C5_1
+            attributes:
+              - key: Instance_NO
+                value:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            - a
+            - b
+            - c
+        - source:
+            id: SCNID_C1_5
+            attributes:
+              - key: Instance_NO
+                value:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: SCNID_C6_1
+            attributes:
+              - key: Instance_NO
+                value:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            - a
+            - b
+            - c
+    - name: component2
+      selfID:
+        - SCNID_C2_1
+    - name: component3
+      selfID:
+        - SCNID_C3_1
+    - name: component4
+      selfID:
+        - SCNID_C4_1
+    - name: component5
+      selfID:
+        - SCNID_C5_1
+    - name: component6
+      selfID:
+        - SCNID_C6_1

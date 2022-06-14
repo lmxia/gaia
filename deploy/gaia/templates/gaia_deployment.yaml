@@ -67,6 +67,12 @@ spec:
             - name: config
               mountPath: /etc/config/
               readOnly: true
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        hypernode.cluster.pml.com.cn/node-role: System
       serviceAccountName: gaia
       volumes:
         - name: config
@@ -102,6 +108,12 @@ spec:
               cpu: 100m
               memory: 20Mi
       serviceAccountName: gaia
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+      nodeSelector:
+        hypernode.cluster.pml.com.cn/node-role: System
 
 ---
 apiVersion: v1

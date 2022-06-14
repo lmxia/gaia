@@ -4,6 +4,7 @@ package algorithm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/lmxia/gaia/pkg/networkfilter/npcore"
 	"sort"
@@ -151,10 +152,16 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			klog.Infof("resource binding before net filter %v", rbsResultFinal)
 			rbsResultFinal = npcore.NetworkFilter(rbsResultFinal, nwr, networkInfoMap)
 			klog.Infof("resource binding after net filter %v", rbsResultFinal)
+			if len(rbsResultFinal) == 0  {
+				return result, errors.New("network filter can't find path for current rbs")
+			}
 		}
 		if len(rbsResultFinal) > common.DefaultResouceBindingNumber {
 			// score plugins.
-			priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResultFinal)
+			priorityList, scoreError := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResultFinal)
+			if scoreError != nil {
+				klog.Warningf("score pulgin run error %v", scoreError)
+			}
 			// select 2
 			rbsResultFinal, err = g.selectResourceBindings(priorityList, rbsResultFinal)
 		}
@@ -196,7 +203,10 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			}
 			if len(rbsResult) > common.DefaultResouceBindingNumber {
 				// score plugins.
-				priorityList, _ := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResult)
+				priorityList, scoreError := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResult)
+				if scoreError != nil {
+					klog.Warningf("score pulgin run error %v", scoreError)
+				}
 				// select prioritize
 				rbsResult, err = g.selectResourceBindings(priorityList, rbsResult)
 			}

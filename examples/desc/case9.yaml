@@ -16,10 +16,10 @@ spec:
       module:
         metadata:
           labels:
-            app: appcase2
+            app: appcase9
         spec:
           containers:
-            - name: appcase2comp1
+            - name: appcase9comp1
               image: 172.17.9.231:8880/hyperio/app:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
@@ -28,17 +28,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C1_1"
-                - name: SCNID
-                  value: "SCNID_C1_2"
-                - name: SCNID
-                  value: "SCNID_C1_3"
-                - name: SCNID
-                  value: "SCNID_C1_4"
-                - name: SCNID
-                  value: "SCNID_C1_5"
-                - name: SCNID
-                  value: "SCNID_C1_6"
+                  value: "/pml/case9/c1/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -48,16 +38,15 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-                hostPath:
-                  path: /tmp
-                  type: DirectoryOrCreate
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
     - name: component2
       namespace: test2
       runtimeType: runc
@@ -68,10 +57,10 @@ spec:
       module:
         metadata:
           labels:
-            app: appcase2
+            app: appcase9
         spec:
           containers:
-            - name: appcase2comp2
+            - name: appcase9comp2
               image: 172.17.9.231:8880/hyperio/app:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
@@ -80,7 +69,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C2_1"
+                  value: "/pml/case9/c2/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -90,16 +79,15 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-                hostPath:
-                  path: /tmp
-                  type: DirectoryOrCreate
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
     - name: component3
       namespace: test3
       runtimeType: runc
@@ -110,10 +98,10 @@ spec:
       module:
         metadata:
           labels:
-            app: appcase2
+            app: appcase9
         spec:
           containers:
-            - name: appcase2comp3
+            - name: appcase9comp3
               image: 172.17.9.231:8880/hyperio/app:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
@@ -122,7 +110,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C3_1"
+                  value: "/pml/case9/c3/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -132,16 +120,15 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-                hostPath:
-                  path: /tmp
-                  type: DirectoryOrCreate
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
     - name: component4
       namespace: test4
       runtimeType: runc
@@ -156,10 +143,10 @@ spec:
       module:
         metadata:
           labels:
-            app: appcase2
+            app: appcase9
         spec:
           containers:
-            - name: appcase2comp4
+            - name: appcase9comp4
               image: 172.17.9.231:8880/hyperio/app:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
@@ -168,7 +155,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C4_1"
+                  value: "/pml/case9/c4/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -178,16 +165,15 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-                hostPath:
-                  path: /tmp
-                  type: DirectoryOrCreate
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
     - name: component5
       namespace: test5
       runtimeType: runc
@@ -202,10 +188,10 @@ spec:
       module:
         metadata:
           labels:
-            app: appcase2
+            app: appcase9
         spec:
           containers:
-            - name: appcase2comp5
+            - name: appcase9comp5
               image: 172.17.9.231:8880/hyperio/app:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
@@ -214,7 +200,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C5_1"
+                  value: "/pml/case9/c5/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -224,59 +210,12 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
                 path: /dev/shm
                 type: DirectoryOrCreate
             - name: usock
-                hostPath:
-                  path: /tmp
-                  type: DirectoryOrCreate
-    - name: component6
-      namespace: test6
-      runtimeType: runc
-      schedulePolicy:
-        geolocation:
-          matchExpressions:
-            - { key: geo-location, operator: In, values: [ "beijing", "nanjing" ] }
-      workload:
-        workloadtype: deployment
-        traitDeployment:
-          replicas: 1
-      module:
-        metadata:
-          labels:
-            app: appcase2
-        spec:
-          containers:
-            - name: appcase2comp5
-              image: 172.17.9.231:8880/hyperio/app:latest
-              volumeMounts:
-                - mountPath: "/dev/shm"
-                  name: "shm"
-                - mountPath: "/tmp"
-                  name: "usock"
-              env:
-                - name: SCNID
-                  value: "SCNID_C5_1"
-                - name: IOCLIENT_ADDRESS
-                  value:
-              resources:
-                limits:
-                  cpu: "100m"
-                  memory: "100Mi"
-                requests:
-                  cpu: "100m"
-                  memory: "100Mi"
-          hostNetwork: true
-          volumes:
-            - name: shm
               hostPath:
-                path: /dev/shm
+                path: /tmp
                 type: DirectoryOrCreate
-            - name: usock
-                hostPath:
-                  path: /tmp
-                  type: DirectoryOrCreate

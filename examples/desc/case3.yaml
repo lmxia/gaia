@@ -4,83 +4,263 @@ metadata:
   name: case3
   namespace: gaia-reserved
 spec:
-  appID: appID-case3
+  appID: case3
   components:
     - name: component1
       namespace: test1
-      runtimeType: docker
-      schedulePolicy:
-        specificResource:
-            matchExpressions:
-              - { key: sn, operator: In, values: [ "sn3" ] }
+      runtimeType: runc
       workload:
         workloadtype: affinitydaemon
+        traitaffinitydaemon:
+          sn: cluster1sn1
       module:
         metadata:
           labels:
-            app: nginx
+            app: appcase3
         spec:
           containers:
-            - name: nginx
-              image: nginx:1.14.2
-              ports:
-                - containerPort: 80
+            - name: appcase3comp1
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "SCNID_C1_1"
               resources:
                 limits:
-                  cpu: "500m"
+                  cpu: "100m"
                   memory: "100Mi"
                 requests:
-                  cpu: "500m"
+                  cpu: "100m"
                   memory: "100Mi"
+          hostNetwork: true
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
     - name: component2
       namespace: test2
-      runtimeType: docker
+      runtimeType: runc
       schedulePolicy:
         specificResource:
-            matchExpressions:
-              - { key: sn, operator: In, values: [ "sn3" ] }
+          matchExpressions:
+            - { key: sn, operator: In, values: [ "core2-cluster1sn1" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
-          replicas: 10
+          replicas: 1
       module:
         metadata:
           labels:
-            app: nginx
+            app: appcase3
         spec:
           containers:
-            - name: nginx
-              image: nginx:1.14.2
-              ports:
-                - containerPort: 80
+            - name: appcase3comp2
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "SCNID_C2_1"
+                - name: IOCLIENT_ADDRESS
+                  value:
               resources:
                 limits:
-                  cpu: "500m"
+                  cpu: "100m"
                   memory: "100Mi"
                 requests:
-                  cpu: "500m"
+                  cpu: "100m"
                   memory: "100Mi"
+          hostNetwork: true
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
     - name: component3
       namespace: test3
-      runtimeType: kata
+      runtimeType: runc
+      schedulePolicy:
+        specificResource:
+          matchExpressions:
+            - { key: sn, operator: In, values: [ "core3-cluster1sn1" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
-          replicas: 10
+          replicas: 3
       module:
         metadata:
           labels:
-            app: nginx
+            app: appcase3
         spec:
           containers:
-            - name: nginx
-              image: nginx:1.14.2
-              ports:
-                - containerPort: 80
+            - name: appcase3comp3
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "SCNID_C3_1"
+                - name: IOCLIENT_ADDRESS
+                  value:
               resources:
                 limits:
-                  cpu: "500m"
+                  cpu: "100m"
                   memory: "100Mi"
                 requests:
-                  cpu: "500m"
+                  cpu: "100m"
                   memory: "100Mi"
+          hostNetwork: true
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: component4
+      namespace: test4
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase3
+        spec:
+          containers:
+            - name: appcase3comp4
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "SCNID_C4_1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          hostNetwork: true
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: component5
+      namespace: test5
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase3
+        spec:
+          containers:
+            - name: appcase3comp5
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "SCNID_C5_1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          hostNetwork: true
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: component6
+      namespace: test6
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase3
+        spec:
+          containers:
+            - name: appcase3comp6
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "SCNID_C6_1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          hostNetwork: true
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate

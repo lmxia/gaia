@@ -1,6 +1,9 @@
 package npksp
 
 import (
+	"fmt"
+	"github.com/lmxia/gaia/pkg/networkfilter/logx"
+	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
 	"math"
 	"reflect"
 	"sort"
@@ -194,6 +197,10 @@ var yenShortestPathTests = []struct {
 }
 
 func TestYenKSP(t *testing.T) {
+	logx.NewLogger()
+	infoString := fmt.Sprintf("=== RUN   TestYenKSP  BEGIN ===")
+	nputil.TraceInfo(infoString)
+
 	t.Parallel()
 	for _, test := range yenShortestPathTests {
 		g := test.graph()
@@ -233,12 +240,19 @@ func TestYenKSP(t *testing.T) {
 		var gotIDsNoLoop [][]int64
 		for _, gotID := range gotIDs {
 			gotIDModify := RemoveDuplicateElement(gotID)
+			infoString = fmt.Sprintf("gotIDModify is:%+v", gotIDModify)
+			nputil.TraceInfo(infoString)
 			if len(gotID) == len(gotIDModify) {
 				gotIDsNoLoop = append(gotIDsNoLoop, gotIDModify)
 			}
 		}
+		infoString = fmt.Sprintf("PathsGroupNoLoop is:%+v", gotIDsNoLoop)
+		nputil.TraceInfo(infoString)
+
 		if !reflect.DeepEqual(test.wantPaths, gotIDsNoLoop) {
 			t.Errorf("unexpected result for %q:\ngot: %v\nwant:%v", test.name, gotIDsNoLoop, test.wantPaths)
 		}
 	}
+	infoString = fmt.Sprintf("=== RUN TestYenKSP END ===")
+	nputil.TraceInfo(infoString)
 }

@@ -274,6 +274,27 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 					return
 				}
 			}(SerUn)
+		case appsv1alpha1.WorkloadTypeAffinityDaemon:
+			depunstructured, deperr := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, true)
+			if deperr != nil {
+				msg := fmt.Sprintf("WorkloadTypeAffinityDaemon offloadRBWorkloads failed to unmarshal resource: %v", err)
+				klog.ErrorDepth(5, msg)
+				allErrs = append(allErrs, deperr)
+				continue
+			} else if depunstructured == nil {
+				continue
+			}
+			wg.Add(1)
+			go func(depunstructured *unstructured.Unstructured) {
+				defer wg.Done()
+				klog.V(5).Infof(" workloadTypeAffinityDaemon deleting %s %s defined in ResourceBinding %s", depunstructured.GetKind(),
+					klog.KObj(depunstructured), klog.KObj(rb))
+				err2 := DeleteResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depunstructured)
+				if err2 != nil {
+					klog.Infof("offloadRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", depunstructured.GetName(), err2)
+					errCh <- err2
+				}
+			}(depunstructured)
 		}
 		wg.Wait()
 	}
@@ -369,6 +390,26 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 					return
 				}
 			}(SerUn)
+		case appsv1alpha1.WorkloadTypeAffinityDaemon:
+			depUn, errdep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, false)
+			if errdep != nil {
+				msg := fmt.Sprintf("WorkloadTypeAffinityDaemon applyRBWorkloads failed to unmarshal resource: %v", errdep)
+				klog.ErrorDepth(5, msg)
+				allErrs = append(allErrs, errdep)
+				continue
+			} else if depUn == nil {
+				continue
+			}
+			wg.Add(1)
+			go func(depUn *unstructured.Unstructured) {
+				defer wg.Done()
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depUn)
+				if retryErr != nil {
+					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", depUn.GetName(), retryErr)
+					errCh <- retryErr
+					return
+				}
+			}(depUn)
 		}
 		wg.Wait()
 	}
@@ -677,97 +718,6 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 	}
 	return nil
 }
-
-func OffloadWorkloadsByDescription(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
-	var allErrs []error
-	wg := sync.WaitGroup{}
-	errCh := make(chan error, len(desc.Spec.Components))
-	for _, com := range desc.Spec.Components {
-		if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeDeployment {
-			dep := &appsv1.Deployment{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Deployment",
-					APIVersion: "apps/v1",
-				},
-			}
-			dep.Namespace = com.Namespace
-			dep.Name = com.Name
-			depUnstructured, errun := ObjectConvertToUnstructured(dep)
-			if errun != nil {
-				allErrs = append(allErrs, errun)
-				msg := fmt.Sprintf("failed to unmarshal resource: %v", errun)
-				klog.ErrorDepth(5, msg)
-			} else {
-				wg.Add(1)
-				go func(depUnstructured *unstructured.Unstructured) {
-					defer wg.Done()
-					klog.V(5).Infof("deleting %s %s defined in deploy %s", depUnstructured.GetKind(),
-						klog.KObj(depUnstructured), klog.KObj(desc))
-					err := DeleteResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, depUnstructured)
-					if err != nil {
-						errCh <- err
-					}
-				}(depUnstructured)
-			}
-		} else if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeKnative {
-			ser := &serveringv1.Service{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Service",
-					APIVersion: "serving.knative.dev/v1",
-				}}
-			ser.Namespace = com.Namespace
-			ser.Name = com.Name
-			SerUn, err := ObjectConvertToUnstructured(ser)
-			if err != nil {
-				msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
-				klog.ErrorDepth(5, msg)
-				return err
-			}
-			wg.Add(1)
-			go func(SerUn *unstructured.Unstructured) {
-				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, SerUn)
-				if retryErr != nil {
-					errCh <- retryErr
-					return
-				}
-			}(SerUn)
-		} else if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeServerless {
-			ser := &serveringv1.Service{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Service",
-					APIVersion: "serving.knative.dev/v1",
-				}}
-			ser.Namespace = com.Namespace
-			ser.Name = com.Name
-			SerUn, err := ObjectConvertToUnstructured(ser)
-			if err != nil {
-				msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
-				klog.ErrorDepth(5, msg)
-				return err
-			}
-			wg.Add(1)
-			go func(SerUn *unstructured.Unstructured) {
-				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, SerUn)
-				if retryErr != nil {
-					errCh <- retryErr
-					return
-				}
-			}(SerUn)
-		}
-		wg.Wait()
-	}
-	// collect errors
-	close(errCh)
-	for err := range errCh {
-		allErrs = append(allErrs, err)
-	}
-	nsErr := fmt.Errorf("create descrption components deploy %s error===.%v \n", desc.Name, allErrs)
-	return nsErr
-}
-
 func OffloadResourceBindingByDescription(ctx context.Context, dynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
 

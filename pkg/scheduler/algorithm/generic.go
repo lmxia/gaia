@@ -109,13 +109,13 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {
 			for j, _ := range spreadLevels {
-				if comm.Workload.Workloadtype == common.WorkloadTypeDeployment {
+				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 					componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
 					allResultGlobal[j][i] = componentMat
-				} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless {
+				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 					componentMat := makeServelessPlan(allPlan, 1)
 					allResultGlobal[j][i] = componentMat
-				} else if comm.Workload.Workloadtype == common.WorkloadTypeAffinityDaemon {
+				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
 					componentMat, _ := makeAffinityDaemonPlan(allPlan)
 					allResultGlobal[j][i] = componentMat
 				}
@@ -124,13 +124,13 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			for j, rb := range rbs {
 				replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
 				for k, _ := range spreadLevels {
-					if comm.Workload.Workloadtype == common.WorkloadTypeDeployment {
+					if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
 						componentMat := makeDeployPlans(allPlan, replicas, int64(comm.Dispersion))
 						allResultWithRB[j][k][i] = componentMat
-					} else if comm.Workload.Workloadtype == common.WorkloadTypeServerless {
+					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 						componentMat := makeServelessPlan(allPlan, replicas)
 						allResultWithRB[j][k][i] = componentMat
-					} else if comm.Workload.Workloadtype == common.WorkloadTypeAffinityDaemon {
+					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
 						componentMat, _ := makeAffinityDaemonPlan(allPlan)
 						allResultWithRB[j][k][i] = componentMat
 					}
@@ -152,7 +152,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			klog.Infof("resource binding before net filter %v", rbsResultFinal)
 			rbsResultFinal = npcore.NetworkFilter(rbsResultFinal, nwr, networkInfoMap)
 			klog.Infof("resource binding after net filter %v", rbsResultFinal)
-			if len(rbsResultFinal) == 0  {
+			if len(rbsResultFinal) == 0 {
 				return result, errors.New("network filter can't find path for current rbs")
 			}
 		}

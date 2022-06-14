@@ -8,7 +8,6 @@ import (
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	"github.com/lmxia/gaia/pkg/common"
 	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/names"
 )
@@ -29,7 +28,7 @@ func (a AffinityDaemon) Filter(ctx context.Context, com *v1alpha1.Component, clu
 		return framework.AsStatus(fmt.Errorf("invalid cluster"))
 	}
 
-	if com.Workload.Workloadtype == common.WorkloadTypeAffinityDaemon {
+	if com.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
 		_, _, _, _, snMap, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
 		if _, exist := snMap[com.Workload.TraitAffinityDaemon.SN]; exist {
 			return nil

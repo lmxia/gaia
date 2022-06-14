@@ -15,10 +15,9 @@ func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps, clusterMa
 				for _, v := range item.Replicas {
 					score += int64(v)
 				}
+				score = calculateScore(score, item.Children, clusterMap)
 			}
 		}
-
-		score = calculateScore(score, item.Children, clusterMap)
 	}
 	return score
 }

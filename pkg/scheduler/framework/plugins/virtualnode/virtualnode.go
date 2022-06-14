@@ -20,7 +20,7 @@ var _ framework.ScorePlugin = &VirtualNode{}
 
 // Name returns name of the plugin. It is used in logs, etc.
 func (v *VirtualNode) Name() string {
-	return names.CorePriority
+	return names.VirtualNode
 }
 
 // NormalizeScore invoked after scoring all clusters.

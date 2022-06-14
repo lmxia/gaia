@@ -15,11 +15,12 @@ func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps, clusterMa
 		if cluster != nil && cluster.GetLabels() != nil {
 			_, _, resFormMap, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
 			if _, exist := resFormMap[common.NodeResourceForm]; exist {
-				score = score + int64(len(clusterMap))
+				for _, v := range item.Replicas {
+					score += int64(v)
+				}
+				score = calculateScore(score, item.Children, clusterMap)
 			}
 		}
-
-		score = calculateScore(score, item.Children, clusterMap)
 	}
 	return score
 }

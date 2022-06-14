@@ -295,10 +295,10 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 				itemRb.Namespace = itemCluster.Namespace
 				itemRb.Spec.TotalPeer = getTotal(itemRb.Spec.TotalPeer, len(scheduleResult.ResourceBindings))
-				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
+				_, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
-					klog.Infof("scheduler success, but some rb not created success", rb)
+					klog.Infof("scheduler success, but some rb not created success %v", err)
 				}
 			}
 			// 2. create desc in to child cluster namespace

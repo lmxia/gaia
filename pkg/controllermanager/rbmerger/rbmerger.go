@@ -80,7 +80,7 @@ type FieldsRBs struct {
 
 // NewRBMerger returns a new RBMerger for ResourceBinding.
 func NewRBMerger(kubeclient *kubernetes.Clientset, gaiaclient *gaiaClientSet.Clientset,
-		gaiaInformerFactory gaiainformers.SharedInformerFactory) (*RBMerger, error) {
+	gaiaInformerFactory gaiainformers.SharedInformerFactory) (*RBMerger, error) {
 
 	postUrl := os.Getenv(common.ResourceBindMergePostURL)
 	rbMerger := &RBMerger{
@@ -203,9 +203,9 @@ func (rbMerger *RBMerger) handleToParentResourceBinding(rb *appv1alpha1.Resource
 				rbMerger.descResourceID[string(desc.GetUID())] = true
 
 				err = rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
-						DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-							common.GaiaDescriptionLabel: descName,
-						}).String()})
+					DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+						common.GaiaDescriptionLabel: descName,
+					}).String()})
 				if err != nil {
 					klog.Infof("failed to delete rbs in %s namespace", common.GaiaRBMergedReservedNamespace, err)
 					return err
@@ -438,10 +438,10 @@ func (rbMerger *RBMerger) deleteRBsUnselected(rb *appv1alpha1.ResourceBinding) e
 
 	descName := rb.GetLabels()[common.GaiaDescriptionLabel]
 	err = rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
-			DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-				common.StatusScheduler:      string(appv1alpha1.ResourceBindingmerged),
-				common.GaiaDescriptionLabel: descName,
-			}).String()})
+		DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+			common.StatusScheduler:      string(appv1alpha1.ResourceBindingmerged),
+			common.GaiaDescriptionLabel: descName,
+		}).String()})
 	if err != nil {
 		klog.Infof("failed to delete rbs in %s namespace", common.GaiaRBMergedReservedNamespace, err)
 		return err
@@ -502,7 +502,7 @@ func (rbMerger *RBMerger) postMergedRBs(descName string) error {
 		common.StatusScheduler:      string(appv1alpha1.ResourceBindingmerged),
 	}))
 	if err != nil {
-		return nil
+		return err
 	}
 	for _, rb := range rbs {
 		rbList = append(rbList, *rb)
@@ -517,7 +517,7 @@ func (rbMerger *RBMerger) postMergedRBs(descName string) error {
 	if err != nil {
 		return err
 	}
-
+	klog.Infof("PostHyperOM: Begin to post description %q to HyperOM.", descName)
 	res, err := http.Post(rbMerger.postURL, "application/json", bytes.NewReader(postBody))
 	defer func() { _ = res.Body.Close() }()
 	if err != nil {

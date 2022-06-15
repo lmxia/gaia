@@ -6,68 +6,28 @@ metadata:
 spec:
   appID: appID-case4
   components:
-    - name: component1
-      namespace: test1
-      runtimeType: docker
-      schedulePolicy:
-        specificResource:
-            matchExpressions:
-              - { key: sn, operator: In, values: [ "sn3" ] }
-      workload:
-        workloadtype: userapp
-      module:
-        metadata:
-          labels:
-            app: nginx
-        spec:
-          containers:
-            - name: nginx
-              image: nginx:1.14.2
-              ports:
-                - containerPort: 80
-              resources:
-                limits:
-                  cpu: "500m"
-                  memory: "100Mi"
-                requests:
-                  cpu: "500m"
-                  memory: "100Mi"
-    - name: component2
-      namespace: test2
-      runtimeType: kata
-      schedulePolicy:
-        netenvironment:
-            matchExpressions:
-              - { key: net-environment, operator: In, values: [ "edge-cloud", "edge-cloud" ] }
-        geolocation:
-            matchExpressions:
-              - { key: geo-location, operator: In, values: [ "nanjing", "suzhou", "shenzhen" ] }
-        provider:
-            matchExpressions:
-              - { key: supplier-name, operator: In, values: [ "china-telecom", "china-unicom", "tencent" ] }
-        specificResource:
-            matchExpressions:
+    - name: serss
+      namespace: default
+      runtimeType: runc
+      schedulePolicy: { }
       workload:
         workloadtype: serverless
-        # 更改
-        trait: 
-          mini-instancenumber: 1 per cluster 
-          threshold: average cpu 60% or memory 60% 
+        traitServerless:
+          miniInstancenumber: 1
+          threshold: "{\"cpuMin\":20,\"cpuMax\":70,\"memMin\":20,\"memMax\":80,\"qpsMin\":40,\"qpsMax\":80}"
           step: 1
       module:
         metadata:
           labels:
-            app: nginx
+            app: serss
         spec:
           containers:
-            - name: nginx
-              image: nginx:1.14.2
-              ports:
-                - containerPort: 80
+            - name: serss
+              image: 172.17.9.231:8880/hyperio/app:latest
               resources:
                 limits:
-                  cpu: "500m"
+                  cpu: "100m"
                   memory: "100Mi"
                 requests:
-                  cpu: "500m"
+                  cpu: "100m"
                   memory: "100Mi"

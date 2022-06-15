@@ -16,9 +16,20 @@ type LocalStatus uint32
 const (
 	LocalStatus_Invalid LocalStatus = 0
 	LocalStatus_Running LocalStatus = 1
+	LogSwitch                       = "Off"
 )
 
 func TraceInfo(inputString string) {
+	if LogSwitch == "Off" {
+		return
+	}
+	pc, _, _, _ := runtime.Caller(1)
+	funcName := runtime.FuncForPC(pc).Name()
+	routineId := GetGIDString()
+	logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + "input:" + inputString)
+}
+
+func TraceInfoAlwaysPrint(inputString string) {
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
@@ -26,6 +37,9 @@ func TraceInfo(inputString string) {
 }
 
 func TraceInfoBegin(inputString string) {
+	if LogSwitch == "Off" {
+		return
+	}
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
@@ -33,6 +47,9 @@ func TraceInfoBegin(inputString string) {
 }
 
 func TraceInfoEnd(inputString string) {
+	if LogSwitch == "Off" {
+		return
+	}
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
@@ -41,6 +58,9 @@ func TraceInfoEnd(inputString string) {
 }
 
 func TraceError(err error) {
+	if LogSwitch == "Off" {
+		return
+	}
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
@@ -49,6 +69,9 @@ func TraceError(err error) {
 }
 
 func TraceErrorString(errString string) {
+	if LogSwitch == "Off" {
+		return
+	}
 	err := errors.New(errString)
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
@@ -58,6 +81,9 @@ func TraceErrorString(errString string) {
 }
 
 func TraceErrorWithStack(err error) {
+	if LogSwitch == "Off" {
+		return
+	}
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
@@ -67,6 +93,9 @@ func TraceErrorWithStack(err error) {
 }
 
 func TraceErrorStringWithStack(errString string) {
+	if LogSwitch == "Off" {
+		return
+	}
 	err := errors.New(errString)
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()

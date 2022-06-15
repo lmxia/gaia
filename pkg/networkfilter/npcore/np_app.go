@@ -35,14 +35,23 @@ type AppConnectAttrKey struct {
 	DstDomainId uint32
 }
 
+type KVAttribute struct {
+	Key   string
+	Value string
+}
+
 type AppConnectReqKey struct {
 	SrcUrl string
 	DstUrl string
+	SrcScnidKVList  []KVAttribute
+	DestScnidKVList []KVAttribute
 }
 
 type AppConnectAttr struct {
 	Key     AppConnectAttrKey
 	SlaAttr AppSlaAttr
+	SrcScnidKVList  []KVAttribute
+	DestScnidKVList []KVAttribute
 }
 
 //component的连接请求AppConnectReq
@@ -208,7 +217,7 @@ func SetComponentByRb(rb v1alpha1.ResourceBinding) {
 
 	for comName, Component := range local.ComponentArray {
 		infoString := fmt.Sprintf("After set by rb, the local.ComponentArray[%s] is: (%+v).\n", comName, Component)
-		nputil.TraceInfo(infoString)
+		nputil.TraceInfoAlwaysPrint(infoString)
 	}
 
 	nputil.TraceInfoEnd("")
@@ -235,6 +244,19 @@ func SetAppConnectReqList(networkReq v1alpha1.NetworkRequirement) {
 			appReq.SlaAttr.LostValue = uint32(interSCNID.Sla.Lost)
 			appReq.SlaAttr.JitterValue = uint32(interSCNID.Sla.Jitter)
 			appReq.SlaAttr.ThroughputValue = uint64(interSCNID.Sla.Bandwidth)
+			for _, kv := range interSCNID.Source.Attributes {
+				var srcKv KVAttribute
+				srcKv.Key = kv.Key
+				srcKv.Value = kv.Value
+				appReq.Key.SrcScnidKVList = append(appReq.Key.SrcScnidKVList, srcKv)
+			}
+			for _, kv := range interSCNID.Destination.Attributes {
+				var dstKv KVAttribute
+				dstKv.Key = kv.Key
+				dstKv.Value = kv.Value
+				appReq.Key.SrcScnidKVList = append(appReq.Key.SrcScnidKVList, dstKv)
+			}
+
 			appComponent.AppConnectReqList = append(appComponent.AppConnectReqList, *appReq)
 		}
 		local.ComponentArray[comName] = appComponent
@@ -314,7 +336,7 @@ func getAppConnectionByScnId(srcScnId string, dstScnId string) (AppConnectReq, b
 }
 
 // Set App connect instances for all components
-// instances are initialized with src_scnid, srcDomain, instanceId
+// instances are initialized with src_scnid, srcDomain, instanceId, srcKVList and dstKVlist
 func SetScnIdInstances() {
 	nputil.TraceInfoBegin("")
 	local := GetCoreLocal()
@@ -362,6 +384,8 @@ func CreateAppConnectAttrByScnInst(srcInst ScnIdInstance, dstInst ScnIdInstance)
 		return nil
 	}
 	appConnect.SlaAttr = AppReq.SlaAttr
+	appConnect.SrcScnidKVList = AppReq.Key.SrcScnidKVList
+	appConnect.DestScnidKVList = AppReq.Key.DestScnidKVList
 
 	nputil.TraceInfoEnd("")
 	return appConnect
@@ -398,9 +422,22 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 		slaAttr.ThroughputValue = appConnectDomainPath.AppConnectAttr.SlaAttr.ThroughputValue
 		pbAppConnectAttr.SlaAttr = slaAttr
 
+		for _, srcKv := range appConnectDomainPath.AppConnectAttr.SrcScnidKVList {
+			pSrcKv := new(ncsnp.KVAttribute)
+			pSrcKv.Key = srcKv.Key
+			pSrcKv.Value = srcKv.Value
+			pbAppConnectAttr.SrcScnidKVList = append(pbAppConnectAttr.SrcScnidKVList, pSrcKv)
+		}
+		for _, dstKv := range appConnectDomainPath.AppConnectAttr.DestScnidKVList {
+			pDstKv := new(ncsnp.KVAttribute)
+			pDstKv.Key = dstKv.Key
+			pDstKv.Value = dstKv.Value
+			pbAppConnectAttr.SrcScnidKVList = append(pbAppConnectAttr.SrcScnidKVList, pDstKv)
+		}
 		pbAppConnectDomainPath.AppConnect = pbAppConnectAttr
 		infoString := fmt.Sprintf("pbAppConnectDomainPath.AppConnect(%+v)!", pbAppConnectDomainPath.AppConnect)
 		nputil.TraceInfo(infoString)
+
 		for _, domainInfoPath := range appConnectDomainPath.DomainInfoPath {
 			pbDomainInfo := new(ncsnp.DomainInfo)
 			pbDomainInfo.DomainName = domainInfoPath.DomainName
@@ -411,11 +448,13 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 		pbAppConnectDomainPath.Content = []byte{}
 		pbRbDomainPaths.SelectedDomainPath = append(pbRbDomainPaths.SelectedDomainPath, pbAppConnectDomainPath)
 	}
-	nputil.TraceInfoEnd("")
+
 	for i, rbDomainPaths := range pbRbDomainPaths.SelectedDomainPath {
 		infoString := fmt.Sprintf("pbRbDomainPaths[%d] is: (%+v).", i, rbDomainPaths)
 		nputil.TraceInfo(infoString)
 	}
+
+	nputil.TraceInfoEnd("")
 	return pbRbDomainPaths
 }
 
@@ -588,7 +627,6 @@ func CalAppConnectAttrForInterSCNID(interSCNID v1alpha1.InterSCNID) bool {
 			if dstDuplicate == true {
 				break
 			}
-
 			//源和目的在同一个filed,认为可达，返回所在filed
 			if appConnectAttr.Key.SrcDomainId == appConnectAttr.Key.DstDomainId {
 				domainSrPath := []DomainSrPath{
@@ -678,7 +716,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			available = CalAppConnectAttrForInterSCNID(interSCNID)
 			if available == false {
 				infoString := fmt.Sprintf("The interComm (%+v) is unavailable!\n", interSCNID)
-				nputil.TraceInfo(infoString)
+				nputil.TraceInfoAlwaysPrint(infoString)
 				nputil.TraceInfoEnd("")
 				return nil
 			}
@@ -732,7 +770,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			nputil.TraceInfo(infoString)
 			rb.Spec.NetworkPath = append(rb.Spec.NetworkPath, NpContentBase64)
 
-			//test
+			//Verify the unmarshal action
 			dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(NpContentBase64)))
 			n, _ := base64.StdEncoding.Decode(dbuf, []byte(NpContentBase64))
 			npConentByteConvert := dbuf[:n]
@@ -740,11 +778,10 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			nputil.TraceInfo(infoString)
 
 			TmpRbDomainPaths := new(ncsnp.BindingSelectedDomainPath)
-			err = proto.Unmarshal(content, TmpRbDomainPaths)
-			infoString = fmt.Sprintf("TmpRbDomainPaths is: [%+v]", TmpRbDomainPaths)
-			nputil.TraceInfo(infoString)
+			err = proto.Unmarshal(npConentByteConvert, TmpRbDomainPaths)
+			infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath[%d] is: [%+v]", i, TmpRbDomainPaths)
+			nputil.TraceInfoAlwaysPrint(infoString)
 		}
-
 	}
 	nputil.TraceInfoEnd("")
 	return rb

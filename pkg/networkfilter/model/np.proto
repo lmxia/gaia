@@ -34,7 +34,9 @@ message DomainVLink {
     VLinkSla   VLinkSlaAttr  = 9;
     string OpaqueValue       = 10; //underlay数据结构序列化字符串，控制器仅仅透传
     string AttachDomainName  = 11; //AttachDomainId对应的Fabric名称
-    string PeerSN            = 12; //连接的Fabric内的设备SN号
+    string IngressPeerSN     = 12; //Fabric 入设备SN号
+    string EgressPeerSN      = 13; //Fabric 出设备SN号
+
 }
 
 /**********************************************上报融合管理接口 Begin ******************************************************************/
@@ -78,10 +80,16 @@ message AppConnectSelectedDomainPath {
     repeated DomainInfo DomainList = 2;
     bytes               Content    = 3;
 }
+message KVAttribute {
+    string  Key   = 1;
+    string  Value = 2;
+}
 
 message AppConnectAttr {
     AppConnectKey  Key    = 1;
     AppSlaAttr    SlaAttr = 2;
+    repeated KVAttribute SrcScnidKVList  = 3;
+    repeated KVAttribute DestScnidKVList = 4;
 }
 
 message AppConnectKey {

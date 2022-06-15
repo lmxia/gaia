@@ -85,9 +85,29 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "sca1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "sca1-sk1",
+										Value: "sca1-sv1",
+									},
+									1: {
+										Key:   "sca1-sk2",
+										Value: "sca1-sv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-dk1",
+										Value: "scb1-dv1",
+									},
+									1: {
+										Key:   "scb1-dk2",
+										Value: "scb1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -99,9 +119,29 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 						1: {
 							Source: v1alpha1.Direction{
 								Id: "sca2",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "sca2-sk1",
+										Value: "sca2-sv1",
+									},
+									1: {
+										Key:   "sca2-sk2",
+										Value: "sca2-sv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scc1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scc1-dk1",
+										Value: "scc1-dv1",
+									},
+									1: {
+										Key:   "scc1-dk2",
+										Value: "scc1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -119,9 +159,29 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-sk1",
+										Value: "scb1-sv1",
+									},
+									1: {
+										Key:   "scb1-sk2",
+										Value: "scb1-sv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scc1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scc1-dk1",
+										Value: "scc1-dv1",
+									},
+									1: {
+										Key:   "scc1-dk2",
+										Value: "scc1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -172,9 +232,29 @@ func SetRbsAndNetReqSameDomain() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "sca1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "sca1-dk1",
+										Value: "sca1-dv1",
+									},
+									1: {
+										Key:   "sca1-dk2",
+										Value: "sca1-dv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-dk1",
+										Value: "scb1-dv1",
+									},
+									1: {
+										Key:   "scb1-dk2",
+										Value: "scb1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -239,9 +319,29 @@ func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "sca1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "sca1-dk1",
+										Value: "sca1-dv1",
+									},
+									1: {
+										Key:   "sca1-dk2",
+										Value: "sca1-dv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-dk1",
+										Value: "scb1-dv1",
+									},
+									1: {
+										Key:   "scb1-dk2",
+										Value: "scb1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -259,9 +359,29 @@ func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-dk1",
+										Value: "scb1-dv1",
+									},
+									1: {
+										Key:   "scb1-dk2",
+										Value: "scb1-dv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scc1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scc1-dk1",
+										Value: "scc1-dv1",
+									},
+									1: {
+										Key:   "scc1-dk2",
+										Value: "scc1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -326,9 +446,29 @@ func SetRbsAndNetReqDelaySlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Net
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "sca1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "sca1-dk1",
+										Value: "sca1-dv1",
+									},
+									1: {
+										Key:   "sca1-dk2",
+										Value: "sca1-dv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scc1-dk1",
+										Value: "scc1-dv1",
+									},
+									1: {
+										Key:   "scc1-dk2",
+										Value: "scc1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -346,9 +486,29 @@ func SetRbsAndNetReqDelaySlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Net
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-dk1",
+										Value: "scb1-dv1",
+									},
+									1: {
+										Key:   "scb1-dk2",
+										Value: "scb1-dv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scc1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scc1-dk1",
+										Value: "scc1-dv1",
+									},
+									1: {
+										Key:   "scc1-dk2",
+										Value: "scc1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     2,
@@ -406,9 +566,29 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "sca1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "sca1-dk1",
+										Value: "sca1-dv1",
+									},
+									1: {
+										Key:   "sca1-dk2",
+										Value: "sca1-dv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-dk1",
+										Value: "scb1-dv1",
+									},
+									1: {
+										Key:   "scb1-dk2",
+										Value: "scb1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -466,9 +646,29 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "sca1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "sca1-dk1",
+										Value: "sca1-dv1",
+									},
+									1: {
+										Key:   "sca1-dk2",
+										Value: "sca1-dv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-dk1",
+										Value: "scb1-dv1",
+									},
+									1: {
+										Key:   "scb1-dk2",
+										Value: "scb1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -584,9 +784,29 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "sca1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "sca1-dk1",
+										Value: "sca1-dv1",
+									},
+									1: {
+										Key:   "sca1-dk2",
+										Value: "sca1-dv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-dk1",
+										Value: "scb1-dv1",
+									},
+									1: {
+										Key:   "scb1-dk2",
+										Value: "scb1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -604,9 +824,29 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 						0: {
 							Source: v1alpha1.Direction{
 								Id: "scb1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "scb1-dk1",
+										Value: "scb1-dv1",
+									},
+									1: {
+										Key:   "scb1-dk2",
+										Value: "scb1-dv2",
+									},
+								},
 							},
 							Destination: v1alpha1.Direction{
 								Id: "sca1",
+								Attributes: []v1alpha1.Attributes{
+									0: {
+										Key:   "sca1-dk1",
+										Value: "sca1-dv1",
+									},
+									1: {
+										Key:   "sca1-dk2",
+										Value: "sca1-dv2",
+									},
+								},
 							},
 							Sla: v1alpha1.AppSlaAttr{
 								Delay:     10000,
@@ -1056,7 +1296,7 @@ func TestNetworkFilterThroughputSla(t *testing.T) {
 	rbs, networkRequirement := SetRbsAndNetReqThroughputSla()
 	networkInfoMap := BuildNetworkDomainEdge()
 	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
-	if !reflect.DeepEqual(3, len(rbsRet[0].Spec.NetworkPath)) {
+	if !reflect.DeepEqual(2, len(rbsRet[0].Spec.NetworkPath)) {
 		infoString := fmt.Sprintf("The rbs should be available and the len of rbs NetworkPath is 3!")
 		nputil.TraceErrorString(infoString)
 		t.Errorf("The rbs should be available and the len of rbs  NetworkPath is 3!")
@@ -1094,9 +1334,9 @@ func TestNetworkFilterNoInterCommunication(t *testing.T) {
 	networkInfoMap := BuildNetworkDomainEdge()
 	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
 	if reflect.DeepEqual(0, len(rbsRet)) {
-		infoString := fmt.Sprintf("There is no interCommunication, the rb shouled be available!")
+		infoString := fmt.Sprintf("There is no interCommunication, the rb should be available!")
 		nputil.TraceErrorString(infoString)
-		t.Errorf("There is no interCommunication, the rb shouled be available!")
+		t.Errorf("There is no interCommunication, the rb should be available!")
 	}
 
 	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterNoInterCommunication  END ===")
@@ -1117,9 +1357,9 @@ func TestNetworkFilterSameDomain(t *testing.T) {
 		nputil.TraceInfo(infoString)
 	}
 	if reflect.DeepEqual(0, len(rbsRet)) {
-		infoString := fmt.Sprintf("The rb shouled be available, because components in the same filed!")
+		infoString := fmt.Sprintf("The rb should be available, because components in the same filed!")
 		nputil.TraceErrorString(infoString)
-		t.Errorf("The rb shouled be available, because components in the same filed!")
+		t.Errorf("The rb should be available, because components in the same filed!")
 	}
 
 	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterSameDomain  END ===")
@@ -1139,7 +1379,7 @@ func TestNetworkFilterInterCommunication(t *testing.T) {
 	if reflect.DeepEqual(0, len(rbsRet)) {
 		infoString := fmt.Sprintf("The rb should be available and communicate to each other!")
 		nputil.TraceErrorString(infoString)
-		t.Errorf("The rb shouled be available and communicate to each other!")
+		t.Errorf("The rb should be available and communicate to each other!")
 	}
 
 	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterInterCommunication  END ===")

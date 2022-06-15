@@ -11,6 +11,7 @@ import (
 	ncsnp "github.com/lmxia/gaia/pkg/networkfilter/model"
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
 	"github.com/timtadh/data-structures/tree/avl"
+	"time"
 	//"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -208,7 +209,7 @@ func DomainLinkTopoAddFromScache(topoContents map[string][]byte) {
 			return
 		}
 		infoString := fmt.Sprintf("Domain(%s)'s domainTopoCache is:(%+v)", filedName, *domainTopoCache)
-		nputil.TraceInfo(infoString)
+		nputil.TraceInfoAlwaysPrint(infoString)
 
 		//Add domain in baseDomainGraph and graph tree
 		baseDomain := baseDomainGraph.BaseDomainFindById(domainTopoCache.LocalDomainId)
@@ -273,6 +274,7 @@ func buildSpfGraphEdge() {
 
 func NetworkFilter(rbs []*v1alpha1.ResourceBinding, networkReq *v1alpha1.NetworkRequirement, networkInfoMap map[string]clusterapi.Topo) []*v1alpha1.ResourceBinding {
 
+	start := time.Now()
 	logx.NewLogger()
 	Register()
 	nputil.TraceInfoBegin("------------------------------------------------------")
@@ -296,6 +298,10 @@ func NetworkFilter(rbs []*v1alpha1.ResourceBinding, networkReq *v1alpha1.Network
 	BuildDomainLinkKspGraphAll()
 	//Filter and select domainPath for resourceBindings
 	rbsSelected := networkFilterForRbs(rbs, networkReq)
+
+	elapsed := time.Since(start)
+	infoString := fmt.Sprintf("Total execution time of NetworkFilter() is %+v：", elapsed)
+	nputil.TraceInfoAlwaysPrint(infoString)
 
 	nputil.TraceInfoEnd("------------------------------------------------------")
 	return rbsSelected

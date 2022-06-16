@@ -4,6 +4,7 @@ metadata:
   name: case2
   namespace: gaia-reserved
 spec:
+  networkCommunication:
   - name: component1
     selfID:
       - SCNID_C1_1

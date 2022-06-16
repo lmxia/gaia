@@ -1,0 +1,64 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: NetworkRequirement
+metadata:
+  name: case5
+  namespace: gaia-reserved
+spec:
+  networkCommunication:
+  - name: component1
+    selfID:
+      - SCNID_C1_1
+    interSCNID:
+      - source:
+          id: SCNID_C1_1
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        destination:
+          id: SCNID_C2_1
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        sla:
+          delay: 100
+          lost: 100
+          jitter: 999999
+          bandwidth: 10
+        providers:
+          - a
+          - b
+          - c
+  - name: component2
+    selfID:
+      - SCNID_C2_1
+    interSCNID:
+      - source:
+          id: SCNID_C2_1
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        destination:
+          id: SCNID_C1_1
+          attributes:
+            - key: k1
+              value: v1
+            - key: k2
+              value: v2
+        sla:
+          delay: 100
+          lost: 100
+          jitter: 999999
+          bandwidth: 10
+        providers:
+          - a
+          - b
+          - c
+  - name: component3
+    selfID:
+      - SCNID_C3_1

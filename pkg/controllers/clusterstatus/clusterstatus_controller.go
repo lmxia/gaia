@@ -124,7 +124,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 
 		nodeStatistics = getNodeStatistics(nodes)
 		if c.managedClusterSource == known.ManagedClusterSourceFromInformer {
-			capacity, allocatable = getNodeResource(nodes)
+			capacity, allocatable, available = getNodeResource(nodes)
 		} else if c.managedClusterSource == known.ManagedClusterSourceFromPrometheus {
 			capacity, allocatable, available = getNodeResourceFromPrometheus(c.promUrlPrefix)
 		}
@@ -132,7 +132,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 		klog.V(7).Info("collecting ManagedCluster status...")
 
 		nodeStatistics = getManagedClusterNodeStatistics(clusters)
-		capacity, allocatable = getManagedClusterResource(clusters)
+		capacity, allocatable, available = getManagedClusterResource(clusters)
 
 		selfClusterName, _, errClusterName := utils.GetLocalClusterName(c.kubeClient.(*kubernetes.Clientset))
 		if errClusterName != nil {
@@ -389,9 +389,9 @@ func (c *Controller) discoverClusterCIDR() (string, error) {
 }
 
 // get node capacity and allocatable resource
-func getNodeResource(nodes []*corev1.Node) (Capacity, Allocatable corev1.ResourceList) {
+func getNodeResource(nodes []*corev1.Node) (Capacity, Allocatable, Available corev1.ResourceList) {
 	var capacityCpu, capacityMem, allocatableCpu, allocatableMem resource.Quantity
-	Capacity, Allocatable = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
+	Capacity, Allocatable, Available = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
 
 	for _, node := range nodes {
 		capacityCpu.Add(*node.Status.Capacity.Cpu())
@@ -404,24 +404,30 @@ func getNodeResource(nodes []*corev1.Node) (Capacity, Allocatable corev1.Resourc
 	Capacity[corev1.ResourceMemory] = capacityMem
 	Allocatable[corev1.ResourceCPU] = allocatableCpu
 	Allocatable[corev1.ResourceMemory] = allocatableMem
+	Available[corev1.ResourceCPU] = allocatableCpu
+	Available[corev1.ResourceMemory] = allocatableMem
 
 	return
 }
 
 // getManagedClusterResource gets the node capacity of all managedClusters and their allocatable resources
-func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (Capacity, Allocatable corev1.ResourceList) {
-	Capacity, Allocatable = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
-	var capacityCPU, capacityMem, allocatableCPU, allocatableMem resource.Quantity
+func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (Capacity, Allocatable, Available corev1.ResourceList) {
+	Capacity, Allocatable, Available = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
+	var capacityCPU, capacityMem, allocatableCPU, allocatableMem, availableCPU, availableMem resource.Quantity
 	for _, cluster := range clusters {
 		capacityCPU.Add(cluster.Status.Capacity[corev1.ResourceCPU])
 		capacityMem.Add(cluster.Status.Capacity[corev1.ResourceMemory])
 		allocatableCPU.Add(cluster.Status.Allocatable[corev1.ResourceCPU])
 		allocatableMem.Add(cluster.Status.Allocatable[corev1.ResourceMemory])
+		availableCPU.Add(cluster.Status.Available[corev1.ResourceCPU])
+		availableMem.Add(cluster.Status.Available[corev1.ResourceMemory])
 	}
 	Capacity[corev1.ResourceCPU] = capacityCPU
 	Capacity[corev1.ResourceMemory] = capacityMem
 	Allocatable[corev1.ResourceCPU] = allocatableCPU
 	Allocatable[corev1.ResourceMemory] = allocatableMem
+	Available[corev1.ResourceCPU] = availableCPU
+	Available[corev1.ResourceMemory] = availableMem
 	return
 }
 

@@ -128,5 +128,5 @@ data:
     clusterMemCapacity: sum(kube_node_status_capacity{resource="memory"})/1024
     clusterCPUAllocatable: sum(kube_node_status_allocatable{resource="cpu"})
     clusterMemAllocatable: sum(kube_node_status_allocatable{resource="memory"})/1024
-    clusterCPUAvailable: sum(kube_node_status_allocatable{resource="cpu"})-sum(kube_pod_container_resource_requests{resource="cpu"})
-    clusterMemAvailable: (sum(kube_node_status_allocatable{resource="memory"})-sum(kube_pod_container_resource_requests{resource="memory"}))/1024
+    clusterCPUAvailable: sum(system_cpu_utilization{node_type="Public",state="idle"})
+    clusterMemAvailable: sum(system_memory_usage{node_type="Public"} and (system_memory_usage{state="buffered"} or system_memory_usage{state="free"} or system_memory_usage{state="cached"}))/1024

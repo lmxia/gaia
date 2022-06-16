@@ -541,10 +541,40 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				},
 			}
 
+			if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeAffinityDaemon {
+				nodeSelectorTermSNs := corev1.NodeSelectorTerm{
+					MatchExpressions: []corev1.NodeSelectorRequirement{{
+						Key:      v1alpha1.ParsedSNKey,
+						Operator: corev1.NodeSelectorOpIn,
+						Values:   com.Workload.TraitAffinityDaemon.SNS,
+					}},
+				}
+				if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+					if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
+						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+					} else {
+						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+					}
+				} else {
+					if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
+						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+					} else {
+						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+					}
+				}
+			}
+
 			if com.SchedulePolicy.SpecificResource != nil {
 				if com.SchedulePolicy.SpecificResource.MatchExpressions != nil {
 					if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-						nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions, nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
+						nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions,
+							nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
 						if len(nodeSelectorTerms) > 0 {
 							if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
 								nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
@@ -557,7 +587,8 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 						}
 					} else {
 						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
-						nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions, nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
+						nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions,
+							nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
 						if len(nodeSelectorTerms) > 0 {
 							if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
 								nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =

@@ -117,7 +117,7 @@ type TraitServerless struct {
 }
 
 type TraitAffinityDaemon struct {
-	SN string `json:"sn,omitempty"`
+	SNS []string `json:"sns,omitempty"`
 }
 
 type SchedulePolicy struct {

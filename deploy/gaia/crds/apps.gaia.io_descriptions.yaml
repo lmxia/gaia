@@ -8016,8 +8016,10 @@ spec:
                           type: object
                         traitaffinitydaemon:
                           properties:
-                            sn:
-                              type: string
+                            sns:
+                              items:
+                                type: string
+                              type: array
                           type: object
                         workloadtype:
                           enum:

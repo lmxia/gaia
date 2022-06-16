@@ -30,14 +30,16 @@ func (a AffinityDaemon) Filter(ctx context.Context, com *v1alpha1.Component, clu
 
 	if com.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
 		_, _, _, _, snMap, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
-		if _, exist := snMap[com.Workload.TraitAffinityDaemon.SN]; exist {
-			return nil
+		for _, s := range com.Workload.TraitAffinityDaemon.SNS {
+			if _, exist := snMap[s]; exist {
+				return nil
+			}
 		}
 	} else {
 		return nil
 	}
 
-	errReason := fmt.Sprintf("this cluster {%s}, has no sn {%s}", cluster.Name, com.Workload.TraitAffinityDaemon.SN)
+	errReason := fmt.Sprintf("this cluster {%s}, has no sn {%s}", cluster.Name, com.Workload.TraitAffinityDaemon.SNS)
 	return framework.NewStatus(framework.UnschedulableAndUnresolvable, errReason)
 }
 

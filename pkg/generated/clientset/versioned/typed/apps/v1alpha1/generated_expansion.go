@@ -23,5 +23,3 @@ type DescriptionExpansion interface{}
 type NetworkRequirementExpansion interface{}
 
 type ResourceBindingExpansion interface{}
-
-type ServerlessExpansion interface{}

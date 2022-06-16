@@ -30,8 +30,6 @@ type Interface interface {
 	NetworkRequirements() NetworkRequirementInformer
 	// ResourceBindings returns a ResourceBindingInformer.
 	ResourceBindings() ResourceBindingInformer
-	// Serverlesses returns a ServerlessInformer.
-	Serverlesses() ServerlessInformer
 }
 
 type version struct {
@@ -58,9 +56,4 @@ func (v *version) NetworkRequirements() NetworkRequirementInformer {
 // ResourceBindings returns a ResourceBindingInformer.
 func (v *version) ResourceBindings() ResourceBindingInformer {
 	return &resourceBindingInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// Serverlesses returns a ServerlessInformer.
-func (v *version) Serverlesses() ServerlessInformer {
-	return &serverlessInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

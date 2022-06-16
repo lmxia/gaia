@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
@@ -539,10 +540,55 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 					},
 				},
 			}
-			dep.Spec.Template.Spec.Affinity = nodeAffinity
+
 			if com.SchedulePolicy.SpecificResource != nil {
-				if com.SchedulePolicy.SpecificResource.MatchLabels != nil {
-					dep.Spec.Template.Spec.NodeSelector = com.SchedulePolicy.SpecificResource.MatchLabels
+				if com.SchedulePolicy.SpecificResource.MatchExpressions != nil {
+					if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
+						nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions, nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
+						if len(nodeSelectorTerms) > 0 {
+							if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
+								nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+									append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
+							} else {
+								nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+								nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+									append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
+							}
+						}
+					} else {
+						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
+						nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions, nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
+						if len(nodeSelectorTerms) > 0 {
+							if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
+								nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+									append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
+							} else {
+								nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+								nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+									append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
+							}
+						}
+					}
+				}
+			}
+
+			dep.Spec.Template.Spec.Affinity = nodeAffinity
+
+			if com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeAffinityDaemon || com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeUserApp {
+				if dep.Spec.Template.Spec.NodeSelector == nil {
+					dep.Spec.Template.Spec.NodeSelector = map[string]string{
+						known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
+					}
+				} else {
+					dep.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
+				}
+			}
+
+			if com.SchedulePolicy.Provider != nil {
+				if dep.Spec.Template.Spec.NodeSelector == nil && com.SchedulePolicy.Provider.MatchLabels != nil {
+					dep.Spec.Template.Spec.NodeSelector = com.SchedulePolicy.Provider.MatchLabels
+				} else {
+					dep.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
 				}
 			}
 
@@ -578,6 +624,35 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 		return nil, err
 	}
 	return depUnstructured, nil
+}
+
+func setMatchExpressions(matchExpressions []metav1.LabelSelectorRequirement) []corev1.NodeSelectorRequirement {
+	nsRequirements := []corev1.NodeSelectorRequirement{}
+	for _, expression := range matchExpressions {
+		expression := corev1.NodeSelectorRequirement{
+			Key:      expression.Key,
+			Operator: corev1.NodeSelectorOperator(expression.Operator),
+			Values:   expression.Values,
+		}
+		nsRequirements = append(nsRequirements, expression)
+	}
+	return nsRequirements
+}
+
+func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement, nodeSelectorTerms []corev1.NodeSelectorTerm) []corev1.NodeSelectorTerm {
+	nsRequirements := setMatchExpressions(matchExpressions)
+	nodeSelectorTerm := corev1.NodeSelectorTerm{
+		MatchExpressions: nsRequirements,
+	}
+	if len(nsRequirements) > 0 {
+		if len(nodeSelectorTerms) > 0 {
+			nodeSelectorTerms = append(nodeSelectorTerms, nodeSelectorTerm)
+		} else {
+			nodeSelectorTerms = []corev1.NodeSelectorTerm{}
+			nodeSelectorTerms = append(nodeSelectorTerms, nodeSelectorTerm)
+		}
+	}
+	return nodeSelectorTerms
 }
 
 func AssembledKnativeStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, delete bool) (*unstructured.Unstructured, error) {
@@ -641,10 +716,10 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[com.Name]
 			if replicas > 0 {
-				ser := &appsv1alpha1.Serverless{
+				ser := &lmmserverless.Serverless{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "Serverless",
-						APIVersion: "apps.gaia.io/v1alpha1",
+						APIVersion: "serverless.pml.com.cn/v1",
 					},
 				}
 				if len(com.Namespace) > 0 {

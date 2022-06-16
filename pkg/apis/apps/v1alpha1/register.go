@@ -52,8 +52,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&NetworkRequirementList{},
 		&ResourceBinding{},
 		&ResourceBindingList{},
-		&Serverless{},
-		&ServerlessList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

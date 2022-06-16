@@ -29,7 +29,6 @@ type AppsV1alpha1Interface interface {
 	DescriptionsGetter
 	NetworkRequirementsGetter
 	ResourceBindingsGetter
-	ServerlessesGetter
 }
 
 // AppsV1alpha1Client is used to interact with features provided by the apps.gaia.io group.
@@ -47,10 +46,6 @@ func (c *AppsV1alpha1Client) NetworkRequirements(namespace string) NetworkRequir
 
 func (c *AppsV1alpha1Client) ResourceBindings(namespace string) ResourceBindingInterface {
 	return newResourceBindings(c, namespace)
-}
-
-func (c *AppsV1alpha1Client) Serverlesses(namespace string) ServerlessInterface {
-	return newServerlesses(c, namespace)
 }
 
 // NewForConfig creates a new AppsV1alpha1Client for the given config.

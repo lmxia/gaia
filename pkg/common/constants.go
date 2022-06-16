@@ -67,6 +67,9 @@ const (
 	ResourceBindMergePostURL = "RESOURCEBINDING_MERGER_POST_URL"
 
 	MetricConfigMapAbsFilePath = "/etc/config/gaia-prometheus_metrics.conf"
+
+	HypernodeClusterNodeRole       = "hypernode.cluster.pml.com.cn/node-role"
+	HypernodeClusterNodeRolePublic = "Public"
 )
 
 // lease lock

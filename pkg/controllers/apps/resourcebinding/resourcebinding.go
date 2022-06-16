@@ -246,7 +246,7 @@ func (c *Controller) syncHandler(key string) error {
 		// The Foo resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
-			utilruntime.HandleError(fmt.Errorf("foo '%s' in work queue no longer exists", key))
+			utilruntime.HandleError(fmt.Errorf("resourcebinding '%s' in work queue no longer exists", key))
 			return nil
 		}
 		return err
@@ -383,40 +383,6 @@ func (c *RBController) handleLocalDescription(desc *appsv1alpha1.Description) er
 	}
 	return nil
 }
-
-//func (c *RBController) handleLocalResourceBinding(rb *appsv1alpha1.ResourceBinding) error {
-//	klog.V(5).Infof("handle local resourceBinding %s", klog.KObj(rb))
-//	if rb.Spec.StatusScheduler == appsv1alpha1.ResourceBindingSelected {
-//		clusterName, desNs, errcluster := utils.GetLocalClusterName(c.localkubeclient)
-//		if errcluster != nil {
-//			klog.Errorf("local handleResourceBinding failed to get clustername From secret: %v", errcluster)
-//			return errcluster
-//		}
-//		if len(clusterName) > 0 {
-//			descriptionName := rb.Labels[known.GaiaDescriptionLabel]
-//			desc, descErr := utils.GetDescrition(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, desNs)
-//			if descErr != nil {
-//				if apierrors.IsNotFound(descErr) {
-//					klog.Infof("local OffloadRBWorkloads name==%s, have no description \n", descriptionName)
-//					return nil
-//				}
-//				klog.Errorf(" local get %s namespace Descrition %s, error == %v", known.GaiaRBMergedReservedNamespace, descriptionName, descErr)
-//				return descErr
-//			}
-//
-//			if rb.DeletionTimestamp != nil {
-//				return utils.OffloadRBWorkloads(context.TODO(), desc, c.parentGaiaclient, c.localdynamicClient,
-//					c.restMapper, rb, clusterName)
-//			}
-//			// need schedule across clusters
-//			if error := utils.ApplyRBWorkloads(context.TODO(), desc, c.parentGaiaclient, c.localdynamicClient,
-//				c.restMapper, rb, clusterName); error != nil {
-//				return fmt.Errorf("local apply workloads(components) failed")
-//			}
-//		}
-//	}
-//	return nil
-//}
 
 func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBinding) error {
 	klog.V(5).Infof("handle parent resourceBinding %s", klog.KObj(rb))

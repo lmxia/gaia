@@ -1,0 +1,151 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case5
+  namespace: gaia-reserved
+spec:
+  appID: case5
+  components:
+    - name: component1
+      namespace: test1
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "beijing"] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase5
+        spec:
+          containers:
+            - name: appcase5comp1
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "SCNID_C1_1"
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          hostNetwork: true
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: component2
+      namespace: test2
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "beijing", "nanjing" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: netenviroment, operator: In, values: [ "core" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase5
+        spec:
+          containers:
+            - name: appcase5comp2
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "SCNID_C2_1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          hostNetwork: true
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: component3
+      namespace: test3
+      runtimeType: runc
+      dispersion: 2
+      schedulePolicy:
+        provider:
+          matchExpressions:
+            - { key: provider, operator: In, values: [ "Tencent", "Alibaba", "Huawei" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: netenviroment, operator: In, values: [ "core" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase5
+        spec:
+          containers:
+            - name: appcase5comp3
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "SCNID_C3_1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          hostNetwork: true
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate

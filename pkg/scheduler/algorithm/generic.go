@@ -125,7 +125,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
 				for k, _ := range spreadLevels {
 					if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
-						componentMat := makeDeployPlans(allPlan, replicas, int64(comm.Dispersion))
+						componentMat := makeDeployPlans(allPlan, replicas, spreadLevels[k])
 						allResultWithRB[j][k][i] = componentMat
 					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 						componentMat := makeServelessPlan(allPlan, replicas)

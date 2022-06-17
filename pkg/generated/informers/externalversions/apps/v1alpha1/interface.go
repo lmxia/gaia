@@ -30,6 +30,8 @@ type Interface interface {
 	NetworkRequirements() NetworkRequirementInformer
 	// ResourceBindings returns a ResourceBindingInformer.
 	ResourceBindings() ResourceBindingInformer
+	// UserAPPs returns a UserAPPInformer.
+	UserAPPs() UserAPPInformer
 }
 
 type version struct {
@@ -56,4 +58,9 @@ func (v *version) NetworkRequirements() NetworkRequirementInformer {
 // ResourceBindings returns a ResourceBindingInformer.
 func (v *version) ResourceBindings() ResourceBindingInformer {
 	return &resourceBindingInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// UserAPPs returns a UserAPPInformer.
+func (v *version) UserAPPs() UserAPPInformer {
+	return &userAPPInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

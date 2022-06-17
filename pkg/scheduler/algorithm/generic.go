@@ -116,7 +116,11 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 					componentMat := makeServelessPlan(allPlan, 1)
 					allResultGlobal[j][i] = componentMat
 				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-					componentMat, _ := makeAffinityDaemonPlan(allPlan)
+					// same as serverless.
+					componentMat := makeServelessPlan(allPlan, 1)
+					allResultGlobal[j][i] = componentMat
+				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
+					componentMat, _ := makeUserAPPPlan(allPlan)
 					allResultGlobal[j][i] = componentMat
 				}
 			}
@@ -131,7 +135,11 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						componentMat := makeServelessPlan(allPlan, replicas)
 						allResultWithRB[j][k][i] = componentMat
 					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-						componentMat, _ := makeAffinityDaemonPlan(allPlan)
+						// same as serverless.
+						componentMat := makeServelessPlan(allPlan, replicas)
+						allResultWithRB[j][k][i] = componentMat
+					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
+						componentMat, _ := makeUserAPPPlan(allPlan)
 						allResultWithRB[j][k][i] = componentMat
 					}
 				}

@@ -101,8 +101,8 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 	return rbapps
 }
 
-// makeAffinityDaemonPlan return affinitydaemon plan
-func makeAffinityDaemonPlan(capability []*framework.ClusterInfo) (mat.Matrix, bool) {
+// makeUserAPPPlan return userapp plan, only one replicas needed.
+func makeUserAPPPlan(capability []*framework.ClusterInfo) (mat.Matrix, bool) {
 	result := mat.NewDense(1, len(capability), nil)
 	numResult := make([]float64, len(capability))
 	success := false
@@ -127,6 +127,7 @@ func makeServelessPlan(capability []*framework.ClusterInfo, replicas int64) mat.
 	if replicas > 0 {
 		numResult := make([]float64, len(capability))
 		for i, item := range capability {
+			// resource is enough so, this check is unnecessary.
 			if item.Total > 0 {
 				numResult[i] = 1
 			} else {

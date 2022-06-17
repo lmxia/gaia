@@ -296,6 +296,27 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 					errCh <- err2
 				}
 			}(depunstructured)
+		case appsv1alpha1.WorkloadTypeUserApp:
+			depunstructured, deperr := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, true)
+			if deperr != nil {
+				msg := fmt.Sprintf("userApp offloadRBWorkloads failed to unmarshal resource: %v", err)
+				klog.ErrorDepth(5, msg)
+				allErrs = append(allErrs, deperr)
+				continue
+			} else if depunstructured == nil {
+				continue
+			}
+			wg.Add(1)
+			go func(depunstructured *unstructured.Unstructured) {
+				defer wg.Done()
+				klog.V(5).Infof(" userApp deleting %s %s defined in ResourceBinding %s", depunstructured.GetKind(),
+					klog.KObj(depunstructured), klog.KObj(rb))
+				err2 := DeleteResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depunstructured)
+				if err2 != nil {
+					klog.Infof("offloadRBWorkloads userApp name==%s err===%v \n", depunstructured.GetName(), err2)
+					errCh <- err2
+				}
+			}(depunstructured)
 		}
 		wg.Wait()
 	}
@@ -407,6 +428,26 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depUn)
 				if retryErr != nil {
 					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", depUn.GetName(), retryErr)
+					errCh <- retryErr
+					return
+				}
+			}(depUn)
+		case appsv1alpha1.WorkloadTypeUserApp:
+			depUn, errdep := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errdep != nil {
+				msg := fmt.Sprintf("userApp applyRBWorkloads failed to unmarshal resource: %v", errdep)
+				klog.ErrorDepth(5, msg)
+				allErrs = append(allErrs, errdep)
+				continue
+			} else if depUn == nil {
+				continue
+			}
+			wg.Add(1)
+			go func(depUn *unstructured.Unstructured) {
+				defer wg.Done()
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depUn)
+				if retryErr != nil {
+					klog.Infof("applyRBWorkloads userApp name==%s err===%v \n", depUn.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
@@ -568,6 +609,63 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 	}
 	if len(depUnstructured.GetName()) <= 0 {
 		err = fmt.Errorf("failed to get daemonSet description component %s  from rb labels:%v", com.Name, rbApps)
+		klog.ErrorDepth(5, err)
+		return nil, err
+	}
+	return depUnstructured, nil
+}
+
+func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
+	depUnstructured := &unstructured.Unstructured{}
+	var err error
+	for _, rbApp := range rbApps {
+		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
+			userAPP := &appsv1alpha1.UserAPP{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "UserAPP",
+					APIVersion: "apps.gaia.io/v1alpha1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						known.GaiaDescriptionLabel: descName,
+					},
+				}}
+			if len(com.Namespace) > 0 {
+				userAPP.Namespace = com.Namespace
+			} else {
+				userAPP.Namespace = metav1.NamespaceDefault
+			}
+			userAPP.Name = com.Name
+			nodeAffinity := AddNodeAffinity(com)
+			userAPP.Spec.Module.Spec.Affinity = nodeAffinity
+
+			if !delete {
+				userAPP.Spec.Module = com.Module
+				label := userAPP.GetLabels()
+				if label != nil {
+					label[known.GaiaDescriptionLabel] = descName
+				} else {
+					label = map[string]string{known.GaiaDescriptionLabel: descName}
+				}
+				userAPP.Labels = label
+				depUnstructured, err = ObjectConvertToUnstructured(userAPP)
+			} else {
+				depUnstructured, err = ObjectConvertToUnstructured(userAPP)
+			}
+		}
+	}
+
+	if depUnstructured == nil || depUnstructured.Object == nil {
+		fmt.Printf("userAPP cluster  %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
+		return nil, nil
+	}
+	if err != nil {
+		msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
+		klog.ErrorDepth(5, msg)
+		return nil, err
+	}
+	if len(depUnstructured.GetName()) <= 0 {
+		err = fmt.Errorf("failed to get userAPP description component %s  from rb labels:%v", com.Name, rbApps)
 		klog.ErrorDepth(5, err)
 		return nil, err
 	}

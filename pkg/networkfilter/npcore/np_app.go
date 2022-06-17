@@ -254,7 +254,7 @@ func SetAppConnectReqList(networkReq v1alpha1.NetworkRequirement) {
 				var dstKv KVAttribute
 				dstKv.Key = kv.Key
 				dstKv.Value = kv.Value
-				appReq.Key.SrcScnidKVList = append(appReq.Key.SrcScnidKVList, dstKv)
+				appReq.Key.DestScnidKVList = append(appReq.Key.DestScnidKVList, dstKv)
 			}
 
 			appComponent.AppConnectReqList = append(appComponent.AppConnectReqList, *appReq)
@@ -432,7 +432,7 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 			pDstKv := new(ncsnp.KVAttribute)
 			pDstKv.Key = dstKv.Key
 			pDstKv.Value = dstKv.Value
-			pbAppConnectAttr.SrcScnidKVList = append(pbAppConnectAttr.SrcScnidKVList, pDstKv)
+			pbAppConnectAttr.DestScnidKVList = append(pbAppConnectAttr.DestScnidKVList, pDstKv)
 		}
 		pbAppConnectDomainPath.AppConnect = pbAppConnectAttr
 		infoString := fmt.Sprintf("pbAppConnectDomainPath.AppConnect(%+v)!", pbAppConnectDomainPath.AppConnect)
@@ -479,7 +479,7 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 	var appConnectDomainPathMatrix [][]AppDomainPath
 	var appConnectDomainPathArray []AppDomainPath
 	var combPath []AppDomainPath
-	var combGroup = make([][]AppDomainPath, DomainPathGroupMaxNum)
+	var combGroup [][]AppDomainPath
 	var index uint32
 
 	//把所有components的所有连接属性的所有实例的单个domainpath定义为一个矩阵，
@@ -533,14 +533,14 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 	}
 
 	for {
-		if index > DomainPathGroupMaxNum-1 {
+		/*if index > DomainPathGroupMaxNum-1 {
 			for _, combPath := range combGroup {
 				infoString := fmt.Sprintf("The combPath is (%+v)!\n", combPath)
 				nputil.TraceInfo(infoString)
 			}
 			nputil.TraceInfoEnd("")
 			return combGroup
-		}
+		}*/
 		// combine domainpath for different interSCNID connections
 		combPath = []AppDomainPath{}
 		for j := 0; j < n; j++ {
@@ -548,7 +548,7 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 			nputil.TraceInfo(infoString)
 			combPath = append(combPath, appConnectDomainPathMatrix[j][indices[j]])
 		}
-		combGroup[index] = combPath
+		combGroup = append(combGroup, combPath)
 		index++
 		// find the rightmost array that has more elements left after the current element in that array
 		next := n - 1
@@ -557,8 +557,8 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 		}
 		// no such array is found so no more combinations left
 		if next < 0 {
-			for _, combPath := range combGroup {
-				infoString := fmt.Sprintf("The combPath is (%+v)!\n", combPath)
+			for i, combPath := range combGroup {
+				infoString := fmt.Sprintf("The combPath[%d] is (%+v)!\n", i, combPath)
 				nputil.TraceInfo(infoString)
 			}
 			nputil.TraceInfoEnd("")
@@ -724,7 +724,23 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 	}
 
 	//选出DomainPathGroupMaxNum组组合方案
-	domainPathCluster := CombMatrixToDomainPathGroup()
+	var domainPathCluster [][]AppDomainPath
+	domainPathComb := CombMatrixToDomainPathGroup()
+	if len(domainPathComb) < DomainPathGroupMaxNum {
+		domainPathCluster = domainPathComb
+	} else {
+		indexList := nputil.GenerateRandomIndex(0, len(domainPathComb)-1, DomainPathGroupMaxNum)
+		infoString := fmt.Sprintf("indexList is(%+v)!\n", indexList)
+		nputil.TraceInfo(infoString)
+		for _, index := range indexList {
+			domainPathCluster = append(domainPathCluster, domainPathComb[index])
+		}
+	}
+	for i, combPath := range domainPathCluster {
+		infoString := fmt.Sprintf("domainPathCluster[%d] is (%+v)!\n", i, combPath)
+		nputil.TraceInfo(infoString)
+	}
+
 	if len(domainPathCluster) != 0 {
 		var rbDomainPathArray []BindingSelectedDomainPath
 		for _, appPathGroup := range domainPathCluster {

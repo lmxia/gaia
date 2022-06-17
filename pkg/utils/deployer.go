@@ -215,7 +215,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 	for _, com := range comToBeDeleted {
 		switch com.Workload.Workloadtype {
 		case appsv1alpha1.WorkloadTypeDeployment:
-			depunstructured, deperr := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, true)
+			depunstructured, deperr := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, true)
 			if deperr != nil {
 				msg := fmt.Sprintf("Deployment offloadRBWorkloads failed to unmarshal resource: %v", err)
 				klog.ErrorDepth(5, msg)
@@ -236,7 +236,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 				}
 			}(depunstructured)
 		case appsv1alpha1.WorkloadTypeKnative:
-			knativeUn, errservice := AssembledKnativeStructure(&com, rb.Spec.RbApps, clusterName, true)
+			knativeUn, errservice := AssembledKnativeStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, true)
 			if errservice != nil {
 				msg := fmt.Sprintf("Knative applyRBWorkloads failed to unmarshal resource: %v", errservice)
 				klog.ErrorDepth(5, msg)
@@ -256,7 +256,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 				}
 			}(knativeUn)
 		case appsv1alpha1.WorkloadTypeServerless:
-			SerUn, errservice := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, true)
+			SerUn, errservice := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, true)
 			if errservice != nil {
 				msg := fmt.Sprintf("Serverless applyRBWorkloads failed to unmarshal resource: %v", errservice)
 				klog.ErrorDepth(5, msg)
@@ -276,7 +276,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 				}
 			}(SerUn)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			depunstructured, deperr := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, true)
+			depunstructured, deperr := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, true)
 			if deperr != nil {
 				msg := fmt.Sprintf("WorkloadTypeAffinityDaemon offloadRBWorkloads failed to unmarshal resource: %v", err)
 				klog.ErrorDepth(5, msg)
@@ -332,7 +332,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 	for _, com := range comToBeApply {
 		switch com.Workload.Workloadtype {
 		case appsv1alpha1.WorkloadTypeDeployment:
-			depUn, errdep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, false)
+			depUn, errdep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
 			if errdep != nil {
 				msg := fmt.Sprintf("Deployment applyRBWorkloads failed to unmarshal resource: %v", errdep)
 				klog.ErrorDepth(5, msg)
@@ -352,7 +352,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 				}
 			}(depUn)
 		case appsv1alpha1.WorkloadTypeKnative:
-			SerUn, errservice := AssembledKnativeStructure(&com, rb.Spec.RbApps, clusterName, false)
+			SerUn, errservice := AssembledKnativeStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
 			if errservice != nil {
 				msg := fmt.Sprintf("Knative applyRBWorkloads failed to unmarshal resource: %v", errservice)
 				klog.ErrorDepth(5, msg)
@@ -372,7 +372,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 				}
 			}(SerUn)
 		case appsv1alpha1.WorkloadTypeServerless:
-			SerUn, errservice := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, false)
+			SerUn, errservice := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
 			if errservice != nil {
 				msg := fmt.Sprintf("Serverless applyRBWorkloads failed to unmarshal resource: %v", errservice)
 				klog.ErrorDepth(5, msg)
@@ -392,7 +392,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 				}
 			}(SerUn)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			depUn, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, false)
+			depUn, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
 			if errdep != nil {
 				msg := fmt.Sprintf("WorkloadTypeAffinityDaemon applyRBWorkloads failed to unmarshal resource: %v", errdep)
 				klog.ErrorDepth(5, msg)
@@ -507,7 +507,7 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 	return err
 }
 
-func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
 	for _, rbApp := range rbApps {
@@ -516,6 +516,11 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "DaemonSet",
 					APIVersion: "apps/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						known.GaiaDescriptionLabel: descName,
+					},
 				}}
 			if len(com.Namespace) > 0 {
 				ds.Namespace = com.Namespace
@@ -536,6 +541,13 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 
 			if !delete {
 				ds.Spec.Template = com.Module
+				label := ds.GetLabels()
+				if label != nil {
+					label[known.GaiaDescriptionLabel] = descName
+				} else {
+					label = map[string]string{known.GaiaDescriptionLabel: descName}
+				}
+				ds.Labels = label
 				selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
 				ds.Spec.Selector = selector
 				depUnstructured, err = ObjectConvertToUnstructured(ds)
@@ -711,7 +723,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 	}
 	return nodeAffinity
 }
-func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
 	for _, rbApp := range rbApps {
@@ -720,6 +732,11 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
 					APIVersion: "apps/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						known.GaiaDescriptionLabel: descName,
+					},
 				}}
 			if len(com.Namespace) > 0 {
 				dep.Namespace = com.Namespace
@@ -747,6 +764,13 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				if replicas <= 0 {
 					return nil, fmt.Errorf("rbApps cannot get replicas, deployment name==%s, have nil Replicas \n", dep.Name)
 				}
+				label := dep.GetLabels()
+				if label != nil {
+					label[known.GaiaDescriptionLabel] = descName
+				} else {
+					label = map[string]string{known.GaiaDescriptionLabel: descName}
+				}
+				dep.Labels = label
 				dep.Spec.Replicas = &replicas
 				selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
 				dep.Spec.Selector = selector
@@ -803,7 +827,7 @@ func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement, no
 	return nodeSelectorTerms
 }
 
-func AssembledKnativeStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledKnativeStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
 	serviceUnstructured := &unstructured.Unstructured{}
 	var err error
 	for _, rbApp := range rbApps {
@@ -814,6 +838,11 @@ func AssembledKnativeStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "Service",
 						APIVersion: "serving.knative.dev/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							known.GaiaDescriptionLabel: descName,
+						},
 					}}
 
 				if len(com.Namespace) > 0 {
@@ -823,6 +852,13 @@ func AssembledKnativeStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				}
 				ser.Name = com.Name
 				if !delete {
+					label := ser.GetLabels()
+					if label != nil {
+						label[known.GaiaDescriptionLabel] = descName
+					} else {
+						label = map[string]string{known.GaiaDescriptionLabel: descName}
+					}
+					ser.Labels = label
 					ser.Spec.Traffic = com.Serverless.Traffic
 					ser.Spec.Template = serveringv1.RevisionTemplateSpec{
 						ObjectMeta: com.Module.ObjectMeta,
@@ -857,7 +893,7 @@ func AssembledKnativeStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 	return serviceUnstructured, nil
 }
 
-func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
 	serlessUnstructured := &unstructured.Unstructured{}
 	var err error
 	for _, rbApp := range rbApps {
@@ -868,6 +904,11 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "Serverless",
 						APIVersion: "serverless.pml.com.cn/v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							known.GaiaDescriptionLabel: descName,
+						},
 					},
 				}
 				if len(com.Namespace) > 0 {
@@ -891,6 +932,13 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 
 				if !delete {
 					ser.Spec = com
+					label := ser.GetLabels()
+					if label != nil {
+						label[known.GaiaDescriptionLabel] = descName
+					} else {
+						label = map[string]string{known.GaiaDescriptionLabel: descName}
+					}
+					ser.Labels = label
 					serlessUnstructured, err = ObjectConvertToUnstructured(ser)
 				} else {
 					serlessUnstructured, err = ObjectConvertToUnstructured(ser)

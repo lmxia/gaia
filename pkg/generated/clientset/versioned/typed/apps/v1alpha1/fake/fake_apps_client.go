@@ -40,6 +40,10 @@ func (c *FakeAppsV1alpha1) ResourceBindings(namespace string) v1alpha1.ResourceB
 	return &FakeResourceBindings{c, namespace}
 }
 
+func (c *FakeAppsV1alpha1) UserAPPs(namespace string) v1alpha1.UserAPPInterface {
+	return &FakeUserAPPs{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeAppsV1alpha1) RESTClient() rest.Interface {

@@ -4,11 +4,11 @@
 
 common:
   clusterName: cluster1
-  mcSource: informer
+  mcSource: prometheus
   promUrlPrefix: ""
-  useHypernodeController: false
-  topoSyncBaseUrl: ""
-  resourceBindingMergePostURL: http://127.0.0.1:8080
+  useHypernodeController: true
+  topoSyncBaseUrl: http://192.168.101.11:31555
+  resourceBindingMergePostURL: http://192.168.101.73:37100/api/server/preScheduleSchemeReceiver
 
 replicaCount: 3
 
@@ -16,7 +16,7 @@ image:
   repository: 172.17.9.231:8880/gaia
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.1.14
+  tag: 0.1.36
 
 imagePullSecrets: []
 nameOverride: ""

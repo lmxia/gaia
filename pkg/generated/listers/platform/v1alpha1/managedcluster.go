@@ -26,8 +26,10 @@ import (
 )
 
 // ManagedClusterLister helps list ManagedClusters.
+// All objects returned here must be treated as read-only.
 type ManagedClusterLister interface {
 	// List lists all ManagedClusters in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ManagedCluster, err error)
 	// ManagedClusters returns an object that can list and get ManagedClusters.
 	ManagedClusters(namespace string) ManagedClusterNamespaceLister
@@ -58,10 +60,13 @@ func (s *managedClusterLister) ManagedClusters(namespace string) ManagedClusterN
 }
 
 // ManagedClusterNamespaceLister helps list and get ManagedClusters.
+// All objects returned here must be treated as read-only.
 type ManagedClusterNamespaceLister interface {
 	// List lists all ManagedClusters in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ManagedCluster, err error)
 	// Get retrieves the ManagedCluster from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.ManagedCluster, error)
 	ManagedClusterNamespaceListerExpansion
 }

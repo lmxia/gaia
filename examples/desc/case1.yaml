@@ -259,14 +259,7 @@ spec:
       runtimeType: runc
       schedulePolicy:
         geolocation:
-          matchExpressions:kubec
-
-
-
-
-
-
-
+          matchExpressions:
             - { key: geo-location, operator: In, values: [ "beijing", "nanjing" ] }
         provider:
           matchExpressions:

@@ -41,3 +41,11 @@ type ResourceBindingListerExpansion interface{}
 // ResourceBindingNamespaceListerExpansion allows custom methods to be added to
 // ResourceBindingNamespaceLister.
 type ResourceBindingNamespaceListerExpansion interface{}
+
+// UserAPPListerExpansion allows custom methods to be added to
+// UserAPPLister.
+type UserAPPListerExpansion interface{}
+
+// UserAPPNamespaceListerExpansion allows custom methods to be added to
+// UserAPPNamespaceLister.
+type UserAPPNamespaceListerExpansion interface{}

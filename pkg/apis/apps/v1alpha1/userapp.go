@@ -29,6 +29,7 @@ type UserAPPSpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
+	SN string `json:"sn,omitempty"`
 }
 
 // UserAPPStatus defines the observed state of UserAPP

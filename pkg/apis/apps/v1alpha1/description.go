@@ -80,6 +80,8 @@ type Workload struct {
 	TraitServerless *TraitServerless `json:"traitServerless,omitempty"`
 	// +optional
 	TraitAffinityDaemon *TraitAffinityDaemon `json:"traitaffinitydaemon,omitempty"`
+	// +optional
+	TraitUserAPP *TraitUserAPP `json:"traitUserAPP,omitempty"`
 }
 type ServerlessSpec struct {
 	// +optional
@@ -108,6 +110,10 @@ type RevisionSpec struct {
 
 type TraitDeployment struct {
 	Replicas int32 ` json:"replicas,omitempty"`
+}
+
+type TraitUserAPP struct {
+	SN string `json:"sn,omitempty"`
 }
 
 type TraitServerless struct {

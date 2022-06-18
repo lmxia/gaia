@@ -26,7 +26,6 @@ import (
 	"k8s.io/klog/v2"
 
 	known "github.com/lmxia/gaia/pkg/common"
-	serveringv1 "knative.dev/serving/pkg/apis/serving/v1"
 )
 
 func DeleteResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
@@ -216,12 +215,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 		switch com.Workload.Workloadtype {
 		case appsv1alpha1.WorkloadTypeDeployment:
 			depunstructured, deperr := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, true)
-			if deperr != nil {
-				msg := fmt.Sprintf("Deployment offloadRBWorkloads failed to unmarshal resource: %v", err)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, deperr)
-				continue
-			} else if depunstructured == nil {
+			if deperr != nil || depunstructured == nil {
 				continue
 			}
 			wg.Add(1)
@@ -235,34 +229,9 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 					errCh <- err2
 				}
 			}(depunstructured)
-		case appsv1alpha1.WorkloadTypeKnative:
-			knativeUn, errservice := AssembledKnativeStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, true)
-			if errservice != nil {
-				msg := fmt.Sprintf("Knative applyRBWorkloads failed to unmarshal resource: %v", errservice)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, errservice)
-				continue
-			} else if knativeUn == nil {
-				continue
-			}
-			wg.Add(1)
-			go func(knativeUn *unstructured.Unstructured) {
-				defer wg.Done()
-				retryErr := DeleteResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, knativeUn)
-				if retryErr != nil {
-					klog.Infof("offloadRBWorkloads Knative name==%s err===%v \n", knativeUn.GetName(), retryErr)
-					errCh <- retryErr
-					return
-				}
-			}(knativeUn)
 		case appsv1alpha1.WorkloadTypeServerless:
 			SerUn, errservice := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, true)
-			if errservice != nil {
-				msg := fmt.Sprintf("Serverless applyRBWorkloads failed to unmarshal resource: %v", errservice)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, errservice)
-				continue
-			} else if SerUn == nil {
+			if errservice != nil || SerUn == nil {
 				continue
 			}
 			wg.Add(1)
@@ -277,12 +246,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 			}(SerUn)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
 			depunstructured, deperr := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, true)
-			if deperr != nil {
-				msg := fmt.Sprintf("WorkloadTypeAffinityDaemon offloadRBWorkloads failed to unmarshal resource: %v", err)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, deperr)
-				continue
-			} else if depunstructured == nil {
+			if deperr != nil || depunstructured == nil {
 				continue
 			}
 			wg.Add(1)
@@ -298,12 +262,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 			}(depunstructured)
 		case appsv1alpha1.WorkloadTypeUserApp:
 			depunstructured, deperr := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, true)
-			if deperr != nil {
-				msg := fmt.Sprintf("userApp offloadRBWorkloads failed to unmarshal resource: %v", err)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, deperr)
-				continue
-			} else if depunstructured == nil {
+			if deperr != nil || depunstructured == nil {
 				continue
 			}
 			wg.Add(1)
@@ -354,12 +313,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 		switch com.Workload.Workloadtype {
 		case appsv1alpha1.WorkloadTypeDeployment:
 			depUn, errdep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil {
-				msg := fmt.Sprintf("Deployment applyRBWorkloads failed to unmarshal resource: %v", errdep)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, errdep)
-				continue
-			} else if depUn == nil {
+			if errdep != nil || depUn == nil {
 				continue
 			}
 			wg.Add(1)
@@ -372,34 +326,9 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 					return
 				}
 			}(depUn)
-		case appsv1alpha1.WorkloadTypeKnative:
-			SerUn, errservice := AssembledKnativeStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errservice != nil {
-				msg := fmt.Sprintf("Knative applyRBWorkloads failed to unmarshal resource: %v", errservice)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, errservice)
-				continue
-			} else if SerUn == nil {
-				continue
-			}
-			wg.Add(1)
-			go func(SerUn *unstructured.Unstructured) {
-				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, SerUn)
-				if retryErr != nil {
-					klog.Infof("applyRBWorkloads Knative name==%s err===%v \n", SerUn.GetName(), retryErr)
-					errCh <- retryErr
-					return
-				}
-			}(SerUn)
 		case appsv1alpha1.WorkloadTypeServerless:
 			SerUn, errservice := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errservice != nil {
-				msg := fmt.Sprintf("Serverless applyRBWorkloads failed to unmarshal resource: %v", errservice)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, errservice)
-				continue
-			} else if SerUn == nil {
+			if errservice != nil || SerUn == nil {
 				continue
 			}
 			wg.Add(1)
@@ -414,12 +343,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 			}(SerUn)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
 			depUn, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil {
-				msg := fmt.Sprintf("WorkloadTypeAffinityDaemon applyRBWorkloads failed to unmarshal resource: %v", errdep)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, errdep)
-				continue
-			} else if depUn == nil {
+			if errdep != nil || depUn == nil {
 				continue
 			}
 			wg.Add(1)
@@ -434,12 +358,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 			}(depUn)
 		case appsv1alpha1.WorkloadTypeUserApp:
 			depUn, errdep := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil {
-				msg := fmt.Sprintf("userApp applyRBWorkloads failed to unmarshal resource: %v", errdep)
-				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, errdep)
-				continue
-			} else if depUn == nil {
+			if errdep != nil || depUn == nil {
 				continue
 			}
 			wg.Add(1)
@@ -553,48 +472,52 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 	var err error
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
-			ds := &appsv1.DaemonSet{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "DaemonSet",
-					APIVersion: "apps/v1",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						known.GaiaDescriptionLabel: descName,
+			replicas := rbApp.Replicas[com.Name]
+			if replicas > 0 {
+				ds := &appsv1.DaemonSet{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "DaemonSet",
+						APIVersion: "apps/v1",
 					},
-				}}
-			if len(com.Namespace) > 0 {
-				ds.Namespace = com.Namespace
-			} else {
-				ds.Namespace = metav1.NamespaceDefault
-			}
-			ds.Name = com.Name
-			nodeAffinity := AddNodeAffinity(com)
-			ds.Spec.Template.Spec.Affinity = nodeAffinity
-
-			if ds.Spec.Template.Spec.NodeSelector == nil {
-				ds.Spec.Template.Spec.NodeSelector = map[string]string{
-					known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
-				}
-			} else {
-				ds.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
-			}
-
-			if !delete {
-				ds.Spec.Template = com.Module
-				label := ds.GetLabels()
-				if label != nil {
-					label[known.GaiaDescriptionLabel] = descName
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							known.GaiaDescriptionLabel: descName,
+						},
+					}}
+				if len(com.Namespace) > 0 {
+					ds.Namespace = com.Namespace
 				} else {
-					label = map[string]string{known.GaiaDescriptionLabel: descName}
+					ds.Namespace = metav1.NamespaceDefault
 				}
-				ds.Labels = label
-				selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
-				ds.Spec.Selector = selector
-				depUnstructured, err = ObjectConvertToUnstructured(ds)
-			} else {
-				depUnstructured, err = ObjectConvertToUnstructured(ds)
+				ds.Name = com.Name
+
+				if !delete {
+					ds.Spec.Template = com.Module
+					nodeAffinity := AddNodeAffinity(com)
+					ds.Spec.Template.Spec.Affinity = nodeAffinity
+					if ds.Spec.Template.Spec.NodeSelector == nil {
+						ds.Spec.Template.Spec.NodeSelector = map[string]string{
+							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
+						}
+					} else {
+						ds.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
+					}
+
+					label := ds.GetLabels()
+					if label != nil {
+						label[known.GaiaDescriptionLabel] = descName
+					} else {
+						label = map[string]string{known.GaiaDescriptionLabel: descName}
+					}
+					ds.Labels = label
+					selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
+					ds.Spec.Selector = selector
+					depUnstructured, err = ObjectConvertToUnstructured(ds)
+				} else {
+					depUnstructured, err = ObjectConvertToUnstructured(ds)
+				}
 			}
+			break
 		}
 	}
 
@@ -632,7 +555,6 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				},
 			}
 			userAPP.Name = com.Name
-
 			if !delete {
 				userAPP.Spec.Module = com.Module
 				userAPP.Spec.SN = com.Workload.TraitUserAPP.SN
@@ -647,6 +569,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 			} else {
 				depUnstructured, err = ObjectConvertToUnstructured(userAPP)
 			}
+			break
 		}
 	}
 
@@ -668,24 +591,26 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 }
 
 func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
+
 	nodeAffinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{
-				{
-					Preference: corev1.NodeSelectorTerm{
-						MatchExpressions: []corev1.NodeSelectorRequirement{
-							{
-								Key:      v1alpha1.ParsedResFormKey,
-								Operator: corev1.NodeSelectorOpIn,
-								Values:   []string{"pool", "Pool"},
-							},
-						},
-					},
+			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
+				Weight: 2,
+				Preference: corev1.NodeSelectorTerm{
+					MatchExpressions: []corev1.NodeSelectorRequirement{{
+						Key:      v1alpha1.ParsedResFormKey,
+						Operator: corev1.NodeSelectorOpIn,
+						Values:   []string{"pool", "Pool"},
+					}},
 				},
-			},
+			}},
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{},
 		},
 	}
 
+	if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
+		nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+	}
 	if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeAffinityDaemon {
 		nodeSelectorTermSNs := corev1.NodeSelectorTerm{
 			MatchExpressions: []corev1.NodeSelectorRequirement{{
@@ -694,124 +619,64 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				Values:   com.Workload.TraitAffinityDaemon.SNS,
 			}},
 		}
-		if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-			if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
-			} else {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
-			}
-		} else {
-			if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
-			} else {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
-			}
-		}
+		nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+			append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
 		return nodeAffinity
 	}
 
-	if com.SchedulePolicy.Provider != nil {
-		if com.SchedulePolicy.Provider.MatchExpressions != nil {
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-				nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.Provider.MatchExpressions,
-					nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
-				if len(nodeSelectorTerms) > 0 {
-					if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					} else {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					}
-				}
-			} else {
+	if com.SchedulePolicy.Provider != nil && com.SchedulePolicy.Provider.MatchExpressions != nil {
+		providers := setNodeSelectorTerms(com.SchedulePolicy.Provider.MatchExpressions)
+		if len(providers) > 0 {
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
-				nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.Provider.MatchExpressions,
-					nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
-				if len(nodeSelectorTerms) > 0 {
-					if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					} else {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					}
-				}
 			}
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+			}
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, providers...)
 		}
 	}
 
-	if com.SchedulePolicy.SpecificResource != nil {
-		if com.SchedulePolicy.SpecificResource.MatchExpressions != nil {
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-				nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions,
-					nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
-				if len(nodeSelectorTerms) > 0 {
-					if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					} else {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					}
-				}
-			} else {
+	if com.SchedulePolicy.NetEnvironment != nil && com.SchedulePolicy.NetEnvironment.MatchExpressions != nil {
+		netEnvironments := setNodeSelectorTerms(com.SchedulePolicy.NetEnvironment.MatchExpressions)
+		if len(netEnvironments) > 0 {
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
-				nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions,
-					nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
-				if len(nodeSelectorTerms) > 0 {
-					if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					} else {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					}
-				}
 			}
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+			}
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, netEnvironments...)
 		}
 	}
 
-	if com.SchedulePolicy.GeoLocation != nil {
-		if com.SchedulePolicy.GeoLocation.MatchExpressions != nil {
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution != nil {
-				nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.GeoLocation.MatchExpressions,
-					nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
-				if len(nodeSelectorTerms) > 0 {
-					if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					} else {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					}
-				}
-			} else {
+	if com.SchedulePolicy.SpecificResource != nil && com.SchedulePolicy.SpecificResource.MatchExpressions != nil {
+		specificResources := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions)
+		if len(specificResources) > 0 {
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
-				nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.GeoLocation.MatchExpressions,
-					nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms)
-				if len(nodeSelectorTerms) > 0 {
-					if len(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms) > 0 {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					} else {
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-						nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-							append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
-					}
-				}
 			}
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+			}
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, specificResources...)
+		}
+	}
+
+	if com.SchedulePolicy.GeoLocation != nil && com.SchedulePolicy.GeoLocation.MatchExpressions != nil {
+		geoLocations := setNodeSelectorTerms(com.SchedulePolicy.GeoLocation.MatchExpressions)
+		if len(geoLocations) > 0 {
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
+			}
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+			}
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, geoLocations...)
 		}
 	}
 	return nodeAffinity
@@ -821,6 +686,10 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 	var err error
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
+			replicas := rbApp.Replicas[com.Name]
+			if replicas <= 0 {
+				return nil, fmt.Errorf("deployment name==%s, have zero replicas", com.Name)
+			}
 			dep := &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
@@ -837,26 +706,21 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Namespace = metav1.NamespaceDefault
 			}
 			dep.Name = com.Name
-			nodeAffinity := AddNodeAffinity(com)
-			dep.Spec.Template.Spec.Affinity = nodeAffinity
-
-			if com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeAffinityDaemon || com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeUserApp {
-				if dep.Spec.Template.Spec.NodeSelector == nil {
-					dep.Spec.Template.Spec.NodeSelector = map[string]string{
-						known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
-					}
-				} else {
-					dep.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
-				}
-			}
 
 			if !delete {
-				//dep.ClusterName = clusterName
 				dep.Spec.Template = com.Module
-				replicas := rbApp.Replicas[com.Name]
-				if replicas <= 0 {
-					return nil, fmt.Errorf("rbApps cannot get replicas, deployment name==%s, have nil Replicas \n", dep.Name)
+				nodeAffinity := AddNodeAffinity(com)
+				dep.Spec.Template.Spec.Affinity = nodeAffinity
+				if com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeAffinityDaemon || com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeUserApp {
+					if dep.Spec.Template.Spec.NodeSelector == nil {
+						dep.Spec.Template.Spec.NodeSelector = map[string]string{
+							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
+						}
+					} else {
+						dep.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
+					}
 				}
+				//dep.ClusterName = clusterName
 				label := dep.GetLabels()
 				if label != nil {
 					label[known.GaiaDescriptionLabel] = descName
@@ -871,6 +735,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			} else {
 				depUnstructured, err = ObjectConvertToUnstructured(dep)
 			}
+			break
 		}
 	}
 
@@ -894,96 +759,27 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 func setMatchExpressions(matchExpressions []metav1.LabelSelectorRequirement) []corev1.NodeSelectorRequirement {
 	nsRequirements := []corev1.NodeSelectorRequirement{}
 	for _, expression := range matchExpressions {
-		expression := corev1.NodeSelectorRequirement{
+		express := corev1.NodeSelectorRequirement{
 			Key:      expression.Key,
 			Operator: corev1.NodeSelectorOperator(expression.Operator),
 			Values:   expression.Values,
 		}
-		nsRequirements = append(nsRequirements, expression)
+		nsRequirements = append(nsRequirements, express)
 	}
 	return nsRequirements
 }
 
-func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement, nodeSelectorTerms []corev1.NodeSelectorTerm) []corev1.NodeSelectorTerm {
+func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement) []corev1.NodeSelectorTerm {
 	nsRequirements := setMatchExpressions(matchExpressions)
+	nodeSelectorTerms := []corev1.NodeSelectorTerm{}
 	nodeSelectorTerm := corev1.NodeSelectorTerm{
 		MatchExpressions: nsRequirements,
 	}
 	if len(nsRequirements) > 0 {
-		if len(nodeSelectorTerms) > 0 {
-			nodeSelectorTerms = append(nodeSelectorTerms, nodeSelectorTerm)
-		} else {
-			nodeSelectorTerms = []corev1.NodeSelectorTerm{}
-			nodeSelectorTerms = append(nodeSelectorTerms, nodeSelectorTerm)
-		}
+		nodeSelectorTerms = append(nodeSelectorTerms, nodeSelectorTerm)
+
 	}
 	return nodeSelectorTerms
-}
-
-func AssembledKnativeStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
-	serviceUnstructured := &unstructured.Unstructured{}
-	var err error
-	for _, rbApp := range rbApps {
-		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
-			replicas := rbApp.Replicas[com.Name]
-			if replicas > 0 {
-				ser := &serveringv1.Service{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "Service",
-						APIVersion: "serving.knative.dev/v1",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							known.GaiaDescriptionLabel: descName,
-						},
-					}}
-
-				if len(com.Namespace) > 0 {
-					ser.Namespace = com.Namespace
-				} else {
-					ser.Namespace = metav1.NamespaceDefault
-				}
-				ser.Name = com.Name
-				if !delete {
-					label := ser.GetLabels()
-					if label != nil {
-						label[known.GaiaDescriptionLabel] = descName
-					} else {
-						label = map[string]string{known.GaiaDescriptionLabel: descName}
-					}
-					ser.Labels = label
-					ser.Spec.Traffic = com.Serverless.Traffic
-					ser.Spec.Template = serveringv1.RevisionTemplateSpec{
-						ObjectMeta: com.Module.ObjectMeta,
-						Spec: serveringv1.RevisionSpec{
-							PodSpec:              com.Module.Spec,
-							ContainerConcurrency: com.Serverless.Revision.ContainerConcurrency,
-							TimeoutSeconds:       com.Serverless.Revision.TimeoutSeconds,
-						},
-					}
-					serviceUnstructured, err = ObjectConvertToUnstructured(ser)
-				} else {
-					serviceUnstructured, err = ObjectConvertToUnstructured(ser)
-				}
-				if err != nil {
-					msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
-					klog.ErrorDepth(5, msg)
-					return nil, err
-				}
-
-			}
-		}
-	}
-	if serviceUnstructured == nil || serviceUnstructured.Object == nil {
-		fmt.Printf("knative cluster  %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
-		return nil, nil
-	}
-	if len(serviceUnstructured.GetName()) <= 0 {
-		err = fmt.Errorf("failed to get serverless description component %s replicas from rb labels:%v", com.Name, rbApps)
-		klog.ErrorDepth(5, err)
-		return nil, err
-	}
-	return serviceUnstructured, nil
 }
 
 func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
@@ -1010,21 +806,21 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					ser.Namespace = metav1.NamespaceDefault
 				}
 				ser.Name = com.Name
-				nodeAffinity := AddNodeAffinity(&com)
-				ser.Spec.Module.Spec.Affinity = nodeAffinity
-
-				if com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeAffinityDaemon || com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeUserApp {
-					if ser.Spec.Module.Spec.NodeSelector == nil {
-						ser.Spec.Module.Spec.NodeSelector = map[string]string{
-							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
-						}
-					} else {
-						ser.Spec.Module.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
-					}
-				}
 
 				if !delete {
 					ser.Spec = com
+					nodeAffinity := AddNodeAffinity(&com)
+					ser.Spec.Module.Spec.Affinity = nodeAffinity
+					if com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeAffinityDaemon || com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeUserApp {
+						if ser.Spec.Module.Spec.NodeSelector == nil {
+							ser.Spec.Module.Spec.NodeSelector = map[string]string{
+								known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
+							}
+						} else {
+							ser.Spec.Module.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
+						}
+					}
+
 					label := ser.GetLabels()
 					if label != nil {
 						label[known.GaiaDescriptionLabel] = descName
@@ -1041,8 +837,8 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					klog.ErrorDepth(5, msg)
 					return nil, err
 				}
-
 			}
+			break
 		}
 	}
 	if serlessUnstructured == nil || serlessUnstructured.Object == nil {

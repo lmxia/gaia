@@ -67,12 +67,11 @@ const (
 	WorkloadTypeServerless     WorkloadType = "serverless"
 	WorkloadTypeAffinityDaemon WorkloadType = "affinitydaemon"
 	WorkloadTypeUserApp        WorkloadType = "userapp"
-	WorkloadTypeKnative        WorkloadType = "knative"
 )
 
 type Workload struct {
 	// +required
-	// +kubebuilder:validation:Enum=deployment;serverless;affinitydaemon;userapp;knative
+	// +kubebuilder:validation:Enum=deployment;serverless;affinitydaemon;userapp
 	Workloadtype WorkloadType `json:"workloadtype,omitempty"`
 	// +optional
 	TraitDeployment *TraitDeployment `json:"traitDeployment,omitempty"`

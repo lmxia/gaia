@@ -427,7 +427,7 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 
 var (
 	GeoLocationKey    = common.SpecificNodeLabelsKeyPrefix + "GeoLocation"
-	NetEnvironmentKey = common.SpecificNodeLabelsKeyPrefix + "NetworkEnv"
+	NetEnvironmentKey = common.SpecificNodeLabelsKeyPrefix + "NetEnvironment"
 	NodeRoleKey       = common.SpecificNodeLabelsKeyPrefix + "NodeRole"
 	ResFormKey        = common.SpecificNodeLabelsKeyPrefix + "ResForm"
 	RuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "RuntimeState"

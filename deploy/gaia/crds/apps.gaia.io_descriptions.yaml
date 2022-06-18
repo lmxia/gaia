@@ -8014,6 +8014,11 @@ spec:
                             threshold:
                               type: string
                           type: object
+                        traitUserAPP:
+                          properties:
+                            sn:
+                              type: string
+                          type: object
                         traitaffinitydaemon:
                           properties:
                             sns:

@@ -1,0 +1,25 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: UserAPP
+metadata:
+  name: userapp1
+spec:
+  sn: cluster1sn1
+  module:
+    metadata:
+      labels:
+        app: userapp1
+    spec:
+      containers:
+        - name: container1
+          image: http://<binary-url>
+          env:
+            - name: SCNID
+              value: "SCNID_C1_1"
+          resources:
+            limits:
+              cpu: "100m"
+              memory: "100Mi"
+            requests:
+              cpu: "100m"
+              memory: "100Mi"
+

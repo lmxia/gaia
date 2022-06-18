@@ -629,18 +629,13 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 					Labels: map[string]string{
 						known.GaiaDescriptionLabel: descName,
 					},
-				}}
-			if len(com.Namespace) > 0 {
-				userAPP.Namespace = com.Namespace
-			} else {
-				userAPP.Namespace = metav1.NamespaceDefault
+				},
 			}
 			userAPP.Name = com.Name
-			nodeAffinity := AddNodeAffinity(com)
-			userAPP.Spec.Module.Spec.Affinity = nodeAffinity
 
 			if !delete {
 				userAPP.Spec.Module = com.Module
+				userAPP.Spec.SN = com.Workload.TraitUserAPP.SN
 				label := userAPP.GetLabels()
 				if label != nil {
 					label[known.GaiaDescriptionLabel] = descName

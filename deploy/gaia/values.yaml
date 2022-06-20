@@ -8,6 +8,7 @@ common:
   promUrlPrefix: ""
   useHypernodeController: true
   topoSyncBaseUrl: http://192.168.101.11:31555
+  networkBindUrl: http://192.168.101.11:31555
   resourceBindingMergePostURL: http://192.168.101.73:37100/api/server/preScheduleSchemeReceiver
 
 replicaCount: 3

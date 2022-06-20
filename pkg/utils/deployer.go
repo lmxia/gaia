@@ -510,8 +510,7 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 						label = map[string]string{known.GaiaDescriptionLabel: descName}
 					}
 					ds.Spec.Template.Labels = label
-					selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
-					ds.Spec.Selector = selector
+					ds.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 					depUnstructured, err = ObjectConvertToUnstructured(ds)
 				} else {
 					depUnstructured, err = ObjectConvertToUnstructured(ds)
@@ -720,6 +719,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 						dep.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
 					}
 				}
+				dep.Spec.Replicas = &replicas
 				//dep.ClusterName = clusterName
 				label := dep.GetLabels()
 				if label != nil {
@@ -728,9 +728,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 					label = map[string]string{known.GaiaDescriptionLabel: descName}
 				}
 				dep.Spec.Template.Labels = label
-				dep.Spec.Replicas = &replicas
-				selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
-				dep.Spec.Selector = selector
+				dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 				depUnstructured, err = ObjectConvertToUnstructured(dep)
 			} else {
 				depUnstructured, err = ObjectConvertToUnstructured(dep)

@@ -54,6 +54,7 @@ spec:
             - --promUrlPrefix={{ .Values.common.promUrlPrefix }}
             - --useHypernodeController={{ .Values.common.useHypernodeController }}
             - --topoSyncBaseUrl={{ .Values.common.topoSyncBaseUrl }}
+            - --networkBindUrl={{ .Values.common.networkBindUrl }}
           resources:
             limits:
               cpu: 100m

@@ -692,7 +692,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Spec.Template = com.Module
 				nodeAffinity := AddNodeAffinity(com)
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
-				if com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeAffinityDaemon || com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeUserApp {
+				if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeDeployment || com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeServerless {
 					if dep.Spec.Template.Spec.NodeSelector == nil {
 						dep.Spec.Template.Spec.NodeSelector = map[string]string{
 							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
@@ -783,7 +783,7 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					ser.Spec = com
 					nodeAffinity := AddNodeAffinity(&com)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
-					if com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeAffinityDaemon || com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeUserApp {
+					if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeDeployment || com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeServerless {
 						if ser.Spec.Module.Spec.NodeSelector == nil {
 							ser.Spec.Module.Spec.NodeSelector = map[string]string{
 								known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
@@ -923,4 +923,32 @@ func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
 	}(resource)
 	wg.Wait()
 	return err
+}
+
+// check if we should binding network path.
+func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, networkReq *appsv1alpha1.NetworkRequirement) bool{
+	var compToClusterMap map[string]int32
+	for _, rbApp := range rbApps {
+		if clusterName == rbApp.ClusterName {
+			compToClusterMap = rbApp.Replicas
+		}
+	}
+	idToComponentMap := make(map[string]string, 0)
+	for _, netCommu := range networkReq.Spec.NetworkCommunication {
+		for _, selfID := range netCommu.SelfID {
+			idToComponentMap[selfID] = netCommu.Name
+		}
+	}
+
+	for _, netCommu := range networkReq.Spec.NetworkCommunication {
+		if len(netCommu.InterSCNID) > 0 {
+			for _, internalSCN := range netCommu.InterSCNID {
+				comName := idToComponentMap[internalSCN.Source.Id]
+				if compToClusterMap[comName] > 0  {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

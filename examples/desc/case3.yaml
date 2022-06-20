@@ -6,13 +6,15 @@ metadata:
 spec:
   appID: case3
   components:
-    - name: component1
+    - name: case3-component1
       namespace: test1
       runtimeType: runc
       workload:
         workloadtype: affinitydaemon
         traitaffinitydaemon:
-          sn: cluster1sn1
+          sns:
+            - 7d1ec81be6bb59cbd3a8609d18cd58c911a8648c
+            - 577c0bb88e8ff9e0658749356e01a3767fe5496c
       module:
         metadata:
           labels:
@@ -46,13 +48,13 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component2
+    - name: case3-component2
       namespace: test2
       runtimeType: runc
       schedulePolicy:
         specificResource:
           matchExpressions:
-            - { key: sn, operator: In, values: [ "core2-cluster1sn1" ] }
+            - { key: sn, operator: In, values: [ "4b7709a91af0e4828d7f28f02128aaded07f8c01" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -92,13 +94,13 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component3
+    - name: case3-component3
       namespace: test3
-      runtimeType: runc
+      runtimeType: kata
       schedulePolicy:
         specificResource:
           matchExpressions:
-            - { key: sn, operator: In, values: [ "core3-cluster1sn1" ] }
+            - { key: sn, operator: In, values: [ "86011e87e04eb9c7f42816cd1c936b2fc659d10b" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -138,7 +140,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component4
+    - name: case3-component4
       namespace: test4
       runtimeType: runc
       workload:
@@ -180,7 +182,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component5
+    - name: case3-component5
       namespace: test5
       runtimeType: runc
       workload:
@@ -222,7 +224,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component6
+    - name: case3-component6
       namespace: test6
       runtimeType: runc
       workload:

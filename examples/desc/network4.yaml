@@ -1,31 +1,27 @@
 apiVersion: apps.gaia.io/v1alpha1
 kind: NetworkRequirement
 metadata:
-  name: case2
+  name: case4
   namespace: gaia-reserved
 spec:
   networkCommunication:
-    - name: case2-component1
+    - name: case4-component1
       selfID:
-        - SCNID_C1_1
-        - SCNID_C1_2
-        - SCNID_C1_3
-        - SCNID_C1_4
-        - SCNID_C1_5
-        - SCNID_C1_6
+        - /pml/case4/c1/1
+        - /pml/case4/c1/2
+        - /pml/case4/c1/3
+        - /pml/case4/c1/4
+        - /pml/case4/c1/5
+        - /pml/case4/c1/6
       interSCNID:
         - source:
-            id: SCNID_C1_1
+            id: /pml/case4/c1/1
             attributes:
-              - key: Instance_NO
-                value:
               - key: POLICY_SOURCE
                 value: policy_inst1
           destination:
-            id: SCNID_C2_1
+            id: /pml/case4/c2/1
             attributes:
-              - key: Instance_NO
-                value:
               - key: POLICY_DEST
                 value: policy_inst2
           sla:
@@ -38,17 +34,13 @@ spec:
             - b
             - c
         - source:
-            id: SCNID_C1_3
+            id: /pml/case4/c1/3
             attributes:
-              - key: Instance_NO
-                value:
               - key: POLICY_SOURCE
                 value: policy_inst1
           destination:
-            id: SCNID_C4_1
+            id: /pml/case4/c4/1
             attributes:
-              - key: Instance_NO
-                value:
               - key: POLICY_DEST
                 value: policy_inst2
           sla:
@@ -61,17 +53,13 @@ spec:
             - b
             - c
         - source:
-            id: SCNID_C1_4
+            id: /pml/case4/c1/4
             attributes:
-              - key: Instance_NO
-                value:
               - key: POLICY_SOURCE
                 value: policy_inst1
           destination:
-            id: SCNID_C5_1
+            id: /pml/case4/c5/1
             attributes:
-              - key: Instance_NO
-                value:
               - key: POLICY_DEST
                 value: policy_inst2
           sla:
@@ -84,17 +72,13 @@ spec:
             - b
             - c
         - source:
-            id: SCNID_C1_5
+            id: /pml/case4/c1/5
             attributes:
-              - key: Instance_NO
-                value:
               - key: POLICY_SOURCE
                 value: policy_inst1
           destination:
-            id: SCNID_C6_1
+            id: /pml/case4/c6/1
             attributes:
-              - key: Instance_NO
-                value:
               - key: POLICY_DEST
                 value: policy_inst2
           sla:
@@ -106,18 +90,18 @@ spec:
             - a
             - b
             - c
-    - name: case2-component2
+    - name: case4-component2
       selfID:
-        - SCNID_C2_1
-    - name: case2-component3
+        - /pml/case4/c2/1
+    - name: case4-component3
       selfID:
-        - SCNID_C3_1
-    - name: case2-component4
+        - /pml/case4/c3/1
+    - name: case4-component4
       selfID:
-        - SCNID_C4_1
-    - name: case2-component5
+        - /pml/case4/c4/1
+    - name: case4-component5
       selfID:
-        - SCNID_C5_1
-    - name: case2-component6
+        - /pml/case4/c5/1
+    - name: case4-component6
       selfID:
-        - SCNID_C6_1
+        - /pml/case4/c6/1

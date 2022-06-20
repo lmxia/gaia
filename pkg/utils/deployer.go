@@ -520,18 +520,9 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 		}
 	}
 
-	if depUnstructured == nil || depUnstructured.Object == nil {
-		fmt.Printf("daemonSet cluster  %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
-		return nil, nil
-	}
 	if err != nil {
-		msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
+		msg := fmt.Sprintf("deamonset failed to unmarshal resource: %v", err)
 		klog.ErrorDepth(5, msg)
-		return nil, err
-	}
-	if len(depUnstructured.GetName()) <= 0 {
-		err = fmt.Errorf("failed to get daemonSet description component %s  from rb labels:%v", com.Name, rbApps)
-		klog.ErrorDepth(5, err)
 		return nil, err
 	}
 	return depUnstructured, nil
@@ -572,18 +563,9 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 		}
 	}
 
-	if depUnstructured == nil || depUnstructured.Object == nil {
-		fmt.Printf("userAPP cluster  %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
-		return nil, nil
-	}
 	if err != nil {
-		msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
+		msg := fmt.Sprintf("userAPP failed to unmarshal resource: %v", err)
 		klog.ErrorDepth(5, msg)
-		return nil, err
-	}
-	if len(depUnstructured.GetName()) <= 0 {
-		err = fmt.Errorf("failed to get userAPP description component %s  from rb labels:%v", com.Name, rbApps)
-		klog.ErrorDepth(5, err)
 		return nil, err
 	}
 	return depUnstructured, nil
@@ -737,20 +719,12 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 		}
 	}
 
-	if depUnstructured == nil || depUnstructured.Object == nil {
-		fmt.Printf("deploy cluster  %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
-		return nil, nil
-	}
 	if err != nil {
-		msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
+		msg := fmt.Sprintf("deployment failed to unmarshal resource: %v", err)
 		klog.ErrorDepth(5, msg)
 		return nil, err
 	}
-	if len(depUnstructured.GetName()) <= 0 {
-		err = fmt.Errorf("failed to get deployment description component %s replicas from rb labels:%v", com.Name, rbApps)
-		klog.ErrorDepth(5, err)
-		return nil, err
-	}
+
 	return depUnstructured, nil
 }
 
@@ -758,7 +732,7 @@ func setMatchExpressions(matchExpressions []metav1.LabelSelectorRequirement) []c
 	nsRequirements := []corev1.NodeSelectorRequirement{}
 	for _, expression := range matchExpressions {
 		express := corev1.NodeSelectorRequirement{
-			Key:      expression.Key,
+			Key:      known.SpecificNodeLabelsKeyPrefix + expression.Key,
 			Operator: corev1.NodeSelectorOperator(expression.Operator),
 			Values:   expression.Values,
 		}
@@ -839,13 +813,9 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 			break
 		}
 	}
-	if serlessUnstructured == nil || serlessUnstructured.Object == nil {
-		fmt.Printf("serverless cluster %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
-		return nil, nil
-	}
-	if len(serlessUnstructured.GetName()) <= 0 {
-		err = fmt.Errorf("failed to get serverless description component %s replicas from rb labels:%v", com.Name, rbApps)
-		klog.ErrorDepth(5, err)
+	if err != nil {
+		msg := fmt.Sprintf("serverless failed to unmarshal resource: %v", err)
+		klog.ErrorDepth(5, msg)
 		return nil, err
 	}
 	return serlessUnstructured, nil

@@ -389,7 +389,7 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 	if rb.Spec.StatusScheduler == appsv1alpha1.ResourceBindingSelected {
 		clusterName, desNs, errcluster := utils.GetLocalClusterName(c.localkubeclient)
 		if errcluster != nil {
-			klog.Errorf("parent handleResourceBinding failed to get local clustername From secret: %v", errcluster)
+			klog.Errorf("parent handle ResourceBinding failed to get local clustername From secret: %v", errcluster)
 			return errcluster
 		}
 		if len(clusterName) > 0 && len(rb.Spec.RbApps) > 0 {
@@ -421,7 +421,7 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 				// need schedule across clusters
 				if error := utils.ApplyRBWorkloads(context.TODO(), desc, c.parentGaiaclient, c.localdynamicClient,
 					c.restMapper, rb, clusterName); error != nil {
-					return fmt.Errorf("handleParentResourceBinding local apply workloads(components) failed")
+					return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
 				}
 			}
 		}
@@ -448,7 +448,7 @@ func (c *RBController) SetParentRBController() (*RBController, error) {
 	rbController, rberr := NewController(parentGaiaClient, parentgaiaInformerFactory.Apps().V1alpha1().ResourceBindings(),
 		c.handleParentResourceBinding)
 	if rberr != nil {
-		klog.Errorf(" local handleParentResourceBinding SetParentRBController rberr == %v", rberr)
+		klog.Errorf(" local handle ParentResourceBinding SetParentRBController rberr == %v", rberr)
 		return nil, rberr
 	}
 	c.rbParentController = rbController

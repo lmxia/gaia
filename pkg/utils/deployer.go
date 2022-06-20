@@ -589,20 +589,22 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 		},
 	}
 
-	if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
-		nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-	}
 	if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeAffinityDaemon {
-		nodeSelectorTermSNs := corev1.NodeSelectorTerm{
-			MatchExpressions: []corev1.NodeSelectorRequirement{{
-				Key:      v1alpha1.ParsedSNKey,
-				Operator: corev1.NodeSelectorOpIn,
-				Values:   com.Workload.TraitAffinityDaemon.SNS,
-			}},
+		if len(com.Workload.TraitAffinityDaemon.SNS) > 0 {
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+			}
+			nodeSelectorTermSNs := corev1.NodeSelectorTerm{
+				MatchExpressions: []corev1.NodeSelectorRequirement{{
+					Key:      v1alpha1.ParsedSNKey,
+					Operator: corev1.NodeSelectorOpIn,
+					Values:   com.Workload.TraitAffinityDaemon.SNS,
+				}},
+			}
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+			return nodeAffinity
 		}
-		nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-			append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
-		return nodeAffinity
 	}
 
 	if com.SchedulePolicy.Provider != nil && com.SchedulePolicy.Provider.MatchExpressions != nil {
@@ -926,7 +928,7 @@ func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
 }
 
 // check if we should binding network path.
-func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, networkReq *appsv1alpha1.NetworkRequirement) bool{
+func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, networkReq *appsv1alpha1.NetworkRequirement) bool {
 	var compToClusterMap map[string]int32
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName {
@@ -944,7 +946,7 @@ func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, cluste
 		if len(netCommu.InterSCNID) > 0 {
 			for _, internalSCN := range netCommu.InterSCNID {
 				comName := idToComponentMap[internalSCN.Source.Id]
-				if compToClusterMap[comName] > 0  {
+				if compToClusterMap[comName] > 0 {
 					return true
 				}
 			}

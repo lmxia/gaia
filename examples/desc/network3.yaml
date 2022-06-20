@@ -5,7 +5,7 @@ metadata:
   namespace: gaia-reserved
 spec:
   networkCommunication:
-    - name: component1
+    - name: case3-component1
       selfID:
         - SCNID_C1_1
         - SCNID_C1_2
@@ -106,18 +106,18 @@ spec:
             - a
             - b
             - c
-    - name: component2
+    - name: case3-component2
       selfID:
         - SCNID_C2_1
-    - name: component3
+    - name: case3-component3
       selfID:
         - SCNID_C3_1
-    - name: component4
+    - name: case3-component4
       selfID:
         - SCNID_C4_1
-    - name: component5
+    - name: case3-component5
       selfID:
         - SCNID_C5_1
-    - name: component6
+    - name: case3-component6
       selfID:
         - SCNID_C6_1

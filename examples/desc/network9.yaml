@@ -5,86 +5,86 @@ metadata:
   namespace: gaia-reserved
 spec:
   networkCommunication:
-  - name: component1
-    selfID:
-      - /pml/case9/c1/1
-    interSCNID:
-      - source:
-          id: /pml/case9/c1/1
-        destination:
-          id: /pml/case9/c4/1
-        sla:
-          delay: 20
-          lost: 100
-          jitter: 999999
-          bandwidth: 10
-        providers:
-          - jiangnan-fabric-101
-          - jiangnan-fabric-102
-          - jiangnan-fabric-103
-  - name: component2
-    selfID:
-      - /pml/case9/c2/1
-    interSCNID:
-      - source:
-          id: /pml/case9/c2/1
-        destination:
-          id: /pml/case9/c3/1
-        sla:
-          delay: 10
-          lost: 100
-          jitter: 999999
-          bandwidth: 10
-        providers:
-          - jiangnan-fabric-101
-          - jiangnan-fabric-102
-          - jiangnan-fabric-103
-      - source:
-          id: /pml/case9/c2/1
-        destination:
-          id: /pml/case9/c4/1
-        sla:
-          delay: 100
-          lost: 100
-          jitter: 999999
-          bandwidth: 10
-        providers:
-          - jiangnan-fabric-101
-          - jiangnan-fabric-102
-          - jiangnan-fabric-103
-      - source:
-          id: /pml/case9/c2/1
-        destination:
-          id: /pml/case9/c5/1
-        sla:
-          delay: 100
-          lost: 100
-          jitter: 999999
-          bandwidth: 10
-        providers:
-          - jiangnan-fabric-101
-          - jiangnan-fabric-102
-          - jiangnan-fabric-103
-  - name: component3
-    selfID:
-      - /pml/case9/c3/1
-    interSCNID:
-      - source:
-          id: /pml/case9/c3/1
-        destination:
-          id: /pml/case9/c5/1
-        sla:
-          delay: 40
-          lost: 100
-          jitter: 999999
-          bandwidth: 10
-        providers:
-          - jiangnan-fabric-101
-          - jiangnan-fabric-102
-          - jiangnan-fabric-103
-  - name: component4
-    selfID:
-      - /pml/case9/c4/1
-  - name: component5
-    selfID:
-      - /pml/case9/c5/1
+    - name: case9-component1
+      selfID:
+        - /pml/case9/c1/1
+      interSCNID:
+        - source:
+            id: /pml/case9/c1/1
+          destination:
+            id: /pml/case9/c4/1
+          sla:
+            delay: 20
+            lost: 100
+            jitter: 999999
+            bandwidth: 10
+          providers:
+            - jiangnan-fabric-101
+            - jiangnan-fabric-102
+            - jiangnan-fabric-103
+    - name: case9-component2
+      selfID:
+        - /pml/case9/c2/1
+      interSCNID:
+        - source:
+            id: /pml/case9/c2/1
+          destination:
+            id: /pml/case9/c3/1
+          sla:
+            delay: 10
+            lost: 100
+            jitter: 999999
+            bandwidth: 10
+          providers:
+            - jiangnan-fabric-101
+            - jiangnan-fabric-102
+            - jiangnan-fabric-103
+        - source:
+            id: /pml/case9/c2/1
+          destination:
+            id: /pml/case9/c4/1
+          sla:
+            delay: 100
+            lost: 100
+            jitter: 999999
+            bandwidth: 10
+          providers:
+            - jiangnan-fabric-101
+            - jiangnan-fabric-102
+            - jiangnan-fabric-103
+        - source:
+            id: /pml/case9/c2/1
+          destination:
+            id: /pml/case9/c5/1
+          sla:
+            delay: 100
+            lost: 100
+            jitter: 999999
+            bandwidth: 10
+          providers:
+            - jiangnan-fabric-101
+            - jiangnan-fabric-102
+            - jiangnan-fabric-103
+    - name: case9-component3
+      selfID:
+        - /pml/case9/c3/1
+      interSCNID:
+        - source:
+            id: /pml/case9/c3/1
+          destination:
+            id: /pml/case9/c5/1
+          sla:
+            delay: 40
+            lost: 100
+            jitter: 999999
+            bandwidth: 10
+          providers:
+            - jiangnan-fabric-101
+            - jiangnan-fabric-102
+            - jiangnan-fabric-103
+    - name: case9-component4
+      selfID:
+        - /pml/case9/c4/1
+    - name: case9-component5
+      selfID:
+        - /pml/case9/c5/1

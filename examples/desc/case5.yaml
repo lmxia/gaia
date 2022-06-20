@@ -6,13 +6,13 @@ metadata:
 spec:
   appID: case5
   components:
-    - name: component1
-      namespace: test1
+    - name: case5-component1
+      namespace: case5-test1
       runtimeType: runc
       schedulePolicy:
         geolocation:
           matchExpressions:
-            - { key: geo-location, operator: In, values: [ "beijing"] }
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-C21"] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -50,13 +50,13 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component2
-      namespace: test2
-      runtimeType: runc
+    - name: case5-component2
+      namespace: case5-test2
+      runtimeType: kata
       schedulePolicy:
         geolocation:
           matchExpressions:
-            - { key: geo-location, operator: In, values: [ "beijing", "nanjing" ] }
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-C21", "China-Huadong-Jiangsu-City-C31-District-C31", "China-Huadong-Jiangsu-City-C31-District-E31" ] }
         netenvironment:
           matchExpressions:
             - { key: netenviroment, operator: In, values: [ "core" ] }
@@ -99,8 +99,8 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component3
-      namespace: test3
+    - name: case5-component3
+      namespace: case5-test3
       runtimeType: runc
       dispersion: 2
       schedulePolicy:

@@ -509,7 +509,7 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					} else {
 						label = map[string]string{known.GaiaDescriptionLabel: descName}
 					}
-					ds.Labels = label
+					ds.Spec.Template.Labels = label
 					selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
 					ds.Spec.Selector = selector
 					depUnstructured, err = ObjectConvertToUnstructured(ds)
@@ -564,7 +564,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				} else {
 					label = map[string]string{known.GaiaDescriptionLabel: descName}
 				}
-				userAPP.Labels = label
+				userAPP.Spec.Module.Labels = label
 				depUnstructured, err = ObjectConvertToUnstructured(userAPP)
 			} else {
 				depUnstructured, err = ObjectConvertToUnstructured(userAPP)
@@ -727,7 +727,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				} else {
 					label = map[string]string{known.GaiaDescriptionLabel: descName}
 				}
-				dep.Labels = label
+				dep.Spec.Template.Labels = label
 				dep.Spec.Replicas = &replicas
 				selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
 				dep.Spec.Selector = selector
@@ -827,7 +827,7 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					} else {
 						label = map[string]string{known.GaiaDescriptionLabel: descName}
 					}
-					ser.Labels = label
+					ser.Spec.Module.Labels = label
 					serlessUnstructured, err = ObjectConvertToUnstructured(ser)
 				} else {
 					serlessUnstructured, err = ObjectConvertToUnstructured(ser)

@@ -1,0 +1,107 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: NetworkRequirement
+metadata:
+  name: case7
+  namespace: gaia-reserved
+spec:
+  networkCommunication:
+    - name: case7-component1
+      selfID:
+        - /pml/case7/c1/1
+        - /pml/case7/c1/2
+        - /pml/case7/c1/3
+        - /pml/case7/c1/4
+        - /pml/case7/c1/5
+        - /pml/case7/c1/6
+      interSCNID:
+        - source:
+            id: /pml/case7/c1/1
+            attributes:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: /pml/case7/c2/1
+            attributes:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            - a
+            - b
+            - c
+        - source:
+            id: /pml/case7/c1/3
+            attributes:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: /pml/case7/c4/1
+            attributes:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            - a
+            - b
+            - c
+        - source:
+            id: /pml/case7/c1/4
+            attributes:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: /pml/case7/c5/1
+            attributes:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            - a
+            - b
+            - c
+        - source:
+            id: /pml/case7/c1/5
+            attributes:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: /pml/case7/c6/1
+            attributes:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            - a
+            - b
+            - c
+    - name: case7-component2
+      selfID:
+        - /pml/case7/c2/1
+    - name: case7-component3
+      selfID:
+        - /pml/case7/c3/1
+    - name: case7-component4
+      selfID:
+        - /pml/case7/c4/1
+    - name: case7-component5
+      selfID:
+        - /pml/case7/c5/1
+    - name: case7-component6
+      selfID:
+        - /pml/case7/c6/1

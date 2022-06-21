@@ -589,9 +589,6 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 
 	if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeAffinityDaemon {
 		if len(com.Workload.TraitAffinityDaemon.SNS) > 0 {
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-			}
 			nodeSelectorTermSNs := corev1.NodeSelectorTerm{
 				MatchExpressions: []corev1.NodeSelectorRequirement{{
 					Key:      v1alpha1.ParsedSNKey,

@@ -88,10 +88,14 @@ type Scheduler struct {
 	// parentSchedulingQueue holds description in parent cluster namespace to be scheduled
 	parentSchedulingQueue workqueue.RateLimitingInterface
 
+	// parentSchedulingRetryQueue holds description in parent cluster namespace to be re scheduled
+	parentSchedulingRetryQueue workqueue.RateLimitingInterface
+
 	framework framework.Framework
 
 	lockLocal  sync.RWMutex
 	lockParent sync.RWMutex
+	lockReschedule sync.RWMutex
 }
 
 // NewSchedule returns a new Scheduler.
@@ -613,6 +617,59 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 				sched.lockParent.Lock()
 				defer sched.lockParent.Unlock()
 				sched.parentSchedulingQueue.AddRateLimited(klog.KObj(newDesc).String())
+			},
+		},
+	})
+
+	// config reschedule handlers.
+	sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: func(obj interface{}) bool {
+			switch t := obj.(type) {
+			case *appsapi.Description:
+				desc := obj.(*appsapi.Description)
+				if desc.DeletionTimestamp != nil {
+					sched.lockReschedule.Lock()
+					defer sched.lockReschedule.Unlock()
+					return false
+				}
+				if desc.Status.Phase == appsapi.DescriptionPhaseReSchedule {
+					return true
+				} else {
+					sched.lockReschedule.Lock()
+					defer sched.lockReschedule.Unlock()
+					return false
+				}
+
+			case cache.DeletedFinalStateUnknown:
+				if _, ok := t.Obj.(*appsapi.Description); ok {
+					return true
+				}
+				utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *Description in %T", obj, sched))
+				return false
+			default:
+				utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
+				return false
+			}
+		},
+		Handler: cache.ResourceEventHandlerFuncs{
+			AddFunc: func(obj interface{}) {
+				sub := obj.(*appsapi.Description)
+				sched.lockReschedule.Lock()
+				defer sched.lockReschedule.Unlock()
+				sched.parentSchedulingRetryQueue.AddRateLimited(klog.KObj(sub).String())
+			},
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				oldDesc := oldObj.(*appsapi.Description)
+				newDesc := newObj.(*appsapi.Description)
+
+				// Decide whether discovery has reported a spec change.
+				if reflect.DeepEqual(oldDesc.Spec, newDesc.Spec) {
+					klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing", klog.KObj(oldDesc))
+					return
+				}
+				sched.lockReschedule.Lock()
+				defer sched.lockReschedule.Unlock()
+				sched.parentSchedulingRetryQueue.AddRateLimited(klog.KObj(newDesc).String())
 			},
 		},
 	})

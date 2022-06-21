@@ -96,22 +96,10 @@ func NewRBController(localkubeclient *kubernetes.Clientset, localgaiaclient *gai
 		localdynamicClient:       localdynamicClient,
 		localGaiaInformerFactory: localGaiaInformerFactory,
 		restMapper:               restmapper.NewDeferredDiscoveryRESTMapper(cacheddiscovery.NewMemCacheClient(localkubeclient.Discovery())),
-		//descLister:         localGaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister(),
 	}
-
-	//newRBController, err := NewController(localgaiaclient, localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(),
-	//	rbController.handleLocalResourceBinding)
 	if err != nil {
 		return nil, err
 	}
-	//rbController.rbLocalController = newRBController
-
-	//newdesController, err := description.NewController(localgaiaclient, gaiaInformerFactory.Apps().V1alpha1().Descriptions(),
-	//	rbLocalController.handleDescription)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//rbLocalController.descLocalController = newdesController
 
 	return rbController, nil
 }
@@ -349,15 +337,6 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-//func (c *RBController) RunLocalResourceBinding(threadiness int, stopCh <-chan struct{}) {
-//	klog.Info("starting local runRB ResourceBinding  ...")
-//	defer klog.Info("shutting local  runRB scheduler")
-//	c.localGaiaInformerFactory.Start(stopCh)
-//	// todo: gorountine
-//	go c.rbLocalController.Run(threadiness, stopCh)
-//	<-stopCh
-//}
-
 func (c *RBController) RunParentResourceBinding(threadiness int, stopCh <-chan struct{}) {
 	klog.Info("starting parent ResourceBinding  ...")
 	defer klog.Info("shutting parent scheduler")
@@ -431,9 +410,6 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 func (c *RBController) handleParentDescription(desc *appsv1alpha1.Description) error {
 	klog.V(5).Infof("handle Description %s", klog.KObj(desc))
 	if desc != nil && desc.DeletionTimestamp != nil {
-		//utils.OffloadResourceBindingByDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
-		//utils.OffloadWorkloadsByDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
-
 		utils.OffloadDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
 	}
 	return nil

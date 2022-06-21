@@ -7,7 +7,7 @@ spec:
   appID: case5
   components:
     - name: case5-component1
-      namespace: case5-test1
+      namespace: test1
       runtimeType: runc
       schedulePolicy:
         geolocation:
@@ -32,7 +32,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C1_1"
+                  value: "/pml/case5/c1/1"
               resources:
                 limits:
                   cpu: "100m"
@@ -40,7 +40,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -51,12 +50,15 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
     - name: case5-component2
-      namespace: case5-test2
+      namespace: test2
       runtimeType: kata
       schedulePolicy:
         geolocation:
           matchExpressions:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-C21", "China-Huadong-Jiangsu-City-C31-District-C31", "China-Huadong-Jiangsu-City-C31-District-E31" ] }
+        provider:
+          matchExpressions:
+            - { key: provider, operator: In, values: [ "Huawei", "Tencent" ] }
         netenvironment:
           matchExpressions:
             - { key: netenviroment, operator: In, values: [ "core" ] }
@@ -79,7 +81,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C2_1"
+                  value: "/pml/case5/c2/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -89,7 +91,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -100,13 +101,16 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
     - name: case5-component3
-      namespace: case5-test3
+      namespace: test3
       runtimeType: runc
       dispersion: 2
       schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-C21", "China-Huadong-Jiangsu-City-C31-District-C31", "China-Huadong-Jiangsu-City-C31-District-E31" ] }
         provider:
           matchExpressions:
-            - { key: provider, operator: In, values: [ "Tencent", "Alibaba", "Huawei" ] }
+            - { key: provider, operator: In, values: [ "Huawei", "Tencent" ] }
         netenvironment:
           matchExpressions:
             - { key: netenviroment, operator: In, values: [ "core" ] }
@@ -129,7 +133,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C3_1"
+                  value: "/pml/case5/c3/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -139,7 +143,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:

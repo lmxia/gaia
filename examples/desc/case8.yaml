@@ -7,7 +7,7 @@ spec:
   appID: case8
   components:
     - name: case8-component1
-      namespace: case8-test1
+      namespace: test1
       runtimeType: runc
       workload:
         workloadtype: userapp
@@ -28,7 +28,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C1_1"
+                  value: "/pml/case8/c1/1"
               resources:
                 limits:
                   cpu: "100m"
@@ -36,7 +36,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -47,7 +46,7 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
     - name: case8-component2
-      namespace: case8-test2
+      namespace: test2
       runtimeType: runc
       schedulePolicy:
         geolocation:
@@ -77,7 +76,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C2_1"
+                  value: "/pml/case8/c2/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -87,7 +86,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -98,7 +96,7 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
     - name: case8-component3
-      namespace: case8-test3
+      namespace: test3
       runtimeType: runc
       schedulePolicy:
         geolocation:
@@ -123,7 +121,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C3_1"
+                  value: "/pml/case8/c3/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -133,7 +131,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -144,7 +141,7 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
     - name: case8-component4
-      namespace: case8-test4
+      namespace: test4
       runtimeType: runc
       schedulePolicy:
         geolocation:
@@ -169,7 +166,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C4_1"
+                  value: "/pml/case8/c4/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -179,7 +176,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -190,7 +186,7 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
     - name: case8-component5
-      namespace: case8-test5
+      namespace: test5
       runtimeType: runc
       schedulePolicy:
         geolocation:
@@ -215,7 +211,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C5_1"
+                  value: "/pml/case8/c5/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -225,7 +221,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -236,7 +231,7 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
     - name: case8-component6
-      namespace: case8-test6
+      namespace: test6
       runtimeType: runc
       schedulePolicy:
         geolocation:
@@ -261,7 +256,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C6_1"
+                  value: "/pml/case8/c6/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -271,7 +266,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:

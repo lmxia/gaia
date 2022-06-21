@@ -7,22 +7,18 @@ spec:
   networkCommunication:
     - name: case5-component1
       selfID:
-        - SCNID_C1_1
+        - /pml/case5/c1/1
       interSCNID:
         - source:
-            id: SCNID_C1_1
+            id: /pml/case5/c1/1
             attributes:
-              - key: k1
-                value: v1
-              - key: k2
-                value: v2
+              - key: POLICY_SOURCE
+                value: policy_inst1
           destination:
-            id: SCNID_C2_1
+            id: /pml/case5/c2/1
             attributes:
-              - key: k1
-                value: v1
-              - key: k2
-                value: v2
+              - key: POLICY_DEST
+                value: policy_inst2
           sla:
             delay: 100
             lost: 100
@@ -34,22 +30,18 @@ spec:
             - c
     - name: case5-component2
       selfID:
-        - SCNID_C2_1
+        - /pml/case5/c2/1
       interSCNID:
         - source:
-            id: SCNID_C2_1
+            id: /pml/case5/c2/1
             attributes:
-              - key: k1
-                value: v1
-              - key: k2
-                value: v2
+              - key: POLICY_SOURCE
+                value: policy_inst1
           destination:
-            id: SCNID_C1_1
+            id: /pml/case5/c1/1
             attributes:
-              - key: k1
-                value: v1
-              - key: k2
-                value: v2
+              - key: POLICY_DEST
+                value: policy_inst2
           sla:
             delay: 100
             lost: 100
@@ -61,4 +53,4 @@ spec:
             - c
     - name: case5-component3
       selfID:
-        - SCNID_C3_1
+        - /pml/case5/c3/1

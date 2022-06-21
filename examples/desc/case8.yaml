@@ -52,10 +52,10 @@ spec:
       schedulePolicy:
         geolocation:
           matchExpressions:
-            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-C11" ] }
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-E11" ] }
         provider:
           matchExpressions:
-            - { key: provider, operator: In, values: [ "Alibaba" ] }
+            - { key: provider, operator: In, values: [ "Tencent" ] }
       workload:
         workloadtype: serverless
         traitServerless:

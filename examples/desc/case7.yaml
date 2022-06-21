@@ -97,7 +97,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component3
+    - name: case7-component3
       namespace: case7-test3
       runtimeType: runc
       schedulePolicy:

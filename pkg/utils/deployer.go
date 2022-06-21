@@ -572,7 +572,6 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 }
 
 func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
-
 	nodeAffinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
@@ -585,7 +584,6 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 					}},
 				},
 			}},
-			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{},
 		},
 	}
 
@@ -600,6 +598,12 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 					Operator: corev1.NodeSelectorOpIn,
 					Values:   com.Workload.TraitAffinityDaemon.SNS,
 				}},
+			}
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
+			}
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = make([]corev1.NodeSelectorTerm, 0)
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
 				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)

@@ -17,7 +17,7 @@ image:
   repository: 172.17.9.231:8880/gaia
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.1.36
+  tag: 0.1.55
 
 imagePullSecrets: []
 nameOverride: ""

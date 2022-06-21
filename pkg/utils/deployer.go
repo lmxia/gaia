@@ -495,20 +495,8 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					ds.Spec.Template = com.Module
 					nodeAffinity := AddNodeAffinity(com)
 					ds.Spec.Template.Spec.Affinity = nodeAffinity
-					if ds.Spec.Template.Spec.NodeSelector == nil {
-						ds.Spec.Template.Spec.NodeSelector = map[string]string{
-							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
-						}
-					} else {
-						ds.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
-					}
 
 					label := ds.GetLabels()
-					if label != nil {
-						label[known.GaiaDescriptionLabel] = descName
-					} else {
-						label = map[string]string{known.GaiaDescriptionLabel: descName}
-					}
 					ds.Spec.Template.Labels = label
 					ds.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 					depUnstructured, err = ObjectConvertToUnstructured(ds)
@@ -549,11 +537,6 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				userAPP.Spec.Module = com.Module
 				userAPP.Spec.SN = com.Workload.TraitUserAPP.SN
 				label := userAPP.GetLabels()
-				if label != nil {
-					label[known.GaiaDescriptionLabel] = descName
-				} else {
-					label = map[string]string{known.GaiaDescriptionLabel: descName}
-				}
 				userAPP.Spec.Module.Labels = label
 				depUnstructured, err = ObjectConvertToUnstructured(userAPP)
 			} else {
@@ -695,23 +678,16 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Spec.Template = com.Module
 				nodeAffinity := AddNodeAffinity(com)
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
-				if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeDeployment || com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeServerless {
-					if dep.Spec.Template.Spec.NodeSelector == nil {
-						dep.Spec.Template.Spec.NodeSelector = map[string]string{
-							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
-						}
-					} else {
-						dep.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
+				if dep.Spec.Template.Spec.NodeSelector == nil {
+					dep.Spec.Template.Spec.NodeSelector = map[string]string{
+						known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
 					}
-				}
-				dep.Spec.Replicas = &replicas
-				//dep.ClusterName = clusterName
-				label := dep.GetLabels()
-				if label != nil {
-					label[known.GaiaDescriptionLabel] = descName
 				} else {
-					label = map[string]string{known.GaiaDescriptionLabel: descName}
+					dep.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
 				}
+
+				dep.Spec.Replicas = &replicas
+				label := dep.GetLabels()
 				dep.Spec.Template.Labels = label
 				dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 				depUnstructured, err = ObjectConvertToUnstructured(dep)
@@ -786,23 +762,14 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					ser.Spec = com
 					nodeAffinity := AddNodeAffinity(&com)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
-					if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeDeployment || com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeServerless {
-						if ser.Spec.Module.Spec.NodeSelector == nil {
-							ser.Spec.Module.Spec.NodeSelector = map[string]string{
-								known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
-							}
-						} else {
-							ser.Spec.Module.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
+					if ser.Spec.Module.Spec.NodeSelector == nil {
+						ser.Spec.Module.Spec.NodeSelector = map[string]string{
+							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
 						}
-					}
-
-					label := ser.GetLabels()
-					if label != nil {
-						label[known.GaiaDescriptionLabel] = descName
 					} else {
-						label = map[string]string{known.GaiaDescriptionLabel: descName}
+						ser.Spec.Module.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
 					}
-					ser.Spec.Module.Labels = label
+					ser.Spec.Module.Labels = ser.GetLabels()
 					serlessUnstructured, err = ObjectConvertToUnstructured(ser)
 				} else {
 					serlessUnstructured, err = ObjectConvertToUnstructured(ser)

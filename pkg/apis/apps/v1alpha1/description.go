@@ -161,6 +161,7 @@ const (
 	DescriptionPhaseScheduled DescriptionPhase = "Scheduled"
 	DescriptionPhasePending   DescriptionPhase = "Pending"
 	DescriptionPhaseFailure   DescriptionPhase = "Failure"
+	DescriptionPhaseReSchedule   DescriptionPhase = "ReSchedule"
 )
 
 // +kubebuilder:object:root=true

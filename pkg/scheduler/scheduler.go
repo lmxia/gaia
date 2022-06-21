@@ -88,6 +88,9 @@ type Scheduler struct {
 	// parentSchedulingQueue holds description in parent cluster namespace to be scheduled
 	parentSchedulingQueue workqueue.RateLimitingInterface
 
+	// parentSchedulingRetryQueue holds description in parent cluster namespace to be re scheduled
+	parentSchedulingRetryQueue workqueue.RateLimitingInterface
+
 	framework framework.Framework
 
 	lockLocal  sync.RWMutex

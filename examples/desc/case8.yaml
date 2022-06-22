@@ -8,11 +8,11 @@ spec:
   components:
     - name: case8-component1
       namespace: test1
-      runtimeType: runc
+      runtimeType: process
       workload:
         workloadtype: userapp
         traitUserAPP:
-          sn: 9112aaa87ffa1a104b22e271f63f8e49e0398efb
+          sn: 8b0baa0e1047bedb6534793f515a6bbdead5e612
       module:
         metadata:
           labels:
@@ -20,31 +20,10 @@ spec:
         spec:
           containers:
             - name: appcase8comp1
-              image: 172.17.9.231:8880/hyperio/app:latest
-              volumeMounts:
-                - mountPath: "/dev/shm"
-                  name: "shm"
-                - mountPath: "/tmp"
-                  name: "usock"
+              image: 172.17.9.231:8088/releases/userapp/app_scn
               env:
                 - name: SCNID
                   value: "/pml/case8/c1/1"
-              resources:
-                limits:
-                  cpu: "100m"
-                  memory: "100Mi"
-                requests:
-                  cpu: "100m"
-                  memory: "100Mi"
-          volumes:
-            - name: shm
-              hostPath:
-                path: /dev/shm
-                type: DirectoryOrCreate
-            - name: usock
-              hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
     - name: case8-component2
       namespace: test2
       runtimeType: runc

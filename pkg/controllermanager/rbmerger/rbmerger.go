@@ -216,6 +216,7 @@ func (rbMerger *RBMerger) handleToParentResourceBinding(rb *appv1alpha1.Resource
 				rbMerger.descResourceID[string(desc.GetUID())] = false
 			} else if v == true {
 				_ = rbMerger.deleteRB(rb)
+				rbMerger.deleteFieldAppIDKey(descName)
 			}
 		}
 	}
@@ -340,7 +341,7 @@ func (rbMerger *RBMerger) getMergedResourceBindings(chanResult chan []*appv1alph
 		if err != nil {
 			klog.V(3).InfoS("ResourceBinding of %q merge success, but not created success %q.", *parentRBName, common.GaiaRSToBeMergedReservedNamespace, err)
 		} else {
-			klog.Infof("ResourceBinding %q successfully merged and created.", *parentRBName)
+			klog.Infof("ResourceBinding %q successfully merged and %q created.", *parentRBName, newResultRB.Name)
 		}
 
 		index += 1
@@ -533,9 +534,9 @@ func (rbMerger *RBMerger) postMergedRBs(descName string) error {
 func (rbMerger *RBMerger) deleteRB(rb *appv1alpha1.ResourceBinding) error {
 	err := rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).Delete(context.TODO(), rb.Name, metav1.DeleteOptions{})
 	if err != nil {
-		klog.Infof("Resource Binding %q failed to delete. error: ", rb.Name, err)
+		klog.Infof("Already upload, Resource Binding %q failed to delete. error: ", rb.Name, err)
 	}
-	klog.Infof("Resource Binding %q be deleted successfully.", rb.Name)
+	klog.Infof("Already upload, Resource Binding %q be deleted successfully.", rb.Name)
 	return err
 }
 

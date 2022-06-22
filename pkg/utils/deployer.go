@@ -521,6 +521,10 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 	var err error
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
+			replicas := rbApp.Replicas[com.Name]
+			if replicas == 0 {
+				return nil, nil
+			}
 			userAPP := &appsv1alpha1.UserAPP{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "UserAPP",

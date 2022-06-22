@@ -8,13 +8,13 @@ spec:
   components:
     - name: case2-component1
       namespace: test1
-      runtimeType: runc
+      runtimeType: wasm
       workload:
         workloadtype: affinitydaemon
         traitaffinitydaemon:
           sns:
-            - 7d1ec81be6bb59cbd3a8609d18cd58c911a8648c
-            - 577c0bb88e8ff9e0658749356e01a3767fe5496c
+            - 8bf0eb4ab1abc39fc82faeb7cc1bed36ea542547
+            - ea4246361efd53cd14b546d81e5cd2a7c57d5ce8
       module:
         metadata:
           labels:
@@ -22,7 +22,7 @@ spec:
         spec:
           containers:
             - name: appcase2comp1
-              image: 172.17.9.231:8880/hyperio/app:latest
+              image: 172.17.9.231:8880/hyperwasm/appscn.wasm:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
                   name: "shm"
@@ -30,7 +30,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C1_1"
+                  value: "/pml/case2/c1/1"
               resources:
                 limits:
                   cpu: "100m"
@@ -38,7 +38,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -50,7 +49,7 @@ spec:
                 type: DirectoryOrCreate
     - name: case2-component2
       namespace: test2
-      runtimeType: runc
+      runtimeType: kata
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -70,7 +69,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C2_1"
+                  value: "/pml/case2/c2/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -80,7 +79,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -112,7 +110,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C3_1"
+                  value: "/pml/case2/c3/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -122,7 +120,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -154,7 +151,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C4_1"
+                  value: "/pml/case2/c4/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -164,7 +161,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -196,7 +192,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C5_1"
+                  value: "/pml/case2/c5/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -206,7 +202,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -238,7 +233,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C6_1"
+                  value: "/pml/case2/c6/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -248,7 +243,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:

@@ -14,7 +14,6 @@ spec:
         traitaffinitydaemon:
           sns:
             - 7d1ec81be6bb59cbd3a8609d18cd58c911a8648c
-            - 577c0bb88e8ff9e0658749356e01a3767fe5496c
       module:
         metadata:
           labels:
@@ -56,7 +55,6 @@ spec:
         workloadtype: affinitydaemon
         traitaffinitydaemon:
           sns:
-            - 7d1ec81be6bb59cbd3a8609d18cd58c911a8648c
             - 577c0bb88e8ff9e0658749356e01a3767fe5496c
       module:
         metadata:
@@ -99,8 +97,7 @@ spec:
         workloadtype: affinitydaemon
         traitaffinitydaemon:
           sns:
-            - 4b7709a91af0e4828d7f28f02128aaded07f8c01
-            - 99a7a23eb84671e7334701ae85228746c134fc2c
+            - 2acbb4fd3d711edd22f38b9bd25c94d1aa2edd38
       module:
         metadata:
           labels:

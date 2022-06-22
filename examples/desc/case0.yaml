@@ -28,7 +28,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "/pml/case0/comp1"
+                  value: "/pml/case0/c1/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -38,7 +38,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -70,7 +69,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "/pml/case0/comp2"
+                  value: "/pml/case0/c2/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -80,7 +79,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -112,7 +110,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "/pml/case0/comp3"
+                  value: "/pml/case0/c3/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -122,7 +120,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -154,7 +151,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "/pml/case0/comp4"
+                  value: "/pml/case0/c4/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -164,7 +161,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -196,7 +192,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "/pml/case0/comp5"
+                  value: "/pml/case0/c5/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -206,7 +202,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -238,7 +233,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "/pml/case0/comp6"
+                  value: "/pml/case0/c6/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -248,7 +243,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:

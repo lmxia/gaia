@@ -482,6 +482,10 @@ func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable, Av
 		for index, metric := range ClusterMetricList[:6] {
 			result, err := getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
 			if err == nil {
+				if len(result.(model.Vector)) <= 0 {
+					klog.Warningf("Query from prometheus successfully, but the result is a null array.")
+					valueList[index] = "0"
+				}
 				valueList[index] = result.(model.Vector)[0].Value.String()
 			} else {
 				valueList[index] = "0"

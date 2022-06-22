@@ -535,6 +535,7 @@ func (rbMerger *RBMerger) deleteRB(rb *appv1alpha1.ResourceBinding) error {
 	if err != nil {
 		klog.Infof("Resource Binding %q failed to delete. error: ", rb.Name, err)
 	}
+	klog.Infof("Resource Binding %q be deleted successfully.", rb.Name)
 	return err
 }
 

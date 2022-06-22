@@ -93,8 +93,8 @@ type Scheduler struct {
 
 	framework framework.Framework
 
-	lockLocal  sync.RWMutex
-	lockParent sync.RWMutex
+	lockLocal      sync.RWMutex
+	lockParent     sync.RWMutex
 	lockReschedule sync.RWMutex
 }
 
@@ -141,11 +141,12 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, e
 		localDescLister:     localAllGaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister(),
 		childKubeClientSet:  childKubeClientSet,
 
-		dynamicClient:         dynamicClient,
-		registry:              plugins.NewInTreeRegistry(),
-		scheduleAlgorithm:     algorithm.NewGenericScheduler(schedulerCache),
-		localSchedulingQueue:  workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
-		parentSchedulingQueue: workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
+		dynamicClient:              dynamicClient,
+		registry:                   plugins.NewInTreeRegistry(),
+		scheduleAlgorithm:          algorithm.NewGenericScheduler(schedulerCache),
+		localSchedulingQueue:       workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
+		parentSchedulingQueue:      workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
+		parentSchedulingRetryQueue: workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
 	}
 
 	framework, err := frameworkruntime.NewFramework(sched.registry, getDefaultPlugins(),

@@ -685,9 +685,8 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				if dep.Spec.Template.Spec.NodeSelector == nil {
 					dep.Spec.Template.Spec.NodeSelector = map[string]string{
 						known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
+						v1alpha1.ParsedRuntimeStateKey: com.RuntimeType,
 					}
-				} else {
-					dep.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
 				}
 
 				dep.Spec.Replicas = &replicas
@@ -769,9 +768,8 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					if ser.Spec.Module.Spec.NodeSelector == nil {
 						ser.Spec.Module.Spec.NodeSelector = map[string]string{
 							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
+							v1alpha1.ParsedRuntimeStateKey: com.RuntimeType,
 						}
-					} else {
-						ser.Spec.Module.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
 					}
 					ser.Spec.Module.Labels = ser.GetLabels()
 					serlessUnstructured, err = ObjectConvertToUnstructured(ser)

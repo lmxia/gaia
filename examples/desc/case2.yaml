@@ -4,7 +4,7 @@ metadata:
   name: case2
   namespace: gaia-reserved
 spec:
-  appID: appID-case2
+  appID: case2
   components:
     - name: case2-component1
       namespace: test1
@@ -59,9 +59,10 @@ spec:
           labels:
             app: appcase2
         spec:
+          runtimeClassName: kata-containers
           containers:
             - name: appcase2comp2
-              image: 172.17.9.231:8880/hyperio/app:latest
+              image: 172.17.9.231:8880/hyperio/app_kata:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
                   name: "shm"

@@ -4,7 +4,7 @@ metadata:
   name: case0
   namespace: gaia-reserved
 spec:
-  appID: appID-case0
+  appID: case0
   components:
     - name: case0-component1
       namespace: test1

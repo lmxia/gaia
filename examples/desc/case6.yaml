@@ -7,7 +7,7 @@ spec:
   appID: case6
   components:
     - name: case6-component1
-      namespace: case6-test1
+      namespace: test1
       runtimeType: runc
       dispersion: 2
       schedulePolicy:
@@ -57,7 +57,7 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
     - name: case6-component2
-      namespace: case6-test2
+      namespace: test2
       runtimeType: runc
       schedulePolicy:
         geolocation:
@@ -108,7 +108,7 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
     - name: case6-component3
-      namespace: case6-test3
+      namespace: test3
       runtimeType: runc
       schedulePolicy:
         geolocation:

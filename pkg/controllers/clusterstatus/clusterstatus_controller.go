@@ -278,7 +278,10 @@ func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
 	nodeLabels = make(map[string]string)
 
 	for _, node := range nodes {
-		nodeLabels = parseNodeLabels(nodeLabels, node.GetLabels(), node.GetName())
+		// get worker nodes' labels whose "NodeRole" is not "System"
+		if value, ok := node.GetLabels()[clusterapi.ParsedNodeRoleKey]; ok && value != "System" {
+			nodeLabels = parseNodeLabels(nodeLabels, node.GetLabels(), node.GetName())
+		}
 	}
 	return nodeLabels
 }
@@ -353,8 +356,11 @@ func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 
 		for _, hypernode := range hypernodeList.Items {
 			// get hypernodes' labels that are in Cluster level
-			if hypernode.Spec.NodeAreaType == "cluster" {
-				nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())
+			// only the worker node labels whose "NodeRole" is not "System"
+			if value, ok := hypernode.GetLabels()[clusterapi.NodeRoleKey]; ok && value != "System" {
+				if hypernode.Spec.NodeAreaType == "cluster" {
+					nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())
+				}
 			}
 		}
 	} else {

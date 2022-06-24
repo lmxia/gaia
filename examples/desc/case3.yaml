@@ -8,13 +8,13 @@ spec:
   components:
     - name: case3-component1
       namespace: test1
-      runtimeType: runc
+      runtimeType: wasm
       workload:
         workloadtype: affinitydaemon
         traitaffinitydaemon:
           sns:
-            - 7d1ec81be6bb59cbd3a8609d18cd58c911a8648c
-            - 577c0bb88e8ff9e0658749356e01a3767fe5496c
+            - 8bf0eb4ab1abc39fc82faeb7cc1bed36ea542547
+            - ea4246361efd53cd14b546d81e5cd2a7c57d5ce8
       module:
         metadata:
           labels:
@@ -22,7 +22,7 @@ spec:
         spec:
           containers:
             - name: appcase3comp1
-              image: 172.17.9.231:8880/hyperio/app:latest
+              image: 172.17.9.231:8880/hyperwasm/appscn.wasm:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
                   name: "shm"
@@ -108,9 +108,10 @@ spec:
           labels:
             app: appcase3
         spec:
+          runtimeClassName: kata-containers
           containers:
             - name: appcase3comp3
-              image: 172.17.9.231:8880/hyperio/app:latest
+              image: 172.17.9.231:8880/hyperio/app_kata:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
                   name: "shm"

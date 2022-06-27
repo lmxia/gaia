@@ -71,9 +71,10 @@ spec:
           labels:
             app: appcase5
         spec:
+          runtimeClassName: kata-containers
           containers:
             - name: appcase5comp2
-              image: 172.17.9.231:8880/hyperio/app:latest
+              image: 172.17.9.231:8880/hyperio/app_kata:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
                   name: "shm"
@@ -107,10 +108,10 @@ spec:
       schedulePolicy:
         geolocation:
           matchExpressions:
-            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-C21", "China-Huadong-Jiangsu-City-C31-District-C31", "China-Huadong-Jiangsu-City-C31-District-E31" ] }
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-C11", "China-Huadong-Jiangsu-City-C11-District-E11", "China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-C21" ] }
         provider:
           matchExpressions:
-            - { key: provider, operator: In, values: [ "Huawei", "Tencent" ] }
+            - { key: provider, operator: In, values: [ "Huawei", "Alibaba" ] }
         netenvironment:
           matchExpressions:
             - { key: netenviroment, operator: In, values: [ "core" ] }

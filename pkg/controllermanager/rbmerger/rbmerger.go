@@ -519,6 +519,7 @@ func (rbMerger *RBMerger) postMergedRBs(descName string) error {
 		return err
 	}
 	klog.Infof("PostHyperOM: Begin to post description %q to HyperOM.", descName)
+	fmt.Println(string(postBody))
 	res, err := http.Post(rbMerger.postURL, "application/json", bytes.NewReader(postBody))
 	defer func() { _ = res.Body.Close() }()
 	if err != nil {

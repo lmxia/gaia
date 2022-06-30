@@ -192,6 +192,9 @@ func (scheduler *Scheduler) Run(cxt context.Context) {
 			scheduler.SetparentDedicatedConfig(ctx)
 			scheduler.parentInformerFactory.Start(ctx.Done())
 			scheduler.parentInformerFactory.WaitForCacheSync(ctx.Done())
+			go func() {
+				wait.UntilWithContext(ctx, scheduler.RunParentReScheduler, 0)
+			}()
 			wait.UntilWithContext(ctx, scheduler.RunParentScheduler, 0)
 		},
 		OnStoppedLeading: func() {
@@ -281,7 +284,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	schedulingCycleCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, desc)
+	scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, nil, desc)
 	if err != nil {
 		sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
 		desc.Status.Phase = appsapi.DescriptionPhaseFailure
@@ -354,43 +357,43 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	schedulingCycleCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	labelSelector := labels.NewSelector()
+	requirement, _ := labels.NewRequirement(common.GaiaDescriptionLabel, selection.Equals, []string{desc.Name})
+	labelSelector = labelSelector.Add(*requirement)
+	// get rbs
+	rbs, _ := sched.parentResourceBindingLister.List(labelSelector)
+	// get mcls
 	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
 	if len(mcls.Items) == 0 {
 		// there is no child clusters. no need to schedule just transfer.
-		labelSelector := labels.NewSelector()
-		requirement, _ := labels.NewRequirement(common.GaiaDescriptionLabel, selection.Equals, []string{desc.Name})
-		labelSelector = labelSelector.Add(*requirement)
-		if rbs, err := sched.parentResourceBindingLister.List(labelSelector); err == nil {
-			for _, item := range rbs {
-				rb := &appsapi.ResourceBinding{}
-				rb.Name = item.Name
-				rb.Namespace = common.GaiaRSToBeMergedReservedNamespace
-				rb.Labels = item.Labels
-				rb.Spec = appsapi.ResourceBindingSpec{
-					AppID:       desc.Name,
-					ParentRB:    item.Spec.ParentRB,
-					RbApps:      item.Spec.RbApps,
-					TotalPeer:   item.Spec.TotalPeer,
-					NetworkPath: item.Spec.NetworkPath,
-				}
-				_, errCreate := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
-					Create(ctx, rb, metav1.CreateOptions{})
-				if errCreate != nil {
-					klog.Infof("create rb in local to be merged ns error", errCreate)
-				}
+		for _, item := range rbs {
+			rb := &appsapi.ResourceBinding{}
+			rb.Name = item.Name
+			rb.Namespace = common.GaiaRSToBeMergedReservedNamespace
+			rb.Labels = item.Labels
+			rb.Spec = appsapi.ResourceBindingSpec{
+				AppID:       desc.Name,
+				ParentRB:    item.Spec.ParentRB,
+				RbApps:      item.Spec.RbApps,
+				TotalPeer:   item.Spec.TotalPeer,
+				NetworkPath: item.Spec.NetworkPath,
 			}
-			klog.V(3).InfoS("scheduler success just change rb namespace.")
-			err := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
-				DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-					common.GaiaDescriptionLabel: desc.Name,
-				}).String()})
-			if err != nil {
-				klog.Infof("faild to delete rbs in parent cluster", err)
+			_, errCreate := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
+				Create(ctx, rb, metav1.CreateOptions{})
+			if errCreate != nil {
+				klog.Infof("create rb in local to be merged ns error", errCreate)
 			}
-
+		}
+		klog.V(3).InfoS("scheduler success just change rb namespace.")
+		err := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
+			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+				common.GaiaDescriptionLabel: desc.Name,
+			}).String()})
+		if err != nil {
+			klog.Infof("faild to delete rbs in parent cluster", err)
 		}
 	} else {
-		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, desc)
+		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
 		if err != nil {
 			sched.recordParentSchedulingFailure(desc, err, ReasonUnschedulable)
 			return
@@ -428,6 +431,83 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 	klog.Info("scheduler success")
 }
+
+// run reschedule in agent cluster.
+func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
+	klog.Info("start to re schedule one description...")
+	defer klog.Info("finish re schedule a description")
+	key, shutdown := sched.parentSchedulingRetryQueue.Get()
+	if shutdown {
+		klog.Error("failed to get next unscheduled description from closed retry queue")
+		return
+	}
+	defer sched.parentSchedulingRetryQueue.Done(key)
+
+	// Convert the namespace/name string into a distinct namespace and name
+	ns, name, err := cache.SplitMetaNamespaceKey(key.(string))
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		return
+	}
+
+	desc, err := sched.parentDescriptionLister.Descriptions(ns).Get(name)
+	if err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	klog.InfoS("Attempting to re schedule description", "description", klog.KObj(desc))
+
+	// Synchronously attempt to find a fit for the description.
+	start := time.Now()
+
+	schedulingCycleCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	labelSelector := labels.NewSelector()
+	requirement, _ := labels.NewRequirement(common.GaiaDescriptionLabel, selection.Equals, []string{desc.Name})
+	labelSelector = labelSelector.Add(*requirement)
+	// get rbs we need only one that is the selected one.
+	rbList, _ := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaReservedNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector.String(),
+	})
+	rbs := make([]*appsapi.ResourceBinding, 0)
+	rbs = append(rbs, &rbList.Items[0])
+
+	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	if len(mcls.Items) > 0 {
+		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
+		if err != nil {
+			sched.recordParentReSchedulingFailure(desc, err, ReasonUnschedulable)
+			return
+		}
+		localRB, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaRBMergedReservedNamespace).List(ctx,metav1.ListOptions{
+			LabelSelector: labelSelector.String(),
+		})
+		if err != nil {
+			sched.recordParentReSchedulingFailure(desc, err, ReasonUnschedulable)
+			return
+		}
+		for _, rbapp := range scheduleResult.ResourceBindings[0].Spec.RbApps {
+			rbItemApp := rbapp.DeepCopy()
+			if rbItemApp.ClusterName == sched.selfClusterName {
+				localRB.Items[0].Spec.RbApps = rbItemApp.Children
+				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaRBMergedReservedNamespace).
+					Update(ctx, &localRB.Items[0], metav1.UpdateOptions{})
+				if err != nil {
+					klog.InfoS("scheduler success, but rb not update success", rb)
+				}
+				break
+			}
+		}
+	}
+
+	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+	sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
+	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
+	klog.Info("scheduler success")
+}
+
 
 func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 	// complete your controller loop here
@@ -506,6 +586,17 @@ func (sched *Scheduler) recordParentSchedulingFailure(sub *appsapi.Description, 
 	sched.framework.EventRecorder().Event(sub, corev1.EventTypeWarning, "FailedScheduling", msg)
 	// re-added to the queue for re-processing
 	sched.parentSchedulingQueue.AddRateLimited(klog.KObj(sub).String())
+}
+
+// recordParentReSchedulingFailure records an event for the description that indicates the
+// Description has failed to re schedule. Also, update the description condition.
+func (sched *Scheduler) recordParentReSchedulingFailure(sub *appsapi.Description, err error, reason string) {
+	klog.V(2).InfoS("Unable to re schedule Description; waiting", "Description", klog.KObj(sub), "err", err)
+
+	msg := truncateMessage(err.Error())
+	sched.framework.EventRecorder().Event(sub, corev1.EventTypeWarning, reason, msg)
+	// re-added to the queue for re-processing
+	sched.parentSchedulingRetryQueue.AddRateLimited(klog.KObj(sub).String())
 }
 
 // addLocalAllEventHandlers is a helper function used in Scheduler

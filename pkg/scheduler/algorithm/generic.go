@@ -50,15 +50,15 @@ func (g *genericScheduler) SetSelfClusterName(name string) {
 }
 
 // Schedule
-func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework, desc *v1alpha1.Description) (result ScheduleResult, err error) {
+func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework, rbs []*v1alpha1.ResourceBinding, desc *v1alpha1.Description) (result ScheduleResult, err error) {
 	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: desc.Namespace}, utiltrace.Field{Key: "name", Value: desc.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
 
 	// 1. get rbs, if has
-	rbs := make([]*v1alpha1.ResourceBinding, 0)
-	if desc.Namespace != common.GaiaReservedNamespace {
-		rbs = g.cache.ListResourceBindings(desc, common.StatusScheduling)
-	}
+	//rbs := make([]*v1alpha1.ResourceBinding, 0)
+	//if desc.Namespace != common.GaiaReservedNamespace {
+	//	rbs = g.cache.ListResourceBindings(desc, common.StatusScheduling)
+	//}
 	// 2. get backup clusters.
 	if g.cache.NumClusters() == 0 {
 		return result, ErrNoClustersAvailable

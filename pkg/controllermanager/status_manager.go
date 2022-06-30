@@ -5,6 +5,9 @@ import (
 	"context"
 	"errors"
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
+	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	"github.com/lmxia/gaia/pkg/features"
+	"k8s.io/klog/v2"
 	"os"
 	"strings"
 
@@ -25,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog/v2"
 )
 
 type Manager struct {
@@ -87,6 +89,18 @@ func (mgr *Manager) Run(ctx context.Context, parentDedicatedKubeConfig *rest.Con
 }
 
 func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterID string, client gaiaclientset.Interface, backoff wait.Backoff) {
+
+	if features.DefaultMutableFeatureGate.Enabled(features.AbnormalScheduler) {
+		if isParent, errGetCluster := mgr.clusterStatusController.IsParentCluster(); errGetCluster == nil {
+			if isParent {
+				// monitor abnormal pods and modify their descriptions' status to rescheduled
+				mgr.modifyDescStatusForAbnormalPods(ctx, namespace, client)
+			} else {
+				klog.Infof("This cluster is not a parent cluster. ")
+			}
+		}
+	}
+
 	if mgr.managedCluster == nil {
 		managedClusters, err := client.PlatformV1alpha1().ManagedClusters(namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set{
@@ -156,4 +170,22 @@ func (mgr *Manager) getNewManagedClusterLabels() map[string]string {
 		}
 	}
 	return labels.Merge(managedClusterLabels, mgr.clusterStatusController.GetManagedClusterLabels())
+}
+
+func (mgr *Manager) modifyDescStatusForAbnormalPods(ctx context.Context, namespace string, client gaiaclientset.Interface) {
+	descNameMap := mgr.clusterStatusController.GetDescNameFromAbnormalPod()
+	if len(descNameMap) == 0 {
+		klog.Infof("There is no description that needs to be updated.")
+		return
+	}
+	for descName, _ := range descNameMap {
+		desc, _ := client.AppsV1alpha1().Descriptions(namespace).Get(ctx, descName, metav1.GetOptions{})
+		desc.Status.Phase = appsapi.DescriptionPhaseReSchedule
+		klog.Infof("Update the the status phase of the desc(%v/%v)to %v", namespace, descName, desc.Status.Phase)
+		_, err := client.AppsV1alpha1().Descriptions(namespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+		if err != nil {
+			klog.Warningf("Update the the status phase of the desc(%v) failed. %v", descName, err)
+			return
+		}
+	}
 }

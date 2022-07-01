@@ -482,6 +482,7 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
 							known.GaiaDescriptionLabel: descName,
+							known.GaiaComponentLabel: com.Name,
 						},
 					}}
 				if len(com.Namespace) > 0 {
@@ -533,6 +534,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						known.GaiaDescriptionLabel: descName,
+						known.GaiaComponentLabel: com.Name,
 					},
 				},
 			}
@@ -669,6 +671,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						known.GaiaDescriptionLabel: descName,
+						known.GaiaComponentLabel: com.Name,
 					},
 				}}
 			if len(com.Namespace) > 0 {
@@ -751,6 +754,7 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
 							known.GaiaDescriptionLabel: descName,
+							known.GaiaComponentLabel: com.Name,
 						},
 					},
 				}

@@ -480,7 +480,7 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 			sched.recordParentReSchedulingFailure(desc, err, ReasonUnschedulable)
 			return
 		}
-		localRB, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaRBMergedReservedNamespace).List(ctx,metav1.ListOptions{
+		localRB, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaRBMergedReservedNamespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labelSelector.String(),
 		})
 		if err != nil {
@@ -507,7 +507,6 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 	klog.Info("scheduler success")
 }
-
 
 func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 	// complete your controller loop here

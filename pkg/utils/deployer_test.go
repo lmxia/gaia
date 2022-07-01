@@ -12,8 +12,8 @@ import (
 type DeployerSuite struct {
 	clustername string
 	rb0         []*v1alpha1.ResourceBindingApps
-	network1     *v1alpha1.NetworkRequirement
-	network2     *v1alpha1.NetworkRequirement
+	network1    *v1alpha1.NetworkRequirement
+	network2    *v1alpha1.NetworkRequirement
 	suite.Suite
 }
 
@@ -92,8 +92,8 @@ func (suite *DeployerSuite) SetupTest() {
 					},
 				},
 				1: {
-					Name:       "b",
-					SelfID:     []string{"scb1"},
+					Name:   "b",
+					SelfID: []string{"scb1"},
 					InterSCNID: []v1alpha1.InterSCNID{
 						0: {
 							Source: v1alpha1.Direction{
@@ -163,8 +163,8 @@ func (suite *DeployerSuite) SetupTest() {
 					},
 				},
 				1: {
-					Name:       "b",
-					SelfID:     []string{"scb1"},
+					Name:   "b",
+					SelfID: []string{"scb1"},
 				},
 			},
 		},

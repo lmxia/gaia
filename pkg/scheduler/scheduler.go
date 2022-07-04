@@ -467,7 +467,7 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	requirement, _ := labels.NewRequirement(common.GaiaDescriptionLabel, selection.Equals, []string{desc.Name})
 	labelSelector = labelSelector.Add(*requirement)
 	// get rbs we need only one that is the selected one.
-	rbList, _ := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaReservedNamespace).List(ctx, metav1.ListOptions{
+	rbList, _ := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaRBMergedReservedNamespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labelSelector.String(),
 	})
 	rbs := make([]*appsapi.ResourceBinding, 0)
@@ -539,7 +539,6 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 					sched.parentGaiaClient, known.DefaultResync, gaiainformers.WithNamespace(sched.dedicatedNamespace))
 				sched.parentDescriptionLister = sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Lister()
 				sched.parentResourceBindingLister = sched.parentInformerFactory.Apps().V1alpha1().ResourceBindings().Lister()
-				sched.scheduleAlgorithm.SetRBLister(sched.parentResourceBindingLister)
 				sched.scheduleAlgorithm.SetSelfClusterName(sched.selfClusterName)
 				sched.addParentAllEventHandlers()
 			} else {

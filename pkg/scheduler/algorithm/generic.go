@@ -22,7 +22,6 @@ import (
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 
 	"github.com/lmxia/gaia/pkg/common"
-	applisterv1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	schedulerapis "github.com/lmxia/gaia/pkg/scheduler/apis"
 	schedulercache "github.com/lmxia/gaia/pkg/scheduler/cache"
 	framework2 "github.com/lmxia/gaia/pkg/scheduler/framework"
@@ -41,10 +40,6 @@ type genericScheduler struct {
 	nextStartClusterIndex       int
 }
 
-func (g *genericScheduler) SetRBLister(lister applisterv1alpha1.ResourceBindingLister) {
-	g.cache.SetRBLister(lister)
-}
-
 func (g *genericScheduler) SetSelfClusterName(name string) {
 	g.cache.SetSelfClusterName(name)
 }
@@ -54,18 +49,13 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: desc.Namespace}, utiltrace.Field{Key: "name", Value: desc.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
 
-	// 1. get rbs, if has
-	//rbs := make([]*v1alpha1.ResourceBinding, 0)
-	//if desc.Namespace != common.GaiaReservedNamespace {
-	//	rbs = g.cache.ListResourceBindings(desc, common.StatusScheduling)
-	//}
-	// 2. get backup clusters.
+	// 1. get backup clusters.
 	if g.cache.NumClusters() == 0 {
 		return result, ErrNoClustersAvailable
 	}
 	allClusters, _ := g.cache.ListClusters(&metav1.LabelSelector{})
 	numComponent := len(desc.Spec.Components)
-	// 3, means allspread, one spread, 2 spread.
+	// 2, means allspread, one spread, 2 spread.
 	allResultGlobal := make([][]mat.Matrix, 3)
 	for i := 0; i < 3; i++ {
 		allResultGlobal[i] = make([]mat.Matrix, numComponent)

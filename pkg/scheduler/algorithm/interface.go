@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	applisters "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 )
 
@@ -12,7 +11,6 @@ import (
 // managed clusters.
 type ScheduleAlgorithm interface {
 	Schedule(context.Context, framework.Framework, []*v1alpha1.ResourceBinding, *v1alpha1.Description) (scheduleResult ScheduleResult, err error)
-	SetRBLister(lister applisters.ResourceBindingLister)
 	SetSelfClusterName(name string)
 }
 

@@ -57,7 +57,7 @@ type CRRApprover struct {
 
 // NewCRRApprover returns a new CRRApprover for ClusterRegistrationRequest.
 func NewCRRApprover(localkubeclient *kubernetes.Clientset, localgaiaclient *gaiaClientSet.Clientset, localKubeConfig *rest.Config,
-	gaiaInformerFactory externalInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+		gaiaInformerFactory externalInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
 	localdynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 
 	crrApprover := &CRRApprover{
@@ -274,7 +274,7 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *platformv
 	if err != nil {
 		return err
 	}
-	err = crrApprover.bindingRoleIfNeeded(sa.Name, sa.Namespace)
+	err = crrApprover.bindingRoleIfNeeded(sa.Name, sa.Namespace, crr.Spec.ClusterName)
 	if err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 }
 
 func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterName string, clusterID types.UID,
-	clusterLabels map[string]string) (*platformv1alpha1.ManagedCluster, error) {
+		clusterLabels map[string]string) (*platformv1alpha1.ManagedCluster, error) {
 	// checks for an existed ManagedCluster object
 	// the clusterName here may vary, we use clusterID as the identifier
 	mcs, err := crrApprover.mclsLister.List(labels.SelectorFromSet(labels.Set{
@@ -476,7 +476,7 @@ func (crrApprover *CRRApprover) bindingClusterRolesIfNeeded(serviceAccountName, 
 	return utilerrors.NewAggregate(allErrs)
 }
 
-func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespace string) error {
+func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespace, clusterName string) error {
 	var allErrs []error
 	wg := sync.WaitGroup{}
 
@@ -505,7 +505,7 @@ func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespac
 			defer wg.Done()
 			err := utils.EnsureRoleBinding(context.TODO(), rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        fmt.Sprintf("%s-%s", r.Name, serviceAccountName),
+					Name:        fmt.Sprintf("%s-%s", r.Name, clusterName),
 					Namespace:   r.Namespace,
 					Annotations: map[string]string{known.AutoUpdateAnnotation: "true"},
 					Labels: map[string]string{

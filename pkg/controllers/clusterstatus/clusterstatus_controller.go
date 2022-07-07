@@ -538,3 +538,63 @@ func getSubStringWithSpecifiedDecimalPlace(inputString string, m int) string {
 	}
 	return newString[0] + "." + newString[1][:m]
 }
+
+// DescComMap declares a map whose keys are the components' names and the values are null structs
+type DescComMap map[string]struct{}
+
+// DescNameMap declares a map whose keys are the descriptions' names and the values are the DescComMap
+type DescNameMap map[string]DescComMap
+
+// GetDescNameFromAbnormalPod returns a map whose keys are the descriptions' name
+// Those descriptions' pods are abnormal according to the specified metrics
+func (c *Controller) GetDescNameFromAbnormalPod() (descNameMap DescNameMap) {
+	descNameMap = make(DescNameMap)
+	// get metricPsql from the config map file
+	metricMap, _, err := utils.InitConfig(known.ServiceMaintenanceConfigMapAbsFilePath)
+	if err != nil {
+		klog.Warningf("Wrong metrics, err: %v", err)
+		return
+	}
+
+	for _, metricPsql := range metricMap {
+		pendingLatencyResult, err := getDataFromPrometheus(c.promUrlPrefix, metricPsql)
+		if err != nil {
+			klog.Warningf("Query failed from prometheus, err is %v. The metric is %v", err, metricPsql)
+			return
+		}
+		resultList := pendingLatencyResult.(model.Vector)
+		if len(resultList) > 0 {
+			for _, result := range resultList {
+				podNamespace := result.Metric["destination_namespace"]
+				podName := result.Metric["destination_pod"]
+				podUid := result.Metric["destination_pod_uid"]
+				podDescName := result.Metric["destination_pod_description_name"]
+				podComName := result.Metric["destination_pod_component_name"]
+				klog.V(5).InfoS("pod is abnormal according to the metric: ", "podNamespace", podNamespace, "podName", podName, "podUid", podUid, "metricPsql", metricPsql)
+				if comMap, ok := descNameMap[string(podDescName)]; ok {
+					if _, exist := comMap[string(podComName)]; !exist {
+						comMap[string(podComName)] = struct{}{}
+					}
+				} else {
+					descNameMap[string(podDescName)] = make(map[string]struct{})
+				}
+			}
+		} else {
+			klog.V(5).Infof("the query result of metricPsql(%v) is a null array.", metricPsql)
+		}
+	}
+	return
+}
+
+// IsParentCluster return whether it is a parent cluster
+func (c *Controller) IsParentCluster() (bool, error) {
+	clusters, err := c.mclsLister.List(labels.Everything())
+	if err != nil {
+		klog.Warningf("Failed to list clusters: %v, therefore, the cluster cannot confirm whether it is a parent cluster.", err)
+		return false, err
+	}
+	if len(clusters) > 0 {
+		return true, nil
+	}
+	return false, nil
+}

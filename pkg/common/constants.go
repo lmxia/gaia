@@ -67,7 +67,8 @@ const (
 	// env
 	ResourceBindMergePostURL = "RESOURCEBINDING_MERGER_POST_URL"
 
-	MetricConfigMapAbsFilePath = "/etc/config/gaia-prometheus_metrics.conf"
+	MetricConfigMapAbsFilePath             = "/etc/config/gaia-prometheus_metrics.conf"
+	ServiceMaintenanceConfigMapAbsFilePath = "/etc/config/service-maintenance-prometheus_metrics.conf"
 
 	HypernodeClusterNodeRole       = "hypernode.cluster.pml.com.cn/node-role"
 	HypernodeClusterNodeRolePublic = "Public"

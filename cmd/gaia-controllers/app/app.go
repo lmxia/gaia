@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"github.com/lmxia/gaia/pkg/controllermanager"
+	"github.com/lmxia/gaia/pkg/features"
 	"github.com/lmxia/gaia/pkg/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -44,6 +45,7 @@ func NewGaiaControllerCmd(ctx context.Context) *cobra.Command {
 
 	version.AddVersionFlag(cmd.Flags())
 	opts.AddFlags(cmd.Flags())
+	features.DefaultMutableFeatureGate.AddFlag(cmd.Flags())
 	return cmd
 
 }

@@ -8049,6 +8049,7 @@ spec:
                 - Pending
                 - Scheduled
                 - Failure
+                - ReSchedule
                 type: string
               reason:
                 description: Reason indicates the reason of DescriptionPhase

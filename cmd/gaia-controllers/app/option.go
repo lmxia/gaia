@@ -16,6 +16,7 @@ import (
 type options struct {
 	kubeconfig          string
 	clusterHostName     string
+	networkBindUrl      string
 	clusterRegistration *ClusterRegistrationOptions
 	managedCluster      *clusterapi.ManagedClusterOptions
 }
@@ -25,6 +26,7 @@ func (opts *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&opts.kubeconfig, "kubeconfig", opts.kubeconfig,
 		"Path to a kubeconfig file for current child cluster. Only required if out-of-cluster")
 	fs.StringVar(&opts.clusterHostName, "clustername", opts.clusterHostName, "To generate ClusterRegistration name and gaiaName as gaia-'clustername'-UID ")
+	fs.StringVar(&opts.networkBindUrl, "networkBindUrl", opts.networkBindUrl, "send network path Url")
 	fs.StringVar(&opts.managedCluster.ManagedClusterSource, "mcSource", opts.managedCluster.ManagedClusterSource,
 		"where to get the managerCluster Resource.")
 	fs.StringVar(&opts.managedCluster.PrometheusMonitorUrlPrefix, "promUrlPrefix", opts.managedCluster.PrometheusMonitorUrlPrefix,

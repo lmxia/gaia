@@ -65,7 +65,7 @@ type ControllerManager struct {
 }
 
 // NewAgent returns a new Agent.
-func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName string, managedCluster *platformv1alpha1.ManagedClusterOptions) (*ControllerManager, error) {
+func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, networkBindUrl string, managedCluster *platformv1alpha1.ManagedClusterOptions) (*ControllerManager, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get hostname: %v", err)
@@ -106,7 +106,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		klog.Error(apprerr)
 	}
 
-	rbController, rberr := resourcebinding.NewRBController(localKubeClientSet, localGaiaClientSet, localKubeConfig)
+	rbController, rberr := resourcebinding.NewRBController(localKubeClientSet, localGaiaClientSet, localKubeConfig, networkBindUrl)
 	if rberr != nil {
 		klog.Error(rberr)
 	}

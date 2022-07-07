@@ -183,11 +183,25 @@ func (crrApprover *CRRApprover) defaultRoles(namespace string) []rbacv1.Role {
 			},
 		},
 	}
+	roleForReserved := rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      known.GaiaReservedNamespace,
+			Namespace: known.GaiaReservedNamespace,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"*"},
+				Resources: []string{"*"},
+				Verbs:     []string{"*"},
+			},
+		},
+	}
 
 	return []rbacv1.Role{
 		roleForManagedCluster,
 		roleForToBeMerged,
 		roleForMerged,
+		roleForReserved,
 	}
 }
 

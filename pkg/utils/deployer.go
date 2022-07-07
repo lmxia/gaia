@@ -1,12 +1,15 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"net/http"
 	"strings"
 	"sync"
 
+	"encoding/json"
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
@@ -121,7 +124,7 @@ func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
 		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(), resource.GroupVersionKind().Version)
 		if err != nil {
-			lastError = fmt.Errorf("please check whether the advertised apiserver of current child cluster is accessible. %v", err)
+			lastError = fmt.Errorf("error===%v \n", err)
 			return false, nil
 		}
 
@@ -202,6 +205,23 @@ func GetDescrition(ctx context.Context, dynamicClient dynamic.Interface, restMap
 		return nil, err
 	}
 	return des, nil
+}
+func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, name, desNs string) (*appsv1alpha1.NetworkRequirement, error) {
+	var kind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "NetworkRequirement"}
+	restMapping, err := restMapper.RESTMapping(kind.GroupKind(), kind.Version)
+	if err != nil {
+		klog.Errorf("cannot get networkRequirement= %v", err)
+		return nil, err
+	}
+	curObj, queryErr := dynamicClient.Resource(restMapping.Resource).Namespace(desNs).Get(ctx, name, metav1.GetOptions{})
+	if queryErr != nil && !apierrors.IsNotFound(queryErr) {
+		return nil, queryErr
+	}
+	nwr := &appsv1alpha1.NetworkRequirement{}
+	if err = UnstructuredConvertToStruct(curObj, nwr); err != nil {
+		return nil, err
+	}
+	return nwr, nil
 }
 
 func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, parentGaiaclient *gaiaClientSet.Clientset, localdynamicClient dynamic.Interface,
@@ -312,65 +332,65 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 	for _, com := range comToBeApply {
 		switch com.Workload.Workloadtype {
 		case appsv1alpha1.WorkloadTypeDeployment:
-			depUn, errdep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil || depUn == nil {
+			unstructure, errdep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errdep != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(depUn *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depUn)
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads Deployment name==%s err===%v \n", depUn.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads Deployment name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(depUn)
+			}(unstructure)
 		case appsv1alpha1.WorkloadTypeServerless:
-			SerUn, errservice := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errservice != nil || SerUn == nil {
+			unstructure, errServiceless := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errServiceless != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(SerUn *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, SerUn)
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads Serverless name==%s err===%v \n", SerUn.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads Serverless name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(SerUn)
+			}(unstructure)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			depUn, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil || depUn == nil {
+			unstructure, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errdep != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(depUn *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depUn)
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", depUn.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(depUn)
+			}(unstructure)
 		case appsv1alpha1.WorkloadTypeUserApp:
-			depUn, errdep := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil || depUn == nil {
+			unstructure, errUserapp := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errUserapp != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(depUn *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depUn)
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads userApp name==%s err===%v \n", depUn.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads userApp name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(depUn)
+			}(unstructure)
 		}
 		wg.Wait()
 	}
@@ -408,7 +428,8 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 	return err
 }
 
-func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
+func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,
+	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement) error {
 	var allErrs []error
 	var err error
 	errCh := make(chan error, len(rb.Spec.RbApps))
@@ -453,6 +474,12 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 				}
 			}(rbUnstructured)
 			wg.Wait()
+
+			if len(newRB.Spec.NetworkPath) > 0 && len(networkBindUrl) > 0 && nwr != nil {
+				if NeedBindNetworkInCluster(rb.Spec.RbApps, clusterName, nwr) {
+					postRequest(networkBindUrl, descriptionName, newRB.Spec.NetworkPath[0])
+				}
+			}
 		}
 	}
 
@@ -465,6 +492,41 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 		return utilerrors.NewAggregate(allErrs)
 	}
 	return err
+}
+
+type NetworkScheme struct {
+
+	// whether resource reserved or not
+	IsResouceReserved bool `json:"isResouceReserved,omitempty"`
+
+	// network scheme path
+	Path []byte `json:"path,omitempty"`
+
+	// buleprint ID
+	BuleprintID string `json:"buleprintID,omitempty"`
+}
+
+func postRequest(url, descriptionName string, path []byte) {
+	networkScheme := NetworkScheme{
+		IsResouceReserved: false,
+		Path:              path,
+		BuleprintID:       descriptionName,
+	}
+	data, jsonerr := json.Marshal(networkScheme)
+	if jsonerr != nil {
+		klog.Errorf("request  post new request, error=%v \n", jsonerr)
+	}
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		klog.Errorf("request  post new request, error=%v \n", err)
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("cache-control", "no-cache")
+	resp, resperr := http.DefaultClient.Do(request)
+	if resperr != nil {
+		klog.Errorf("post do sent, error====%v\n", resperr)
+	}
+	defer resp.Body.Close()
 }
 
 func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
@@ -482,7 +544,7 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
 							known.GaiaDescriptionLabel: descName,
-							known.GaiaComponentLabel: com.Name,
+							known.GaiaComponentLabel:   com.Name,
 						},
 					}}
 				if len(com.Namespace) > 0 {
@@ -534,7 +596,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						known.GaiaDescriptionLabel: descName,
-						known.GaiaComponentLabel: com.Name,
+						known.GaiaComponentLabel:   com.Name,
 					},
 				},
 			}
@@ -671,7 +733,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						known.GaiaDescriptionLabel: descName,
-						known.GaiaComponentLabel: com.Name,
+						known.GaiaComponentLabel:   com.Name,
 					},
 				}}
 			if len(com.Namespace) > 0 {
@@ -754,7 +816,7 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
 							known.GaiaDescriptionLabel: descName,
-							known.GaiaComponentLabel: com.Name,
+							known.GaiaComponentLabel:   com.Name,
 						},
 					},
 				}

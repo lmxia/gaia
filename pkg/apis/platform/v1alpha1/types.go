@@ -416,9 +416,7 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 			} else if strings.HasPrefix(labelKey, ParsedGeoLocationKey) {
 				geolocationMap[labelValue] = struct{}{}
 			} else if strings.HasPrefix(labelKey, ParsedProviderKey) {
-				for _, v := range labelValueArray {
-					providers[v] = struct{}{}
-				}
+				providers[labelValue] = struct{}{}
 			}
 		}
 	}

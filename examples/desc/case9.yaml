@@ -52,10 +52,13 @@ spec:
       namespace: test2
       runtimeType: runc
       workload:
-        workloadtype: affinitydaemon
-        traitaffinitydaemon:
-          sns:
-            - 577c0bb88e8ff9e0658749356e01a3767fe5496c
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 5
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-C11" ] }
       module:
         metadata:
           labels:

@@ -749,7 +749,6 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
 				if dep.Spec.Template.Spec.NodeSelector == nil {
 					dep.Spec.Template.Spec.NodeSelector = map[string]string{
-						known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
 						v1alpha1.ParsedRuntimeStateKey: com.RuntimeType,
 					}
 				}

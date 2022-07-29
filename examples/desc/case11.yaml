@@ -1,0 +1,399 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case11
+  namespace: gaia-reserved
+spec:
+  appID: case11
+  components:
+    - name: case11-component2
+      namespace: test2
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-E11" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: net-enviroment, operator: In, values: [ "edge" ] }
+      workload:
+        workloadtype: serverless
+        traitServerless:
+          miniInstancenumber: 1
+          threshold: '{"qpsMin":5,"qpsMax":20}'
+          step: 1
+      module:
+        metadata:
+          labels:
+            app: appcase11
+        spec:
+          containers:
+            - name: appcase11comp2
+              image: 172.17.9.231:8880/hyperio/app-c2:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/private/c2"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case11-component3
+      namespace: test3
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-E11" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: net-enviroment, operator: In, values: [ "edge" ] }
+      workload:
+        workloadtype: serverless
+        traitServerless:
+          miniInstancenumber: 1
+          threshold: '{"qpsMin":5,"qpsMax":20}'
+          step: 1
+      module:
+        metadata:
+          labels:
+            app: appcase11
+        spec:
+          containers:
+            - name: appcase11comp3
+              image: 172.17.9.231:8880/hyperio/app-c3:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/private/c3"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case11-component4
+      namespace: test4
+      runtimeType: runc
+      dispersion: 2
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C31-District-C31", "China-Huadong-Jiangsu-City-C21-District-C21" ] }
+        provider:
+          matchExpressions:
+            - { key: provider, operator: In, values: [ "Huawei", "Tencent" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: netenviroment, operator: In, values: [ "core" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase11
+        spec:
+          containers:
+            - name: appcase11comp4
+              image: 172.17.9.231:8880/hyperio/app-c4:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/private/c4"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case11-component5
+      namespace: test5
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-C21" ] }
+        provider:
+          matchExpressions:
+            - { key: provider, operator: In, values: [ "Huawei" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: netenviroment, operator: In, values: [ "core" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase11
+        spec:
+          containers:
+            - name: appcase11comp5
+              image: 172.17.9.231:8880/hyperio/app-c5:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/private/c5"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case11-component6
+      namespace: test6
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-C21" ] }
+        provider:
+          matchExpressions:
+            - { key: provider, operator: In, values: [ "Huawei" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: netenviroment, operator: In, values: [ "core" ] }
+      workload:
+        workloadtype: serverless
+        traitServerless:
+          miniInstancenumber: 1
+          threshold: '{"cpuMin":20,"cpuMax":80,"memMin":30,"memMax":80}'
+          step: 1
+      module:
+        metadata:
+          labels:
+            app: appcase11
+        spec:
+          containers:
+            - name: appcase11comp6
+              image: 172.17.9.231:8880/hyperio/app-c6:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/private/c6"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case11-component7
+      namespace: test7
+      runtimeType: runc
+      schedulePolicy:
+        specificResource:
+          matchExpressions:
+            - { key: sn, operator: In, values: [ "118b4d8b6e91ddc75d24a65fb125325ebc9904f5" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase11
+        spec:
+          containers:
+            - name: appcase11comp7
+              image: 172.17.9.231:8880/hyperio/app-c7:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/private/c7"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case11-component8
+      namespace: test8
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C31-District-C31", "China-Huadong-Jiangsu-City-C21-District-C21" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 1
+      module:
+        metadata:
+          labels:
+            app: appcase11
+        spec:
+          containers:
+            - name: appcase11comp8
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/background/private/c1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case11-component9
+      namespace: test9
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-C11", "China-Huadong-Jiangsu-City-C11-DistrictE11" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 1
+      module:
+        metadata:
+          labels:
+            app: appcase11
+        spec:
+          containers:
+            - name: appcase11comp9
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/background/private/c2"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate

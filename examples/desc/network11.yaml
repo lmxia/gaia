@@ -1,0 +1,68 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: NetworkRequirement
+metadata:
+  name: case11
+  namespace: gaia-reserved
+spec:
+  networkCommunication:
+    - name: case11-component1-1
+      selfID:
+        - /private/xxx
+    - name: case11-component1-2
+      selfID:
+        - /private/yyy
+    - name: case11-component1-3
+      selfID:
+        - /private/zzz
+    - name: case11-component2
+      selfID:
+        - /pml/case11/c2/1
+    - name: case11-component3
+      selfID:
+        - /pml/private/c3
+      interSCNID:
+        - source:
+            id: /pml/private/c3
+          destination:
+            id: /pml/private/c6
+          sla:
+            delay: 30
+            lost: 100
+            jitter: 999999
+            bandwidth: 10
+          providers:
+            - jiangnan-fabric-101
+            - jiangnan-fabric-102
+            - jiangnan-fabric-103
+    - name: case11-component4
+      selfID:
+        - /pml/private/c4
+    - name: case11-component5
+      selfID:
+        - /pml/private/c5
+      interSCNID:
+        - source:
+            id: /pml/private/c5
+          destination:
+            id: /pml/private/c7
+          sla:
+            delay: 40
+            lost: 100
+            jitter: 999999
+            bandwidth: 10
+          providers:
+            - jiangnan-fabric-101
+            - jiangnan-fabric-102
+            - jiangnan-fabric-103
+    - name: case11-component6
+      selfID:
+        - /pml/private/c6
+    - name: case11-component7
+      selfID:
+        - /pml/private/c7
+    - name: case11-component8
+      selfID:
+        - /pml/private/c8
+    - name: case11-component9
+      selfID:
+        - /pml/private/c9

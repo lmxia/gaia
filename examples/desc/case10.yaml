@@ -1,0 +1,169 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case10
+  namespace: gaia-reserved
+spec:
+  appID: case10
+  components:
+    - name: case10-component1
+      namespace: test1
+      runtimeType: wasm
+      workload:
+        workloadtype: affinitydaemon
+        traitaffinitydaemon:
+          sns:
+            - ea4246361efd53cd14b546d81e5cd2a7c57d5ce8
+      module:
+        metadata:
+          labels:
+            app: appcase10
+        spec:
+          containers:
+            - name: appcase10comp1
+              image: 172.17.9.231:8880/hyperwasm/appscn_edge1:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case10/gw"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case10-component2
+      namespace: test2
+      runtimeType: process
+      workload:
+        workloadtype: userapp
+        traitUserAPP:
+          sn: 1def10d02eedc143f8128b0c4c1fc4d57b78923e
+      module:
+        metadata:
+          labels:
+            app: appcase10
+        spec:
+          containers:
+            - name: appcase10comp2
+              image: 172.17.9.231:8088/releases/userapp/userapp.tar
+              env:
+                - name: SCNID
+                  value: "/pml/case10/userapp"
+    - name: case10-component3
+      namespace: test3
+      runtimeType: kata
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-E11" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: net-enviroment, operator: In, values: [ "edge" ] }
+      workload:
+        workloadtype: serverless
+        traitServerless:
+          miniInstancenumber: 1
+          threshold: '{"qpsMin":5,"qpsMax":80}'
+          step: 1
+      module:
+        metadata:
+          labels:
+            app: appcase10
+        spec:
+          runtimeClassName: kata-containers
+          containers:
+            - name: appcase10comp3
+              image: 172.17.9.231:8880/hyperio/app_kata:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case10/serverless1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case10-component4
+      namespace: test4
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-E21" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: net-enviroment, operator: In, values: [ "edge" ] }
+      workload:
+        workloadtype: serverless
+        traitServerless:
+          miniInstancenumber: 1
+          threshold: '{"cpuMin":20,"cpuMax":70,"memMin":20,"memMax":80}'
+          step: 1
+      module:
+        metadata:
+          labels:
+            app: appcase10
+        spec:
+          containers:
+            - name: appcase10comp4
+              image: 172.17.9.231:8880/hypermonitorystack/serverless_press_app:v1.5
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case10/serverless2"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate

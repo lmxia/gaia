@@ -630,6 +630,11 @@ func (baseDomain *BaseDomain) BaseDomainLinkAddFromCache(domainTopoCache ncsnp.D
 
 	for i := 0; i < len(domainTopoCache.DomainVLinkArray); i++ {
 		domainVlink := domainTopoCache.DomainVLinkArray[i]
+		if domainVlink.AttachDomainId == 0 {
+			infoString := fmt.Sprintf("The domainVink is not fabric type, domainVlink is (%+v).", domainVlink)
+			nputil.TraceInfoEnd(infoString)
+			continue
+		}
 		domainLinkKey := DomainLinkKeyCreateFromCache(domainVlink)
 
 		//Add domainlink in baseDomainGraph and graph

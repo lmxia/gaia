@@ -781,7 +781,10 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			nputil.TraceInfo(infoString)
 			NpContentBase64 := make([]byte, base64.StdEncoding.EncodedLen(len(content)))
 			base64.StdEncoding.Encode(NpContentBase64, content)
-			infoString = fmt.Sprintf("Proto marshal content []base64 is: [%+v], stringbase64 is (%+v)", NpContentBase64, string(NpContentBase64))
+			infoString = fmt.Sprintf("Proto marshal content []base64 is: [%+v]", NpContentBase64)
+			nputil.TraceInfo(infoString)
+			encodeToString := base64.StdEncoding.EncodeToString(NpContentBase64)
+			infoString = fmt.Sprintf("Proto marshal content base64 encodeToString is (%+v)", encodeToString)
 			nputil.TraceInfoAlwaysPrint(infoString)
 
 			//Verify the unmarshal action
@@ -794,7 +797,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			err = proto.Unmarshal(npConentByteConvert, TmpRbDomainPaths)
 			if err != nil {
 				infoString = fmt.Sprintf("TmpRbDomainPaths Proto unmarshal is failed!")
-				nputil.TraceInfoAlwaysPrint(infoString)
+				nputil.TraceInfo(infoString)
 				return nil
 			}
 			infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath[%d] is: [%+v]", i, TmpRbDomainPaths)

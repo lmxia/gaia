@@ -1213,6 +1213,32 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	return domainTopoMsg
 }
 
+
+func TestParseBindingDomainPathAvailable(t *testing.T) {
+	logx.NewLogger()
+	infoString := fmt.Sprintf("=== RUN   TestBindingDomainPathAvailable  BEGIN ===")
+	nputil.TraceInfo(infoString)
+
+	npBase64String := "Q293QkNqUUtKZ29QTDNCdGJDOXdjbWwyWVhSbEwyTXpFZzh2Y0cxc0wzQnlhWFpoZEdVdll6WW9BVEFERWdvSUtCQmtHTCtFUFNBS0VoSUtER052Y21VeExXWnBaV3hrTVJBQkdBRVNMQW9tYW1saGJtZHVZVzR0Wm1GaWNtbGpMVEV3TXkxelpIZGhiaTF6Y205MUxXaDVjR1Z5YjNNUVp4Z0NFaElLREdOdmNtVXpMV1pwWld4a01SQURHQUVLakFFS05Bb21DZzh2Y0cxc0wzQnlhWFpoZEdVdll6VVNEeTl3Yld3dmNISnBkbUYwWlM5ak55Z0RNQUVTQ2dnb0VHUVl2NFE5SUdRU0Vnb01ZMjl5WlRNdFptbGxiR1F4RUFNWUFSSXNDaVpxYVdGdVoyNWhiaTFtWVdKeWFXTXRNVEF6TFhOa2QyRnVMWE55YjNVdGFIbHdaWEp2Y3hCbkdBSVNFZ29NWTI5eVpURXRabWxsYkdReEVBRVlBUXJRQVFvMkNpZ0tEeTl3Yld3dmNISnBkbUYwWlM5ak5SSVBMM0J0YkM5d2NtbDJZWFJsTDJNM0dBRW9BekFCRWdvSUtCQmtHTCtFUFNCa0VoSUtER052Y21VekxXWnBaV3hrTVJBREdBRVNMQW9tYW1saGJtZHVZVzR0Wm1GaWNtbGpMVEV3TWkxelpIZGhiaTF6Y205MUxXaDVjR1Z5YjNNUVpoZ0NFaElLREdOdmNtVXlMV1pwWld4a01SQUNHQUVTTEFvbWFtbGhibWR1WVc0dFptRmljbWxqTFRFd01TMXpaSGRoYmkxemNtOTFMV2g1Y0dWeWIzTVFaUmdDRWhJS0RHTnZjbVV4TFdacFpXeGtNUkFCR0FFS2pnRUtOZ29vQ2c4dmNHMXNMM0J5YVhaaGRHVXZZelVTRHk5d2JXd3ZjSEpwZG1GMFpTOWpOeGdDS0FNd0FSSUtDQ2dRWkJpL2hEMGdaQklTQ2d4amIzSmxNeTFtYVdWc1pERVFBeGdCRWl3S0ptcHBZVzVuYm1GdUxXWmhZbkpwWXkweE1ETXRjMlIzWVc0dGMzSnZkUzFvZVhCbGNtOXpFR2NZQWhJU0NneGpiM0psTVMxbWFXVnNaREVRQVJnQg=="
+	npBase64Bytes, _ := base64.StdEncoding.DecodeString(npBase64String)
+	npBytes := make([]byte, base64.StdEncoding.DecodedLen(len(npBase64Bytes)))
+	_, _ = base64.StdEncoding.Decode(npBytes, npBase64Bytes)
+	infoString = fmt.Sprintf("The NpBase64Byte is: [%+v]", npBase64Bytes)
+	nputil.TraceInfo(infoString)
+	TmpRbDomainPaths := new(ncsnp.BindingSelectedDomainPath)
+	err := proto.Unmarshal(npBytes, TmpRbDomainPaths)
+	if err != nil {
+		infoString = fmt.Sprintf("TmpRbDomainPaths Proto unmarshal is failed!")
+		nputil.TraceInfo(infoString)
+	} else {
+		infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath is: [%+v]", TmpRbDomainPaths)
+		nputil.TraceInfo(infoString)
+	}
+
+	infoString = fmt.Sprintf("=== RUN   TestBindingDomainPathAvailable  END ===")
+	nputil.TraceInfo(infoString)
+}
+
 func TestNetworkFilterAvailable(t *testing.T) {
 	logx.NewLogger()
 	infoString := fmt.Sprintf("=== RUN   TestNetworkFilterAvailable  BEGIN ===")

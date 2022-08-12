@@ -34,7 +34,7 @@ func (s SpecificResource) Filter(ctx context.Context, com *v1alpha1.Component, c
 			return nil
 		}
 	}
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("clusters(s) had no specific sns "))
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("clusters(s) had no specific sns. cluster name is %v, component name is %v", cluster.Name, com.Name))
 }
 
 // New initializes a new plugin and returns it.

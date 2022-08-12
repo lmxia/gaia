@@ -27,7 +27,7 @@ func (n NodeRole) Filter(ctx context.Context, com *v1alpha1.Component, cluster *
 	if len(nodeRoleMap) > 0 {
 		return nil
 	}
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no noderole fit for this com."))
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no noderole fit for this com. cluster name is %v, component name is %v", cluster.Name, com.Name))
 }
 
 // New initializes a new plugin and returns it.

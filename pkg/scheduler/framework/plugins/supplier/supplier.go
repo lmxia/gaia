@@ -36,7 +36,7 @@ func (s SupplierName) Filter(ctx context.Context, com *v1alpha1.Component, clust
 			return nil
 		}
 	}
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("clusters(s) had no supplier name sns "))
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("clusters(s) had no supplier name sns. cluster name is %v, component name is %v", cluster.Name, com.Name))
 }
 
 // New initializes a new plugin and returns it.

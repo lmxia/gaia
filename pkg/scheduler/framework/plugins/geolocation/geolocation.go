@@ -39,7 +39,7 @@ func (pl *Geolocation) Filter(ctx context.Context, com *v1alpha1.Component, clus
 			return nil
 		}
 	}
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no geoLocation fit for this com."))
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no geoLocation fit for this com. cluster name is %v, component name is %v", cluster.Name, com.Name))
 
 }
 

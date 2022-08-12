@@ -29,7 +29,7 @@ func (pl *RuntimeType) Filter(ctx context.Context, com *v1alpha1.Component, clus
 	}
 
 	if !fit(com, cluster) {
-		errReason := fmt.Sprintf("cluster of designated RuntimeType %q not found", com.RuntimeType)
+		errReason := fmt.Sprintf("cluster of designated RuntimeType %q not found. cluster name is %v, component name is %v", com.RuntimeType, cluster.Name, com.Name)
 		return framework.NewStatus(framework.UnschedulableAndUnresolvable, errReason)
 	}
 

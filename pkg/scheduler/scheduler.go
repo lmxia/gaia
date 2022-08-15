@@ -396,6 +396,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
 		if err != nil {
 			sched.recordParentSchedulingFailure(desc, err, ReasonUnschedulable)
+			desc.Status.Phase = appsapi.DescriptionPhaseFailure
+			sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+			klog.Warningf("scheduler failed %v", err)
 			return
 		}
 
@@ -518,12 +521,12 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 	wait.JitterUntilWithContext(waitingCtx, func(ctx context.Context) {
 		target, err := sched.localGaiaClient.PlatformV1alpha1().Targets().Get(ctx, common.ParentClusterTargetName, metav1.GetOptions{})
 		if err != nil {
-			//klog.Errorf("set parentDedicatedKubeConfig failed to get targets: %v wait for next loop", err)
+			// klog.Errorf("set parentDedicatedKubeConfig failed to get targets: %v wait for next loop", err)
 			return
 		}
 		secret, err := sched.childKubeClientSet.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx, common.ParentClusterSecretName, metav1.GetOptions{})
 		if err != nil {
-			//klog.Errorf("set parentDedicatedKubeConfig failed to get secretFromParentCluster: %v", err)
+			// klog.Errorf("set parentDedicatedKubeConfig failed to get secretFromParentCluster: %v", err)
 			return
 		}
 		if err == nil {

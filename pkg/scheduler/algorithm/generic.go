@@ -81,15 +81,15 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		//	return result, err
 		// }
 		// case global
-		if desc.Namespace == common.GaiaReservedNamespace {
-			if len(feasibleClusters) == 0 {
-				return result, &framework.FitError{
-					Description:    desc,
-					NumAllClusters: g.cache.NumClusters(),
-					Diagnosis:      diagnosis,
-				}
+		// if desc.Namespace == common.GaiaReservedNamespace {
+		if len(feasibleClusters) == 0 {
+			return result, &framework.FitError{
+				Description:    desc,
+				NumAllClusters: g.cache.NumClusters(),
+				Diagnosis:      diagnosis,
 			}
 		}
+		// }
 
 		// spread level info: full level, 2 level, 1 level
 		// spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}

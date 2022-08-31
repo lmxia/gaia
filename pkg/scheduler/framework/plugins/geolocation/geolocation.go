@@ -20,7 +20,7 @@ var _ framework.FilterPlugin = &Geolocation{}
 
 // Name returns name of the plugin. It is used in logs, etc.
 func (pl *Geolocation) Name() string {
-	return names.TaintToleration
+	return names.Geolocation
 }
 
 // Filter invoked at the filter extension point.

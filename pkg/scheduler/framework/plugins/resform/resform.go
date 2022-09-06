@@ -18,7 +18,7 @@ type ResForm struct {
 }
 
 func (r ResForm) Name() string {
-	return names.NetEnviroment
+	return names.ResForm
 }
 
 func (r ResForm) Filter(ctx context.Context, com *v1alpha1.Component, cluster *clusterapi.ManagedCluster) *framework.Status {

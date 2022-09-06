@@ -19,7 +19,7 @@ type SupplierName struct {
 }
 
 func (s SupplierName) Name() string {
-	return names.SpecificResource
+	return names.SupplierName
 }
 
 func (s SupplierName) Filter(ctx context.Context, com *v1alpha1.Component, cluster *platformv1.ManagedCluster) *framework.Status {

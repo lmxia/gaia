@@ -19,7 +19,7 @@ type NodeRole struct {
 }
 
 func (n NodeRole) Name() string {
-	return names.NetEnviroment
+	return names.NodeRole
 }
 
 func (n NodeRole) Filter(ctx context.Context, com *v1alpha1.Component, cluster *clusterapi.ManagedCluster) *framework.Status {

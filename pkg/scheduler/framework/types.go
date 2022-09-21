@@ -13,8 +13,8 @@ type ClusterInfo struct {
 
 // pod is used to check affinity, TODO.
 func (c *ClusterInfo) CalculateCapacity(cpuRequest int64, memRequest int64) int64 {
-	freeCpuLeft := c.Cluster.Status.Allocatable.Cpu().MilliValue()
-	freeMemLeft := c.Cluster.Status.Allocatable.Memory().Value()
+	freeCpuLeft := c.Cluster.Status.Available.Cpu().MilliValue()
+	freeMemLeft := c.Cluster.Status.Available.Memory().Value()
 	cpuCapacity := freeCpuLeft / cpuRequest
 	memCapacity := freeMemLeft / memRequest
 	return minInt64(cpuCapacity, memCapacity)

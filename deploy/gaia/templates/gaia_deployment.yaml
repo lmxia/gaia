@@ -132,8 +132,8 @@ data:
     clusterMemCapacity: sum(kube_node_status_capacity{resource="memory"})/1024
     clusterCPUAllocatable: sum(kube_node_status_allocatable{resource="cpu"})
     clusterMemAllocatable: sum(kube_node_status_allocatable{resource="memory"})/1024
-    clusterCPUAvailable: sum(system_cpu_utilization{node_type="Public",state="idle"})
-    clusterMemAvailable: sum(system_memory_usage{node_type="Public"} and (system_memory_usage{state="buffered"} or system_memory_usage{state="free"} or system_memory_usage{state="cached"}))/1024
+    clusterCPUAvailable: sum(system_cpu_utilization{node_type!="System",state="idle"})
+    clusterMemAvailable: sum(system_memory_usage{node_type!="System"} and (system_memory_usage{state="buffered"} or system_memory_usage{state="free"} or system_memory_usage{state="cached"}))/1024
   service-maintenance-prometheus_metrics.conf: |
     pendingLatencyPsql: pod_pending_latency_seconds{destination_pod_description_name!="NotDescPod"}>=60
     pendingWaitingToBeScheduledPsql: pod_waiting_to_be_scheduled_duration_seconds{destination_pod_description_name!="NotDescPod"}>=60

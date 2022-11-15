@@ -17,7 +17,7 @@ func getDefaultPlugins() *schedulerapis.Plugins {
 				{Name: names.NetEnviroment},
 				{Name: names.Geolocation},
 				{Name: names.SupplierName},
-				{Name: names.RuntimeType},
+				//{Name: names.RuntimeType},
 				{Name: names.UserAPP},
 			},
 		},

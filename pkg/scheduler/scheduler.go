@@ -3,10 +3,14 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"github.com/lmxia/gaia/cmd/gaia-scheduler/option"
 	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/scheduler/metrics"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	apiserver "k8s.io/apiserver/pkg/server"
+	"net/http"
 	"os"
 	"reflect"
 	"sync"
@@ -96,10 +100,13 @@ type Scheduler struct {
 	lockLocal      sync.RWMutex
 	lockParent     sync.RWMutex
 	lockReschedule sync.RWMutex
+
+	InsecureServing        *apiserver.DeprecatedInsecureServingInfo // nil will disable serving on an insecure port
+	InsecureMetricsServing *apiserver.DeprecatedInsecureServingInfo // non-nil if metrics should be served
 }
 
 // NewSchedule returns a new Scheduler.
-func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, error) {
+func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.Options) (*Scheduler, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("unable to get hostname: %v", err)
@@ -167,6 +174,9 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, e
 	// local event handler
 	sched.addLocalAllEventHandlers()
 
+	sched.Complete()
+	metrics.Register()
+
 	return sched, nil
 }
 
@@ -196,6 +206,12 @@ func (scheduler *Scheduler) Run(cxt context.Context) {
 				wait.UntilWithContext(ctx, scheduler.RunParentReScheduler, 0)
 			}()
 			wait.UntilWithContext(ctx, scheduler.RunParentScheduler, 0)
+
+			// metrics
+			http.Handle("/metrics", promhttp.Handler())
+			go func() {
+				http.ListenAndServe(":2112", nil)
+			}()
 		},
 		OnStoppedLeading: func() {
 			klog.Error("leader election got lost")
@@ -386,9 +402,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		}
 		klog.V(3).InfoS("scheduler success just change rb namespace.")
 		err := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
-			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-				common.GaiaDescriptionLabel: desc.Name,
-			}).String()})
+				DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+					common.GaiaDescriptionLabel: desc.Name,
+				}).String()})
 		if err != nil {
 			klog.Infof("faild to delete rbs in parent cluster", err)
 		}
@@ -424,9 +440,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	}
 
 	sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
-		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-			common.GaiaDescriptionLabel: desc.Name,
-		}).String()})
+			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+				common.GaiaDescriptionLabel: desc.Name,
+			}).String()})
 	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 	// TODO check if failed
 	sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
@@ -766,6 +782,18 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 			},
 		},
 	})
+}
+
+// Complete fills in any fields not set that are required to have valid data. It's mutating the receiver.
+func (sched *Scheduler) Complete() *Scheduler {
+
+	if sched.InsecureServing != nil {
+		sched.InsecureServing.Name = "healthz"
+	}
+	if sched.InsecureMetricsServing != nil {
+		sched.InsecureMetricsServing.Name = "metrics"
+	}
+	return sched
 }
 
 // truncateMessage truncates a message if it hits the NoteLengthLimit.

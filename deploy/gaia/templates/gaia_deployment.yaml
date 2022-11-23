@@ -100,10 +100,15 @@ spec:
     metadata:
       labels:
         control-plane: pml-manager
+        app: gaia-scheduler
+        app.kubernetes.io/name: gaia-scheduler
     spec:
       containers:
         - name: gaia
           image: {{ .Values.image.repository }}/gaia-scheduler:{{ .Values.image.tag }}
+          ports:
+            - name: http
+              containerPort: 2112
           resources:
             limits:
               cpu: 100m

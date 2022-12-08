@@ -3,35 +3,19 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"github.com/lmxia/gaia/cmd/gaia-scheduler/config"
 	"github.com/lmxia/gaia/cmd/gaia-scheduler/option"
 	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/scheduler/metrics"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	apiserver "k8s.io/apiserver/pkg/server"
+	"k8s.io/apiserver/pkg/server/healthz"
+	"k8s.io/component-base/metrics/legacyregistry"
 	"net/http"
 	"os"
 	"reflect"
 	"sync"
 	"time"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	rest "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog/v2"
 
 	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
@@ -47,6 +31,30 @@ import (
 	frameworkruntime "github.com/lmxia/gaia/pkg/scheduler/framework/runtime"
 	"github.com/lmxia/gaia/pkg/scheduler/parallelize"
 	"github.com/lmxia/gaia/pkg/utils"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
+	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
+	apirequest "k8s.io/apiserver/pkg/endpoints/request"
+	server "k8s.io/apiserver/pkg/server"
+	genericfilters "k8s.io/apiserver/pkg/server/filters"
+	mux "k8s.io/apiserver/pkg/server/mux"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	rest "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
+	"k8s.io/component-base/configz"
+	"k8s.io/klog/v2"
 )
 
 // These are reasons for a subscription's transition to a condition.
@@ -101,8 +109,8 @@ type Scheduler struct {
 	lockParent     sync.RWMutex
 	lockReschedule sync.RWMutex
 
-	InsecureServing        *apiserver.DeprecatedInsecureServingInfo // nil will disable serving on an insecure port
-	InsecureMetricsServing *apiserver.DeprecatedInsecureServingInfo // non-nil if metrics should be served
+	InsecureServing        *config.DeprecatedInsecureServingInfo // nil will disable serving on an insecure port
+	InsecureMetricsServing *config.DeprecatedInsecureServingInfo // non-nil if metrics should be served
 }
 
 // NewSchedule returns a new Scheduler.
@@ -208,10 +216,20 @@ func (scheduler *Scheduler) Run(cxt context.Context) {
 			wait.UntilWithContext(ctx, scheduler.RunParentScheduler, 0)
 
 			// metrics
-			http.Handle("/metrics", promhttp.Handler())
-			go func() {
-				http.ListenAndServe(":2112", nil)
-			}()
+			// Start up the healthz server.
+			// if scheduler.InsecureServing != nil {
+			// 	separateMetrics := scheduler.InsecureMetricsServing != nil
+			// 	handler := buildHandlerChain(newHealthzHandler(separateMetrics, checks...), nil, nil)
+			// 	if err := scheduler.InsecureServing.Serve(handler, 0, ctx.Done()); err != nil {
+			// 		return fmt.Errorf("failed to start healthz server: %v", err)
+			// 	}
+			// }
+			if scheduler.InsecureMetricsServing != nil {
+				handler := buildHandlerChain(newMetricsHandler(), nil, nil)
+				if err := metricsServe(scheduler.InsecureMetricsServing, handler, 0, ctx.Done()); err != nil {
+					klog.Infof("failed to start metrics server: %v", err)
+				}
+			}
 		},
 		OnStoppedLeading: func() {
 			klog.Error("leader election got lost")
@@ -226,6 +244,86 @@ func (scheduler *Scheduler) Run(cxt context.Context) {
 		},
 	},
 	))
+}
+
+func metricsServe(s *config.DeprecatedInsecureServingInfo, handler http.Handler, shutdownTimeout time.Duration, stopCh <-chan struct{}) error {
+	insecureServer := &http.Server{
+		Addr:           s.Listener.Addr().String(),
+		Handler:        handler,
+		MaxHeaderBytes: 1 << 20,
+
+		IdleTimeout:       90 * time.Second, // matches http.DefaultTransport keep-alive timeout
+		ReadHeaderTimeout: 32 * time.Second, // just shy of requestTimeoutUpperBound
+	}
+
+	if len(s.Name) > 0 {
+		klog.Infof("Serving %s insecurely on %s", s.Name, s.Listener.Addr())
+	} else {
+		klog.Infof("Serving insecurely on %s", s.Listener.Addr())
+	}
+	_, _, err := server.RunServer(insecureServer, s.Listener, shutdownTimeout, stopCh)
+	// NOTE: we do not handle stoppedCh returned by RunServer for graceful termination here
+	return err
+}
+
+// buildHandlerChain wraps the given handler with the standard filters.
+func buildHandlerChain(handler http.Handler, authn authenticator.Request, authz authorizer.Authorizer) http.Handler {
+	requestInfoResolver := &apirequest.RequestInfoFactory{}
+	failedHandler := genericapifilters.Unauthorized(scheme.Codecs)
+
+	handler = genericapifilters.WithAuthorization(handler, authz, scheme.Codecs)
+	handler = genericapifilters.WithAuthentication(handler, authn, failedHandler, nil)
+	handler = genericapifilters.WithRequestInfo(handler, requestInfoResolver)
+	handler = genericapifilters.WithCacheControl(handler)
+	handler = genericfilters.WithPanicRecovery(handler, requestInfoResolver)
+
+	return handler
+}
+
+func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
+	configz.InstallHandler(pathRecorderMux)
+	pathRecorderMux.Handle("/metrics", legacyregistry.HandlerWithReset())
+
+	// resourceMetricsHandler := resources.Handler(informers.Apps().V1alpha1().Descriptions().Lister())
+	// pathRecorderMux.HandleFunc("/metrics/resources", func(w http.ResponseWriter, req *http.Request) {
+	// 	if !isLeader() {
+	// 		return
+	// 	}
+	// 	resourceMetricsHandler.ServeHTTP(w, req)
+	// })
+}
+
+// newMetricsHandler builds a metrics server from the config.
+func newMetricsHandler() http.Handler {
+	pathRecorderMux := mux.NewPathRecorderMux("gaia-scheduler")
+	installMetricHandler(pathRecorderMux)
+	// if config.EnableProfiling {
+	// 	routes.Profiling{}.Install(pathRecorderMux)
+	// 	if config.EnableContentionProfiling {
+	// 		goruntime.SetBlockProfileRate(1)
+	// 	}
+	// 	routes.DebugFlags{}.Install(pathRecorderMux, "v", routes.StringFlagPutHandler(logs.GlogSetter))
+	// }
+	return pathRecorderMux
+}
+
+// newHealthzHandler creates a healthz server from the config, and will also
+// embed the metrics handler if the healthz and metrics address configurations
+// are the same.
+func newHealthzHandler(separateMetrics bool, checks ...healthz.HealthChecker) http.Handler {
+	pathRecorderMux := mux.NewPathRecorderMux("gaia-scheduler")
+	healthz.InstallHandler(pathRecorderMux, checks...)
+	if !separateMetrics {
+		installMetricHandler(pathRecorderMux)
+	}
+	// if config.EnableProfiling {
+	// 	routes.Profiling{}.Install(pathRecorderMux)
+	// 	if config.EnableContentionProfiling {
+	// 		goruntime.SetBlockProfileRate(1)
+	// 	}
+	// 	routes.DebugFlags{}.Install(pathRecorderMux, "v", routes.StringFlagPutHandler(logs.GlogSetter))
+	// }
+	return pathRecorderMux
 }
 
 func newLeaderElectionConfigWithDefaultValue(identity string, clientset kubernetes.Interface, callbacks leaderelection.LeaderCallbacks) *leaderelection.LeaderElectionConfig {

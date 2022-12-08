@@ -3,7 +3,6 @@ package option
 import (
 	"github.com/lmxia/gaia/cmd/gaia-scheduler/config"
 	"github.com/spf13/pflag"
-	apiserveroptions "k8s.io/apiserver/pkg/server/options"
 	"k8s.io/component-base/metrics"
 )
 
@@ -16,7 +15,7 @@ type Options struct {
 
 // AddFlags adds the flags to the flagset.
 func (opts *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.kubeconfig, "kubeconfig", opts.kubeconfig,
+	fs.StringVar(&opts.Kubeconfig, "kubeconfig", opts.Kubeconfig,
 		"Path to a kubeconfig file for current child cluster. Only required if out-of-cluster")
 }
 
@@ -24,10 +23,10 @@ func (opts *Options) AddFlags(fs *pflag.FlagSet) {
 func NewOptions() *Options {
 	return &Options{
 		CombinedInsecureServing: &config.CombinedInsecureServingOptions{
-			Healthz: (&apiserveroptions.DeprecatedInsecureServingOptions{
+			Healthz: (&config.DeprecatedInsecureServingOptions{
 				BindNetwork: "tcp",
 			}).WithLoopback(),
-			Metrics: (&apiserveroptions.DeprecatedInsecureServingOptions{
+			Metrics: (&config.DeprecatedInsecureServingOptions{
 				BindNetwork: "tcp",
 			}).WithLoopback(),
 			BindPort:    2112,

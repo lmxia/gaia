@@ -44,9 +44,11 @@ spec:
     metadata:
       labels:
         control-plane: pml-manager
+        app: gaia-controller-manger
+        app.kubernetes.io/name: gaia-controller-manger
     spec:
       containers:
-        - name: gaia
+        - name: gaia-controller-manager
           image: {{ .Values.image.repository }}/gaia:{{ .Values.image.tag }}
           args:
             - --clustername={{ .Values.common.clusterName }}
@@ -55,6 +57,10 @@ spec:
             - --useHypernodeController={{ .Values.common.useHypernodeController }}
             - --topoSyncBaseUrl={{ .Values.common.topoSyncBaseUrl }}
             - --networkBindUrl={{ .Values.common.networkBindUrl }}
+          ports:
+            - name: http
+              containerPort: 2111
+              hostPort: 2111
           resources:
             limits:
               cpu: 100m

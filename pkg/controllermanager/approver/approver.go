@@ -6,24 +6,22 @@ import (
 	platformapi "github.com/lmxia/gaia/pkg/apis/platform"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/controllermanager/metrics"
 	"github.com/lmxia/gaia/pkg/controllers/clusterregistrationrequest"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	externalInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	appsListers "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	ccrListers "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/utils"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/wait"
-	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
-	"strings"
-	"sync"
-
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	kubeInformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -32,6 +30,9 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
+	"strings"
+	"sync"
+	"time"
 )
 
 // CRRApprover defines configuration for ClusterRegistrationRequests approver
@@ -261,6 +262,7 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *platformv
 		return nil
 	}
 
+	start := time.Now()
 	// 1. create dedicated namespace
 	klog.V(5).Infof("create dedicated namespace for cluster %q (%q) if needed", crr.Spec.ClusterID, crr.Spec.ClusterName)
 	ns, err := crrApprover.createNamespaceForChildClusterIfNeeded(crr.Spec.ClusterID, crr.Spec.ClusterNamePrefix, crr.Spec.ClusterName)
@@ -313,7 +315,8 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *platformv
 	if err != nil {
 		return err
 	}
-
+	metrics.RegisteringAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
+	metrics.ClusterRegisteredApproved(metrics.SinceInSeconds(start))
 	return nil
 }
 

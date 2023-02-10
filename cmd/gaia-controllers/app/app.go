@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"github.com/lmxia/gaia/cmd/gaia-controllers/app/option"
 	"github.com/lmxia/gaia/pkg/controllermanager"
 	"github.com/lmxia/gaia/pkg/features"
 	"github.com/lmxia/gaia/pkg/version"
@@ -17,7 +18,7 @@ var (
 
 // NewGaiaControllerCmd creates a *cobra.Command object with default parameters
 func NewGaiaControllerCmd(ctx context.Context) *cobra.Command {
-	opts := NewOptions()
+	opts := option.NewOptions()
 	cmd := &cobra.Command{
 		Use:  cmdName,
 		Long: `Responsible for cluster registration, cluster metric collecting and report, etc`,
@@ -35,11 +36,11 @@ func NewGaiaControllerCmd(ctx context.Context) *cobra.Command {
 			// TODO: add logic
 			agentCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			agent, err := controllermanager.NewControllerManager(agentCtx, opts.kubeconfig, opts.clusterHostName, opts.networkBindUrl, opts.managedCluster)
+			cc, agent, err := controllermanager.NewControllerManager(agentCtx, opts.Kubeconfig, opts.ClusterHostName, opts.NetworkBindUrl, opts.ManagedCluster, opts)
 			if err != nil {
 				klog.Exit(err)
 			}
-			agent.Run()
+			agent.Run(cc)
 		},
 	}
 

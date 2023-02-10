@@ -3,32 +3,22 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"github.com/lmxia/gaia/cmd/gaia-scheduler/app/option"
 	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/scheduler/metrics"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/apiserver/pkg/server/healthz"
+	"k8s.io/component-base/metrics/legacyregistry"
+	"k8s.io/klog/v2"
+	"net/http"
 	"os"
 	"reflect"
 	"sync"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/kubernetes/scheme"
-	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	rest "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog/v2"
-
+	schedulerserverconfig "github.com/lmxia/gaia/cmd/gaia-scheduler/app/config"
 	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
@@ -43,6 +33,27 @@ import (
 	frameworkruntime "github.com/lmxia/gaia/pkg/scheduler/framework/runtime"
 	"github.com/lmxia/gaia/pkg/scheduler/parallelize"
 	"github.com/lmxia/gaia/pkg/utils"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
+	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
+	apirequest "k8s.io/apiserver/pkg/endpoints/request"
+	genericfilters "k8s.io/apiserver/pkg/server/filters"
+	"k8s.io/apiserver/pkg/server/mux"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	rest "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/workqueue"
 )
 
 // These are reasons for a subscription's transition to a condition.
@@ -99,10 +110,20 @@ type Scheduler struct {
 }
 
 // NewSchedule returns a new Scheduler.
-func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, error) {
+func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.Options) (*schedulerserverconfig.CompletedConfig, *Scheduler, error) {
+	if errs := opts.Validate(); len(errs) > 0 {
+		return nil, nil, utilerrors.NewAggregate(errs)
+	}
+	c, err := opts.Config()
+	if err != nil {
+		return nil, nil, err
+	}
+	// Get the completed config
+	cc := c.Complete()
+
 	hostname, err := os.Hostname()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get hostname: %v", err)
+		return nil, nil, fmt.Errorf("unable to get hostname: %v", err)
 	}
 
 	// add a uniquifier so that two processes on the same host don't accidentally both become active
@@ -111,7 +132,7 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, e
 
 	childKubeConfig, err := utils.LoadsKubeConfig(childKubeConfigFile, 1)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// create clientset for child cluster
 	childKubeClientSet := kubernetes.NewForConfigOrDie(childKubeConfig)
@@ -132,7 +153,7 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, e
 	schedulerCache := schedulercache.New(localAllGaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(), childGaiaClientSet)
 	dynamicClient, err := dynamic.NewForConfig(localSuperKubeConfig)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sched := &Scheduler{
@@ -158,7 +179,7 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, e
 		frameworkruntime.WithRunAllFilters(false),
 	)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	sched.framework = framework
 	// local scheduler always exsit
@@ -167,10 +188,12 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string) (*Scheduler, e
 	// local event handler
 	sched.addLocalAllEventHandlers()
 
-	return sched, nil
+	metrics.Register()
+
+	return &cc, sched, nil
 }
 
-func (scheduler *Scheduler) Run(cxt context.Context) {
+func (scheduler *Scheduler) Run(cxt context.Context, cc *schedulerserverconfig.CompletedConfig) {
 	klog.Info("starting gaia schedule scheduler ...")
 	defer scheduler.localSchedulingQueue.ShutDown()
 
@@ -187,6 +210,14 @@ func (scheduler *Scheduler) Run(cxt context.Context) {
 			go func() {
 				wait.UntilWithContext(ctx, scheduler.RunLocalScheduler, 0)
 			}()
+
+			// metrics
+			if cc.SecureServing != nil {
+				handler := buildHandlerChain(newMetricsHandler(), cc.Authentication.Authenticator, cc.Authorization.Authorizer)
+				if _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
+					klog.Infof("failed to start metrics server: %v", err)
+				}
+			}
 
 			// 3. when we get add parentDedicatedKubeConfig add parent desc scheduler and start it.
 			scheduler.SetparentDedicatedConfig(ctx)
@@ -210,6 +241,47 @@ func (scheduler *Scheduler) Run(cxt context.Context) {
 		},
 	},
 	))
+}
+
+// buildHandlerChain wraps the given handler with the standard filters.
+func buildHandlerChain(handler http.Handler, authn authenticator.Request, authz authorizer.Authorizer) http.Handler {
+	requestInfoResolver := &apirequest.RequestInfoFactory{}
+	failedHandler := genericapifilters.Unauthorized(scheme.Codecs)
+
+	handler = genericapifilters.WithAuthorization(handler, authz, scheme.Codecs)
+	handler = genericapifilters.WithAuthentication(handler, authn, failedHandler, nil)
+	handler = genericapifilters.WithRequestInfo(handler, requestInfoResolver)
+	handler = genericapifilters.WithCacheControl(handler)
+	handler = genericfilters.WithHTTPLogging(handler)
+	handler = genericfilters.WithPanicRecovery(handler, requestInfoResolver)
+
+	return handler
+}
+
+func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
+	// configz.InstallHandler(pathRecorderMux)
+	pathRecorderMux.Handle("/metrics", legacyregistry.HandlerWithReset())
+
+}
+
+// newMetricsHandler builds a metrics server from the config.
+func newMetricsHandler() http.Handler {
+	pathRecorderMux := mux.NewPathRecorderMux("gaia-scheduler")
+	installMetricHandler(pathRecorderMux)
+	return pathRecorderMux
+}
+
+// newHealthzHandler creates a healthz server from the config, and will also
+// embed the metrics handler if the healthz and metrics address configurations
+// are the same.
+func newHealthzHandler(separateMetrics bool, checks ...healthz.HealthChecker) http.Handler {
+	pathRecorderMux := mux.NewPathRecorderMux("gaia-scheduler")
+	healthz.InstallHandler(pathRecorderMux, checks...)
+	if !separateMetrics {
+		installMetricHandler(pathRecorderMux)
+	}
+
+	return pathRecorderMux
 }
 
 func newLeaderElectionConfigWithDefaultValue(identity string, clientset kubernetes.Interface, callbacks leaderelection.LeaderCallbacks) *leaderelection.LeaderElectionConfig {

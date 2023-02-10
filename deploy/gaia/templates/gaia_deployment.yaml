@@ -73,8 +73,10 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
+      {{- if .Values.common.useNodeRoleSelector }}
       nodeSelector:
         hypernode.cluster.pml.com.cn/node-role: System
+      {{- end }}
       serviceAccountName: gaia
       volumes:
         - name: config
@@ -117,8 +119,10 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
+      {{- if .Values.common.useNodeRoleSelector }}
       nodeSelector:
         hypernode.cluster.pml.com.cn/node-role: System
+      {{- end }}
 
 ---
 apiVersion: v1

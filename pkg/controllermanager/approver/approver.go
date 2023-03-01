@@ -6,24 +6,22 @@ import (
 	platformapi "github.com/lmxia/gaia/pkg/apis/platform"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/controllermanager/metrics"
 	"github.com/lmxia/gaia/pkg/controllers/clusterregistrationrequest"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	externalInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	appsListers "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	ccrListers "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/utils"
-	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apimachinery/pkg/util/wait"
-	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
-	"strings"
-	"sync"
-
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	kubeInformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -32,6 +30,9 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
+	"strings"
+	"sync"
+	"time"
 )
 
 // CRRApprover defines configuration for ClusterRegistrationRequests approver
@@ -57,7 +58,7 @@ type CRRApprover struct {
 
 // NewCRRApprover returns a new CRRApprover for ClusterRegistrationRequest.
 func NewCRRApprover(localkubeclient *kubernetes.Clientset, localgaiaclient *gaiaClientSet.Clientset, localKubeConfig *rest.Config,
-	gaiaInformerFactory externalInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+		gaiaInformerFactory externalInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
 	localdynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 
 	crrApprover := &CRRApprover{
@@ -183,11 +184,25 @@ func (crrApprover *CRRApprover) defaultRoles(namespace string) []rbacv1.Role {
 			},
 		},
 	}
+	roleForReserved := rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      known.GaiaReservedNamespace,
+			Namespace: known.GaiaReservedNamespace,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{"*"},
+				Resources: []string{"*"},
+				Verbs:     []string{"*"},
+			},
+		},
+	}
 
 	return []rbacv1.Role{
 		roleForManagedCluster,
 		roleForToBeMerged,
 		roleForMerged,
+		roleForReserved,
 	}
 }
 
@@ -247,6 +262,7 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *platformv
 		return nil
 	}
 
+	start := time.Now()
 	// 1. create dedicated namespace
 	klog.V(5).Infof("create dedicated namespace for cluster %q (%q) if needed", crr.Spec.ClusterID, crr.Spec.ClusterName)
 	ns, err := crrApprover.createNamespaceForChildClusterIfNeeded(crr.Spec.ClusterID, crr.Spec.ClusterNamePrefix, crr.Spec.ClusterName)
@@ -274,7 +290,7 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *platformv
 	if err != nil {
 		return err
 	}
-	err = crrApprover.bindingRoleIfNeeded(sa.Name, sa.Namespace)
+	err = crrApprover.bindingRoleIfNeeded(sa.Name, sa.Namespace, crr.Spec.ClusterName)
 	if err != nil {
 		return err
 	}
@@ -299,7 +315,8 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *platformv
 	if err != nil {
 		return err
 	}
-
+	metrics.RegisteringAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
+	metrics.ClusterRegisteredApproved(metrics.SinceInSeconds(start))
 	return nil
 }
 
@@ -341,7 +358,7 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 }
 
 func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterName string, clusterID types.UID,
-	clusterLabels map[string]string) (*platformv1alpha1.ManagedCluster, error) {
+		clusterLabels map[string]string) (*platformv1alpha1.ManagedCluster, error) {
 	// checks for an existed ManagedCluster object
 	// the clusterName here may vary, we use clusterID as the identifier
 	mcs, err := crrApprover.mclsLister.List(labels.SelectorFromSet(labels.Set{
@@ -476,7 +493,7 @@ func (crrApprover *CRRApprover) bindingClusterRolesIfNeeded(serviceAccountName, 
 	return utilerrors.NewAggregate(allErrs)
 }
 
-func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespace string) error {
+func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespace, clusterName string) error {
 	var allErrs []error
 	wg := sync.WaitGroup{}
 
@@ -505,7 +522,7 @@ func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespac
 			defer wg.Done()
 			err := utils.EnsureRoleBinding(context.TODO(), rbacv1.RoleBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        fmt.Sprintf("%s-%s", r.Name, serviceAccountName),
+					Name:        fmt.Sprintf("%s-%s", r.Name, clusterName),
 					Namespace:   r.Namespace,
 					Annotations: map[string]string{known.AutoUpdateAnnotation: "true"},
 					Labels: map[string]string{

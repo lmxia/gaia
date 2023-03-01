@@ -6,9 +6,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	ncsnp "github.com/lmxia/gaia/pkg/networkfilter/model"
-	"gonum.org/v1/gonum/graph/simple"
-
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
+	"gonum.org/v1/gonum/graph/simple"
 )
 
 type SlaAttr struct {
@@ -41,15 +40,15 @@ type KVAttribute struct {
 }
 
 type AppConnectReqKey struct {
-	SrcUrl string
-	DstUrl string
+	SrcUrl          string
+	DstUrl          string
 	SrcScnidKVList  []KVAttribute
 	DestScnidKVList []KVAttribute
 }
 
 type AppConnectAttr struct {
-	Key     AppConnectAttrKey
-	SlaAttr AppSlaAttr
+	Key             AppConnectAttrKey
+	SlaAttr         AppSlaAttr
 	SrcScnidKVList  []KVAttribute
 	DestScnidKVList []KVAttribute
 }
@@ -782,9 +781,11 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			nputil.TraceInfo(infoString)
 			NpContentBase64 := make([]byte, base64.StdEncoding.EncodedLen(len(content)))
 			base64.StdEncoding.Encode(NpContentBase64, content)
-			infoString = fmt.Sprintf("Proto marshal content base64 is: [%+v], stringbase64 is (%+v)", NpContentBase64, string(NpContentBase64))
+			infoString = fmt.Sprintf("Proto marshal content []base64 is: [%+v]", NpContentBase64)
 			nputil.TraceInfo(infoString)
-			rb.Spec.NetworkPath = append(rb.Spec.NetworkPath, NpContentBase64)
+			encodeToString := base64.StdEncoding.EncodeToString(NpContentBase64)
+			infoString = fmt.Sprintf("Proto marshal content base64 encodeToString is (%+v)", encodeToString)
+			nputil.TraceInfoAlwaysPrint(infoString)
 
 			//Verify the unmarshal action
 			dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(NpContentBase64)))
@@ -792,11 +793,17 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			npConentByteConvert := dbuf[:n]
 			infoString = fmt.Sprintf("npConentByteConvert bytes is: [%+v]", npConentByteConvert)
 			nputil.TraceInfo(infoString)
-
 			TmpRbDomainPaths := new(ncsnp.BindingSelectedDomainPath)
 			err = proto.Unmarshal(npConentByteConvert, TmpRbDomainPaths)
+			if err != nil {
+				infoString = fmt.Sprintf("TmpRbDomainPaths Proto unmarshal is failed!")
+				nputil.TraceInfo(infoString)
+				return nil
+			}
 			infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath[%d] is: [%+v]", i, TmpRbDomainPaths)
 			nputil.TraceInfoAlwaysPrint(infoString)
+
+			rb.Spec.NetworkPath = append(rb.Spec.NetworkPath, NpContentBase64)
 		}
 	}
 	nputil.TraceInfoEnd("")

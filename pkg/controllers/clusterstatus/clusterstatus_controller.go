@@ -278,7 +278,10 @@ func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
 	nodeLabels = make(map[string]string)
 
 	for _, node := range nodes {
-		nodeLabels = parseNodeLabels(nodeLabels, node.GetLabels(), node.GetName())
+		// get worker nodes' labels whose "NodeRole" is not "System"
+		if value, ok := node.GetLabels()[clusterapi.ParsedNodeRoleKey]; ok && value != "System" {
+			nodeLabels = parseNodeLabels(nodeLabels, node.GetLabels(), node.GetName())
+		}
 	}
 	return nodeLabels
 }
@@ -287,7 +290,7 @@ func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
 func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
-			if labelKey == clusterapi.ParsedSNKey || labelKey == clusterapi.ParsedGeoLocationKey {
+			if labelKey == clusterapi.ParsedSNKey || labelKey == clusterapi.ParsedGeoLocationKey || labelKey == clusterapi.ParsedProviderKey {
 				nodeLabels[labelKey+"__"+nodeName] = labelValue
 			} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
 				nodeLabels[labelKey] = labelValue
@@ -301,7 +304,7 @@ func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) ma
 func parseHypernodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
-			if labelKey == clusterapi.SNKey || labelKey == clusterapi.GeoLocationKey {
+			if labelKey == clusterapi.SNKey || labelKey == clusterapi.GeoLocationKey || labelKey == clusterapi.NetworkEnvKey {
 				nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]+"__"+nodeName] = labelValue
 			} else if utils.ContainsString(clusterapi.HypernodeLableKeyList, labelKey) {
 				if _, ok := nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]]; ok {
@@ -324,7 +327,7 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 	for _, cluster := range clusters {
 		for labelKey, labelValue := range cluster.GetLabels() {
 			if len(labelValue) > 0 {
-				if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) || strings.HasPrefix(labelKey, clusterapi.ParsedGeoLocationKey) {
+				if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) || strings.HasPrefix(labelKey, clusterapi.ParsedGeoLocationKey) || strings.HasPrefix(labelKey, clusterapi.ParsedProviderKey) {
 					nodeLabels[labelKey] = labelValue
 				} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
 					if _, ok := nodeLabels[labelKey]; ok {
@@ -353,8 +356,11 @@ func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 
 		for _, hypernode := range hypernodeList.Items {
 			// get hypernodes' labels that are in Cluster level
-			if hypernode.Spec.NodeAreaType == "cluster" {
-				nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())
+			// only the worker node labels whose "NodeRole" is not "System"
+			if value, ok := hypernode.GetLabels()[clusterapi.NodeRoleKey]; ok && value != "System" {
+				if hypernode.Spec.NodeAreaType == "cluster" {
+					nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())
+				}
 			}
 		}
 	} else {
@@ -482,7 +488,12 @@ func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable, Av
 		for index, metric := range ClusterMetricList[:6] {
 			result, err := getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
 			if err == nil {
-				valueList[index] = result.(model.Vector)[0].Value.String()
+				if len(result.(model.Vector)) <= 0 {
+					klog.Warningf("Query from prometheus successfully, but the result is a null array.")
+					valueList[index] = "0"
+				} else {
+					valueList[index] = result.(model.Vector)[0].Value.String()
+				}
 			} else {
 				valueList[index] = "0"
 			}
@@ -526,4 +537,64 @@ func getSubStringWithSpecifiedDecimalPlace(inputString string, m int) string {
 		return inputString
 	}
 	return newString[0] + "." + newString[1][:m]
+}
+
+// DescComMap declares a map whose keys are the components' names and the values are null structs
+type DescComMap map[string]struct{}
+
+// DescNameMap declares a map whose keys are the descriptions' names and the values are the DescComMap
+type DescNameMap map[string]DescComMap
+
+// GetDescNameFromAbnormalPod returns a map whose keys are the descriptions' name
+// Those descriptions' pods are abnormal according to the specified metrics
+func (c *Controller) GetDescNameFromAbnormalPod() (descNameMap DescNameMap) {
+	descNameMap = make(DescNameMap)
+	// get metricPsql from the config map file
+	metricMap, _, err := utils.InitConfig(known.ServiceMaintenanceConfigMapAbsFilePath)
+	if err != nil {
+		klog.Warningf("Wrong metrics, err: %v", err)
+		return
+	}
+
+	for _, metricPsql := range metricMap {
+		pendingLatencyResult, err := getDataFromPrometheus(c.promUrlPrefix, metricPsql)
+		if err != nil {
+			klog.Warningf("Query failed from prometheus, err is %v. The metric is %v", err, metricPsql)
+			return
+		}
+		resultList := pendingLatencyResult.(model.Vector)
+		if len(resultList) > 0 {
+			for _, result := range resultList {
+				podNamespace := result.Metric["destination_namespace"]
+				podName := result.Metric["destination_pod"]
+				podUid := result.Metric["destination_pod_uid"]
+				podDescName := result.Metric["destination_pod_description_name"]
+				podComName := result.Metric["destination_pod_component_name"]
+				klog.V(5).InfoS("pod is abnormal according to the metric: ", "podNamespace", podNamespace, "podName", podName, "podUid", podUid, "metricPsql", metricPsql)
+				if comMap, ok := descNameMap[string(podDescName)]; ok {
+					if _, exist := comMap[string(podComName)]; !exist {
+						comMap[string(podComName)] = struct{}{}
+					}
+				} else {
+					descNameMap[string(podDescName)] = make(map[string]struct{})
+				}
+			}
+		} else {
+			klog.V(5).Infof("the query result of metricPsql(%v) is a null array.", metricPsql)
+		}
+	}
+	return
+}
+
+// IsParentCluster return whether it is a parent cluster
+func (c *Controller) IsParentCluster() (bool, error) {
+	clusters, err := c.mclsLister.List(labels.Everything())
+	if err != nil {
+		klog.Warningf("Failed to list clusters: %v, therefore, the cluster cannot confirm whether it is a parent cluster.", err)
+		return false, err
+	}
+	if len(clusters) > 0 {
+		return true, nil
+	}
+	return false, nil
 }

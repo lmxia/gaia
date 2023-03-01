@@ -37,7 +37,7 @@ func TestRuntimeType_Filter(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
-							"hypernode.cluster.pml.com.cn/runtime-state": "kata",
+							clusterapi.ParsedRuntimeStateKey: "kata",
 						},
 					},
 				},

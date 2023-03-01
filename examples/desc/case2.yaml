@@ -4,15 +4,17 @@ metadata:
   name: case2
   namespace: gaia-reserved
 spec:
-  appID: appID-case2
+  appID: case2
   components:
-    - name: component1
+    - name: case2-component1
       namespace: test1
-      runtimeType: runc
+      runtimeType: wasm
       workload:
         workloadtype: affinitydaemon
         traitaffinitydaemon:
-          sn: cluster1sn1
+          sns:
+            - 8bf0eb4ab1abc39fc82faeb7cc1bed36ea542547
+            - ea4246361efd53cd14b546d81e5cd2a7c57d5ce8
       module:
         metadata:
           labels:
@@ -20,7 +22,7 @@ spec:
         spec:
           containers:
             - name: appcase2comp1
-              image: 172.17.9.231:8880/hyperio/app:latest
+              image: 172.17.9.231:8880/hyperwasm/appscn.wasm:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
                   name: "shm"
@@ -28,7 +30,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C1_1"
+                  value: "/pml/case2/c1/1"
               resources:
                 limits:
                   cpu: "100m"
@@ -36,7 +38,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -46,9 +47,9 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component2
+    - name: case2-component2
       namespace: test2
-      runtimeType: runc
+      runtimeType: kata
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -58,9 +59,10 @@ spec:
           labels:
             app: appcase2
         spec:
+          runtimeClassName: kata-containers
           containers:
             - name: appcase2comp2
-              image: 172.17.9.231:8880/hyperio/app:latest
+              image: 172.17.9.231:8880/hyperio/app_kata:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
                   name: "shm"
@@ -68,7 +70,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C2_1"
+                  value: "/pml/case2/c2/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -78,7 +80,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -88,7 +89,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component3
+    - name: case2-component3
       namespace: test3
       runtimeType: runc
       workload:
@@ -110,7 +111,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C3_1"
+                  value: "/pml/case2/c3/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -120,7 +121,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -130,7 +130,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component4
+    - name: case2-component4
       namespace: test4
       runtimeType: runc
       workload:
@@ -152,7 +152,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C4_1"
+                  value: "/pml/case2/c4/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -162,7 +162,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -172,7 +171,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component5
+    - name: case2-component5
       namespace: test5
       runtimeType: runc
       workload:
@@ -194,7 +193,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C5_1"
+                  value: "/pml/case2/c5/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -204,7 +203,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -214,7 +212,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component6
+    - name: case2-component6
       namespace: test6
       runtimeType: runc
       workload:
@@ -236,7 +234,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C6_1"
+                  value: "/pml/case2/c6/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -246,7 +244,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:

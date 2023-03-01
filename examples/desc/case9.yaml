@@ -4,15 +4,16 @@ metadata:
   name: case9
   namespace: gaia-reserved
 spec:
-  appID: appID-case9
+  appID: case9
   components:
-    - name: component1
+    - name: case9-component1
       namespace: test1
       runtimeType: runc
       workload:
         workloadtype: affinitydaemon
         traitaffinitydaemon:
-          sn: cluster1sn1
+          sns:
+            - 7d1ec81be6bb59cbd3a8609d18cd58c911a8648c
       module:
         metadata:
           labels:
@@ -47,13 +48,17 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component2
+    - name: case9-component2
       namespace: test2
       runtimeType: runc
       workload:
-        workloadtype: affinitydaemon
-        traitaffinitydaemon:
-          sn: cluster1sn2
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 5
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-C11" ] }
       module:
         metadata:
           labels:
@@ -88,13 +93,14 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component3
+    - name: case9-component3
       namespace: test3
       runtimeType: runc
       workload:
         workloadtype: affinitydaemon
         traitaffinitydaemon:
-          sn: cluster2sn1
+          sns:
+            - 2acbb4fd3d711edd22f38b9bd25c94d1aa2edd38
       module:
         metadata:
           labels:
@@ -129,13 +135,13 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component4
+    - name: case9-component4
       namespace: test4
       runtimeType: runc
       schedulePolicy:
         geolocation:
           matchExpressions:
-            - { key: geo-location, operator: In, values: [ "beijing", "nanjing" ] }
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-C21", "China-Huadong-Jiangsu-City-C31-District-C31", "China-Huadong-Jiangsu-City-C31-District-E31" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -174,13 +180,13 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component5
+    - name: case9-component5
       namespace: test5
       runtimeType: runc
       schedulePolicy:
         geolocation:
           matchExpressions:
-            - { key: geo-location, operator: In, values: [ "beijing", "nanjing" ] }
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-C21", "China-Huadong-Jiangsu-City-C31-District-C31", "China-Huadong-Jiangsu-City-C31-District-E31" ] }
       workload:
         workloadtype: deployment
         traitDeployment:

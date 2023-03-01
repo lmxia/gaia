@@ -148,19 +148,13 @@ type DescriptionStatus struct {
 	Reason string `json:"reason,omitempty"`
 }
 
-type DescriptionDeployer string
-
-const (
-	DescriptionHelmDeployer    DescriptionDeployer = "Helm"
-	DescriptionGenericDeployer DescriptionDeployer = "Generic"
-)
-
 type DescriptionPhase string
 
 const (
-	DescriptionPhaseScheduled DescriptionPhase = "Scheduled"
-	DescriptionPhasePending   DescriptionPhase = "Pending"
-	DescriptionPhaseFailure   DescriptionPhase = "Failure"
+	DescriptionPhaseScheduled  DescriptionPhase = "Scheduled"
+	DescriptionPhasePending    DescriptionPhase = "Pending"
+	DescriptionPhaseFailure    DescriptionPhase = "Failure"
+	DescriptionPhaseReSchedule DescriptionPhase = "ReSchedule"
 )
 
 // +kubebuilder:object:root=true

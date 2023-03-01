@@ -1,0 +1,160 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case6
+  namespace: gaia-reserved
+spec:
+  appID: case6
+  components:
+    - name: case6-component1
+      namespace: test1
+      runtimeType: runc
+      dispersion: 2
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C31-District-E31"] }
+        netenvironment:
+          matchExpressions:
+            - { key: netenviroment, operator: In, values: [ "edge" ] }
+        provider:
+          matchExpressions:
+            - { key: provider, operator: In, values: [ "Huawei" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase6
+        spec:
+          containers:
+            - name: appcase6comp1
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case6/c1/1"
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case6-component2
+      namespace: test2
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C31-District-E31" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: netenviroment, operator: In, values: [ "edge" ] }
+        provider:
+          matchExpressions:
+            - { key: provider, operator: In, values: [ "Huawei" ] }
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase6
+        spec:
+          containers:
+            - name: appcase6comp2
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case6/c2/1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case6-component3
+      namespace: test3
+      runtimeType: runc
+      schedulePolicy:
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C31-District-E31" ] }
+        netenvironment:
+          matchExpressions:
+            - { key: netenviroment, operator: In, values: [ "edge" ] }
+        provider:
+          matchExpressions:
+            - { key: provider, operator: In, values: [ "Huawei" ] }
+      workload:
+        workloadtype: deployment
+          replicas: 3
+        traitDeployment:
+      module:
+        metadata:
+          labels:
+            app: appcase6
+        spec:
+          containers:
+            - name: appcase6comp3
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case6/c3/1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate

@@ -8,7 +8,9 @@ common:
   promUrlPrefix: ""
   useHypernodeController: true
   topoSyncBaseUrl: http://192.168.101.11:31555
+  networkBindUrl: http://192.168.101.11:31555
   resourceBindingMergePostURL: http://192.168.101.73:37100/api/server/preScheduleSchemeReceiver
+  useNodeRoleSelector: true
 
 replicaCount: 3
 
@@ -16,7 +18,7 @@ image:
   repository: 172.17.9.231:8880/gaia
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.1.36
+  tag: 0.1.77
 
 imagePullSecrets: []
 nameOverride: ""

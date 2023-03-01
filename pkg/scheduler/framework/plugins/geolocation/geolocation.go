@@ -20,7 +20,7 @@ var _ framework.FilterPlugin = &Geolocation{}
 
 // Name returns name of the plugin. It is used in logs, etc.
 func (pl *Geolocation) Name() string {
-	return names.TaintToleration
+	return names.Geolocation
 }
 
 // Filter invoked at the filter extension point.
@@ -39,7 +39,7 @@ func (pl *Geolocation) Filter(ctx context.Context, com *v1alpha1.Component, clus
 			return nil
 		}
 	}
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no geoLocation fit for this com."))
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no geoLocation fit for this com. cluster name is %v, component name is %v", cluster.Name, com.Name))
 
 }
 

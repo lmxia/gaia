@@ -6,13 +6,15 @@ metadata:
 spec:
   appID: case3
   components:
-    - name: component1
+    - name: case3-component1
       namespace: test1
-      runtimeType: runc
+      runtimeType: wasm
       workload:
         workloadtype: affinitydaemon
         traitaffinitydaemon:
-          sn: cluster1sn1
+          sns:
+            - 8bf0eb4ab1abc39fc82faeb7cc1bed36ea542547
+            - ea4246361efd53cd14b546d81e5cd2a7c57d5ce8
       module:
         metadata:
           labels:
@@ -20,7 +22,7 @@ spec:
         spec:
           containers:
             - name: appcase3comp1
-              image: 172.17.9.231:8880/hyperio/app:latest
+              image: 172.17.9.231:8880/hyperwasm/appscn.wasm:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
                   name: "shm"
@@ -28,7 +30,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C1_1"
+                  value: "/pml/case3/c1/1"
               resources:
                 limits:
                   cpu: "100m"
@@ -36,7 +38,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -46,13 +47,13 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component2
+    - name: case3-component2
       namespace: test2
       runtimeType: runc
       schedulePolicy:
         specificResource:
           matchExpressions:
-            - { key: sn, operator: In, values: [ "core2-cluster1sn1" ] }
+            - { key: sn, operator: In, values: [ "4b7709a91af0e4828d7f28f02128aaded07f8c01" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -72,7 +73,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C2_1"
+                  value: "/pml/case3/c2/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -82,7 +83,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -92,13 +92,13 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component3
+    - name: case3-component3
       namespace: test3
-      runtimeType: runc
+      runtimeType: kata
       schedulePolicy:
         specificResource:
           matchExpressions:
-            - { key: sn, operator: In, values: [ "core3-cluster1sn1" ] }
+            - { key: sn, operator: In, values: [ "86011e87e04eb9c7f42816cd1c936b2fc659d10b" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -108,9 +108,10 @@ spec:
           labels:
             app: appcase3
         spec:
+          runtimeClassName: kata-containers
           containers:
             - name: appcase3comp3
-              image: 172.17.9.231:8880/hyperio/app:latest
+              image: 172.17.9.231:8880/hyperio/app_kata:latest
               volumeMounts:
                 - mountPath: "/dev/shm"
                   name: "shm"
@@ -118,7 +119,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C3_1"
+                  value: "/pml/case3/c3/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -128,7 +129,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -138,7 +138,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component4
+    - name: case3-component4
       namespace: test4
       runtimeType: runc
       workload:
@@ -160,7 +160,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C4_1"
+                  value: "/pml/case3/c4/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -170,7 +170,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -180,7 +179,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component5
+    - name: case3-component5
       namespace: test5
       runtimeType: runc
       workload:
@@ -202,7 +201,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C5_1"
+                  value: "/pml/case3/c5/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -212,7 +211,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:
@@ -222,7 +220,7 @@ spec:
               hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
-    - name: component6
+    - name: case3-component6
       namespace: test6
       runtimeType: runc
       workload:
@@ -244,7 +242,7 @@ spec:
                   name: "usock"
               env:
                 - name: SCNID
-                  value: "SCNID_C6_1"
+                  value: "/pml/case3/c6/1"
                 - name: IOCLIENT_ADDRESS
                   value:
               resources:
@@ -254,7 +252,6 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
-          hostNetwork: true
           volumes:
             - name: shm
               hostPath:

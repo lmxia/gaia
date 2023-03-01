@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-
+	"github.com/lmxia/gaia/cmd/gaia-scheduler/app/option"
 	"github.com/lmxia/gaia/pkg/scheduler"
 	"github.com/lmxia/gaia/pkg/version"
 	"github.com/spf13/cobra"
@@ -17,7 +17,7 @@ var (
 
 // NewGaiaScheduleCmd creates a *cobra.Command object with default parameters
 func NewGaiaScheduleControllerCmd(ctx context.Context) *cobra.Command {
-	opts := NewOptions()
+	opts := option.NewOptions()
 	cmd := &cobra.Command{
 		Use:  cmdName,
 		Long: `Responsible for cluster workloads schedule, etc`,
@@ -29,11 +29,11 @@ func NewGaiaScheduleControllerCmd(ctx context.Context) *cobra.Command {
 			// TODO: add logic
 			agentCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			agentSchedule, err := scheduler.NewSchedule(agentCtx, opts.kubeconfig)
+			cc, agentSchedule, err := scheduler.NewSchedule(agentCtx, opts.Kubeconfig, opts)
 			if err != nil {
 				klog.Exit(err)
 			}
-			agentSchedule.Run(agentCtx)
+			agentSchedule.Run(agentCtx, cc)
 		},
 	}
 

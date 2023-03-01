@@ -44,9 +44,11 @@ spec:
     metadata:
       labels:
         control-plane: pml-manager
+        app: gaia-controller-manger
+        app.kubernetes.io/name: gaia-controller-manger
     spec:
       containers:
-        - name: gaia
+        - name: gaia-controller-manager
           image: {{ .Values.image.repository }}/gaia:{{ .Values.image.tag }}
           args:
             - --clustername={{ .Values.common.clusterName }}
@@ -54,6 +56,11 @@ spec:
             - --promUrlPrefix={{ .Values.common.promUrlPrefix }}
             - --useHypernodeController={{ .Values.common.useHypernodeController }}
             - --topoSyncBaseUrl={{ .Values.common.topoSyncBaseUrl }}
+            - --networkBindUrl={{ .Values.common.networkBindUrl }}
+          ports:
+            - name: http
+              containerPort: 2111
+              hostPort: 2111
           resources:
             limits:
               cpu: 100m
@@ -72,8 +79,10 @@ spec:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
+      {{- if .Values.common.useNodeRoleSelector }}
       nodeSelector:
         hypernode.cluster.pml.com.cn/node-role: System
+      {{- end }}
       serviceAccountName: gaia
       volumes:
         - name: config
@@ -97,10 +106,16 @@ spec:
     metadata:
       labels:
         control-plane: pml-manager
+        app: gaia-scheduler
+        app.kubernetes.io/name: gaia-scheduler
     spec:
       containers:
-        - name: gaia
+        - name: gaia-scheduler
           image: {{ .Values.image.repository }}/gaia-scheduler:{{ .Values.image.tag }}
+          ports:
+            - name: http
+              containerPort: 2112
+              hostPort: 2112
           resources:
             limits:
               cpu: 100m
@@ -108,13 +123,18 @@ spec:
             requests:
               cpu: 100m
               memory: 20Mi
+          env:
+            - name: NetFilterLogEnable
+              value: "OFF"
       serviceAccountName: gaia
       tolerations:
         - key: node-role.kubernetes.io/master
           operator: Exists
           effect: NoSchedule
+      {{- if .Values.common.useNodeRoleSelector }}
       nodeSelector:
         hypernode.cluster.pml.com.cn/node-role: System
+      {{- end }}
 
 ---
 apiVersion: v1
@@ -128,5 +148,10 @@ data:
     clusterMemCapacity: sum(kube_node_status_capacity{resource="memory"})/1024
     clusterCPUAllocatable: sum(kube_node_status_allocatable{resource="cpu"})
     clusterMemAllocatable: sum(kube_node_status_allocatable{resource="memory"})/1024
-    clusterCPUAvailable: sum(system_cpu_utilization{node_type="Public",state="idle"})
-    clusterMemAvailable: sum(system_memory_usage{node_type="Public"} and (system_memory_usage{state="buffered"} or system_memory_usage{state="free"} or system_memory_usage{state="cached"}))/1024
+    clusterCPUAvailable: sum(system_cpu_utilization{node_type!="System",state="idle"})
+    clusterMemAvailable: sum(system_memory_usage{node_type!="System"} and (system_memory_usage{state="buffered"} or system_memory_usage{state="free"} or system_memory_usage{state="cached"}))/1024
+  service-maintenance-prometheus_metrics.conf: |
+    pendingLatencyPsql: pod_pending_latency_seconds{destination_pod_description_name!="NotDescPod"}>=60
+    pendingWaitingToBeScheduledPsql: pod_waiting_to_be_scheduled_duration_seconds{destination_pod_description_name!="NotDescPod"}>=60
+    retrySchedulingAttemptsPsql: pod_retry_scheduling_attempts{destination_pod_description_name!="NotDescPod"}>=3
+    kubeletRunAPodErrorsTotalPsql: kubelet_run_a_pod_errors_total{destination_pod_description_name!="NotDescPod"}>=3

@@ -5,120 +5,103 @@ metadata:
   namespace: gaia-reserved
 spec:
   networkCommunication:
-  - name: component1
-    selfID:
-      - SCNID_C1_1
-      - SCNID_C1_2
-      - SCNID_C1_3
-      - SCNID_C1_4
-      - SCNID_C1_5
-      - SCNID_C1_6
-    interSCNID:
-      - source:
-          id: SCNID_C1_1
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        destination:
-          id: SCNID_C2_1
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        sla:
-          delay: 20
-          lost: 10
-          jitter: 5
-          bandwidth: 200
-        providers:
-          - a
-          - b
-          - c
-      - source:
-          id: SCNID_C1_3
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        destination:
-          id: SCNID_C4_1
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        sla:
-          delay: 20
-          lost: 10
-          jitter: 5
-          bandwidth: 200
-        providers:
-          - a
-          - b
-          - c
-      - source:
-          id: SCNID_C1_4
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        destination:
-          id: SCNID_C5_1
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        sla:
-          delay: 20
-          lost: 10
-          jitter: 5
-          bandwidth: 200
-        providers:
-          - a
-          - b
-          - c
-      - source:
-          id: SCNID_C1_5
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        destination:
-          id: SCNID_C6_1
-          attributes:
-            - key: k1
-              value: v1
-            - key: k2
-              value: v2
-        sla:
-          delay: 20
-          lost: 10
-          jitter: 5
-          bandwidth: 200
-        providers:
-          - a
-          - b
-          - c
-  - name: component2
-    selfID:
-      - SCNID_C2_1
-  - name: component3
-    selfID:
-      - SCNID_C3_1
-  - name: component4
-    selfID:
-      - SCNID_C4_1
-  - name: component5
-    selfID:
-      - SCNID_C5_1
-  - name: component6
-    selfID:
-      - SCNID_C6_1
-
+    - name: case2-component1
+      selfID:
+        - /pml/case2/c1/1
+        - /pml/case2/c1/2
+        - /pml/case2/c1/3
+        - /pml/case2/c1/4
+        - /pml/case2/c1/5
+        - /pml/case2/c1/6
+      interSCNID:
+        - source:
+            id: /pml/case2/c1/1
+            attributes:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: /pml/case2/c2/1
+            attributes:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            -  jiangnan-fabric-101
+            -  jiangnan-fabric-102
+            -  jiangnan-fabric-103
+        - source:
+            id: /pml/case2/c1/3
+            attributes:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: /pml/case2/c4/1
+            attributes:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            -  jiangnan-fabric-101
+            -  jiangnan-fabric-102
+            -  jiangnan-fabric-103
+        - source:
+            id: /pml/case2/c1/4
+            attributes:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: /pml/case2/c5/1
+            attributes:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            -  jiangnan-fabric-101
+            -  jiangnan-fabric-102
+            -  jiangnan-fabric-103
+        - source:
+            id: /pml/case2/c1/5
+            attributes:
+              - key: POLICY_SOURCE
+                value: policy_inst1
+          destination:
+            id: /pml/case2/c6/1
+            attributes:
+              - key: POLICY_DEST
+                value: policy_inst2
+          sla:
+            delay: 999999
+            lost: 100
+            jitter: 999999
+            bandwidth: 8
+          providers:
+            -  jiangnan-fabric-101
+            -  jiangnan-fabric-102
+            -  jiangnan-fabric-103
+    - name: case2-component2
+      selfID:
+        - /pml/case2/c2/1
+    - name: case2-component3
+      selfID:
+        - /pml/case2/c3/1
+    - name: case2-component4
+      selfID:
+        - /pml/case2/c4/1
+    - name: case2-component5
+      selfID:
+        - /pml/case2/c5/1
+    - name: case2-component6
+      selfID:
+        - /pml/case2/c6/1

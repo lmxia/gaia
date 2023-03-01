@@ -4,26 +4,45 @@ metadata:
   name: case4
   namespace: gaia-reserved
 spec:
-  appID: appID-case4
+  appID: case4
   components:
-    - name: serss
-      namespace: default
+    - name: case4-component1
+      namespace: test1
       runtimeType: runc
-      schedulePolicy: { }
+      schedulePolicy:
+        netenvironment:
+          matchExpressions:
+            - { key: net-environment, operator: In, values: [ "edge" ] }
+        geolocation:
+          matchExpressions:
+            - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C31-District-E31" ] }
+        provider:
+          matchExpressions:
+            - { key: supplier-name, operator: In, values: [ "Huawei" ] }
       workload:
         workloadtype: serverless
+        # 更改
         traitServerless:
-          miniInstancenumber: 1
-          threshold: "{\"cpuMin\":20,\"cpuMax\":70,\"memMin\":20,\"memMax\":80,\"qpsMin\":40,\"qpsMax\":80}"
+          threshold: '{"cpuMin":20,"cpuMax":70,"memMin":20,"memMax":80,"qpsMin":40,"qpsMax":80}'
           step: 1
       module:
         metadata:
           labels:
-            app: serss
+            app: appcase4
         spec:
           containers:
-            - name: serss
+            - name: appcase4comp1
               image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case4/c1/1"
+                - name: IOCLIENT_ADDRESS
+                  value:
               resources:
                 limits:
                   cpu: "100m"
@@ -31,3 +50,217 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case4-component2
+      namespace: test2
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase4
+        spec:
+          containers:
+            - name: appcase4comp2
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case4/c2/1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case4-component3
+      namespace: test4
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase4
+        spec:
+          containers:
+            - name: appcase4comp3
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case4/c3/1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case4-component4
+      namespace: test4
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase4
+        spec:
+          containers:
+            - name: appcase4comp4
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case4/c4/1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case4-component5
+      namespace: test5
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase4
+        spec:
+          containers:
+            - name: appcase4comp5
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case4/c5/1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+    - name: case4-component6
+      namespace: test6
+      runtimeType: runc
+      workload:
+        workloadtype: deployment
+        traitDeployment:
+          replicas: 3
+      module:
+        metadata:
+          labels:
+            app: appcase4
+        spec:
+          containers:
+            - name: appcase4comp6
+              image: 172.17.9.231:8880/hyperio/app:latest
+              volumeMounts:
+                - mountPath: "/dev/shm"
+                  name: "shm"
+                - mountPath: "/tmp"
+                  name: "usock"
+              env:
+                - name: SCNID
+                  value: "/pml/case4/c6/1"
+                - name: IOCLIENT_ADDRESS
+                  value:
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+          volumes:
+            - name: shm
+              hostPath:
+                path: /dev/shm
+                type: DirectoryOrCreate
+            - name: usock
+              hostPath:
+                path: /tmp
+                type: DirectoryOrCreate

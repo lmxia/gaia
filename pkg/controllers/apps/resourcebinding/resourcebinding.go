@@ -53,6 +53,8 @@ type SyncHandlerFunc func(binding *appsv1alpha1.ResourceBinding) error
 
 // RBController defines configuration for ResourceBinding requests
 type RBController struct {
+	networkBindUrl string
+
 	rbLocalController   *Controller
 	descLocalController *description.Controller
 
@@ -87,31 +89,20 @@ type Controller struct {
 }
 
 // NewRBController returns a new CRRApprover for ResourceBindings and Descriptions.
-func NewRBController(localkubeclient *kubernetes.Clientset, localgaiaclient *gaiaClientSet.Clientset, localKubeConfig *rest.Config) (*RBController, error) {
+func NewRBController(localkubeclient *kubernetes.Clientset, localgaiaclient *gaiaClientSet.Clientset, localKubeConfig *rest.Config, networkBindUrl string) (*RBController, error) {
 	localdynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 	localGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(localgaiaclient, known.DefaultResync)
 	rbController := &RBController{
+		networkBindUrl:           networkBindUrl,
 		localkubeclient:          localkubeclient,
 		localgaiaclient:          localgaiaclient,
 		localdynamicClient:       localdynamicClient,
 		localGaiaInformerFactory: localGaiaInformerFactory,
 		restMapper:               restmapper.NewDeferredDiscoveryRESTMapper(cacheddiscovery.NewMemCacheClient(localkubeclient.Discovery())),
-		//descLister:         localGaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister(),
 	}
-
-	//newRBController, err := NewController(localgaiaclient, localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(),
-	//	rbController.handleLocalResourceBinding)
 	if err != nil {
 		return nil, err
 	}
-	//rbController.rbLocalController = newRBController
-
-	//newdesController, err := description.NewController(localgaiaclient, gaiaInformerFactory.Apps().V1alpha1().Descriptions(),
-	//	rbLocalController.handleDescription)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//rbLocalController.descLocalController = newdesController
 
 	return rbController, nil
 }
@@ -349,15 +340,6 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-//func (c *RBController) RunLocalResourceBinding(threadiness int, stopCh <-chan struct{}) {
-//	klog.Info("starting local runRB ResourceBinding  ...")
-//	defer klog.Info("shutting local  runRB scheduler")
-//	c.localGaiaInformerFactory.Start(stopCh)
-//	// todo: gorountine
-//	go c.rbLocalController.Run(threadiness, stopCh)
-//	<-stopCh
-//}
-
 func (c *RBController) RunParentResourceBinding(threadiness int, stopCh <-chan struct{}) {
 	klog.Info("starting parent ResourceBinding  ...")
 	defer klog.Info("shutting parent scheduler")
@@ -400,10 +382,15 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 					break
 				}
 			}
+			descriptionName := rb.Labels[known.GaiaDescriptionLabel]
 			if createRB {
-				return utils.ApplyResourceBinding(context.TODO(), c.localdynamicClient, c.restMapper, rb, clusterName)
+				nwr, newErr := utils.GetNetworkRequirement(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, known.GaiaReservedNamespace)
+				if newErr != nil {
+					klog.Infof("nwr error===%v \n", newErr)
+					nwr = nil
+				}
+				return utils.ApplyResourceBinding(context.TODO(), c.localdynamicClient, c.restMapper, rb, clusterName, descriptionName, c.networkBindUrl, nwr)
 			} else {
-				descriptionName := rb.Labels[known.GaiaDescriptionLabel]
 				desc, descErr := utils.GetDescrition(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, desNs)
 				if descErr != nil {
 					if apierrors.IsNotFound(descErr) {
@@ -431,9 +418,6 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 func (c *RBController) handleParentDescription(desc *appsv1alpha1.Description) error {
 	klog.V(5).Infof("handle Description %s", klog.KObj(desc))
 	if desc != nil && desc.DeletionTimestamp != nil {
-		//utils.OffloadResourceBindingByDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
-		//utils.OffloadWorkloadsByDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
-
 		utils.OffloadDescription(context.TODO(), c.localdynamicClient, c.restMapper, desc)
 	}
 	return nil

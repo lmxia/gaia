@@ -18,7 +18,7 @@ type ResForm struct {
 }
 
 func (r ResForm) Name() string {
-	return names.NetEnviroment
+	return names.ResForm
 }
 
 func (r ResForm) Filter(ctx context.Context, com *v1alpha1.Component, cluster *clusterapi.ManagedCluster) *framework.Status {
@@ -29,7 +29,7 @@ func (r ResForm) Filter(ctx context.Context, com *v1alpha1.Component, cluster *c
 	if len(resFormMap) > 0 {
 		return nil
 	}
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no resform fit for this com."))
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no resform fit for this com. cluster name is %v, component name is %v", cluster.Name, com.Name))
 }
 
 // New initializes a new plugin and returns it.

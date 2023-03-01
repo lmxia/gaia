@@ -3,15 +3,26 @@ package controllermanager
 import (
 	"context"
 	"fmt"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
+	apirequest "k8s.io/apiserver/pkg/endpoints/request"
+	genericfilters "k8s.io/apiserver/pkg/server/filters"
+	"k8s.io/apiserver/pkg/server/healthz"
+	"k8s.io/component-base/metrics/legacyregistry"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
+
+	gaiaconfig "github.com/lmxia/gaia/cmd/gaia-controllers/app/config"
+	"github.com/lmxia/gaia/cmd/gaia-controllers/app/option"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	known "github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllermanager/approver"
+	"github.com/lmxia/gaia/pkg/controllermanager/metrics"
 	"github.com/lmxia/gaia/pkg/controllermanager/rbmerger"
 	"github.com/lmxia/gaia/pkg/controllers/apps/resourcebinding"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
@@ -31,6 +42,11 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/klog/v2"
 	utilpointer "k8s.io/utils/pointer"
+
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
+	"k8s.io/apiserver/pkg/server/mux"
+	"k8s.io/client-go/kubernetes/scheme"
 )
 
 type ControllerManager struct {
@@ -65,10 +81,20 @@ type ControllerManager struct {
 }
 
 // NewAgent returns a new Agent.
-func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName string, managedCluster *platformv1alpha1.ManagedClusterOptions) (*ControllerManager, error) {
+func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, networkBindUrl string, managedCluster *platformv1alpha1.ManagedClusterOptions, opts *option.Options) (*gaiaconfig.CompletedConfig, *ControllerManager, error) {
+	if errs := opts.Validate(); len(errs) > 0 {
+		return nil, nil, utilerrors.NewAggregate(errs)
+	}
+	c, err := opts.Config()
+	if err != nil {
+		return nil, nil, err
+	}
+	// Get the completed config
+	cc := c.Complete()
+
 	hostname, err := os.Hostname()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get hostname: %v", err)
+		return nil, nil, fmt.Errorf("unable to get hostname: %v", err)
 	}
 
 	// add a uniquifier so that two processes on the same host don't accidentally both become active
@@ -77,7 +103,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 
 	localKubeConfig, err := utils.LoadsKubeConfig(childKubeConfigFile, 1)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(managedCluster.ManagedClusterSource) <= 0 {
@@ -100,13 +126,12 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	localKubeInformerFactory := kubeinformers.NewSharedInformerFactory(localKubeClientSet, known.DefaultResync)
 	localGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(localGaiaClientSet, known.DefaultResync)
 
-	approver, apprerr := approver.NewCRRApprover(localKubeClientSet, localGaiaClientSet, localKubeConfig, localGaiaInformerFactory,
-		localKubeInformerFactory)
+	approver, apprerr := approver.NewCRRApprover(localKubeClientSet, localGaiaClientSet, localKubeConfig, localGaiaInformerFactory, localKubeInformerFactory)
 	if apprerr != nil {
 		klog.Error(apprerr)
 	}
 
-	rbController, rberr := resourcebinding.NewRBController(localKubeClientSet, localGaiaClientSet, localKubeConfig)
+	rbController, rberr := resourcebinding.NewRBController(localKubeClientSet, localGaiaClientSet, localKubeConfig, networkBindUrl)
 	if rberr != nil {
 		klog.Error(rberr)
 	}
@@ -129,10 +154,13 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		rbMerger:            rbMerger,
 		statusManager:       statusManager,
 	}
-	return agent, nil
+
+	metrics.Register()
+
+	return &cc, agent, nil
 }
 
-func (controller *ControllerManager) Run() {
+func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 	klog.Info("starting gaia controller ...")
 
 	// start the leader election code loop
@@ -190,6 +218,14 @@ func (controller *ControllerManager) Run() {
 					klog.Info("start 7. start rbMerger Controller...")
 					controller.rbMerger.RunToParentResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
 				}()
+
+				// metrics
+				if cc.SecureServing != nil {
+					handler := buildHandlerChain(newMetricsHandler(), cc.Authentication.Authenticator, cc.Authorization.Authorizer)
+					if _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
+						klog.Infof("failed to start metrics server: %v", err)
+					}
+				}
 
 			},
 			OnStoppedLeading: func() {
@@ -499,4 +535,45 @@ func generateClusterName(clusterNamePrefix string) string {
 	clusterName := fmt.Sprintf("%s%s", common.NamePrefixForGaiaObjects, utilrand.String(common.DefaultRandomUIDLength))
 	klog.V(4).Infof("generate a random string %q as cluster name for later use", clusterName)
 	return clusterName
+}
+
+// buildHandlerChain wraps the given handler with the standard filters.
+func buildHandlerChain(handler http.Handler, authn authenticator.Request, authz authorizer.Authorizer) http.Handler {
+	requestInfoResolver := &apirequest.RequestInfoFactory{}
+	failedHandler := genericapifilters.Unauthorized(scheme.Codecs)
+
+	handler = genericapifilters.WithAuthorization(handler, authz, scheme.Codecs)
+	handler = genericapifilters.WithAuthentication(handler, authn, failedHandler, nil)
+	handler = genericapifilters.WithRequestInfo(handler, requestInfoResolver)
+	handler = genericapifilters.WithCacheControl(handler)
+	handler = genericfilters.WithHTTPLogging(handler)
+	handler = genericfilters.WithPanicRecovery(handler, requestInfoResolver)
+
+	return handler
+}
+
+func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
+	// configz.InstallHandler(pathRecorderMux)
+	pathRecorderMux.Handle("/metrics", legacyregistry.HandlerWithReset())
+
+}
+
+// newMetricsHandler builds a metrics server from the config.
+func newMetricsHandler() http.Handler {
+	pathRecorderMux := mux.NewPathRecorderMux("gaia-controller-manager")
+	installMetricHandler(pathRecorderMux)
+	return pathRecorderMux
+}
+
+// newHealthzHandler creates a healthz server from the config, and will also
+// embed the metrics handler if the healthz and metrics address configurations
+// are the same.
+func newHealthzHandler(separateMetrics bool, checks ...healthz.HealthChecker) http.Handler {
+	pathRecorderMux := mux.NewPathRecorderMux("gaia-controller-manager")
+	healthz.InstallHandler(pathRecorderMux, checks...)
+	if !separateMetrics {
+		installMetricHandler(pathRecorderMux)
+	}
+
+	return pathRecorderMux
 }

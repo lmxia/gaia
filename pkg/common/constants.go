@@ -52,9 +52,10 @@ const (
 	PrometheusUrlPrefix                = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090"
 	// description labels on rb
 	GaiaDescriptionLabel = "apps.gaia.io/description"
-	StatusScheduling     = "scheduling"
-	NetworkLocationCore  = "core"
-	NodeResourceForm     = "pool"
+	GaiaComponentLabel   = "apps.gaia.io/component"
+
+	NetworkLocationCore = "core"
+	NodeResourceForm    = "pool"
 
 	ResourceBindingRed   string = "Red"
 	ResourceBindingGreen string = "Green"
@@ -66,7 +67,8 @@ const (
 	// env
 	ResourceBindMergePostURL = "RESOURCEBINDING_MERGER_POST_URL"
 
-	MetricConfigMapAbsFilePath = "/etc/config/gaia-prometheus_metrics.conf"
+	MetricConfigMapAbsFilePath             = "/etc/config/gaia-prometheus_metrics.conf"
+	ServiceMaintenanceConfigMapAbsFilePath = "/etc/config/service-maintenance-prometheus_metrics.conf"
 
 	HypernodeClusterNodeRole       = "hypernode.cluster.pml.com.cn/node-role"
 	HypernodeClusterNodeRolePublic = "Public"

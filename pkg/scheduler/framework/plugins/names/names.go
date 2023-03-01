@@ -4,6 +4,7 @@ const (
 	TaintToleration  = "TaintToleration"
 	CorePriority     = "CorePriority"
 	AffinityDaemon   = "AffinityDaemon"
+	UserAPP          = "UserAPP"
 	SpecificResource = "SpecificResource"
 	NetEnviroment    = "NetEnviroment"
 	Geolocation      = "GeoLocation"

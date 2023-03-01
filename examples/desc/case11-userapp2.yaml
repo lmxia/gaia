@@ -1,0 +1,26 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case11-userapp2
+  namespace: gaia-reserved
+spec:
+  appID: case11-userapp2
+  components:
+    - name: case11-component1-2
+      namespace: test1
+      runtimeType: process
+      workload:
+        workloadtype: userapp
+        traitUserAPP:
+          sn: 61f06df731b065c1a26d2bf5b1f222826e5bf126
+      module:
+        metadata:
+          labels:
+            app: appcase11
+        spec:
+          containers:
+            - name: appcase11comp1
+              image: 172.17.9.231:8088/releases/userapp/userapp-arm2.tar
+              env:
+                - name: SCNID
+                  value: "/privacy/yyy"

@@ -1,12 +1,15 @@
 package utils
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"net/http"
 	"strings"
 	"sync"
 
+	"encoding/json"
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
@@ -121,7 +124,7 @@ func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
 		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(), resource.GroupVersionKind().Version)
 		if err != nil {
-			lastError = fmt.Errorf("please check whether the advertised apiserver of current child cluster is accessible. %v", err)
+			lastError = fmt.Errorf("error===%v \n", err)
 			return false, nil
 		}
 
@@ -202,6 +205,23 @@ func GetDescrition(ctx context.Context, dynamicClient dynamic.Interface, restMap
 		return nil, err
 	}
 	return des, nil
+}
+func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, name, desNs string) (*appsv1alpha1.NetworkRequirement, error) {
+	var kind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "NetworkRequirement"}
+	restMapping, err := restMapper.RESTMapping(kind.GroupKind(), kind.Version)
+	if err != nil {
+		klog.Errorf("cannot get networkRequirement= %v", err)
+		return nil, err
+	}
+	curObj, queryErr := dynamicClient.Resource(restMapping.Resource).Namespace(desNs).Get(ctx, name, metav1.GetOptions{})
+	if queryErr != nil && !apierrors.IsNotFound(queryErr) {
+		return nil, queryErr
+	}
+	nwr := &appsv1alpha1.NetworkRequirement{}
+	if err = UnstructuredConvertToStruct(curObj, nwr); err != nil {
+		return nil, err
+	}
+	return nwr, nil
 }
 
 func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, parentGaiaclient *gaiaClientSet.Clientset, localdynamicClient dynamic.Interface,
@@ -312,65 +332,65 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 	for _, com := range comToBeApply {
 		switch com.Workload.Workloadtype {
 		case appsv1alpha1.WorkloadTypeDeployment:
-			depUn, errdep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil || depUn == nil {
+			unstructure, errdep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errdep != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(depUn *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depUn)
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads Deployment name==%s err===%v \n", depUn.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads Deployment name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(depUn)
+			}(unstructure)
 		case appsv1alpha1.WorkloadTypeServerless:
-			SerUn, errservice := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errservice != nil || SerUn == nil {
+			unstructure, errServiceless := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errServiceless != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(SerUn *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, SerUn)
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads Serverless name==%s err===%v \n", SerUn.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads Serverless name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(SerUn)
+			}(unstructure)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			depUn, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil || depUn == nil {
+			unstructure, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errdep != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(depUn *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depUn)
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", depUn.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(depUn)
+			}(unstructure)
 		case appsv1alpha1.WorkloadTypeUserApp:
-			depUn, errdep := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil || depUn == nil {
+			unstructure, errUserapp := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errUserapp != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(depUn *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depUn)
+				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads userApp name==%s err===%v \n", depUn.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads userApp name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(depUn)
+			}(unstructure)
 		}
 		wg.Wait()
 	}
@@ -408,7 +428,8 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 	return err
 }
 
-func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
+func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,
+	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement) error {
 	var allErrs []error
 	var err error
 	errCh := make(chan error, len(rb.Spec.RbApps))
@@ -453,6 +474,12 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 				}
 			}(rbUnstructured)
 			wg.Wait()
+
+			if len(newRB.Spec.NetworkPath) > 0 && len(networkBindUrl) > 0 && nwr != nil {
+				if NeedBindNetworkInCluster(rb.Spec.RbApps, clusterName, nwr) {
+					postRequest(networkBindUrl, descriptionName, newRB.Spec.NetworkPath[0])
+				}
+			}
 		}
 	}
 
@@ -465,6 +492,41 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 		return utilerrors.NewAggregate(allErrs)
 	}
 	return err
+}
+
+type NetworkScheme struct {
+
+	// whether resource reserved or not
+	IsResouceReserved bool `json:"isResouceReserved,omitempty"`
+
+	// network scheme path
+	Path []byte `json:"path,omitempty"`
+
+	// buleprint ID
+	BuleprintID string `json:"buleprintID,omitempty"`
+}
+
+func postRequest(url, descriptionName string, path []byte) {
+	networkScheme := NetworkScheme{
+		IsResouceReserved: false,
+		Path:              path,
+		BuleprintID:       descriptionName,
+	}
+	data, jsonerr := json.Marshal(networkScheme)
+	if jsonerr != nil {
+		klog.Errorf("request  post new request, error=%v \n", jsonerr)
+	}
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		klog.Errorf("request  post new request, error=%v \n", err)
+	}
+	request.Header.Add("Content-Type", "application/json")
+	request.Header.Add("cache-control", "no-cache")
+	resp, resperr := http.DefaultClient.Do(request)
+	if resperr != nil {
+		klog.Errorf("post do sent, error====%v\n", resperr)
+	}
+	defer resp.Body.Close()
 }
 
 func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
@@ -482,6 +544,7 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
 							known.GaiaDescriptionLabel: descName,
+							known.GaiaComponentLabel:   com.Name,
 						},
 					}}
 				if len(com.Namespace) > 0 {
@@ -495,23 +558,10 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					ds.Spec.Template = com.Module
 					nodeAffinity := AddNodeAffinity(com)
 					ds.Spec.Template.Spec.Affinity = nodeAffinity
-					if ds.Spec.Template.Spec.NodeSelector == nil {
-						ds.Spec.Template.Spec.NodeSelector = map[string]string{
-							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
-						}
-					} else {
-						ds.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
-					}
 
 					label := ds.GetLabels()
-					if label != nil {
-						label[known.GaiaDescriptionLabel] = descName
-					} else {
-						label = map[string]string{known.GaiaDescriptionLabel: descName}
-					}
-					ds.Labels = label
-					selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
-					ds.Spec.Selector = selector
+					ds.Spec.Template.Labels = label
+					ds.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 					depUnstructured, err = ObjectConvertToUnstructured(ds)
 				} else {
 					depUnstructured, err = ObjectConvertToUnstructured(ds)
@@ -521,18 +571,9 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 		}
 	}
 
-	if depUnstructured == nil || depUnstructured.Object == nil {
-		fmt.Printf("daemonSet cluster  %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
-		return nil, nil
-	}
 	if err != nil {
-		msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
+		msg := fmt.Sprintf("deamonset failed to unmarshal resource: %v", err)
 		klog.ErrorDepth(5, msg)
-		return nil, err
-	}
-	if len(depUnstructured.GetName()) <= 0 {
-		err = fmt.Errorf("failed to get daemonSet description component %s  from rb labels:%v", com.Name, rbApps)
-		klog.ErrorDepth(5, err)
 		return nil, err
 	}
 	return depUnstructured, nil
@@ -543,6 +584,10 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 	var err error
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
+			replicas := rbApp.Replicas[com.Name]
+			if replicas == 0 {
+				return nil, nil
+			}
 			userAPP := &appsv1alpha1.UserAPP{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "UserAPP",
@@ -551,6 +596,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						known.GaiaDescriptionLabel: descName,
+						known.GaiaComponentLabel:   com.Name,
 					},
 				},
 			}
@@ -559,12 +605,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				userAPP.Spec.Module = com.Module
 				userAPP.Spec.SN = com.Workload.TraitUserAPP.SN
 				label := userAPP.GetLabels()
-				if label != nil {
-					label[known.GaiaDescriptionLabel] = descName
-				} else {
-					label = map[string]string{known.GaiaDescriptionLabel: descName}
-				}
-				userAPP.Labels = label
+				userAPP.Spec.Module.Labels = label
 				depUnstructured, err = ObjectConvertToUnstructured(userAPP)
 			} else {
 				depUnstructured, err = ObjectConvertToUnstructured(userAPP)
@@ -573,25 +614,15 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 		}
 	}
 
-	if depUnstructured == nil || depUnstructured.Object == nil {
-		fmt.Printf("userAPP cluster  %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
-		return nil, nil
-	}
 	if err != nil {
-		msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
+		msg := fmt.Sprintf("userAPP failed to unmarshal resource: %v", err)
 		klog.ErrorDepth(5, msg)
-		return nil, err
-	}
-	if len(depUnstructured.GetName()) <= 0 {
-		err = fmt.Errorf("failed to get userAPP description component %s  from rb labels:%v", com.Name, rbApps)
-		klog.ErrorDepth(5, err)
 		return nil, err
 	}
 	return depUnstructured, nil
 }
 
 func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
-
 	nodeAffinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
@@ -604,24 +635,28 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 					}},
 				},
 			}},
-			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{},
 		},
 	}
 
-	if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
-		nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-	}
 	if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeAffinityDaemon {
-		nodeSelectorTermSNs := corev1.NodeSelectorTerm{
-			MatchExpressions: []corev1.NodeSelectorRequirement{{
-				Key:      v1alpha1.ParsedSNKey,
-				Operator: corev1.NodeSelectorOpIn,
-				Values:   com.Workload.TraitAffinityDaemon.SNS,
-			}},
+		if len(com.Workload.TraitAffinityDaemon.SNS) > 0 {
+			nodeSelectorTermSNs := corev1.NodeSelectorTerm{
+				MatchExpressions: []corev1.NodeSelectorRequirement{{
+					Key:      v1alpha1.ParsedSNKey,
+					Operator: corev1.NodeSelectorOpIn,
+					Values:   com.Workload.TraitAffinityDaemon.SNS,
+				}},
+			}
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
+			}
+			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = make([]corev1.NodeSelectorTerm, 0)
+			}
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+			return nodeAffinity
 		}
-		nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-			append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
-		return nodeAffinity
 	}
 
 	if com.SchedulePolicy.Provider != nil && com.SchedulePolicy.Provider.MatchExpressions != nil {
@@ -698,6 +733,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
 						known.GaiaDescriptionLabel: descName,
+						known.GaiaComponentLabel:   com.Name,
 					},
 				}}
 			if len(com.Namespace) > 0 {
@@ -711,26 +747,16 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Spec.Template = com.Module
 				nodeAffinity := AddNodeAffinity(com)
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
-				if com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeAffinityDaemon || com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeUserApp {
-					if dep.Spec.Template.Spec.NodeSelector == nil {
-						dep.Spec.Template.Spec.NodeSelector = map[string]string{
-							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
-						}
-					} else {
-						dep.Spec.Template.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
+				if dep.Spec.Template.Spec.NodeSelector == nil {
+					dep.Spec.Template.Spec.NodeSelector = map[string]string{
+						v1alpha1.ParsedRuntimeStateKey: com.RuntimeType,
 					}
 				}
-				//dep.ClusterName = clusterName
-				label := dep.GetLabels()
-				if label != nil {
-					label[known.GaiaDescriptionLabel] = descName
-				} else {
-					label = map[string]string{known.GaiaDescriptionLabel: descName}
-				}
-				dep.Labels = label
+
 				dep.Spec.Replicas = &replicas
-				selector := &metav1.LabelSelector{MatchLabels: com.Module.Labels}
-				dep.Spec.Selector = selector
+				label := dep.GetLabels()
+				dep.Spec.Template.Labels = label
+				dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 				depUnstructured, err = ObjectConvertToUnstructured(dep)
 			} else {
 				depUnstructured, err = ObjectConvertToUnstructured(dep)
@@ -739,20 +765,12 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 		}
 	}
 
-	if depUnstructured == nil || depUnstructured.Object == nil {
-		fmt.Printf("deploy cluster  %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
-		return nil, nil
-	}
 	if err != nil {
-		msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
+		msg := fmt.Sprintf("deployment failed to unmarshal resource: %v", err)
 		klog.ErrorDepth(5, msg)
 		return nil, err
 	}
-	if len(depUnstructured.GetName()) <= 0 {
-		err = fmt.Errorf("failed to get deployment description component %s replicas from rb labels:%v", com.Name, rbApps)
-		klog.ErrorDepth(5, err)
-		return nil, err
-	}
+
 	return depUnstructured, nil
 }
 
@@ -760,7 +778,7 @@ func setMatchExpressions(matchExpressions []metav1.LabelSelectorRequirement) []c
 	nsRequirements := []corev1.NodeSelectorRequirement{}
 	for _, expression := range matchExpressions {
 		express := corev1.NodeSelectorRequirement{
-			Key:      expression.Key,
+			Key:      known.SpecificNodeLabelsKeyPrefix + expression.Key,
 			Operator: corev1.NodeSelectorOperator(expression.Operator),
 			Values:   expression.Values,
 		}
@@ -797,6 +815,7 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: map[string]string{
 							known.GaiaDescriptionLabel: descName,
+							known.GaiaComponentLabel:   com.Name,
 						},
 					},
 				}
@@ -811,23 +830,13 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					ser.Spec = com
 					nodeAffinity := AddNodeAffinity(&com)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
-					if com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeAffinityDaemon || com.Workload.Workloadtype != appsv1alpha1.WorkloadTypeUserApp {
-						if ser.Spec.Module.Spec.NodeSelector == nil {
-							ser.Spec.Module.Spec.NodeSelector = map[string]string{
-								known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
-							}
-						} else {
-							ser.Spec.Module.Spec.NodeSelector[known.HypernodeClusterNodeRole] = known.HypernodeClusterNodeRolePublic
+					if ser.Spec.Module.Spec.NodeSelector == nil {
+						ser.Spec.Module.Spec.NodeSelector = map[string]string{
+							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
+							v1alpha1.ParsedRuntimeStateKey: com.RuntimeType,
 						}
 					}
-
-					label := ser.GetLabels()
-					if label != nil {
-						label[known.GaiaDescriptionLabel] = descName
-					} else {
-						label = map[string]string{known.GaiaDescriptionLabel: descName}
-					}
-					ser.Labels = label
+					ser.Spec.Module.Labels = ser.GetLabels()
 					serlessUnstructured, err = ObjectConvertToUnstructured(ser)
 				} else {
 					serlessUnstructured, err = ObjectConvertToUnstructured(ser)
@@ -841,13 +850,9 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 			break
 		}
 	}
-	if serlessUnstructured == nil || serlessUnstructured.Object == nil {
-		fmt.Printf("serverless cluster %s donnot need to create rb and its component.name==%s namespace=%s \n", clusterName, com.Name, com.Namespace)
-		return nil, nil
-	}
-	if len(serlessUnstructured.GetName()) <= 0 {
-		err = fmt.Errorf("failed to get serverless description component %s replicas from rb labels:%v", com.Name, rbApps)
-		klog.ErrorDepth(5, err)
+	if err != nil {
+		msg := fmt.Sprintf("serverless failed to unmarshal resource: %v", err)
+		klog.ErrorDepth(5, msg)
 		return nil, err
 	}
 	return serlessUnstructured, nil
@@ -955,4 +960,32 @@ func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
 	}(resource)
 	wg.Wait()
 	return err
+}
+
+// check if we should binding network path.
+func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, networkReq *appsv1alpha1.NetworkRequirement) bool {
+	var compToClusterMap map[string]int32
+	for _, rbApp := range rbApps {
+		if clusterName == rbApp.ClusterName {
+			compToClusterMap = rbApp.Replicas
+		}
+	}
+	idToComponentMap := make(map[string]string, 0)
+	for _, netCommu := range networkReq.Spec.NetworkCommunication {
+		for _, selfID := range netCommu.SelfID {
+			idToComponentMap[selfID] = netCommu.Name
+		}
+	}
+
+	for _, netCommu := range networkReq.Spec.NetworkCommunication {
+		if len(netCommu.InterSCNID) > 0 {
+			for _, internalSCN := range netCommu.InterSCNID {
+				comName := idToComponentMap[internalSCN.Source.Id]
+				if compToClusterMap[comName] > 0 {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

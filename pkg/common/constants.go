@@ -50,9 +50,13 @@ const (
 	ManagedClusterSourceFromInformer   = "informer"
 	ManagedClusterSourceFromPrometheus = "prometheus"
 	PrometheusUrlPrefix                = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090"
+
 	// description labels on rb
-	GaiaDescriptionLabel = "apps.gaia.io/description"
-	GaiaComponentLabel   = "apps.gaia.io/component"
+	GaiaDescriptionLabel                = "apps.gaia.io/description"
+	GaiaComponentLabel                  = "apps.gaia.io/component"
+	OriginatedDescriptionNameLabel      = "apps.gaia.io/desc.name"
+	OriginatedDescriptionNamespaceLabel = "apps.gaia.io/desc.namespace"
+	OriginatedDescriptionUIDLabel       = "apps.gaia.io/desc.uid"
 
 	NetworkLocationCore = "core"
 	NodeResourceForm    = "pool"

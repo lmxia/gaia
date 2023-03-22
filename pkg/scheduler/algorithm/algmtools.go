@@ -309,7 +309,7 @@ func plan(weight []*framework.ClusterInfo, request int64) []float64 {
 
 		finalAssign = append(finalAssign, currentFinalAssign)
 	}
-	//f=np.sum(arr)/n*(1+(arg-np.floor(arg))/np.floor(arg))
+	// f=np.sum(arr)/n*(1+(arg-np.floor(arg))/np.floor(arg))
 	unassginLeft := request - int64(totalFirstAssign)
 	ord := ArgsortNew(targetF)
 	for i := 0; i < int(unassginLeft); i++ {

@@ -189,7 +189,7 @@ func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface
 	return lastError
 }
 
-func GetDescrition(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, name, desNs string) (*appsv1alpha1.Description, error) {
+func GetDescription(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, name, desNs string) (*appsv1alpha1.Description, error) {
 	var descriptionsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "Description"}
 	restMapping, err := restMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
 	if err != nil {
@@ -310,14 +310,6 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 	if err != nil {
 		msg := fmt.Sprintf("failed to deleting Description %s: %v", klog.KObj(desc), err)
 		klog.ErrorDepth(5, msg)
-	} else {
-		klog.V(5).Infof("Description %s is deleted successfully", klog.KObj(desc))
-		rbCopy := rb.DeepCopy()
-		rbCopy.Finalizers = RemoveString(rbCopy.Finalizers, known.AppFinalizer)
-		_, err = parentGaiaclient.AppsV1alpha1().ResourceBindings(rbCopy.Namespace).Update(context.TODO(), rbCopy, metav1.UpdateOptions{})
-		if err != nil {
-			klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from Description %s: %v", known.AppFinalizer, klog.KObj(rbCopy), err))
-		}
 	}
 	return err
 }
@@ -444,6 +436,9 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   rb.Name,
 					Labels: rb.Labels,
+					Finalizers: []string{
+						known.AppFinalizer,
+					},
 				},
 				Spec: appsv1alpha1.ResourceBindingSpec{
 					AppID:           rb.Spec.AppID,
@@ -863,6 +858,11 @@ func ConstructDescriptionFromExistOne(old *appsv1alpha1.Description) *appsv1alph
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       old.Name,
 			Finalizers: old.Finalizers,
+			Labels: map[string]string{
+				known.OriginatedDescriptionNameLabel:      old.Name,
+				known.OriginatedDescriptionNamespaceLabel: old.Namespace,
+				known.OriginatedDescriptionUIDLabel:       string(old.UID),
+			},
 		},
 		Spec: old.Spec,
 	}
@@ -896,7 +896,9 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 	}
 	return nil
 }
-func OffloadResourceBindingByDescription(ctx context.Context, dynamicClient dynamic.Interface,
+
+// OffloadResourceBindingByDescription by ssider
+func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
 
 	var descriptionsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "ResourceBinding"}
@@ -918,6 +920,7 @@ func OffloadResourceBindingByDescription(ctx context.Context, dynamicClient dyna
 
 func OffloadDescription(ctx context.Context, dynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
+
 	descUnstructured, _ := ObjectConvertToUnstructured(desc)
 	return DeleteResource(ctx, dynamicClient, discoveryRESTMapper, descUnstructured)
 }

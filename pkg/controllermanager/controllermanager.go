@@ -23,7 +23,6 @@ import (
 	known "github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllermanager/approver"
 	"github.com/lmxia/gaia/pkg/controllermanager/metrics"
-	"github.com/lmxia/gaia/pkg/controllermanager/rbmerger"
 	"github.com/lmxia/gaia/pkg/controllers/apps/resourcebinding"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
@@ -74,7 +73,7 @@ type ControllerManager struct {
 	statusManager       *Manager
 	crrApprover         *approver.CRRApprover
 	rbController        *resourcebinding.RBController
-	rbMerger            *rbmerger.RBMerger
+	rbMerger            *resourcebinding.RBMerger
 	gaiaInformerFactory gaiainformers.SharedInformerFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
 	triggerFunc         func(metav1.Object)
@@ -136,7 +135,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		klog.Error(rberr)
 	}
 	statusManager := NewStatusManager(ctx, localKubeConfig.Host, clusterHostName, managedCluster, localKubeClientSet, localGaiaClientSet, hypernodeClientSet)
-	rbMerger, nil := rbmerger.NewRBMerger(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory)
+	rbMerger, nil := resourcebinding.NewRBMerger(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory)
 	if err != nil {
 		klog.Error(err)
 	}
@@ -198,17 +197,16 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 
 				// 5. start local description
 				go func() {
-					// set parent config
 					controller.rbController.SetLocalDescriptionController()
 					klog.Info("start 5. start local description informers...")
 					controller.rbController.RunLocalDescription(common.DefaultThreadiness, ctx.Done())
 				}()
 
-				// 6. start parent resourcebinding and description
+				// 6. start parent ResourceBinding and Description
 				go func() {
 					// set parent config
 					controller.rbController.SetParentRBController()
-					klog.Info("start 6. start parent resourcebinding and description informers...")
+					klog.Info("start 6. start parent ResourceBinding and Description informers...")
 					controller.rbController.RunParentResourceBinding(common.DefaultThreadiness, ctx.Done())
 				}()
 
@@ -222,6 +220,7 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 				// metrics
 				if cc.SecureServing != nil {
 					handler := buildHandlerChain(newMetricsHandler(), cc.Authentication.Authenticator, cc.Authorization.Authorizer)
+					klog.Info("Starting gaia-controllers metrics server...")
 					if _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
 						klog.Infof("failed to start metrics server: %v", err)
 					}

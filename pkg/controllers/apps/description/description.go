@@ -3,11 +3,14 @@ package description
 import (
 	"context"
 	"fmt"
+	known "github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/utils"
 	"reflect"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
@@ -18,7 +21,6 @@ import (
 	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	appInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions/apps/v1alpha1"
-	platformInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions/platform/v1alpha1"
 	appListers "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 )
 
@@ -40,14 +42,15 @@ type Controller struct {
 
 	descLister      appListers.DescriptionLister
 	descSynced      cache.InformerSynced
+	rbSynced        cache.InformerSynced
 	mcSynced        cache.InformerSynced
 	syncHandlerFunc SyncHandlerFunc
 	cacheHandler    cache.ResourceEventHandler
 }
 
-// NewDescController creates and initializes a new Controller
-func NewDescController(gaiaClient gaiaClientSet.Interface,
-	descInformer appInformers.DescriptionInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+// NewLocalDescController creates and initializes a new Controller
+func NewLocalDescController(gaiaClient gaiaClientSet.Interface,
+	descInformer appInformers.DescriptionInformer, rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
@@ -56,7 +59,8 @@ func NewDescController(gaiaClient gaiaClientSet.Interface,
 		gaiaClient:      gaiaClient,
 		descLister:      descInformer.Lister(),
 		descSynced:      descInformer.Informer().HasSynced,
-		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "description"),
+		rbSynced:        rbInformer.Informer().HasSynced,
+		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "local-description"),
 		syncHandlerFunc: syncHandler,
 	}
 
@@ -67,37 +71,39 @@ func NewDescController(gaiaClient gaiaClientSet.Interface,
 		DeleteFunc: c.deleteDescription,
 	})
 
+	rbInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		DeleteFunc: c.deleteRB,
+	})
+
 	return c, nil
 }
 
-func NewController(childGaiaClient gaiaClientSet.Interface, descInformer appInformers.DescriptionInformer,
-	mcInformer platformInformers.ManagedClusterInformer, cacheHandler cache.ResourceEventHandler, syncHandlerFunc SyncHandlerFunc) (*Controller, error) {
-	if syncHandlerFunc == nil {
-		return nil, fmt.Errorf("syncHandlerFunc must be set")
+// NewParentDescController creates and initializes a new Controller
+func NewParentDescController(gaiaClient gaiaClientSet.Interface,
+	descInformer appInformers.DescriptionInformer, rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+	if syncHandler == nil {
+		return nil, fmt.Errorf("syncHandler must be set")
 	}
 
 	c := &Controller{
-		gaiaClient: childGaiaClient,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "description"),
-		descLister: descInformer.Lister(),
-		descSynced: descInformer.Informer().HasSynced,
-		mcSynced: func() bool {
-			return true
-		},
-		syncHandlerFunc: syncHandlerFunc,
+		gaiaClient:      gaiaClient,
+		descLister:      descInformer.Lister(),
+		descSynced:      descInformer.Informer().HasSynced,
+		rbSynced:        rbInformer.Informer().HasSynced,
+		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "parent-description"),
+		syncHandlerFunc: syncHandler,
 	}
 
-	// Manage the addition/update of Description
+	// Manage the addition/update of cluster ResourceBinding requests
 	descInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.addDescription,
 		UpdateFunc: c.updateDescription,
 		DeleteFunc: c.deleteDescription,
 	})
+	rbInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		DeleteFunc: c.deleteRB,
+	})
 
-	if mcInformer != nil && cacheHandler != nil {
-		mcInformer.Informer().AddEventHandler(cacheHandler)
-		c.mcSynced = mcInformer.Informer().HasSynced
-	}
 	return c, nil
 }
 
@@ -167,6 +173,51 @@ func (c *Controller) deleteDescription(obj interface{}) {
 	}
 	klog.V(4).Infof("deleting Description %q", klog.KObj(desc))
 	c.Enqueue(desc)
+
+	descOrigin := c.resolveOriginationRef(desc.Labels[known.OriginatedDescriptionNameLabel], desc.Labels[known.OriginatedDescriptionNamespaceLabel], types.UID(desc.Labels[known.OriginatedDescriptionUIDLabel]))
+	if descOrigin == nil {
+		return
+	}
+	c.Enqueue(descOrigin)
+}
+
+func (c *Controller) deleteRB(obj interface{}) {
+	rb, ok := obj.(*appsapi.ResourceBinding)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		rb, ok = tombstone.Obj.(*appsapi.ResourceBinding)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ResourceBinding %#v", obj))
+			return
+		}
+	}
+
+	desc := c.resolveOriginationRef(rb.Labels[known.OriginatedDescriptionNameLabel], rb.Labels[known.OriginatedDescriptionNamespaceLabel], types.UID(rb.Labels[known.OriginatedDescriptionUIDLabel]))
+	if desc == nil {
+		return
+	}
+	klog.V(4).Infof("deleting ResourceBinding %q", klog.KObj(rb))
+	c.Enqueue(desc)
+}
+
+// resolveOriginationRef returns the desc referenced by a Ref,
+// or nil if the Ref could not be resolved to a matching desc
+// of the correct Kind.
+func (c *Controller) resolveOriginationRef(name, namespace string, uid types.UID) *appsapi.Description {
+	desc, err := c.descLister.Descriptions(namespace).Get(name)
+	if err != nil {
+		return nil
+	}
+	if desc.UID != uid {
+		// The controller we found with this Name is not the same one that the
+		// ControllerRef points to.
+		return nil
+	}
+	return desc
 }
 
 // runWorker is a long-running function that will continually call the
@@ -259,6 +310,19 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
+	// add finalizer
+	if !utils.ContainsString(desc.Finalizers, known.AppFinalizer) && desc.DeletionTimestamp == nil {
+		desc.Finalizers = append(desc.Finalizers, known.AppFinalizer)
+		if desc, err = c.gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).Update(context.TODO(),
+			desc, metav1.UpdateOptions{}); err != nil {
+			msg := fmt.Sprintf("failed to inject finalizer %s to Descriptions %s: %v", known.AppFinalizer, klog.KObj(desc), err)
+			klog.WarningDepth(4, msg)
+			return err
+		}
+		msg := fmt.Sprintf("successfully inject finalizer %s to Descriptions %s", known.AppFinalizer, klog.KObj(desc))
+		klog.V(4).Info(msg)
+	}
+
 	desc.Kind = controllerKind.Kind
 	desc.APIVersion = controllerKind.Version
 	err = c.syncHandlerFunc(desc)
@@ -276,7 +340,7 @@ func (c *Controller) UpdateDescriptionStatus(desc *appsapi.Description, status *
 		desc.Status = *status
 		_, err := c.gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
 		if err == nil {
-			//TODO
+			// TODO
 			return nil
 		}
 

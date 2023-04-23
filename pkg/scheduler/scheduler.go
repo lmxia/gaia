@@ -214,6 +214,7 @@ func (scheduler *Scheduler) Run(cxt context.Context, cc *schedulerserverconfig.C
 			// metrics
 			if cc.SecureServing != nil {
 				handler := buildHandlerChain(newMetricsHandler(), cc.Authentication.Authenticator, cc.Authorization.Authorizer)
+				klog.Info("Starting gaia-scheduler metrics server...")
 				if _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
 					klog.Infof("failed to start metrics server: %v", err)
 				}

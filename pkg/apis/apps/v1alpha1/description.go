@@ -33,7 +33,148 @@ type DescriptionSpec struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Components []Component `json:"components,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	WorkloadComponents []WorkloadComponent `json:"workloadComponents,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Optional
+	DeploymentCondition DeploymentCondition `json:"deploymentCondition,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Optional
+	ExpectedPerformance ExpectedPerformance `json:"expectedPerformance,omitempty"`
 }
+
+type SandboxType string
+
+const (
+	Runc    SandboxType = "runc"
+	Process SandboxType = "process"
+	Kata    SandboxType = "kata"
+	Wasm    SandboxType = "wasm"
+)
+
+type WorkloadComponent struct {
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	ComponentName string `json:"componentName,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	Sandbox SandboxType `json:"sandbox,omitempty"`
+	// +optional
+	Preoccupy string `json:"preoccupy,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Optional
+	Schedule string `json:"schedule,omitempty"`
+	// +required
+	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	WorkloadType string `json:"workloadType,omitempty"`
+}
+
+// Xject means Sub or Ob
+type Xject struct {
+	// +required
+	Name string `json:"name,omitempty"`
+	Type string `json:"type,omitempty"`
+}
+
+type Condition struct {
+	// +required
+	// +kubebuilder:validation:Required
+	Subject Xject `json:"subject,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Object Xject `json:"object,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	Relation string `json:"relation,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Extent []string `json:"extent,omitempty"`
+}
+
+type DeploymentCondition struct {
+	// +optional
+	Mandatory []Condition `json:"mandatory,omitempty"`
+	// +optional
+	BestEffort []Condition `json:"BestEffort,omitempty"`
+}
+
+type Boundary struct {
+	// +required
+	// +kubebuilder:validation:Required
+	Name string `json:"name,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Subject string `json:"subject,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Type string `json:"type,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Value []byte `json:"value,omitempty"`
+}
+
+type Boundaries struct {
+	// +optional
+	// +kubebuilder:validation:Optional
+	Inner []Boundary `json:"inner,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Optional
+	Inter []Boundary `json:"inter,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Optional
+	Extra []Boundary `json:"extra,omitempty"`
+}
+
+type XPAStrategy struct {
+	// +required
+	// +kubebuilder:validation:Required
+	Type string `json:"type,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Value string `json:"value,omitempty"`
+}
+
+// XPA means HPA or VPA
+type XPA struct {
+	// +required
+	// +kubebuilder:validation:Required
+	Name string `json:"name,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Subject string `json:"subject,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Trigger string `json:"trigger,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	Strategy XPAStrategy `json:"strategy,omitempty"`
+}
+
+type Maitenance struct {
+	// +optional
+	// +kubebuilder:validation:Optional
+	HPA XPA `json:"hpa,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Optional
+	VPA XPA `json:"vpa,omitempty"`
+}
+
+type ExpectedPerformance struct {
+	// +optional
+	// +kubebuilder:validation:Optional
+	Boundaries Boundaries `json:"boundaries,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Optional
+	Maitenance Maitenance `json:"maitenance,omitempty"`
+}
+
 type Component struct {
 	// +optional
 	Namespace string `json:"namespace,omitempty"`

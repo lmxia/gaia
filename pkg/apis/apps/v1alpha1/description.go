@@ -138,7 +138,7 @@ type XPAStrategy struct {
 	Type string `json:"type,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
-	Value string `json:"value,omitempty"`
+	Value []byte `json:"value,omitempty"`
 }
 
 // XPA means HPA or VPA

@@ -25,6 +25,10 @@ type NetworkRequirement struct {
 type NetworkRequirementSpec struct {
 	// +optional
 	NetworkCommunication []NetworkCommunication `json:"networkCommunication,omitempty"`
+	// +optional
+	WorkloadComponents WorkloadComponents `json:"workloadComponents,omitempty"`
+	// +optional
+	Deployconditions DeploymentCondition `json:"deployconditions,omitempty"`
 }
 
 type NetworkCommunication struct {
@@ -34,6 +38,33 @@ type NetworkCommunication struct {
 	SelfID []string `json:"selfID,omitempty"`
 	// +optional
 	InterSCNID []InterSCNID `json:"interSCNID,omitempty"`
+}
+
+type Scn struct {
+	// +optional
+	Name string `json:"name,omitempty"`
+	// +optional
+	SelfID []string `json:"selfID,omitempty"`
+}
+
+type Link struct {
+	// +optional
+	LinkName string `json:"linkName,omitempty"`
+	// +optional
+	SourceID string `json:"sourceID,omitempty"`
+	// +optional
+	DestinationID string `json:"destinationID,omitempty"`
+	// +optional
+	SourceAttributes []Attributes `json:"sourceAttributes,omitempty"`
+	// +optional
+	DestinationAttributes []Attributes `json:"destinationAttributes,omitempty"`
+}
+
+type WorkloadComponents struct {
+	// +optional
+	Scns []Scn `json:"scns,omitempty"`
+	// +optional
+	Links []Link `json:"links,omitempty"`
 }
 
 type InterSCNID struct {

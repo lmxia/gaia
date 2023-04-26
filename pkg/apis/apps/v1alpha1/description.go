@@ -95,7 +95,7 @@ type Condition struct {
 	Relation string `json:"relation,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
-	Extent []string `json:"extent,omitempty"`
+	Extent []byte `json:"extent,omitempty"`
 }
 
 type DeploymentCondition struct {
@@ -160,10 +160,10 @@ type XPA struct {
 type Maitenance struct {
 	// +optional
 	// +kubebuilder:validation:Optional
-	HPA XPA `json:"hpa,omitempty"`
+	HPA []XPA `json:"hpa,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Optional
-	VPA XPA `json:"vpa,omitempty"`
+	VPA []XPA `json:"vpa,omitempty"`
 }
 
 type ExpectedPerformance struct {

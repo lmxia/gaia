@@ -207,7 +207,7 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 					// set parent config
 					controller.rbController.SetParentRBController()
 					klog.Info("start 6. start parent ResourceBinding and Description informers...")
-					controller.rbController.RunParentResourceBinding(common.DefaultThreadiness, ctx.Done())
+					controller.rbController.RunParentResourceBindingAndDescription(common.DefaultThreadiness, ctx.Done())
 				}()
 
 				// 7. start rbMerger

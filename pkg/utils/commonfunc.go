@@ -92,15 +92,15 @@ func NewParentConfig(ctx context.Context, kubeclient *kubernetes.Clientset, gaia
 	return parentKubeConfig
 }
 
-func SetParentClient(localkubeclient *kubernetes.Clientset, localgaiaclient *gaiaClientSet.Clientset) (*gaiaClientSet.Clientset, dynamic.Interface, externalInformers.SharedInformerFactory) {
-	parentKubeConfig := NewParentConfig(context.TODO(), localkubeclient, localgaiaclient)
+func SetParentClient(localKubeClient *kubernetes.Clientset, localGaiaClient *gaiaClientSet.Clientset) (*gaiaClientSet.Clientset, dynamic.Interface, externalInformers.SharedInformerFactory) {
+	parentKubeConfig := NewParentConfig(context.TODO(), localKubeClient, localGaiaClient)
 	if parentKubeConfig != nil {
 		parentGaiaClient := gaiaClientSet.NewForConfigOrDie(parentKubeConfig)
 		parentDynamicClient, _ := dynamic.NewForConfig(parentKubeConfig)
-		parentgaiaInformerFactory := externalInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient, known.DefaultResync,
+		parentMergedGaiaInformerFactory := externalInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient, known.DefaultResync,
 			externalInformers.WithNamespace(known.GaiaRBMergedReservedNamespace))
 
-		return parentGaiaClient, parentDynamicClient, parentgaiaInformerFactory
+		return parentGaiaClient, parentDynamicClient, parentMergedGaiaInformerFactory
 	}
 	return nil, nil, nil
 }

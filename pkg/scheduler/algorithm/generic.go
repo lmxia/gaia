@@ -143,7 +143,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	if desc.Namespace == common.GaiaReservedNamespace {
 		// all 5
 		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc)
-		// 1. add networkfileter only if we can get nwr
+		// 1. add networkFilter only if we can get nwr
 		if nwr, err := g.cache.GetNetworkRequirement(desc); err == nil {
 			networkInfoMap := g.getTopologyInfoMap()
 			klog.Infof("Log: networkInfoMap is %v", networkInfoMap)
@@ -177,14 +177,12 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						rbItemApp.Children = rbForrb[j].Spec.RbApps
 					}
 				}
-
+				rbLabels := rbForrb[j].GetLabels()
+				rbLabels[common.TotalPeerOfParentRB] = fmt.Sprintf("%d", rbOld.Spec.TotalPeer)
 				rbNew := &v1alpha1.ResourceBinding{
 					ObjectMeta: metav1.ObjectMeta{
-						Name: fmt.Sprintf("%s-%d", rbOld.Name, rbIndex),
-						Labels: map[string]string{
-							common.GaiaDescriptionLabel: desc.Name,
-							common.TotalPeerOfParentRB:  fmt.Sprintf("%d", rbOld.Spec.TotalPeer),
-						},
+						Name:   fmt.Sprintf("%s-%d", rbOld.Name, rbIndex),
+						Labels: rbLabels,
 					},
 					Spec: v1alpha1.ResourceBindingSpec{
 						AppID:       desc.Name,

@@ -324,11 +324,11 @@ func (rbMerger *RBMerger) getMergedResourceBindings(chanResult chan []*appv1alph
 				Name:      fmt.Sprintf("%s-%d", *parentRBName, index),
 				Namespace: common.GaiaRBMergedReservedNamespace,
 				Labels: map[string]string{
-					common.StatusScheduler:                     string(appv1alpha1.ResourceBindingmerged),
-					common.GaiaDescriptionLabel:                rb.GetLabels()[common.GaiaDescriptionLabel],
-					common.OriginatedDescriptionNameLabel:      desc.Name,
-					common.OriginatedDescriptionNamespaceLabel: desc.Namespace,
-					common.OriginatedDescriptionUIDLabel:       string(desc.UID),
+					common.StatusScheduler:                 string(appv1alpha1.ResourceBindingmerged),
+					common.GaiaDescriptionLabel:            rb.GetLabels()[common.GaiaDescriptionLabel],
+					common.OriginDescriptionNameLabel:      desc.Name,
+					common.OriginDescriptionNamespaceLabel: desc.Namespace,
+					common.OriginDescriptionUIDLabel:       string(desc.UID),
 				},
 			},
 			Spec: appv1alpha1.ResourceBindingSpec{
@@ -345,7 +345,7 @@ func (rbMerger *RBMerger) getMergedResourceBindings(chanResult chan []*appv1alph
 
 		_, err := rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).Create(context.TODO(), newResultRB, metav1.CreateOptions{})
 		if err != nil {
-			klog.V(3).InfoS("ResourceBinding of %q merge success, but not created success %q.", *parentRBName, common.GaiaRSToBeMergedReservedNamespace, err)
+			klog.InfoS("ResourceBinding of %q merge success, but not created success %q.", *parentRBName, common.GaiaRSToBeMergedReservedNamespace, err)
 		} else {
 			klog.Infof("ResourceBinding %q successfully merged and %q created.", *parentRBName, newResultRB.Name)
 		}
@@ -384,28 +384,27 @@ func (rbMerger *RBMerger) createCollectedRBs(rb *appv1alpha1.ResourceBinding) bo
 	for _, parentRB := range rbMerger.parentsRBsOfAPPid[descName] {
 
 		var rbApps []*appv1alpha1.ResourceBindingApps
-		for index, rbAppChild := range rbMerger.rbsOfParentRB[parentRB].rbsOfParentRB {
+		for _, rbAppChild := range rbMerger.rbsOfParentRB[parentRB].rbsOfParentRB {
 			rbApp := &appv1alpha1.ResourceBindingApps{
-				ClusterName: rbMerger.rbsOfParentRB[parentRB].rbNames[index],
-				Children:    []*appv1alpha1.ResourceBindingApps{rbAppChild},
+				// ClusterName: rbMerger.rbsOfParentRB[parentRB].rbNames[index],
+				Children: []*appv1alpha1.ResourceBindingApps{rbAppChild},
 			}
 			rbApps = append(rbApps, rbApp)
 		}
 
-		totalPeer, err := strconv.Atoi(rb.GetLabels()[common.TotalPeerOfParentRB])
+		rbLabels := rb.GetLabels()
+		totalPeer, err := strconv.Atoi(rbLabels[common.TotalPeerOfParentRB])
 		if err != nil {
 			klog.V(5).Infof("Failed to get totalPeer from label.")
 			totalPeer = 0
 		}
-
+		delete(rbLabels, common.TotalPeerOfParentRB)
 		// create new result ResourceBinding in parent cluster
 		newResultRB := &appv1alpha1.ResourceBinding{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-%s", parentRB, rbMerger.selfClusterName),
 				Namespace: common.GaiaRSToBeMergedReservedNamespace,
-				Labels: map[string]string{
-					common.GaiaDescriptionLabel: rb.GetLabels()[common.GaiaDescriptionLabel],
-				},
+				Labels:    rbLabels,
 			},
 			Spec: appv1alpha1.ResourceBindingSpec{
 				AppID:           descName,

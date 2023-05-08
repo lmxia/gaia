@@ -508,7 +508,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	klog.Info("scheduler success")
 }
 
-// run reschedule in agent cluster.
+// RunParentReScheduler run reschedule in agent cluster.
 func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	klog.Info("start to re schedule one description...")
 	defer klog.Info("finish re schedule a description")

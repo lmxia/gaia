@@ -70,7 +70,7 @@ func NewOptions() *Options {
 	// Set the PairName but leave certificate directory blank to generate in-memory by default
 	o.SecureServing.ServerCert.CertDirectory = ""
 	o.SecureServing.ServerCert.PairName = "gaia-controller-manager"
-	o.SecureServing.BindPort = 12115
+	o.SecureServing.BindPort = 12113
 
 	o.initFlags()
 

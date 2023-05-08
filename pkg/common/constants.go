@@ -52,11 +52,11 @@ const (
 	PrometheusUrlPrefix                = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090"
 
 	// description labels on rb
-	GaiaDescriptionLabel                = "apps.gaia.io/description"
-	GaiaComponentLabel                  = "apps.gaia.io/component"
-	OriginatedDescriptionNameLabel      = "apps.gaia.io/desc.name"
-	OriginatedDescriptionNamespaceLabel = "apps.gaia.io/desc.namespace"
-	OriginatedDescriptionUIDLabel       = "apps.gaia.io/desc.uid"
+	GaiaDescriptionLabel            = "apps.gaia.io/description"
+	GaiaComponentLabel              = "apps.gaia.io/component"
+	OriginDescriptionNameLabel      = "apps.gaia.io/ori.desc.name"
+	OriginDescriptionNamespaceLabel = "apps.gaia.io/ori.desc.namespace"
+	OriginDescriptionUIDLabel       = "apps.gaia.io/ori.desc.uid"
 
 	NetworkLocationCore = "core"
 	NodeResourceForm    = "pool"

@@ -48,8 +48,8 @@ type Controller struct {
 	cacheHandler    cache.ResourceEventHandler
 }
 
-// NewLocalDescController creates and initializes a new Controller
-func NewLocalDescController(gaiaClient gaiaClientSet.Interface,
+// NewController creates and initializes a new Controller
+func NewController(gaiaClient gaiaClientSet.Interface,
 	descInformer appInformers.DescriptionInformer, rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
@@ -60,37 +60,7 @@ func NewLocalDescController(gaiaClient gaiaClientSet.Interface,
 		descLister:      descInformer.Lister(),
 		descSynced:      descInformer.Informer().HasSynced,
 		rbSynced:        rbInformer.Informer().HasSynced,
-		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "local-description"),
-		syncHandlerFunc: syncHandler,
-	}
-
-	// Manage the addition/update of cluster ResourceBinding requests
-	descInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.addDescription,
-		UpdateFunc: c.updateDescription,
-		DeleteFunc: c.deleteDescription,
-	})
-
-	rbInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		DeleteFunc: c.deleteRB,
-	})
-
-	return c, nil
-}
-
-// NewParentDescController creates and initializes a new Controller
-func NewParentDescController(gaiaClient gaiaClientSet.Interface,
-	descInformer appInformers.DescriptionInformer, rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
-	if syncHandler == nil {
-		return nil, fmt.Errorf("syncHandler must be set")
-	}
-
-	c := &Controller{
-		gaiaClient:      gaiaClient,
-		descLister:      descInformer.Lister(),
-		descSynced:      descInformer.Informer().HasSynced,
-		rbSynced:        rbInformer.Informer().HasSynced,
-		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "parent-description"),
+		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "description"),
 		syncHandlerFunc: syncHandler,
 	}
 
@@ -174,7 +144,7 @@ func (c *Controller) deleteDescription(obj interface{}) {
 	klog.V(4).Infof("deleting Description %q", klog.KObj(desc))
 	c.Enqueue(desc)
 
-	descOrigin := c.resolveOriginationRef(desc.Labels[known.OriginatedDescriptionNameLabel], desc.Labels[known.OriginatedDescriptionNamespaceLabel], types.UID(desc.Labels[known.OriginatedDescriptionUIDLabel]))
+	descOrigin := c.resolveOriginRef(desc.Labels[known.OriginDescriptionNameLabel], desc.Labels[known.OriginDescriptionNamespaceLabel], types.UID(desc.Labels[known.OriginDescriptionUIDLabel]))
 	if descOrigin == nil {
 		return
 	}
@@ -196,7 +166,7 @@ func (c *Controller) deleteRB(obj interface{}) {
 		}
 	}
 
-	desc := c.resolveOriginationRef(rb.Labels[known.OriginatedDescriptionNameLabel], rb.Labels[known.OriginatedDescriptionNamespaceLabel], types.UID(rb.Labels[known.OriginatedDescriptionUIDLabel]))
+	desc := c.resolveOriginRef(rb.Labels[known.OriginDescriptionNameLabel], rb.Labels[known.OriginDescriptionNamespaceLabel], types.UID(rb.Labels[known.OriginDescriptionUIDLabel]))
 	if desc == nil {
 		return
 	}
@@ -204,10 +174,10 @@ func (c *Controller) deleteRB(obj interface{}) {
 	c.Enqueue(desc)
 }
 
-// resolveOriginationRef returns the desc referenced by a Ref,
+// resolveOriginRef returns the desc referenced by a Ref,
 // or nil if the Ref could not be resolved to a matching desc
 // of the correct Kind.
-func (c *Controller) resolveOriginationRef(name, namespace string, uid types.UID) *appsapi.Description {
+func (c *Controller) resolveOriginRef(name, namespace string, uid types.UID) *appsapi.Description {
 	desc, err := c.descLister.Descriptions(namespace).Get(name)
 	if err != nil {
 		return nil

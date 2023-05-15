@@ -46,7 +46,7 @@ func NewOptions() *Options {
 	// Set the PairName but leave certificate directory blank to generate in-memory by default
 	o.SecureServing.ServerCert.CertDirectory = ""
 	o.SecureServing.ServerCert.PairName = "gaia-scheduler"
-	o.SecureServing.BindPort = 12112
+	o.SecureServing.BindPort = 12116
 
 	o.initFlags()
 

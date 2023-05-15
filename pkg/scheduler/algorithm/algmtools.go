@@ -45,6 +45,8 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 	result := make([]*appv1alpha1.ResourceBinding, 0)
 	matResult := make([]mat.Matrix, 0)
 	rbIndex := 0
+	rbLabels := fillRBLabels(desc)
+	rbLabels[common.GaiaDescriptionLabel] = desc.Name
 	for _, items := range ins {
 		indexMatrix, err := makeResourceBindingMatrix(items)
 		if err != nil {
@@ -54,10 +56,8 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 		for _, item := range indexMatrix {
 			rb := &appv1alpha1.ResourceBinding{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex),
-					Labels: map[string]string{
-						common.GaiaDescriptionLabel: desc.Name,
-					},
+					Name:   fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex),
+					Labels: rbLabels,
 				},
 				Spec: appv1alpha1.ResourceBindingSpec{
 					AppID:  desc.Name,
@@ -80,6 +80,22 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 		}
 	}
 	return result
+}
+
+func fillRBLabels(desc *appv1alpha1.Description) map[string]string {
+	newLabels := make(map[string]string)
+	oldLabels := desc.GetLabels()
+	if len(oldLabels) != 0 {
+		for key, value := range oldLabels {
+			newLabels[key] = value
+		}
+	}
+	if desc.Namespace == common.GaiaReservedNamespace {
+		newLabels[common.OriginDescriptionNameLabel] = desc.Name
+		newLabels[common.OriginDescriptionNamespaceLabel] = desc.Namespace
+		newLabels[common.OriginDescriptionUIDLabel] = string(desc.UID)
+	}
+	return newLabels
 }
 
 // make a matrix to a rbApps struct.

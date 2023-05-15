@@ -15,7 +15,7 @@ var (
 	cmdName = "gaia-scheduler"
 )
 
-// NewGaiaScheduleCmd creates a *cobra.Command object with default parameters
+// NewGaiaScheduleControllerCmd creates a *cobra.Command object with default parameters
 func NewGaiaScheduleControllerCmd(ctx context.Context) *cobra.Command {
 	opts := option.NewOptions()
 	cmd := &cobra.Command{

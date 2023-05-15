@@ -206,6 +206,7 @@ func GetDescription(ctx context.Context, dynamicClient dynamic.Interface, restMa
 	}
 	return des, nil
 }
+
 func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, name, desNs string) (*appsv1alpha1.NetworkRequirement, error) {
 	var kind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "NetworkRequirement"}
 	restMapping, err := restMapper.RESTMapping(kind.GroupKind(), kind.Version)
@@ -224,7 +225,7 @@ func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface,
 	return nwr, nil
 }
 
-func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, parentGaiaclient *gaiaClientSet.Clientset, localdynamicClient dynamic.Interface,
+func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, parentGaiaclient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
 	var allErrs []error
 	var err error
@@ -243,7 +244,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 				defer wg.Done()
 				klog.V(5).Infof("deleting %s %s defined in ResourceBinding %s", depunstructured.GetKind(),
 					klog.KObj(depunstructured), klog.KObj(rb))
-				err2 := DeleteResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depunstructured)
+				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, depunstructured)
 				if err2 != nil {
 					klog.Infof("offloadRBWorkloads Deployment name==%s err===%v \n", depunstructured.GetName(), err2)
 					errCh <- err2
@@ -257,7 +258,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 			wg.Add(1)
 			go func(SerUn *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := DeleteResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, SerUn)
+				retryErr := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, SerUn)
 				if retryErr != nil {
 					klog.Infof("offloadRBWorkloads Serverless name==%s err===%v \n", SerUn.GetName(), retryErr)
 					errCh <- retryErr
@@ -274,7 +275,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 				defer wg.Done()
 				klog.V(5).Infof(" workloadTypeAffinityDaemon deleting %s %s defined in ResourceBinding %s", depunstructured.GetKind(),
 					klog.KObj(depunstructured), klog.KObj(rb))
-				err2 := DeleteResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depunstructured)
+				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, depunstructured)
 				if err2 != nil {
 					klog.Infof("offloadRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", depunstructured.GetName(), err2)
 					errCh <- err2
@@ -290,7 +291,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 				defer wg.Done()
 				klog.V(5).Infof(" userApp deleting %s %s defined in ResourceBinding %s", depunstructured.GetKind(),
 					klog.KObj(depunstructured), klog.KObj(rb))
-				err2 := DeleteResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, depunstructured)
+				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, depunstructured)
 				if err2 != nil {
 					klog.Infof("offloadRBWorkloads userApp name==%s err===%v \n", depunstructured.GetName(), err2)
 					errCh <- err2
@@ -314,7 +315,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 	return err
 }
 
-func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, parentGaiaclient *gaiaClientSet.Clientset, localdynamicClient dynamic.Interface,
+func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
 	var allErrs []error
 
@@ -324,20 +325,20 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 	for _, com := range comToBeApply {
 		switch com.Workload.Workloadtype {
 		case appsv1alpha1.WorkloadTypeDeployment:
-			unstructure, errdep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errdep != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
+			unStructure, errDep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
 			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
+				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
 					klog.Infof("applyRBWorkloads Deployment name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(unstructure)
+			}(unStructure)
 		case appsv1alpha1.WorkloadTypeServerless:
 			unstructure, errServiceless := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
 			if errServiceless != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
@@ -346,7 +347,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 			wg.Add(1)
 			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
+				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
 					klog.Infof("applyRBWorkloads Serverless name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
@@ -361,7 +362,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 			wg.Add(1)
 			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
+				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
 					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
@@ -376,7 +377,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 			wg.Add(1)
 			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, unstructure)
+				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
 				if retryErr != nil {
 					klog.Infof("applyRBWorkloads userApp name==%s err===%v \n", unstructure.GetName(), retryErr)
 					errCh <- retryErr
@@ -412,7 +413,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, paren
 	// update status
 	rb.Status.Status = statusScheduler
 	rb.Status.Reason = reason
-	_, err := parentGaiaclient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(), rb, metav1.UpdateOptions{})
+	_, err := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(), rb, metav1.UpdateOptions{})
 
 	if len(allErrs) > 0 {
 		return utilerrors.NewAggregate(allErrs)
@@ -858,15 +859,27 @@ func ConstructDescriptionFromExistOne(old *appsv1alpha1.Description) *appsv1alph
 		ObjectMeta: metav1.ObjectMeta{
 			Name:       old.Name,
 			Finalizers: old.Finalizers,
-			Labels: map[string]string{
-				known.OriginatedDescriptionNameLabel:      old.Name,
-				known.OriginatedDescriptionNamespaceLabel: old.Namespace,
-				known.OriginatedDescriptionUIDLabel:       string(old.UID),
-			},
+			Labels:     fillDescriptionLabels(old),
 		},
 		Spec: old.Spec,
 	}
 	return newOne
+}
+
+func fillDescriptionLabels(desc *appsv1alpha1.Description) map[string]string {
+	newLabels := make(map[string]string)
+	oldLabels := desc.GetLabels()
+	if len(oldLabels) != 0 {
+		for key, value := range oldLabels {
+			newLabels[key] = value
+		}
+	}
+	if desc.Namespace == known.GaiaReservedNamespace {
+		newLabels[known.OriginDescriptionNameLabel] = desc.Name
+		newLabels[known.OriginDescriptionNamespaceLabel] = desc.Namespace
+		newLabels[known.OriginDescriptionUIDLabel] = string(desc.UID)
+	}
+	return newLabels
 }
 
 func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, namespace string) error {

@@ -823,7 +823,17 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 				ser.Name = com.Name
 
 				if !delete {
-					ser.Spec = com
+					// ser.Spec = com
+					ser.Spec = lmmserverless.ServerlessSpec{
+						Namespace:   com.Namespace,
+						Name:        com.Name,
+						RuntimeType: com.RuntimeType,
+						Module:      com.Module,
+						Workload: lmmserverless.Workload{
+							Workloadtype:    lmmserverless.WorkloadType(com.Workload.Workloadtype),
+							TraitServerless: com.Workload.TraitServerless,
+						},
+					}
 					nodeAffinity := AddNodeAffinity(&com)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
 					if ser.Spec.Module.Spec.NodeSelector == nil {

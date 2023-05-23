@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/lmxia/gaia/pkg/networkfilter/npcore"
+	"k8s.io/klog/v2"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -15,7 +16,6 @@ import (
 	"gonum.org/v1/gonum/mat"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog/v2"
 	utiltrace "k8s.io/utils/trace"
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
@@ -61,7 +61,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		allResultGlobal[i] = make([]mat.Matrix, numComponent)
 	}
 	// has parent
-	// first dim means resouce binding, second means component, third means spread level.
+	// first dim means resource binding, second means component, third means spread level.
 	allResultWithRB := make([][][]mat.Matrix, len(rbs))
 	if desc.Namespace != common.GaiaReservedNamespace {
 		// desc has resource binding
@@ -100,7 +100,8 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		if desc.Namespace == common.GaiaReservedNamespace {
 			for j, _ := range spreadLevels {
 				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
-					componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
+					//componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
+					componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), 1)
 					allResultGlobal[j][i] = componentMat
 				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 					componentMat := makeServelessPlan(allPlan, 1)

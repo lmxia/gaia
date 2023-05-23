@@ -44,6 +44,61 @@ spec:
           spec:
             description: NetworkRequirementSpec defines the spec of NetworkRequirement
             properties:
+              deployconditions:
+                properties:
+                  BestEffort:
+                    items:
+                      properties:
+                        extent:
+                          format: byte
+                          type: string
+                        object:
+                          description: Xject means Sub or Ob
+                          properties:
+                            name:
+                              type: string
+                            type:
+                              type: string
+                          type: object
+                        relation:
+                          type: string
+                        subject:
+                          description: Xject means Sub or Ob
+                          properties:
+                            name:
+                              type: string
+                            type:
+                              type: string
+                          type: object
+                      type: object
+                    type: array
+                  mandatory:
+                    items:
+                      properties:
+                        extent:
+                          format: byte
+                          type: string
+                        object:
+                          description: Xject means Sub or Ob
+                          properties:
+                            name:
+                              type: string
+                            type:
+                              type: string
+                          type: object
+                        relation:
+                          type: string
+                        subject:
+                          description: Xject means Sub or Ob
+                          properties:
+                            name:
+                              type: string
+                            type:
+                              type: string
+                          type: object
+                      type: object
+                    type: array
+                type: object
               networkCommunication:
                 items:
                   properties:
@@ -107,6 +162,49 @@ spec:
                       type: array
                   type: object
                 type: array
+              workloadComponents:
+                properties:
+                  links:
+                    items:
+                      properties:
+                        destinationAttributes:
+                          items:
+                            properties:
+                              key:
+                                type: string
+                              value:
+                                type: string
+                            type: object
+                          type: array
+                        destinationID:
+                          type: string
+                        linkName:
+                          type: string
+                        sourceAttributes:
+                          items:
+                            properties:
+                              key:
+                                type: string
+                              value:
+                                type: string
+                            type: object
+                          type: array
+                        sourceID:
+                          type: string
+                      type: object
+                    type: array
+                  scns:
+                    items:
+                      properties:
+                        name:
+                          type: string
+                        selfID:
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    type: array
+                type: object
             type: object
           status:
             description: NetworkRequirementStatus defines the observed state of NetworkRequirement

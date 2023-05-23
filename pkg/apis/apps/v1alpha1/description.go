@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	serveringv1 "knative.dev/serving/pkg/apis/serving/v1"
@@ -157,7 +158,7 @@ type XPA struct {
 	Strategy XPAStrategy `json:"strategy,omitempty"`
 }
 
-type Maitenance struct {
+type Maintenance struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	HPA []XPA `json:"hpa,omitempty"`
@@ -172,7 +173,7 @@ type ExpectedPerformance struct {
 	Boundaries Boundaries `json:"boundaries,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Optional
-	Maitenance Maitenance `json:"maitenance,omitempty"`
+	Maintenance Maintenance `json:"maintenance,omitempty"`
 }
 
 type Component struct {
@@ -180,6 +181,11 @@ type Component struct {
 	Namespace string `json:"namespace,omitempty"`
 	// +required
 	Name string `json:"name,omitempty"`
+	// +optional
+	Preoccupy string `json:"preoccupy,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Optional
+	Schedule string `json:"schedule,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -190,9 +196,6 @@ type Component struct {
 	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required
 	RuntimeType string `json:"runtimeType,omitempty"`
-	// +required
-	// +kubebuilder:default=1
-	Dispersion int32 `json:"dispersion,omitempty"`
 	// +required
 	Workload Workload `json:"workload,omitempty"`
 	// +required
@@ -208,6 +211,8 @@ const (
 	WorkloadTypeServerless     WorkloadType = "serverless"
 	WorkloadTypeAffinityDaemon WorkloadType = "affinitydaemon"
 	WorkloadTypeUserApp        WorkloadType = "userapp"
+	WorkloadTypeTask           WorkloadType = "task"
+	WorkloadTypeStatefulSet    WorkloadType = "statefulset"
 )
 
 type Workload struct {
@@ -217,11 +222,15 @@ type Workload struct {
 	// +optional
 	TraitDeployment *TraitDeployment `json:"traitDeployment,omitempty"`
 	// +optional
-	TraitServerless *TraitServerless `json:"traitServerless,omitempty"`
+	TraitServerless *lmmserverless.TraitServerless `json:"traitServerless,omitempty"`
 	// +optional
 	TraitAffinityDaemon *TraitAffinityDaemon `json:"traitaffinitydaemon,omitempty"`
 	// +optional
 	TraitUserAPP *TraitUserAPP `json:"traitUserAPP,omitempty"`
+	// +optional
+	TraitTask *TraitTask `json:"traitTask,omitempty"`
+	// +optional
+	TraitStatefulSet *TraitStatefulSet `json:"traitStatefulSet,omitempty"`
 }
 type ServerlessSpec struct {
 	// +optional
@@ -256,10 +265,13 @@ type TraitUserAPP struct {
 	SN string `json:"sn,omitempty"`
 }
 
-type TraitServerless struct {
-	MiniInstancenumber int32  `json:"miniInstancenumber,omitempty"`
-	Step               int32  `json:"step,omitempty"`
-	Threshold          string `json:"threshold,omitempty"`
+type TraitTask struct {
+	Completions int32  `json:"completions,omitempty"`
+	Schedule    string `json:"schedule,omitempty"`
+}
+
+type TraitStatefulSet struct {
+	Replicas int32 ` json:"replicas,omitempty"`
 }
 
 type TraitAffinityDaemon struct {

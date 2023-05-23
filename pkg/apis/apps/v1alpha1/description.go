@@ -280,6 +280,8 @@ type TraitAffinityDaemon struct {
 
 type SchedulePolicy struct {
 	// +optional
+	Level map[SchedulePolicyLevel]*metav1.LabelSelector `json:"level,omitempty"`
+	// +optional
 	SpecificResource *metav1.LabelSelector `json:"specificResource,omitempty"`
 	// +optional
 	NetEnvironment *metav1.LabelSelector `json:"netenvironment,omitempty"`
@@ -288,6 +290,13 @@ type SchedulePolicy struct {
 	// +optional
 	Provider *metav1.LabelSelector `json:"provider,omitempty"`
 }
+
+type SchedulePolicyLevel string
+
+const (
+	SchedulePolicyMandatory  SchedulePolicyLevel = "Mandatory"
+	SchedulePolicyBestEffort SchedulePolicyLevel = "BestEffort"
+)
 
 // DescriptionStatus defines the observed state of Description
 type DescriptionStatus struct {

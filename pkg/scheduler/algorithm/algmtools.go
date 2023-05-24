@@ -41,7 +41,7 @@ func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster)
 }
 
 // spawn a brank new resourcebindings on multi spread level.
-func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCluster, desc *appv1alpha1.Description) []*appv1alpha1.ResourceBinding {
+func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCluster, desc *appv1alpha1.Description, components []appv1alpha1.Component) []*appv1alpha1.ResourceBinding {
 	result := make([]*appv1alpha1.ResourceBinding, 0)
 	matResult := make([]mat.Matrix, 0)
 	rbIndex := 0
@@ -61,7 +61,7 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 				},
 				Spec: appv1alpha1.ResourceBindingSpec{
 					AppID:  desc.Name,
-					RbApps: spawnResourceBindingApps(item, allClusters, desc),
+					RbApps: spawnResourceBindingApps(item, allClusters, components),
 				},
 			}
 			rb.Kind = "ResourceBinding"
@@ -99,7 +99,7 @@ func fillRBLabels(desc *appv1alpha1.Description) map[string]string {
 }
 
 // make a matrix to a rbApps struct.
-func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedCluster, desc *appv1alpha1.Description) []*appv1alpha1.ResourceBindingApps {
+func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedCluster, components []appv1alpha1.Component) []*appv1alpha1.ResourceBindingApps {
 	matR, matC := mat.Dims()
 	rbapps := make([]*appv1alpha1.ResourceBindingApps, len(allClusters))
 	for i, item := range allClusters {
@@ -111,7 +111,7 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 
 	for i := 0; i < matR; i++ {
 		for j := 0; j < matC; j++ {
-			rbapps[j].Replicas[desc.Spec.Components[i].Name] = int32(mat.At(i, j))
+			rbapps[j].Replicas[components[i].Name] = int32(mat.At(i, j))
 		}
 	}
 	return rbapps

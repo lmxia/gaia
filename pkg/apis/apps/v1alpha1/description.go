@@ -31,9 +31,6 @@ type DescriptionSpec struct {
 	AppID string `json:"appID,omitempty"` // appID是蓝图的id
 	// +optional
 	Preoccupy string `json:"preoccupy,omitempty"`
-	// +optional
-	// +kubebuilder:validation:Optional
-	Components []Component `json:"components,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
 	WorkloadComponents []WorkloadComponent `json:"workloadComponents,omitempty"`

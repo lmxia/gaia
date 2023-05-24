@@ -225,12 +225,12 @@ func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface,
 	return nwr, nil
 }
 
-func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, parentGaiaclient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
+func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, parentGaiaclient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
 	var allErrs []error
 	var err error
 	wg := sync.WaitGroup{}
-	comToBeDeleted := desc.Spec.Components
+	comToBeDeleted := components
 	errCh := make(chan error, len(comToBeDeleted))
 	for _, com := range comToBeDeleted {
 		switch com.Workload.Workloadtype {
@@ -315,12 +315,12 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, par
 	return err
 }
 
-func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
+func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
 	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
 	var allErrs []error
 
 	wg := sync.WaitGroup{}
-	comToBeApply := desc.Spec.Components
+	comToBeApply := components
 	errCh := make(chan error, len(comToBeApply))
 	for _, com := range comToBeApply {
 		switch com.Workload.Workloadtype {

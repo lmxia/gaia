@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/lmxia/gaia/pkg/networkfilter/npcore"
+	"github.com/lmxia/gaia/pkg/utils"
 	"k8s.io/klog/v2"
 	"sort"
 	"sync"
@@ -54,7 +55,13 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		return result, ErrNoClustersAvailable
 	}
 	allClusters, _ := g.cache.ListClusters(&metav1.LabelSelector{})
-	numComponent := len(desc.Spec.Components)
+
+	// format desc to components
+	components, comLocation, affinity := utils.DescToComponents(desc)
+	klog.V(5).Infof("Components are %v", components)
+	klog.V(5).Infof("comLocation is %+v,affinity is %v", comLocation, affinity) // 临时占用
+
+	numComponent := len(components)
 	// 2, means allspread, one spread, 2 spread.
 	allResultGlobal := make([][]mat.Matrix, 3)
 	for i := 0; i < 3; i++ {
@@ -73,7 +80,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		}
 	}
 
-	for i, comm := range desc.Spec.Components {
+	for i, comm := range components {
 		localComponent := &comm
 		// NO.1 pre filter
 		feasibleClusters, diagnosis, _ := g.findClustersThatFitComponent(ctx, fwk, localComponent)
@@ -89,6 +96,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				Diagnosis:      diagnosis,
 			}
 		}
+		klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
 		// }
 
 		// spread level info: full level, 2 level, 1 level
@@ -143,7 +151,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	// NO.2 first we should spawn rbs.
 	if desc.Namespace == common.GaiaReservedNamespace {
 		// all 5
-		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc)
+		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc, components)
 		// 1. add networkFilter only if we can get nwr
 		if nwr, err := g.cache.GetNetworkRequirement(desc); err == nil {
 			networkInfoMap := g.getTopologyInfoMap()
@@ -168,7 +176,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		rbIndex := 0
 		for i, rbOld := range rbs {
 			rbsResult := make([]*v1alpha1.ResourceBinding, 0)
-			rbForrb := spawnResourceBindings(allResultWithRB[i], allClusters, desc)
+			rbForrb := spawnResourceBindings(allResultWithRB[i], allClusters, desc, components)
 			for j, _ := range rbForrb {
 				subRBApps := make([]*v1alpha1.ResourceBindingApps, 0)
 				for _, rbapp := range rbOld.Spec.RbApps {

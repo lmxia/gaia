@@ -493,6 +493,9 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 		}
 		desc, descErr := c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName, metav1.GetOptions{})
 		// desc, descErr := utils.GetDescription(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, descNs)
+
+		// format desc to components
+		components, _, _ := utils.DescToComponents(desc)
 		if descErr != nil {
 			if apierrors.IsNotFound(descErr) {
 				klog.Infof("handleParentResourceBinding: failed get parent Description %s/%s, have no description \n", descNs, descriptionName)
@@ -520,7 +523,7 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 				return utils.ApplyResourceBinding(context.TODO(), c.localdynamicClient, c.restMapper, rb, clusterName, descriptionName, c.networkBindUrl, nwr)
 			} else {
 				// need schedule across clusters
-				if error := utils.ApplyRBWorkloads(context.TODO(), desc, c.parentGaiaClient, c.localdynamicClient,
+				if error := utils.ApplyRBWorkloads(context.TODO(), desc, components, c.parentGaiaClient, c.localdynamicClient,
 					c.restMapper, rb, clusterName); error != nil {
 					return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
 				}
@@ -532,7 +535,7 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 					return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ", rb.Name, err)
 				}
 			} else {
-				err := utils.OffloadRBWorkloads(context.TODO(), desc, c.localgaiaclient, c.localdynamicClient,
+				err := utils.OffloadRBWorkloads(context.TODO(), desc, components, c.localgaiaclient, c.localdynamicClient,
 					c.restMapper, rb, clusterName)
 				if err != nil {
 					return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ", rb.Name, err)

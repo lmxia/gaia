@@ -50,13 +50,13 @@ type RBMerger struct {
 	rbToLocalController  *resourcebindingmerger.Controller
 	rbTOParentController *resourcebindingmerger.Controller
 
-	localKubeClient          *kubernetes.Clientset
-	localGaiaClient          *gaiaClientSet.Clientset
-	localGaiaInformerFactory gaiaInformers.SharedInformerFactory
-	rbLister                 appsLister.ResourceBindingLister
-	selfClusterName          string
-	parentNameSpace          string
-	parentGaiaClient         *gaiaClientSet.Clientset
+	localKubeClient            *kubernetes.Clientset
+	localGaiaClient            *gaiaClientSet.Clientset
+	localNsGaiaInformerFactory gaiaInformers.SharedInformerFactory
+	rbLister                   appsLister.ResourceBindingLister
+	selfClusterName            string
+	parentNamespace            string
+	parentGaiaClient           *gaiaClientSet.Clientset
 
 	mu                      sync.Mutex
 	clustersRBsOfOneFieldRB map[string]*ClustersRBs // map[descUID-parentRBName]*ClustersRBs
@@ -81,24 +81,23 @@ type FieldsRBs struct {
 }
 
 // NewRBMerger returns a new RBMerger for ResourceBinding.
-func NewRBMerger(kubeClient *kubernetes.Clientset, gaiaClient *gaiaClientSet.Clientset,
-	gaiaInformerFactory gaiaInformers.SharedInformerFactory) (*RBMerger, error) {
-
+func NewRBMerger(kubeClient *kubernetes.Clientset, gaiaClient *gaiaClientSet.Clientset) (*RBMerger, error) {
 	postUrl := os.Getenv(common.ResourceBindMergePostURL)
+	localGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(gaiaClient, common.DefaultResync, gaiaInformers.WithNamespace(common.GaiaRSToBeMergedReservedNamespace))
 	rbMerger := &RBMerger{
-		localKubeClient:          kubeClient,
-		localGaiaClient:          gaiaClient,
-		localGaiaInformerFactory: gaiaInformerFactory,
-		rbLister:                 gaiaInformerFactory.Apps().V1alpha1().ResourceBindings().Lister(),
-		clustersRBsOfOneFieldRB:  make(map[string]*ClustersRBs),
-		fieldsRBOfOneParentRB:    make(map[string]*FieldsRBs),
-		parentRBsOfDescUID:       make(map[UID][]string),
-		descUID:                  make(map[string]bool, 0),
-		postURL:                  postUrl,
+		localKubeClient:            kubeClient,
+		localGaiaClient:            gaiaClient,
+		localNsGaiaInformerFactory: localGaiaInformerFactory,
+		rbLister:                   localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings().Lister(),
+		clustersRBsOfOneFieldRB:    make(map[string]*ClustersRBs),
+		fieldsRBOfOneParentRB:      make(map[string]*FieldsRBs),
+		parentRBsOfDescUID:         make(map[UID][]string),
+		descUID:                    make(map[string]bool, 0),
+		postURL:                    postUrl,
 	}
 
 	rbLocalController, err := resourcebindingmerger.NewController(gaiaClient,
-		gaiaInformerFactory.Apps().V1alpha1().ResourceBindings(),
+		localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(),
 		rbMerger.handleToLocalResourceBinding)
 	if err != nil {
 		return nil, err
@@ -111,6 +110,7 @@ func NewRBMerger(kubeClient *kubernetes.Clientset, gaiaClient *gaiaClientSet.Cli
 func (rbMerger *RBMerger) RunToLocalResourceBindingMerger(workers int, stopCh <-chan struct{}) {
 	klog.Info("Starting local ResourceBinding Merger ...")
 	defer klog.Info("Shutting local ResourceBinding Merger ...")
+	rbMerger.localNsGaiaInformerFactory.Start(stopCh)
 	// todo: goroutines
 	rbMerger.rbToLocalController.Run(workers, stopCh)
 	return
@@ -119,6 +119,7 @@ func (rbMerger *RBMerger) RunToLocalResourceBindingMerger(workers int, stopCh <-
 func (rbMerger *RBMerger) RunToParentResourceBindingMerger(workers int, stopCh <-chan struct{}) {
 	klog.Info("Starting parent ResourceBinding Merger ...")
 	defer klog.Info("Shutting parent ResourceBinding Merger ...")
+	rbMerger.localNsGaiaInformerFactory.Start(stopCh)
 	// todo: goroutines
 	rbMerger.rbTOParentController.Run(workers, stopCh)
 	return
@@ -126,17 +127,17 @@ func (rbMerger *RBMerger) RunToParentResourceBindingMerger(workers int, stopCh <
 
 func (rbMerger *RBMerger) SetParentRBController() (*RBMerger, error) {
 	parentGaiaClient, _, _ := utils.SetParentClient(rbMerger.localKubeClient, rbMerger.localGaiaClient)
-	selfClusterName, parentNameSpace, errClusterName := utils.GetLocalClusterName(rbMerger.localKubeClient)
+	selfClusterName, parentNamespace, errClusterName := utils.GetLocalClusterName(rbMerger.localKubeClient)
 	if errClusterName != nil {
 		klog.Errorf("local handleResourceBinding failed to get clusterName From secret: %v", errClusterName)
 		return nil, errClusterName
 	}
 	rbMerger.parentGaiaClient = parentGaiaClient
 	rbMerger.selfClusterName = selfClusterName
-	rbMerger.parentNameSpace = parentNameSpace
+	rbMerger.parentNamespace = parentNamespace
 
 	rbTOParentController, err := resourcebindingmerger.NewController(rbMerger.localGaiaClient,
-		rbMerger.localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(),
+		rbMerger.localNsGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(),
 		rbMerger.handleToParentResourceBinding)
 	if err != nil {
 		return nil, err
@@ -147,15 +148,9 @@ func (rbMerger *RBMerger) SetParentRBController() (*RBMerger, error) {
 
 func (rbMerger *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding) error {
 	klog.V(5).Infof("handle local resourceBinding %s", klog.KObj(rb))
-
 	clusters, err := rbMerger.localGaiaClient.PlatformV1alpha1().ManagedClusters(coreV1.NamespaceAll).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		klog.Warningf("failed to list managed clusters: %v", err)
-	}
-	// TODO: 重构掉
-	if rb.Namespace != common.GaiaRSToBeMergedReservedNamespace {
-		klog.V(4).Infof("The ResourceBinding not in %s namespace.", common.GaiaRSToBeMergedReservedNamespace)
-		return nil
 	}
 	if rb.Spec.StatusScheduler != "" {
 		klog.V(4).Infof("ResourceBinding %s has already been processed with Result %q. Skip it.", klog.KObj(rb), rb.Status.Status)
@@ -229,24 +224,12 @@ func (rbMerger *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.Resource
 	return nil
 }
 
+// handleToLocalResourceBinding handles gaia-to-be-merged namespace rbs
 func (rbMerger *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding) error {
 	klog.V(5).Infof("handle local resourceBinding %s", klog.KObj(rb))
-
-	if rb.Namespace != common.GaiaRSToBeMergedReservedNamespace && rb.Namespace != common.GaiaRBMergedReservedNamespace {
-		return nil
-	}
-	// ResourceBing in gaia-merged namespace
-	// TODO: 重构迁移到明翔代码
-	if rb.Namespace == common.GaiaRBMergedReservedNamespace && rb.Spec.StatusScheduler == appV1alpha1.ResourceBindingSelected {
-		err := rbMerger.UpdateSelectedResourceBinding(rb)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
 	rbLabels := rb.GetLabels()
-	// ResourceBinding in gaia-to-be-merged namespace
-	if rb.Namespace == common.GaiaRSToBeMergedReservedNamespace && rb.Spec.StatusScheduler == appV1alpha1.ResourceBindingMerging {
+
+	if rb.Spec.StatusScheduler == appV1alpha1.ResourceBindingMerging {
 		clusters, err := rbMerger.localGaiaClient.PlatformV1alpha1().ManagedClusters(coreV1.NamespaceAll).List(context.TODO(), metaV1.ListOptions{})
 		if err != nil {
 			klog.Warningf("handleToLocalResourceBinding: failed to list managed clusters: %v", err)
@@ -559,32 +542,4 @@ func (rbMerger *RBMerger) deleteFieldDescUID(uid UID) {
 		delete(rbMerger.clustersRBsOfOneFieldRB, InxParentRB)
 	}
 	delete(rbMerger.parentRBsOfDescUID, uid)
-}
-
-func (rbMerger *RBMerger) UpdateSelectedResourceBinding(rb *appV1alpha1.ResourceBinding) error {
-	if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
-		rb.Finalizers = append(rb.Finalizers, common.AppFinalizer)
-		rb.GetLabels()[common.StatusScheduler] = string(appV1alpha1.ResourceBindingSelected)
-		if _, err := rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).Update(context.TODO(), rb, metaV1.UpdateOptions{}); err != nil {
-			msg := fmt.Sprintf("failed to inject  finalizer %s and select ResouceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err)
-			klog.WarningDepth(4, msg)
-			return err
-		}
-		rbLabels := rb.GetLabels()
-		descName := rbLabels[common.OriginDescriptionNamespaceLabel]
-		klog.V(4).Infof("Delete unselected ResourceBindings in namespace %q from Description %q.", common.GaiaRBMergedReservedNamespace, descName)
-		err := rbMerger.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
-			DeleteCollection(context.TODO(), metaV1.DeleteOptions{}, metaV1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-				common.OriginDescriptionNameLabel:      descName,
-				common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
-				common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
-				common.StatusScheduler:                 string(appV1alpha1.ResourceBindingmerged),
-			}).String()})
-		if err != nil {
-			klog.Infof("failed to delete rbs in %q namespace, ERROR: %v", common.GaiaRBMergedReservedNamespace, err)
-			return err
-		}
-
-	}
-	return nil
 }

@@ -2,14 +2,17 @@ package scheduler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/lmxia/gaia/cmd/gaia-scheduler/app/option"
 	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/scheduler/metrics"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/server/healthz"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
 	"net/http"
@@ -360,8 +363,30 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, nil, desc)
 	if err != nil {
 		sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
-		desc.Status.Phase = appsapi.DescriptionPhaseFailure
-		sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+		var lastError error
+		err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+			if appsapi.DescriptionPhaseFailure == desc.Status.Phase {
+				lastError = errors.New("description status phase is already 'Failure', there is no need to update it.")
+				return true, nil
+			}
+
+			desc.Status.Phase = appsapi.DescriptionPhaseFailure
+			// check if failed
+			_, lastError := sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+			if lastError == nil {
+				return true, nil
+			}
+			if apierrors.IsConflict(lastError) {
+				newDesc, lastError := sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
+				if lastError == nil {
+					desc = newDesc
+				}
+			}
+			return false, nil
+		})
+		if err != nil {
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+		}
 		klog.Warningf("scheduler failed %v", err)
 		return
 	}
@@ -390,9 +415,30 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 				klog.InfoS("scheduler success, but desc not created success in sub child cluster.", err)
 			}
 		}
-		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
-		// TODO check if failed
-		sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+		var lastError error
+		err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+			if appsapi.DescriptionPhaseScheduled == desc.Status.Phase {
+				lastError = errors.New("description status phase is already 'Scheduled', there is no need to update it.")
+				return true, nil
+			}
+
+			desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+			_, lastError := sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+			// check if failed
+			if lastError == nil {
+				return true, nil
+			}
+			if apierrors.IsConflict(lastError) {
+				newDesc, lastError := sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
+				if lastError == nil {
+					desc = newDesc
+				}
+			}
+			return false, nil
+		})
+		if err != nil {
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+		}
 		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 		metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 		klog.Infof("scheduler success %v", scheduleResult)
@@ -469,8 +515,30 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
 		if err != nil {
 			sched.recordParentSchedulingFailure(desc, err, ReasonUnschedulable)
-			desc.Status.Phase = appsapi.DescriptionPhaseFailure
-			sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+			var lastError error
+			err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+				if appsapi.DescriptionPhaseFailure == desc.Status.Phase {
+					lastError = errors.New("description status phase is already 'Failure', there is no need to update it.")
+					return true, nil
+				}
+
+				desc.Status.Phase = appsapi.DescriptionPhaseFailure
+				// check if failed
+				_, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+				if lastError == nil {
+					return true, nil
+				}
+				if apierrors.IsConflict(lastError) {
+					newDesc, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
+					if lastError == nil {
+						desc = newDesc
+					}
+				}
+				return false, nil
+			})
+			if err != nil {
+				klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+			}
 			klog.Warningf("scheduler failed %v", err)
 			return
 		}
@@ -500,9 +568,30 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
 			common.GaiaDescriptionLabel: desc.Name,
 		}).String()})
-	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
-	// TODO check if failed
-	sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+	var lastError error
+	err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+		if appsapi.DescriptionPhaseScheduled == desc.Status.Phase {
+			lastError = errors.New("description status phase is already 'Scheduled', there is no need to update it.")
+			return true, nil
+		}
+
+		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+		// check if failed
+		_, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+		if lastError == nil {
+			return true, nil
+		}
+		if apierrors.IsConflict(lastError) {
+			newDesc, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
+			if lastError == nil {
+				desc = newDesc
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+	}
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 	klog.Info("scheduler success")
@@ -577,8 +666,30 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 		}
 	}
 
-	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
-	sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+	var lastError error
+	err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+		if appsapi.DescriptionPhaseScheduled == desc.Status.Phase {
+			lastError = errors.New("description status phase is already 'Scheduled', there is no need to update it.")
+			return true, nil
+		}
+
+		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+		// check if failed
+		_, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+		if lastError == nil {
+			return true, nil
+		}
+		if apierrors.IsConflict(lastError) {
+			newDesc, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
+			if lastError == nil {
+				desc = newDesc
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+	}
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 	klog.Info("scheduler success")

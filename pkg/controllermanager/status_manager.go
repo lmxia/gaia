@@ -4,12 +4,13 @@ package controllermanager
 import (
 	"context"
 	"errors"
+	"os"
+	"strings"
+
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
 	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/features"
 	"k8s.io/klog/v2"
-	"os"
-	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -164,7 +165,7 @@ func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterI
 // for the labels begin with known.SpecificNodeLabelsKeyPrefix, will use the newly acquired node labels
 func (mgr *Manager) getNewManagedClusterLabels() map[string]string {
 	managedClusterLabels := mgr.managedCluster.GetLabels()
-	for k, _ := range managedClusterLabels {
+	for k := range managedClusterLabels {
 		if strings.HasPrefix(k, known.SpecificNodeLabelsKeyPrefix) {
 			delete(managedClusterLabels, k)
 		}
@@ -178,14 +179,40 @@ func (mgr *Manager) modifyDescStatusForAbnormalPods(ctx context.Context, namespa
 		klog.Infof("There is no description that needs to be updated.")
 		return
 	}
-	for descName, _ := range descNameMap {
-		desc, _ := client.AppsV1alpha1().Descriptions(namespace).Get(ctx, descName, metav1.GetOptions{})
-		desc.Status.Phase = appsapi.DescriptionPhaseReSchedule
-		klog.Infof("Update the the status phase of the desc(%v/%v)to %v", namespace, descName, desc.Status.Phase)
-		_, err := client.AppsV1alpha1().Descriptions(namespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
-		if err != nil {
-			klog.Warningf("Update the the status phase of the desc(%v) failed. %v", descName, err)
+	for descName := range descNameMap {
+		desc, GetErr := client.AppsV1alpha1().Descriptions(namespace).Get(ctx, descName, metav1.GetOptions{})
+		if GetErr != nil {
+			klog.Errorf("Failed to get the description(%v/%v), err is. %v", desc.Namespace, desc.Name, GetErr)
 			return
 		}
+		klog.V(5).Infof("Update the status phase of the desc(%v/%v)to %v", namespace, descName, appsapi.DescriptionPhaseReSchedule)
+		var lastError error
+		err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+			if appsapi.DescriptionPhaseReSchedule == desc.Status.Phase {
+				lastError = errors.New("description's status phase is already 'ReSchedule', there is no need to update it")
+				return true, nil
+			}
+
+			desc.Status.Phase = appsapi.DescriptionPhaseReSchedule
+			// check if failed
+			_, lastError := client.AppsV1alpha1().Descriptions(namespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
+			if lastError == nil {
+				return true, nil
+			}
+			if apierrors.IsConflict(lastError) {
+				newDesc, lastError := client.AppsV1alpha1().Descriptions(namespace).Get(ctx, desc.Name, metav1.GetOptions{})
+				if lastError == nil {
+					desc = newDesc
+				}
+			}
+			return false, nil
+		})
+		if err != nil {
+			klog.WarningDepth(2, "Failed to update the status phase of the des(%v/%v), err is %v", desc.Namespace, desc.Name, lastError)
+		}
+		klog.V(5).Infof("Update the status phase of the desc(%v/%v) to %s successfully.",
+			namespace, descName, appsapi.DescriptionPhaseReSchedule)
+
 	}
+	return
 }

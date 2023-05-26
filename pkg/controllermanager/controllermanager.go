@@ -135,7 +135,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		klog.Error(rberr)
 	}
 	statusManager := NewStatusManager(ctx, localKubeConfig.Host, clusterHostName, managedCluster, localKubeClientSet, localGaiaClientSet, hypernodeClientSet)
-	rbMerger, nil := resourcebinding.NewRBMerger(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory)
+	rbMerger, nil := resourcebinding.NewRBMerger(localKubeClientSet, localGaiaClientSet)
 	if err != nil {
 		klog.Error(err)
 	}

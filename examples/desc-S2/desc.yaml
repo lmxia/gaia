@@ -1,0 +1,36 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case
+  namespace: gaia-reserved
+spec:
+  appID: case
+  workloadComponents:
+    - componentName: case-component0
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: appcase
+        spec:
+          containers:
+            - name: appcasecomp0
+              image: 172.17.9.231:8880/hyperio/app:latest
+              env:
+                - name: SCNID
+                  value: "/pml/case/c0/1"
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary0
+          subject: case-component0
+          type: replicas
+          value: Mw==   # 3

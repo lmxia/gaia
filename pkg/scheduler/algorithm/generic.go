@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/lmxia/gaia/pkg/networkfilter/npcore"
+	"github.com/lmxia/gaia/pkg/utils"
+	"k8s.io/klog/v2"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -15,7 +17,6 @@ import (
 	"gonum.org/v1/gonum/mat"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/klog/v2"
 	utiltrace "k8s.io/utils/trace"
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
@@ -54,14 +55,20 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		return result, ErrNoClustersAvailable
 	}
 	allClusters, _ := g.cache.ListClusters(&metav1.LabelSelector{})
-	numComponent := len(desc.Spec.Components)
+
+	// format desc to components
+	components, comLocation, affinity := utils.DescToComponents(desc)
+	klog.V(5).Infof("Components are %v", components)
+	klog.V(5).Infof("comLocation is %+v,affinity is %v", comLocation, affinity) // 临时占用
+
+	numComponent := len(components)
 	// 2, means allspread, one spread, 2 spread.
 	allResultGlobal := make([][]mat.Matrix, 3)
 	for i := 0; i < 3; i++ {
 		allResultGlobal[i] = make([]mat.Matrix, numComponent)
 	}
 	// has parent
-	// first dim means resouce binding, second means component, third means spread level.
+	// first dim means resource binding, second means component, third means spread level.
 	allResultWithRB := make([][][]mat.Matrix, len(rbs))
 	if desc.Namespace != common.GaiaReservedNamespace {
 		// desc has resource binding
@@ -73,7 +80,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		}
 	}
 
-	for i, comm := range desc.Spec.Components {
+	for i, comm := range components {
 		localComponent := &comm
 		// NO.1 pre filter
 		feasibleClusters, diagnosis, _ := g.findClustersThatFitComponent(ctx, fwk, localComponent)
@@ -89,6 +96,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				Diagnosis:      diagnosis,
 			}
 		}
+		klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
 		// }
 
 		// spread level info: full level, 2 level, 1 level
@@ -100,7 +108,8 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		if desc.Namespace == common.GaiaReservedNamespace {
 			for j, _ := range spreadLevels {
 				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
-					componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
+					//componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
+					componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), 1)
 					allResultGlobal[j][i] = componentMat
 				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 					componentMat := makeServelessPlan(allPlan, 1)
@@ -142,7 +151,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	// NO.2 first we should spawn rbs.
 	if desc.Namespace == common.GaiaReservedNamespace {
 		// all 5
-		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc)
+		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc, components)
 		// 1. add networkFilter only if we can get nwr
 		if nwr, err := g.cache.GetNetworkRequirement(desc); err == nil {
 			networkInfoMap := g.getTopologyInfoMap()
@@ -167,7 +176,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		rbIndex := 0
 		for i, rbOld := range rbs {
 			rbsResult := make([]*v1alpha1.ResourceBinding, 0)
-			rbForrb := spawnResourceBindings(allResultWithRB[i], allClusters, desc)
+			rbForrb := spawnResourceBindings(allResultWithRB[i], allClusters, desc, components)
 			for j, _ := range rbForrb {
 				subRBApps := make([]*v1alpha1.ResourceBindingApps, 0)
 				for _, rbapp := range rbOld.Spec.RbApps {

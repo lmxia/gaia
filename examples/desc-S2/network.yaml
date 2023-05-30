@@ -1,0 +1,77 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: NetworkRequirement
+metadata:
+  name: case
+  namespace: gaia-reserved
+spec:
+  workloadComponents:
+    scns:
+      - name: case-component1
+        selfID:
+          - /pml/case/c1/1
+          - /pml/case/c1/2
+          - /pml/case/c1/3
+          - /pml/case/c1/4
+          - /pml/case/c1/5
+          - /pml/case/c1/6
+      - name: case-component2
+        selfID:
+          - /pml/case/c2/1
+      - name: case-component3
+        selfID:
+          - /pml/case/c3/1
+      - name: case-component4
+        selfID:
+          - /pml/case/c4/1
+      - name: case-component5
+        selfID:
+          - /pml/case/c5/1
+      - name: case-component6
+        selfID:
+          - /pml/case/c6/1
+    links:
+      - linkName: link1
+        sourceID: /pml/case/c1/1
+        destinationID: /pml/case/c2/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link2
+        sourceID: /pml/case/c1/1
+        destinationID: /pml/case/c2/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst3
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst4
+  deployconditions:
+    mandatory:
+      - subject:
+          name: link1
+          type: link
+        object:
+          name: provider
+          type: label
+        relation: In
+        extent: WyJqaWFuZ25hbjEiLCJqaWFuZ25hbjIiLCJqaWFuZ25hbjMiXQ== # ["jiangnan1","jiangnan2","jiangnan3"]'
+      - subject:
+          name: link1
+          type: link
+        object:
+          name: sla
+          type: QOS-sla
+        relation: Is
+        extent: ewogICJzbGEiOiB7CiAgICAiZGVsYXkiOiA5OTk5OTksCiAgICAibG9zdCI6IDEwMCwKICAgICJqaXR0ZXIiOiA5OTk5OTksCiAgICAiYmFuZHdpZHRoIjogOAogIH0KfQo= # {"sla": {"delay": 999999, "lost": 100, "jitter": 999999, "bandwidth": 8}}
+    BestEffort:
+      - subject:
+          name: link2
+          type: link
+        object:
+          name: rtt
+          type: QOS
+        relation: Is
+        extent: ewogICJydHQiOiAxMAp9Cg== # {"rtt": 10}

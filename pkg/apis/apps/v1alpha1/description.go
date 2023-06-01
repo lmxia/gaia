@@ -64,13 +64,24 @@ type WorkloadComponent struct {
 	Preoccupy string `json:"preoccupy,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Optional
-	Schedule string `json:"schedule,omitempty"`
+	Schedule SchedulerConfig `json:"schedule,omitempty"`
 	// +required
 	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
 	WorkloadType string `json:"workloadType,omitempty"`
+}
+
+type SchedulerConfig struct {
+	// +optional
+	StartSchedule string `json:"startSchedule,omitempty"`
+	// +optional
+	EndSchedule string `json:"endSchedule,omitempty"`
+	// +required
+	StartEnable bool `json:"startEnable"`
+	// +required
+	EndEnable bool `json:"endEnable"`
 }
 
 // Xject means Sub or Ob

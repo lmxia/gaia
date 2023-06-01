@@ -13,4 +13,5 @@ const (
 	RuntimeType      = "RuntimeType"
 	NodeRole         = "NodeRole"
 	VirtualNode      = "VirtualNode"
+	Label            = "Label"
 )

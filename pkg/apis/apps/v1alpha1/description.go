@@ -73,11 +73,29 @@ type WorkloadComponent struct {
 	WorkloadType string `json:"workloadType,omitempty"`
 }
 
-type SchedulerConfig struct {
+// ScheduleTimeSet 调度时间设置
+type ScheduleTimeSet struct {
 	// +optional
 	StartSchedule string `json:"startSchedule,omitempty"`
 	// +optional
 	EndSchedule string `json:"endSchedule,omitempty"`
+}
+
+type SchedulerConfig struct {
+	// +required
+	Monday ScheduleTimeSet `json:"monday"`
+	// +required
+	Tuesday ScheduleTimeSet `json:"tuesday"`
+	// +required
+	Wednesday ScheduleTimeSet `json:"wednesday"`
+	// +required
+	Thursday ScheduleTimeSet `json:"thursday"`
+	// +required
+	Friday ScheduleTimeSet `json:"friday"`
+	// +required
+	Saturday ScheduleTimeSet `json:"saturday"`
+	// +required
+	Sunday ScheduleTimeSet `json:"sunday"`
 	// +required
 	StartEnable bool `json:"startEnable"`
 	// +required
@@ -193,7 +211,7 @@ type Component struct {
 	Preoccupy string `json:"preoccupy,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Optional
-	Schedule string `json:"schedule,omitempty"`
+	Schedule SchedulerConfig `json:"schedule,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -274,8 +292,8 @@ type TraitUserAPP struct {
 }
 
 type TraitTask struct {
-	Completions int32  `json:"completions,omitempty"`
-	Schedule    string `json:"schedule,omitempty"`
+	Completions int32           `json:"completions,omitempty"`
+	Schedule    SchedulerConfig `json:"schedule,omitempty"`
 }
 
 type TraitStatefulSet struct {

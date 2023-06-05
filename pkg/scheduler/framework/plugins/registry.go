@@ -4,6 +4,7 @@ import (
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/affinitydaemon"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/corenetworkpriority"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/geolocation"
+	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/label"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/names"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/netenviroment"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/specificresource"
@@ -25,9 +26,7 @@ func NewInTreeRegistry() runtime.Registry {
 		names.NetEnviroment:    netenviroment.New,
 		names.Geolocation:      geolocation.New,
 		names.SupplierName:     supplier.New,
-		//names.ResForm:          resform.New,
-		//names.RuntimeType: runtimetype.New,
-		//names.NodeRole:         noderole.New,
-		names.VirtualNode: virtualnode.New,
+		names.VirtualNode:      virtualnode.New,
+		names.Label:            label.New,
 	}
 }

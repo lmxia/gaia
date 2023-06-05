@@ -2,11 +2,12 @@ package utils
 
 import (
 	"encoding/json"
+	"strings"
+
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
-	"strings"
 )
 
 // DescToComponents reflect a description to Components
@@ -70,9 +71,7 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 			if comn.Workload.TraitStatefulSet != nil {
 				klog.V(5).Infof("%s's Workload.TraitStatefulSet is %+v", comn.Name, comn.Workload.TraitStatefulSet)
 			} else if comn.Workload.TraitTask != nil {
-				if len(comn.Schedule) != 0 {
-					comn.Workload.TraitTask.Schedule = comn.Schedule
-				}
+				comn.Workload.TraitTask.Schedule = comn.Schedule
 				klog.V(5).Infof("%s's 'Workload.TraitTask is %+v", comn.Name, comn.Workload.TraitTask)
 			} else if comn.Workload.TraitServerless != nil {
 				klog.V(5).Infof("%s's 'Workload.TraitServerless is %+v", comn.Name, comn.Workload.TraitServerless)

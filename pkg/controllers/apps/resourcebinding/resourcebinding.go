@@ -19,14 +19,13 @@ package resourcebinding
 import (
 	"context"
 	"fmt"
-	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	known "github.com/lmxia/gaia/pkg/common"
+	appsV1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	"github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllers/apps/description"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
-	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	gaiaInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	informers "github.com/lmxia/gaia/pkg/generated/informers/externalversions/apps/v1alpha1"
-	appListers "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
-	applisterv1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
+	appListerV1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -55,9 +54,9 @@ var (
 )
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
-var controllerKind = appsv1alpha1.SchemeGroupVersion.WithKind("ResourceBinding")
+var controllerKind = appsV1alpha1.SchemeGroupVersion.WithKind("ResourceBinding")
 
-type SyncHandlerFunc func(binding *appsv1alpha1.ResourceBinding) error
+type SyncHandlerFunc func(binding *appsV1alpha1.ResourceBinding) error
 
 // RBController defines configuration for ResourceBinding requests
 type RBController struct {
@@ -66,17 +65,17 @@ type RBController struct {
 	rbLocalController   *Controller
 	descLocalController *description.Controller
 
-	localGaiaInformerFactory gaiainformers.SharedInformerFactory
-	localDescLister          appListers.DescriptionLister
+	localGaiaInformerFactory gaiaInformers.SharedInformerFactory
+	localDescLister          appListerV1alpha1.DescriptionLister
 	localDescSynced          cache.InformerSynced
-	localRBsLister           appListers.ResourceBindingLister
+	localRBsLister           appListerV1alpha1.ResourceBindingLister
 	localRBsSynced           cache.InformerSynced
 	localkubeclient          *kubernetes.Clientset
 	localgaiaclient          *gaiaClientSet.Clientset
 	localdynamicClient       dynamic.Interface
 
-	parentMergedGaiaInformerFactory    gaiainformers.SharedInformerFactory
-	parentDedicatedGaiaInformerFactory gaiainformers.SharedInformerFactory
+	parentMergedGaiaInformerFactory    gaiaInformers.SharedInformerFactory
+	parentDedicatedGaiaInformerFactory gaiaInformers.SharedInformerFactory
 	parentDynamicClient                dynamic.Interface
 	parentGaiaClient                   *gaiaClientSet.Clientset
 	rbParentController                 *Controller
@@ -88,7 +87,7 @@ type RBController struct {
 type Controller struct {
 	gaiaClient gaiaClientSet.Interface
 
-	rbsLister applisterv1alpha1.ResourceBindingLister
+	rbsLister appListerV1alpha1.ResourceBindingLister
 	rbsSynced cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
@@ -104,7 +103,7 @@ type Controller struct {
 // NewRBController returns a new Controller for ResourceBindings and Descriptions.
 func NewRBController(localkubeclient *kubernetes.Clientset, localgaiaclient *gaiaClientSet.Clientset, localKubeConfig *rest.Config, networkBindUrl string) (*RBController, error) {
 	localdynamicClient, err := dynamic.NewForConfig(localKubeConfig)
-	localGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(localgaiaclient, known.DefaultResync)
+	localGaiaInformerFactory := gaiaInformers.NewSharedInformerFactory(localgaiaclient, common.DefaultResync)
 	rbController := &RBController{
 		networkBindUrl:           networkBindUrl,
 		localkubeclient:          localkubeclient,
@@ -150,14 +149,14 @@ func NewController(gaiaClient gaiaClientSet.Interface,
 }
 
 func (c *Controller) addRB(obj interface{}) {
-	rb := obj.(*appsv1alpha1.ResourceBinding)
+	rb := obj.(*appsV1alpha1.ResourceBinding)
 	klog.V(4).Infof("adding resource-binding %q", klog.KObj(rb))
 	c.enqueue(rb)
 }
 
 func (c *Controller) updateRB(old, cur interface{}) {
-	oldRB := old.(*appsv1alpha1.ResourceBinding)
-	newRB := cur.(*appsv1alpha1.ResourceBinding)
+	oldRB := old.(*appsV1alpha1.ResourceBinding)
+	newRB := cur.(*appsV1alpha1.ResourceBinding)
 
 	if newRB.DeletionTimestamp != nil {
 		c.enqueue(newRB)
@@ -174,14 +173,14 @@ func (c *Controller) updateRB(old, cur interface{}) {
 }
 
 func (c *Controller) deleteRB(obj interface{}) {
-	binding, ok := obj.(*appsv1alpha1.ResourceBinding)
+	binding, ok := obj.(*appsV1alpha1.ResourceBinding)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
 		if !ok {
 			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
 			return
 		}
-		binding, ok = tombstone.Obj.(*appsv1alpha1.ResourceBinding)
+		binding, ok = tombstone.Obj.(*appsV1alpha1.ResourceBinding)
 		if !ok {
 			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ResourceBinding %#v", obj))
 			return
@@ -194,7 +193,7 @@ func (c *Controller) deleteRB(obj interface{}) {
 // enqueue takes a ResourceBinding resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than ResourceBinding.
-func (c *Controller) enqueue(rb *appsv1alpha1.ResourceBinding) {
+func (c *Controller) enqueue(rb *appsV1alpha1.ResourceBinding) {
 	key, err := cache.MetaNamespaceKeyFunc(rb)
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -203,10 +202,10 @@ func (c *Controller) enqueue(rb *appsv1alpha1.ResourceBinding) {
 	c.workqueue.Add(key)
 }
 
-// enqueue takes a ResourceBinding resource and converts it into a namespace/name
+// UpdateResourceBindingStatus enqueue takes a ResourceBinding resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than ResourceBinding.
-func (c *Controller) UpdateResourceBindingStatus(rb *appsv1alpha1.ResourceBinding, status *appsv1alpha1.ResourceBindingStatus) error {
+func (c *Controller) UpdateResourceBindingStatus(rb *appsV1alpha1.ResourceBinding, status *appsV1alpha1.ResourceBindingStatus) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
@@ -222,7 +221,7 @@ func (c *Controller) UpdateResourceBindingStatus(rb *appsv1alpha1.ResourceBindin
 		}
 
 		if updated, err := c.rbsLister.ResourceBindings(rb.Namespace).Get(rb.Name); err == nil {
-			// make a copy so we don't mutate the shared cache
+			// make a copy, so we don't mutate the shared cache
 			rb = updated.DeepCopy()
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated ResourceBinding %q from lister: %v", rb.Name, err))
@@ -235,7 +234,7 @@ func (c *Controller) UpdateResourceBindingStatus(rb *appsv1alpha1.ResourceBindin
 // converge the two. It then updates the Status block of the ResourceBinding resource
 // with the current status of the resource.
 func (c *Controller) syncHandler(key string) error {
-	// If an error occurs during handling, we'll requeue the item so we can
+	// If an error occurs during handling, we'll requeue the item, so we can
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
 
@@ -287,7 +286,7 @@ func (c *Controller) processNextWorkItem() bool {
 		return false
 	}
 
-	// We wrap this block in a func so we can defer c.workqueue.Done.
+	// We wrap this block in a func, so we can defer c.workqueue.Done.
 	err := func(obj interface{}) error {
 		// We call Done here so the workqueue knows we have finished
 		// processing this item. We also must remember to call Forget if we
@@ -318,7 +317,7 @@ func (c *Controller) processNextWorkItem() bool {
 			c.workqueue.AddRateLimited(key)
 			return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
 		}
-		// Finally, if no error occurs we Forget this item so it does not
+		// Finally, if no error occurs we Forget this item, so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
 		klog.Infof("successfully synced resourcebinding %q", key)
@@ -335,7 +334,7 @@ func (c *Controller) processNextWorkItem() bool {
 
 // Run will set up the event handlers for types we are interested in, as well
 // as syncing informer caches and starting workers. It will block until stopCh
-// is closed, at which point it will shutdown the workqueue and wait for
+// is closed, at which point it will shut down the workqueue and wait for
 // workers to finish processing their current work items.
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
@@ -383,22 +382,22 @@ func (c *RBController) RunLocalDescription(threadiness int, stopCh <-chan struct
 	<-stopCh
 }
 
-func (c *RBController) handleLocalDescription(desc *appsv1alpha1.Description) error {
-	klog.V(5).Infof("handleLocalDescription: handle local description %s ...", klog.KObj(desc))
+func (c *RBController) handleLocalDescription(desc *appsV1alpha1.Description) error {
+	klog.V(5).Infof("handleLocalDescription: handle local description %q ...", klog.KObj(desc))
 	// delete gaia-reserved description
-	if desc.DeletionTimestamp != nil && desc.Namespace == known.GaiaReservedNamespace {
+	if desc.DeletionTimestamp != nil && desc.Namespace == common.GaiaReservedNamespace {
 		var allErrs []error
 		wg := sync.WaitGroup{}
 		errCh := make(chan error, 2)
 		wg.Add(2)
-		go func(desc *appsv1alpha1.Description) {
+		go func(desc *appsV1alpha1.Description) {
 			defer wg.Done()
 			err := c.offloadLocalResourceBindingsByDescription(desc)
 			if err != nil {
 				errCh <- err
 			}
 		}(desc)
-		go func(desc *appsv1alpha1.Description) {
+		go func(desc *appsV1alpha1.Description) {
 			defer wg.Done()
 			err := c.offloadLocalDescriptions(desc)
 			if err != nil {
@@ -417,10 +416,10 @@ func (c *RBController) handleLocalDescription(desc *appsv1alpha1.Description) er
 		}
 
 		descCopy := desc.DeepCopy()
-		descCopy.Finalizers = utils.RemoveString(descCopy.Finalizers, known.AppFinalizer)
+		descCopy.Finalizers = utils.RemoveString(descCopy.Finalizers, common.AppFinalizer)
 		_, err := c.localgaiaclient.AppsV1alpha1().Descriptions(desc.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{})
 		if err != nil {
-			klog.WarningDepth(4, fmt.Sprintf("handleLocalDescription: failed to remove finalizer %s from Descriptions %s: %v", known.AppFinalizer, klog.KObj(desc), err))
+			klog.WarningDepth(4, fmt.Sprintf("handleLocalDescription: failed to remove finalizer %s from Descriptions %s: %v", common.AppFinalizer, klog.KObj(desc), err))
 		}
 		return err
 	}
@@ -428,17 +427,17 @@ func (c *RBController) handleLocalDescription(desc *appsv1alpha1.Description) er
 	return nil
 }
 
-func (c *RBController) handleParentDescription(desc *appsv1alpha1.Description) error {
-	klog.V(5).Infof("handle Description %s", klog.KObj(desc))
+func (c *RBController) handleParentDescription(desc *appsV1alpha1.Description) error {
+	klog.V(5).Infof("handleParentDescription: handle Description %q ...", klog.KObj(desc))
 	if desc.DeletionTimestamp != nil {
 		if err := c.offloadLocalDescriptions(desc); err != nil {
 			return err
 		}
 		descLabels := desc.GetLabels()
 		localRbs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
-			known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-			known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-			known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+			common.OriginDescriptionNameLabel:      descLabels[common.OriginDescriptionNameLabel],
+			common.OriginDescriptionNamespaceLabel: descLabels[common.OriginDescriptionNamespaceLabel],
+			common.OriginDescriptionUIDLabel:       descLabels[common.OriginDescriptionUIDLabel],
 		}))
 		if err != nil {
 			return err
@@ -448,9 +447,9 @@ func (c *RBController) handleParentDescription(desc *appsv1alpha1.Description) e
 		}
 
 		parentRbs, err := c.parentMergedGaiaInformerFactory.Apps().V1alpha1().ResourceBindings().Lister().List(labels.SelectorFromSet(labels.Set{
-			known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-			known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-			known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+			common.OriginDescriptionNameLabel:      descLabels[common.OriginDescriptionNameLabel],
+			common.OriginDescriptionNamespaceLabel: descLabels[common.OriginDescriptionNamespaceLabel],
+			common.OriginDescriptionUIDLabel:       descLabels[common.OriginDescriptionUIDLabel],
 		}))
 		if err != nil {
 			return err
@@ -459,9 +458,9 @@ func (c *RBController) handleParentDescription(desc *appsv1alpha1.Description) e
 			return fmt.Errorf("handleParentDescription: waiting for parent gaia-Merged NS ResourceBings belongs to Description %s getting deleted", klog.KObj(desc).String())
 		}
 		parentDeRbs, err := c.parentDedicatedGaiaInformerFactory.Apps().V1alpha1().ResourceBindings().Lister().List(labels.SelectorFromSet(labels.Set{
-			known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-			known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-			known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+			common.OriginDescriptionNameLabel:      descLabels[common.OriginDescriptionNameLabel],
+			common.OriginDescriptionNamespaceLabel: descLabels[common.OriginDescriptionNamespaceLabel],
+			common.OriginDescriptionUIDLabel:       descLabels[common.OriginDescriptionUIDLabel],
 		}))
 		if err != nil {
 			return err
@@ -471,9 +470,9 @@ func (c *RBController) handleParentDescription(desc *appsv1alpha1.Description) e
 		}
 
 		descCopy := desc.DeepCopy()
-		descCopy.Finalizers = utils.RemoveString(descCopy.Finalizers, known.AppFinalizer)
+		descCopy.Finalizers = utils.RemoveString(descCopy.Finalizers, common.AppFinalizer)
 		if _, err = c.parentGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{}); err != nil {
-			klog.WarningDepth(4, fmt.Sprintf("handleParentDescription: failed to remove finalizer %s from parent Descriptions %s: %v", known.AppFinalizer, klog.KObj(desc), err))
+			klog.WarningDepth(4, fmt.Sprintf("handleParentDescription: failed to remove finalizer %s from parent Descriptions %s: %v", common.AppFinalizer, klog.KObj(desc), err))
 		}
 		return err
 	}
@@ -481,19 +480,23 @@ func (c *RBController) handleParentDescription(desc *appsv1alpha1.Description) e
 	return nil
 }
 
-func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBinding) error {
-	klog.V(5).Infof("handle parent resourceBinding %s", klog.KObj(rb))
-	if rb.Spec.StatusScheduler == appsv1alpha1.ResourceBindingSelected {
+// handleParentResourceBinding handles the gaia-merged namespace rbs
+func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
+	klog.V(5).Infof("handleParentResourceBinding: handle parent resourceBinding %q ...", klog.KObj(rb))
+	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
+		err := c.UpdateSelectedResourceBinding(rb)
+		if err != nil {
+			utilruntime.HandleError(fmt.Errorf("handleParentResourceBinding: failed to update selected ResourceBinding %q, ERROR: %v", klog.KObj(rb), err))
+		}
+
 		createRB := false
-		descriptionName := rb.GetLabels()[known.GaiaDescriptionLabel]
+		descriptionName := rb.GetLabels()[common.GaiaDescriptionLabel]
 		clusterName, descNs, errCluster := utils.GetLocalClusterName(c.localkubeclient)
 		if errCluster != nil {
 			klog.Errorf("handleParentResourceBinding: failed to get local clusterName From secret: %v", errCluster)
 			return errCluster
 		}
 		desc, descErr := c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName, metav1.GetOptions{})
-		// desc, descErr := utils.GetDescription(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, descNs)
-
 		// format desc to components
 		components, _, _ := utils.DescToComponents(desc)
 		if descErr != nil {
@@ -515,7 +518,7 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 
 		if rb.DeletionTimestamp == nil {
 			if createRB {
-				nwr, newErr := utils.GetNetworkRequirement(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, known.GaiaReservedNamespace)
+				nwr, newErr := utils.GetNetworkRequirement(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, common.GaiaReservedNamespace)
 				if newErr != nil {
 					klog.Infof("nwr error===%v \n", newErr)
 					nwr = nil
@@ -523,8 +526,8 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 				return utils.ApplyResourceBinding(context.TODO(), c.localdynamicClient, c.restMapper, rb, clusterName, descriptionName, c.networkBindUrl, nwr)
 			} else {
 				// need schedule across clusters
-				if error := utils.ApplyRBWorkloads(context.TODO(), desc, components, c.parentGaiaClient, c.localdynamicClient,
-					c.restMapper, rb, clusterName); error != nil {
+				if err := utils.ApplyRBWorkloads(context.TODO(), desc, components, c.parentGaiaClient, c.localdynamicClient,
+					c.restMapper, rb, clusterName); err != nil {
 					return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
 				}
 			}
@@ -543,14 +546,42 @@ func (c *RBController) handleParentResourceBinding(rb *appsv1alpha1.ResourceBind
 			}
 			// remove finalizers
 			rbCopy := rb.DeepCopy()
-			rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, known.AppFinalizer)
+			rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
 			if _, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(context.TODO(), rbCopy, metav1.UpdateOptions{}); err != nil {
-				klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from ResourceBinding %s: %v", known.AppFinalizer, klog.KObj(rb), err))
+				klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from ResourceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err))
 				return err
 			}
 		}
 	}
 
+	return nil
+}
+
+func (c *RBController) UpdateSelectedResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
+	if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
+		rb.Finalizers = append(rb.Finalizers, common.AppFinalizer)
+		rbLabels := rb.GetLabels()
+		rbLabels[common.StatusScheduler] = string(appsV1alpha1.ResourceBindingSelected)
+		if _, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).Update(context.TODO(), rb, metav1.UpdateOptions{}); err != nil {
+			msg := fmt.Sprintf("failed to inject  finalizer %s and select ResouceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err)
+			klog.WarningDepth(4, msg)
+			return err
+		}
+
+		descName := rbLabels[common.OriginDescriptionNameLabel]
+		klog.V(4).Infof("Delete unselected ResourceBindings in namespace %q from Description %q.", common.GaiaRBMergedReservedNamespace, descName)
+		err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
+			DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+				common.OriginDescriptionNameLabel:      descName,
+				common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
+				common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
+				common.StatusScheduler:                 string(appsV1alpha1.ResourceBindingmerged),
+			}).String()})
+		if err != nil {
+			klog.Infof("failed to delete merged rbs in parent cluster %q namespace, ERROR: %v", common.GaiaRBMergedReservedNamespace, err)
+			return err
+		}
+	}
 	return nil
 }
 
@@ -573,8 +604,8 @@ func (c *RBController) SetParentRBController() (*RBController, error) {
 		klog.Errorf("RBController SetParentRBController failed to get local dedicatedNamespace From secret: %v", err)
 		return nil, err
 	}
-	dedicatedGaiaInformerFactory := gaiainformers.NewSharedInformerFactoryWithOptions(parentGaiaClient, known.DefaultResync,
-		gaiainformers.WithNamespace(dedicatedNamespace))
+	dedicatedGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient, common.DefaultResync,
+		gaiaInformers.WithNamespace(dedicatedNamespace))
 	descController, descErr := description.NewController(parentGaiaClient, dedicatedGaiaInformerFactory.Apps().V1alpha1().Descriptions(), c.localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentDescription)
 	if descErr != nil {
 		klog.Errorf(" local handleParentDescription SetParentRBController descErr == %v", descErr)
@@ -597,22 +628,22 @@ func (c *RBController) SetLocalDescriptionController() (*RBController, error) {
 	return c, nil
 }
 
-func (c *RBController) offloadLocalDescriptions(desc *appsv1alpha1.Description) error {
-	var derivedDescs []*appsv1alpha1.Description
+func (c *RBController) offloadLocalDescriptions(desc *appsV1alpha1.Description) error {
+	var derivedDescs []*appsV1alpha1.Description
 	var allErrs []error
 	var err error
 	descLabels := desc.GetLabels()
-	if _, ok := descLabels[known.OriginDescriptionUIDLabel]; ok {
+	if _, ok := descLabels[common.OriginDescriptionUIDLabel]; ok {
 		derivedDescs, err = c.localDescLister.List(labels.SelectorFromSet(labels.Set{
-			known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-			known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-			known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+			common.OriginDescriptionNameLabel:      descLabels[common.OriginDescriptionNameLabel],
+			common.OriginDescriptionNamespaceLabel: descLabels[common.OriginDescriptionNamespaceLabel],
+			common.OriginDescriptionUIDLabel:       descLabels[common.OriginDescriptionUIDLabel],
 		}))
 	} else {
 		derivedDescs, err = c.localDescLister.List(labels.SelectorFromSet(labels.Set{
-			known.OriginDescriptionNameLabel:      desc.Name,
-			known.OriginDescriptionNamespaceLabel: desc.Namespace,
-			known.OriginDescriptionUIDLabel:       string(desc.UID),
+			common.OriginDescriptionNameLabel:      desc.Name,
+			common.OriginDescriptionNamespaceLabel: desc.Namespace,
+			common.OriginDescriptionUIDLabel:       string(desc.UID),
 		}))
 	}
 	if err != nil {
@@ -653,12 +684,12 @@ func (c *RBController) deleteDescription(ctx context.Context, namespacedKey stri
 	return err
 }
 
-func (c *RBController) offloadLocalResourceBindingsByDescription(desc *appsv1alpha1.Description) error {
+func (c *RBController) offloadLocalResourceBindingsByDescription(desc *appsV1alpha1.Description) error {
 	// offload gaia-merged && gaia-to-be-merged  Rbs
 	derivedRBs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
-		known.OriginDescriptionNameLabel:      desc.Name,
-		known.OriginDescriptionNamespaceLabel: desc.Namespace,
-		known.OriginDescriptionUIDLabel:       string(desc.UID),
+		common.OriginDescriptionNameLabel:      desc.Name,
+		common.OriginDescriptionNamespaceLabel: desc.Namespace,
+		common.OriginDescriptionUIDLabel:       string(desc.UID),
 	}))
 	if err != nil {
 		return err
@@ -699,12 +730,12 @@ func (c *RBController) deleteResourceBinding(ctx context.Context, namespacedKey 
 	return err
 }
 
-func (c *RBController) offloadLocalResourceBindingsByRB(rb *appsv1alpha1.ResourceBinding) error {
+func (c *RBController) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.ResourceBinding) error {
 	// offload gaia-merged && gaia-to-be-merged  Rbs
 	derivedRBs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
-		known.OriginDescriptionNameLabel:      rb.GetLabels()[known.OriginDescriptionNameLabel],
-		known.OriginDescriptionNamespaceLabel: rb.GetLabels()[known.OriginDescriptionNamespaceLabel],
-		known.OriginDescriptionUIDLabel:       rb.GetLabels()[known.OriginDescriptionUIDLabel]}))
+		common.OriginDescriptionNameLabel:      rb.GetLabels()[common.OriginDescriptionNameLabel],
+		common.OriginDescriptionNamespaceLabel: rb.GetLabels()[common.OriginDescriptionNamespaceLabel],
+		common.OriginDescriptionUIDLabel:       rb.GetLabels()[common.OriginDescriptionUIDLabel]}))
 	if err != nil {
 		return err
 	}

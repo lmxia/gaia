@@ -2,13 +2,14 @@ package runtimetype
 
 import (
 	"context"
+	"reflect"
+	"testing"
+
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
-	"testing"
 )
 
 func TestRuntimeType_Filter(t *testing.T) {
@@ -31,13 +32,13 @@ func TestRuntimeType_Filter(t *testing.T) {
 			name: "success",
 			args: args{
 				com: &v1alpha1.Component{
-					RuntimeType: "kata",
+					RuntimeType: "securecontainer",
 				},
 				cluster: &clusterapi.ManagedCluster{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
-							clusterapi.ParsedRuntimeStateKey: "kata",
+							clusterapi.ParsedRuntimeStateKey: "securecontainer",
 						},
 					},
 				},

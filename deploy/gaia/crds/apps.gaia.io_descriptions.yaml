@@ -8133,7 +8133,78 @@ spec:
                     sandbox:
                       type: string
                     schedule:
-                      type: string
+                      properties:
+                        endEnable:
+                          type: boolean
+                        friday:
+                          description: ScheduleTimeSet 调度时间设置
+                          properties:
+                            endSchedule:
+                              type: string
+                            startSchedule:
+                              type: string
+                          type: object
+                        monday:
+                          description: ScheduleTimeSet 调度时间设置
+                          properties:
+                            endSchedule:
+                              type: string
+                            startSchedule:
+                              type: string
+                          type: object
+                        saturday:
+                          description: ScheduleTimeSet 调度时间设置
+                          properties:
+                            endSchedule:
+                              type: string
+                            startSchedule:
+                              type: string
+                          type: object
+                        startEnable:
+                          type: boolean
+                        sunday:
+                          description: ScheduleTimeSet 调度时间设置
+                          properties:
+                            endSchedule:
+                              type: string
+                            startSchedule:
+                              type: string
+                          type: object
+                        thursday:
+                          description: ScheduleTimeSet 调度时间设置
+                          properties:
+                            endSchedule:
+                              type: string
+                            startSchedule:
+                              type: string
+                          type: object
+                        tuesday:
+                          description: ScheduleTimeSet 调度时间设置
+                          properties:
+                            endSchedule:
+                              type: string
+                            startSchedule:
+                              type: string
+                          type: object
+                        wednesday:
+                          description: ScheduleTimeSet 调度时间设置
+                          properties:
+                            endSchedule:
+                              type: string
+                            startSchedule:
+                              type: string
+                          type: object
+                      required:
+                      - endEnable
+                      - friday
+                      - monday
+                      - saturday
+                      - startEnable
+                      - sunday
+                      - thursday
+                      - tuesday
+                      - wednesday
+                      type: object
                     workloadType:
                       type: string
                   required:

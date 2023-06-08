@@ -344,7 +344,7 @@ func (f *frameworkImpl) runPreScorePlugin(ctx context.Context, pl framework.PreS
 // stores for each scoring plugin name the corresponding  ResourceBindingScoreList(s).
 // It also returns *Status, which is set to non-success if any of the plugins returns
 // a non-success status.
-func (f *frameworkImpl) RunScorePlugins(ctx context.Context, rbs []*v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (ps framework.PluginToRBScores, status *framework.Status) {
+func (f *frameworkImpl) RunScorePlugins(ctx context.Context, description *v1alpha1.Description, rbs []*v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (ps framework.PluginToRBScores, status *framework.Status) {
 	startTime := time.Now()
 	defer func() {
 		metrics.FrameworkExtensionPointDuration.WithLabelValues(score, status.Code().String(), f.profileName).Observe(metrics.SinceInSeconds(startTime))
@@ -359,7 +359,7 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, rbs []*v1alpha1.Res
 	// Run Score method for each cluster in parallel.
 	f.Parallelizer().Until(ctx, len(rbs), func(index int) {
 		for _, pl := range f.scorePlugins {
-			s, status := f.runScorePlugin(ctx, pl, rbs[index], clusters)
+			s, status := f.runScorePlugin(ctx, pl, description, rbs[index], clusters)
 			if !status.IsSuccess() {
 				err := fmt.Errorf("plugin %q failed with: %w", pl.Name(), status.AsError())
 				errCh.SendErrorWithCancel(err, cancel)
@@ -417,9 +417,9 @@ func (f *frameworkImpl) RunScorePlugins(ctx context.Context, rbs []*v1alpha1.Res
 	return pluginToRBScores, nil
 }
 
-func (f *frameworkImpl) runScorePlugin(ctx context.Context, pl framework.ScorePlugin, rb *v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
+func (f *frameworkImpl) runScorePlugin(ctx context.Context, pl framework.ScorePlugin, description *v1alpha1.Description, rb *v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
 	startTime := time.Now()
-	s, status := pl.Score(ctx, rb, clusters)
+	s, status := pl.Score(ctx, description, rb, clusters)
 	f.metricsRecorder.observePluginDurationAsync(score, pl.Name(), status, metrics.SinceInSeconds(startTime))
 	return s, status
 }

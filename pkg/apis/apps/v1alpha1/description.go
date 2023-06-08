@@ -16,6 +16,12 @@ import (
 // +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
+const (
+	SLA        string = "sla"
+	SCC        string = "scc"
+	ACCELERATE string = "accelerate"
+)
+
 // Description is the Schema for the resources to be installed
 type Description struct {
 	metav1.TypeMeta   `json:",inline"`

@@ -6,9 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/lmxia/gaia/pkg/networkfilter/npcore"
-	"github.com/lmxia/gaia/pkg/utils"
-	"k8s.io/klog/v2"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -17,12 +14,13 @@ import (
 	"gonum.org/v1/gonum/mat"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/klog/v2"
 	utiltrace "k8s.io/utils/trace"
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-
 	"github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/networkfilter/npcore"
 	schedulerapis "github.com/lmxia/gaia/pkg/scheduler/apis"
 	schedulercache "github.com/lmxia/gaia/pkg/scheduler/cache"
 	framework2 "github.com/lmxia/gaia/pkg/scheduler/framework"
@@ -30,6 +28,7 @@ import (
 	"github.com/lmxia/gaia/pkg/scheduler/framework/runtime"
 	"github.com/lmxia/gaia/pkg/scheduler/metrics"
 	"github.com/lmxia/gaia/pkg/scheduler/parallelize"
+	"github.com/lmxia/gaia/pkg/utils"
 )
 
 // ErrNoClustersAvailable is used to describe the error that no clusters available to schedule subscriptions.
@@ -233,7 +232,7 @@ func (g *genericScheduler) getTopologyInfoMap() map[string]clusterapi.Topo {
 	return networkInfoMap
 }
 
-func prioritizeResourcebindings(ctx context.Context, fwk framework.Framework, _ *v1alpha1.Description,
+func prioritizeResourcebindings(ctx context.Context, fwk framework.Framework, desc *v1alpha1.Description,
 	clusters []*clusterapi.ManagedCluster, rbs []*v1alpha1.ResourceBinding) (framework.ResourceBindingScoreList, error) {
 	if !fwk.HasScorePlugins() {
 		result := make(framework.ResourceBindingScoreList, 0, len(rbs))
@@ -246,7 +245,7 @@ func prioritizeResourcebindings(ctx context.Context, fwk framework.Framework, _ 
 		return result, nil
 	}
 
-	scoresMap, scoreStatus := fwk.RunScorePlugins(ctx, rbs, clusters)
+	scoresMap, scoreStatus := fwk.RunScorePlugins(ctx, desc, rbs, clusters)
 	if !scoreStatus.IsSuccess() {
 		return nil, scoreStatus.AsError()
 	}

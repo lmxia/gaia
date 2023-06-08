@@ -2,10 +2,10 @@ package interfaces
 
 import (
 	"context"
+	"math"
 
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
-	"math"
 
 	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
@@ -190,7 +190,7 @@ type ScorePlugin interface {
 	// Score is called on each filtered cluster. It must return success and an integer
 	// indicating the rank of the cluster. All scoring plugins must return success or
 	// the subscription will be rejected.
-	Score(ctx context.Context, sub *appsapi.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *Status)
+	Score(ctx context.Context, description *appsapi.Description, sub *appsapi.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *Status)
 
 	// ScoreExtensions returns a ScoreExtensions interface if it implements one, or nil if not.
 	ScoreExtensions() ScoreExtensions
@@ -268,7 +268,7 @@ type PluginsRunner interface {
 	// stores for each Score plugin name the corresponding ResourceBindingScoreList(s).
 	// It also returns *Status, which is set to non-success if any of the plugins returns
 	// a non-success status.
-	RunScorePlugins(context.Context, []*appsapi.ResourceBinding, []*clusterapi.ManagedCluster) (PluginToRBScores, *Status)
+	RunScorePlugins(context.Context, *appsapi.Description, []*appsapi.ResourceBinding, []*clusterapi.ManagedCluster) (PluginToRBScores, *Status)
 
 	// RunFilterPlugins runs the set of configured Filter plugins for subscription on
 	// the given cluster.

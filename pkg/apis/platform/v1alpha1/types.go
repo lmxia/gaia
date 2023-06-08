@@ -2,13 +2,15 @@ package v1alpha1
 
 import (
 	"fmt"
-	"github.com/lmxia/gaia/pkg/common"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"net/url"
 	"regexp"
 	"strings"
+	
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/lmxia/gaia/pkg/common"
 )
 
 // +genclient
@@ -383,7 +385,7 @@ type Fields struct {
 	Field []string `json:"field,omitempty"`
 }
 
-//getHypernodeLabelsMapFromManagedCluster returns hypernode labels of the current cluster from the managedCluster
+// getHypernodeLabelsMapFromManagedCluster returns hypernode labels of the current cluster from the managedCluster
 func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers map[string]struct{}) {
 	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
 	var labelValueArray []string
@@ -421,6 +423,57 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 		}
 	}
 	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers
+}
+
+// GetGaiaLabels return gaia type labels.
+func (mcluster *ManagedCluster) GetGaiaLabels() map[string][]string {
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap := mcluster.GetHypernodeLabelsMapFromManagedCluster()
+	clusterLabels := make(map[string][]string, 0)
+
+	// no.1
+	netEnvironments := make([]string, 0, len(netEnvironmentMap))
+	for k := range netEnvironmentMap {
+		netEnvironments = append(netEnvironments, k)
+	}
+	clusterLabels["net-environment"] = netEnvironments
+	// no.2
+	nodeRoles := make([]string, 0, len(nodeRoleMap))
+	for k := range nodeRoleMap {
+		nodeRoles = append(nodeRoles, k)
+	}
+	clusterLabels["node-role"] = nodeRoles
+	// no.3
+	resForms := make([]string, 0, len(resFormMap))
+	for k := range resFormMap {
+		resForms = append(resForms, k)
+	}
+	clusterLabels["res-form"] = resForms
+	// no.4
+	runtimeStates := make([]string, 0, len(runtimeStateMap))
+	for k := range runtimeStateMap {
+		runtimeStates = append(runtimeStates, k)
+	}
+	clusterLabels["runtime-state"] = runtimeStates
+	// no.5
+	sns := make([]string, 0, len(snMap))
+	for k := range snMap {
+		sns = append(sns, k)
+	}
+	clusterLabels["sn"] = sns
+	// no.6
+	geolocations := make([]string, 0, len(geolocationMap))
+	for k := range geolocationMap {
+		geolocations = append(geolocations, k)
+	}
+	clusterLabels["geo-location"] = geolocations
+	// no.7
+	providers := make([]string, 0, len(providersMap))
+	for k := range providersMap {
+		providers = append(providers, k)
+	}
+	clusterLabels["supplier-name"] = providers
+
+	return clusterLabels
 }
 
 var (

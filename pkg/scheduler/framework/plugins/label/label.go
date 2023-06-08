@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/helper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
@@ -32,53 +34,7 @@ func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component, 
 	if cluster == nil {
 		return framework.AsStatus(fmt.Errorf("label invalid cluster "))
 	}
-
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
-	clusterLabels := make(map[string][]string, 0)
-
-	// no.1
-	netEnvironments := make([]string, 0, len(netEnvironmentMap))
-	for k := range netEnvironmentMap {
-		netEnvironments = append(netEnvironments, k)
-	}
-	clusterLabels["net-environment"] = netEnvironments
-	// no.2
-	nodeRoles := make([]string, 0, len(nodeRoleMap))
-	for k := range nodeRoleMap {
-		nodeRoles = append(nodeRoles, k)
-	}
-	clusterLabels["node-role"] = nodeRoles
-	// no.3
-	resForms := make([]string, 0, len(resFormMap))
-	for k := range resFormMap {
-		resForms = append(resForms, k)
-	}
-	clusterLabels["res-form"] = resForms
-	// no.4
-	runtimeStates := make([]string, 0, len(runtimeStateMap))
-	for k := range runtimeStateMap {
-		runtimeStates = append(runtimeStates, k)
-	}
-	clusterLabels["runtime-state"] = runtimeStates
-	// no.5
-	sns := make([]string, 0, len(snMap))
-	for k := range snMap {
-		sns = append(sns, k)
-	}
-	clusterLabels["sn"] = sns
-	// no.6
-	geolocations := make([]string, 0, len(geolocationMap))
-	for k := range geolocationMap {
-		geolocations = append(geolocations, k)
-	}
-	clusterLabels["geo-location"] = geolocations
-	// no.7
-	providers := make([]string, 0, len(providersMap))
-	for k := range providersMap {
-		providers = append(providers, k)
-	}
-	clusterLabels["supplier-name"] = providers
-
+	clusterLabels := cluster.GetGaiaLabels()
 	gaiaSelector, err := LabelSelectorAsSelector(com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory])
 	if err != nil {
 		return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("can't change gaia schedule policy to label selector %v, component name is %v", com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory], err))
@@ -87,6 +43,41 @@ func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component, 
 		return nil
 	}
 	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no geoLocation fit for this com. cluster name is %v, component name is %v", cluster.Name, com.Name))
+}
+
+// NormalizeScore invoked after scoring all clusters.
+func (pl *ClusterAffinity) NormalizeScore(ctx context.Context, scores framework.ResourceBindingScoreList) *framework.Status {
+	return helper.DefaultNormalizeScore(framework.MaxClusterScore, true, scores)
+}
+
+func (pl *ClusterAffinity) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
+	clusterMap := make(map[string]*clusterapi.ManagedCluster, 0)
+	for _, cluster := range clusters {
+		clusterMap[cluster.Name] = cluster
+	}
+
+	return calculateScore(0, rb.Spec.RbApps, clusterMap), nil
+}
+
+// ScoreExtensions of the Score plugin.
+func (pl *ClusterAffinity) ScoreExtensions() framework.ScoreExtensions {
+	return pl
+}
+
+func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps, clusterMap map[string]*clusterapi.ManagedCluster) int64 {
+	for _, item := range apps {
+		cluster := clusterMap[item.ClusterName]
+		if cluster != nil && cluster.GetLabels() != nil {
+			netenviroments, _, _, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
+			if _, exist := netenviroments[common.NetworkLocationCore]; exist {
+				for _, v := range item.Replicas {
+					score += int64(v)
+				}
+				score = calculateScore(score, item.Children, clusterMap)
+			}
+		}
+	}
+	return score
 }
 
 // New initializes a new plugin and returns it.

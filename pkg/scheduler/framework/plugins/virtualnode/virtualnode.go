@@ -2,6 +2,7 @@ package virtualnode
 
 import (
 	"context"
+
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
@@ -28,7 +29,7 @@ func (v *VirtualNode) NormalizeScore(ctx context.Context, scores framework.Resou
 	return helper.DefaultNormalizeScore(framework.MaxClusterScore, true, scores)
 }
 
-func (v *VirtualNode) Score(ctx context.Context, rb *v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
+func (v *VirtualNode) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
 	clusterMap := make(map[string]*clusterapi.ManagedCluster, 0)
 	for _, cluster := range clusters {
 		clusterMap[cluster.Name] = cluster

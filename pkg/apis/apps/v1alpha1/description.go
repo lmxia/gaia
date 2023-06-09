@@ -16,12 +16,6 @@ import (
 // +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=".status.phase"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
-const (
-	SLA        string = "sla"
-	SCC        string = "scc"
-	ACCELERATE string = "accelerate"
-)
-
 // Description is the Schema for the resources to be installed
 type Description struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -48,6 +42,12 @@ type DescriptionSpec struct {
 	ExpectedPerformance ExpectedPerformance `json:"expectedPerformance,omitempty"`
 }
 
+const (
+	SLA        string = "sla"
+	SCC        string = "scc"
+	ACCELERATE string = "accelerate"
+)
+
 type SandboxType string
 
 const (
@@ -62,6 +62,10 @@ type WorkloadComponent struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
 	ComponentName string `json:"componentName,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	Namespace string `json:"namespace,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
@@ -243,8 +247,6 @@ const (
 	WorkloadTypeServerless     WorkloadType = "serverless"
 	WorkloadTypeAffinityDaemon WorkloadType = "affinitydaemon"
 	WorkloadTypeUserApp        WorkloadType = "userapp"
-	WorkloadTypeTask           WorkloadType = "task"
-	WorkloadTypeStatefulSet    WorkloadType = "statefulset"
 )
 
 type Workload struct {
@@ -259,10 +261,6 @@ type Workload struct {
 	TraitAffinityDaemon *TraitAffinityDaemon `json:"traitaffinitydaemon,omitempty"`
 	// +optional
 	TraitUserAPP *TraitUserAPP `json:"traitUserAPP,omitempty"`
-	// +optional
-	TraitTask *TraitTask `json:"traitTask,omitempty"`
-	// +optional
-	TraitStatefulSet *TraitStatefulSet `json:"traitStatefulSet,omitempty"`
 }
 type ServerlessSpec struct {
 	// +optional

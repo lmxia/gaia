@@ -16,7 +16,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C31-District-E31"] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "edge" ] }
+            - { key: net-environment, operator: In, values: [ "edge" ] }
         provider:
           matchExpressions:
             - { key: provider, operator: In, values: [ "Huawei" ] }
@@ -65,7 +65,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C31-District-E31" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "edge" ] }
+            - { key: net-environment, operator: In, values: [ "edge" ] }
         provider:
           matchExpressions:
             - { key: provider, operator: In, values: [ "Huawei" ] }
@@ -116,7 +116,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C31-District-E31" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "edge" ] }
+            - { key: net-environment, operator: In, values: [ "edge" ] }
         provider:
           matchExpressions:
             - { key: provider, operator: In, values: [ "Huawei" ] }

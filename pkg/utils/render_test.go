@@ -2,23 +2,25 @@ package utils
 
 import (
 	"encoding/json"
+	"reflect"
+	"testing"
+
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"reflect"
-	"testing"
 )
 
 func SetOldDescComponents() []appsv1alpha1.Component {
 	components := []appsv1alpha1.Component{
 		0: {
-			Name:        "case7-component1",
+			Name:        "case0-component1",
+			Namespace:   "test7",
 			RuntimeType: string(appsv1alpha1.Kata),
 			Module:      corev1.PodTemplateSpec{},
 			Workload: appsv1alpha1.Workload{
-				Workloadtype: appsv1alpha1.WorkloadTypeStatefulSet,
-				TraitStatefulSet: &appsv1alpha1.TraitStatefulSet{
+				Workloadtype: appsv1alpha1.WorkloadTypeDeployment,
+				TraitDeployment: &appsv1alpha1.TraitDeployment{
 					Replicas: 199,
 				},
 			},
@@ -34,7 +36,8 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 			},
 		},
 		1: {
-			Name:        "case7-component2",
+			Name:        "case0-component2",
+			Namespace:   "test7",
 			RuntimeType: string(appsv1alpha1.Runc),
 			Module:      corev1.PodTemplateSpec{},
 			Workload: appsv1alpha1.Workload{
@@ -54,7 +57,8 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 			},
 		},
 		2: {
-			Name:        "case7-component3",
+			Name:        "case0-component3",
+			Namespace:   "test7",
 			RuntimeType: string(appsv1alpha1.Runc),
 			Module:      corev1.PodTemplateSpec{},
 			Workload: appsv1alpha1.Workload{
@@ -74,15 +78,16 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 			},
 		},
 		3: {
-			Name:        "case7-component4",
+			Name:        "case0-component4",
+			Namespace:   "test7",
 			RuntimeType: string(appsv1alpha1.Runc),
 			Module:      corev1.PodTemplateSpec{},
 			Workload: appsv1alpha1.Workload{
 				Workloadtype: appsv1alpha1.WorkloadTypeServerless,
 				TraitServerless: &lmmserverless.TraitServerless{
-					MaxReplicas:   1000,
-					ResplicasStep: 1,
-					Threshold:     "{\"cpuMax\":75,\"cpuMin\":25,\"memMax\":85,\"memMin\":25}",
+					MaxQPS:    1000,
+					QpsStep:   10,
+					Threshold: "{\"cpuMax\":75,\"cpuMin\":25,\"memMax\":85,\"memMin\":25}",
 				},
 			},
 			SchedulePolicy: appsv1alpha1.SchedulePolicy{
@@ -90,14 +95,15 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 			},
 		},
 		4: {
-			Name:        "case7-component5",
+			Name:        "case0-component5",
+			Namespace:   "test7",
 			RuntimeType: string(appsv1alpha1.Runc),
 			Module:      corev1.PodTemplateSpec{},
 			Workload: appsv1alpha1.Workload{
 				Workloadtype: appsv1alpha1.WorkloadTypeServerless,
 				TraitServerless: &lmmserverless.TraitServerless{
 					MaxReplicas:   50,
-					ResplicasStep: 3,
+					ResplicasStep: 1,
 					Threshold:     "{\"cpuMax\":80,\"cpuMin\":20,\"memMax\":70,\"memMin\":20,\"qpsMax\":85,\"qpsMin\":15}",
 				},
 			},
@@ -117,15 +123,16 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 			},
 		},
 		5: {
-			Name:        "case7-component6",
+			Name:        "case0-component6",
+			Namespace:   "test7",
 			RuntimeType: string(appsv1alpha1.Runc),
 			Module:      corev1.PodTemplateSpec{},
 			Workload: appsv1alpha1.Workload{
 				Workloadtype: appsv1alpha1.WorkloadTypeServerless,
 				TraitServerless: &lmmserverless.TraitServerless{
-					MaxQPS:    100,
-					QpsStep:   1,
-					Threshold: "{\"qpsMax\":80,\"qpsMin\":20}",
+					MaxReplicas:   100,
+					ResplicasStep: 1,
+					Threshold:     "{\"qpsMax\":80,\"qpsMin\":20}",
 				},
 			},
 			SchedulePolicy: appsv1alpha1.SchedulePolicy{
@@ -133,27 +140,44 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 			},
 		},
 		6: {
-			Name:        "case7-component7",
+			Name:        "case0-component7",
+			Namespace:   "test7",
 			RuntimeType: string(appsv1alpha1.Runc),
 			Module:      corev1.PodTemplateSpec{},
+			Schedule: appsv1alpha1.SchedulerConfig{
+				Monday: appsv1alpha1.ScheduleTimeSet{
+					StartSchedule: "2023-06-12T09:00:00+08:00",
+					EndSchedule:   "2023-06-12T18:00:00+08:00",
+				},
+				Tuesday: appsv1alpha1.ScheduleTimeSet{
+					StartSchedule: "2023-06-13T09:00:00+08:00",
+					EndSchedule:   "2023-06-13T18:00:00+08:00",
+				},
+				Wednesday: appsv1alpha1.ScheduleTimeSet{
+					StartSchedule: "2023-06-14T09:00:00+08:00",
+					EndSchedule:   "2023-06-15T18:00:00+08:00",
+				},
+				Thursday: appsv1alpha1.ScheduleTimeSet{
+					StartSchedule: "2023-06-15T09:00:00+08:00",
+					EndSchedule:   "2023-06-15T18:00:00+08:00",
+				},
+				Friday: appsv1alpha1.ScheduleTimeSet{
+					StartSchedule: "2023-06-16T09:00:00+08:00",
+					EndSchedule:   "2023-06-16T18:00:00+08:00",
+				},
+				Saturday: appsv1alpha1.ScheduleTimeSet{
+					StartSchedule: "2023-06-17T10:00:00+08:00",
+					EndSchedule:   "2023-06-17T16:00:00+08:00",
+				},
+				Sunday: appsv1alpha1.ScheduleTimeSet{
+					StartSchedule: "2023-06-18T10:00:00+08:00",
+					EndSchedule:   "2023-06-18T16:00:00+08:00",
+				},
+			},
 			Workload: appsv1alpha1.Workload{
 				Workloadtype: appsv1alpha1.WorkloadTypeDeployment,
 				TraitDeployment: &appsv1alpha1.TraitDeployment{
 					Replicas: 10,
-				},
-			},
-			SchedulePolicy: appsv1alpha1.SchedulePolicy{
-				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{},
-			},
-		},
-		7: {
-			Name:        "case7-component8",
-			RuntimeType: string(appsv1alpha1.Runc),
-			Module:      corev1.PodTemplateSpec{},
-			Workload: appsv1alpha1.Workload{
-				Workloadtype: appsv1alpha1.WorkloadTypeTask,
-				TraitTask: &appsv1alpha1.TraitTask{
-					Completions: 899,
 				},
 			},
 			SchedulePolicy: appsv1alpha1.SchedulePolicy{
@@ -180,62 +204,93 @@ func TestDescToComponents(t *testing.T) {
 			name: "test1",
 			args: args{desc: &appsv1alpha1.Description{
 				Spec: appsv1alpha1.DescriptionSpec{
-					AppID: "case7",
+					AppID: "case0",
 					WorkloadComponents: []appsv1alpha1.WorkloadComponent{
 						0: {
-							ComponentName: "case7-component1",
+							ComponentName: "case0-component1",
+							Namespace:     "test7",
 							Sandbox:       appsv1alpha1.Kata,
 							Module:        corev1.PodTemplateSpec{},
-							WorkloadType:  "stateful-system-service",
+							WorkloadType:  "stateless-system-service",
 						},
 						1: {
-							ComponentName: "case7-component2",
+							ComponentName: "case0-component2",
+							Namespace:     "test7",
 							Sandbox:       appsv1alpha1.Runc,
 							Module:        corev1.PodTemplateSpec{},
 							WorkloadType:  "stateless-user-service",
 						},
 						2: {
-							ComponentName: "case7-component3",
+							ComponentName: "case0-component3",
+							Namespace:     "test7",
 							Sandbox:       appsv1alpha1.Runc,
 							Module:        corev1.PodTemplateSpec{},
 							WorkloadType:  "stateless-system-service",
 						},
 						3: {
-							ComponentName: "case7-component4",
+							ComponentName: "case0-component4",
+							Namespace:     "test7",
 							Sandbox:       appsv1alpha1.Runc,
 							Module:        corev1.PodTemplateSpec{},
 							WorkloadType:  "stateless-system-service",
 						},
 						4: {
-							ComponentName: "case7-component5",
+							ComponentName: "case0-component5",
+							Namespace:     "test7",
 							Sandbox:       appsv1alpha1.Runc,
 							Module:        corev1.PodTemplateSpec{},
 							WorkloadType:  "stateless-system-service",
 						},
 						5: {
-							ComponentName: "case7-component6",
+							ComponentName: "case0-component6",
+							Namespace:     "test7",
 							Sandbox:       appsv1alpha1.Runc,
 							Module:        corev1.PodTemplateSpec{},
 							WorkloadType:  "stateless-system-service",
 						},
 						6: {
-							ComponentName: "case7-component7",
+							ComponentName: "case0-component7",
+							Namespace:     "test7",
 							Sandbox:       appsv1alpha1.Runc,
 							Module:        corev1.PodTemplateSpec{},
 							WorkloadType:  "stateless-system-service",
-						},
-						7: {
-							ComponentName: "case7-component8",
-							Sandbox:       appsv1alpha1.Runc,
-							Module:        corev1.PodTemplateSpec{},
-							WorkloadType:  "stateless-task-service",
+							Schedule: appsv1alpha1.SchedulerConfig{
+								Monday: appsv1alpha1.ScheduleTimeSet{
+									StartSchedule: "2023-06-12T09:00:00+08:00",
+									EndSchedule:   "2023-06-12T18:00:00+08:00",
+								},
+								Tuesday: appsv1alpha1.ScheduleTimeSet{
+									StartSchedule: "2023-06-13T09:00:00+08:00",
+									EndSchedule:   "2023-06-13T18:00:00+08:00",
+								},
+								Wednesday: appsv1alpha1.ScheduleTimeSet{
+									StartSchedule: "2023-06-14T09:00:00+08:00",
+									EndSchedule:   "2023-06-15T18:00:00+08:00",
+								},
+								Thursday: appsv1alpha1.ScheduleTimeSet{
+									StartSchedule: "2023-06-15T09:00:00+08:00",
+									EndSchedule:   "2023-06-15T18:00:00+08:00",
+								},
+								Friday: appsv1alpha1.ScheduleTimeSet{
+									StartSchedule: "2023-06-16T09:00:00+08:00",
+									EndSchedule:   "2023-06-16T18:00:00+08:00",
+								},
+								Saturday: appsv1alpha1.ScheduleTimeSet{
+									StartSchedule: "2023-06-17T10:00:00+08:00",
+									EndSchedule:   "2023-06-17T16:00:00+08:00",
+								},
+								Sunday: appsv1alpha1.ScheduleTimeSet{
+									StartSchedule: "2023-06-18T10:00:00+08:00",
+									EndSchedule:   "2023-06-18T16:00:00+08:00",
+								},
+							},
 						},
 					},
 					DeploymentCondition: appsv1alpha1.DeploymentCondition{
 						Mandatory: []appsv1alpha1.Condition{
 							0: {
 								Subject: appsv1alpha1.Xject{
-									Name: "case7-component1",
+									Name: "case0-component1",
 									Type: "component",
 								},
 								Object: appsv1alpha1.Xject{
@@ -247,7 +302,7 @@ func TestDescToComponents(t *testing.T) {
 							},
 							1: {
 								Subject: appsv1alpha1.Xject{
-									Name: "case7-component1",
+									Name: "case0-component1",
 									Type: "component",
 								},
 								Object: appsv1alpha1.Xject{
@@ -259,7 +314,7 @@ func TestDescToComponents(t *testing.T) {
 							},
 							2: {
 								Subject: appsv1alpha1.Xject{
-									Name: "case7-component5",
+									Name: "case0-component5",
 									Type: "component",
 								},
 								Object: appsv1alpha1.Xject{
@@ -271,11 +326,11 @@ func TestDescToComponents(t *testing.T) {
 							},
 							3: {
 								Subject: appsv1alpha1.Xject{
-									Name: "case7-component4",
+									Name: "case0-component4",
 									Type: "component",
 								},
 								Object: appsv1alpha1.Xject{
-									Name: "case7-component3",
+									Name: "case0-component3",
 									Type: "component",
 								},
 								Relation: "Affinity",
@@ -283,7 +338,7 @@ func TestDescToComponents(t *testing.T) {
 							},
 							4: {
 								Subject: appsv1alpha1.Xject{
-									Name: "case7-component2",
+									Name: "case0-component2",
 									Type: "component",
 								},
 								Object: appsv1alpha1.Xject{
@@ -295,7 +350,7 @@ func TestDescToComponents(t *testing.T) {
 							},
 							5: {
 								Subject: appsv1alpha1.Xject{
-									Name: "case7-component3",
+									Name: "case0-component3",
 									Type: "component",
 								},
 								Object: appsv1alpha1.Xject{
@@ -309,7 +364,7 @@ func TestDescToComponents(t *testing.T) {
 						BestEffort: []appsv1alpha1.Condition{
 							0: {
 								Subject: appsv1alpha1.Xject{
-									Name: "case7-component5",
+									Name: "case0-component5",
 									Type: "component",
 								},
 								Object: appsv1alpha1.Xject{
@@ -326,115 +381,109 @@ func TestDescToComponents(t *testing.T) {
 							Inner: []appsv1alpha1.Boundary{
 								0: {
 									Name:    "boundary5",
-									Subject: "case7-component4",
-									Type:    "maxReplicas",
+									Subject: "case0-component4",
+									Type:    "maxQPS",
 									Value:   []byte("1000"),
 								},
 								1: {
 									Name:    "boundary6",
-									Subject: "case7-component5",
+									Subject: "case0-component5",
 									Type:    "cpu",
 									Value:   []byte("20"),
 								},
 								2: {
 									Name:    "boundary7",
-									Subject: "case7-component5",
+									Subject: "case0-component5",
 									Type:    "cpu",
 									Value:   []byte("80"),
 								},
 								3: {
 									Name:    "boundary8",
-									Subject: "case7-component5",
+									Subject: "case0-component5",
 									Type:    "mem",
 									Value:   []byte("20"),
 								},
 								4: {
 									Name:    "boundary9",
-									Subject: "case7-component5",
+									Subject: "case0-component5",
 									Type:    "mem",
 									Value:   []byte("70"),
 								},
 								5: {
 									Name:    "boundary10",
-									Subject: "case7-component5",
+									Subject: "case0-component5",
 									Type:    "QPS",
 									Value:   []byte("15"),
 								},
 								6: {
 									Name:    "boundary11",
-									Subject: "case7-component5",
+									Subject: "case0-component5",
 									Type:    "QPS",
 									Value:   []byte("85"),
 								},
 								7: {
 									Name:    "boundary1",
-									Subject: "case7-component3",
+									Subject: "case0-component3",
 									Type:    "daemonset",
 									Value:   []byte("true"),
 								},
 								8: {
 									Name:    "boundary2",
-									Subject: "case7-component6",
-									Type:    "maxQPS",
+									Subject: "case0-component6",
+									Type:    "maxReplicas",
 									Value:   []byte("100"),
 								},
 								9: {
 									Name:    "boundary3",
-									Subject: "case7-component7",
+									Subject: "case0-component7",
 									Type:    "replicas",
 									Value:   []byte("10"),
 								},
 								10: {
-									Name:    "boundary4",
-									Subject: "case7-component8",
-									Type:    "replicas",
-									Value:   []byte("899"),
-								},
-								11: {
 									Name:    "boundary12",
-									Subject: "case7-component1",
+									Subject: "case0-component1",
 									Type:    "replicas",
 									Value:   []byte("199"),
 								},
-								12: {
+								11: {
 									Name:    "boundary13",
-									Subject: "case7-component4",
+									Subject: "case0-component4",
 									Type:    "cpu",
 									Value:   []byte("25"),
 								},
-								13: {
+								12: {
 									Name:    "boundary14",
-									Subject: "case7-component4",
+									Subject: "case0-component4",
 									Type:    "cpu",
 									Value:   []byte("75"),
 								},
-								14: {
+								13: {
 									Name:    "boundary15",
-									Subject: "case7-component4",
+									Subject: "case0-component4",
 									Type:    "mem",
 									Value:   []byte("25"),
 								},
-								15: {
+								14: {
 									Name:    "boundary16",
-									Subject: "case7-component4",
+									Subject: "case0-component4",
 									Type:    "mem",
 									Value:   []byte("85"),
 								},
-								16: {
+								15: {
 									Name:    "boundary17",
-									Subject: "case7-component6",
+									Subject: "case0-component6",
 									Type:    "QPS",
 									Value:   []byte("20"),
 								},
-								17: {
+								16: {
 									Name:    "boundary18",
-									Subject: "case7-component6",
+									Subject: "case0-component6",
 									Type:    "QPS",
 									Value:   []byte("80"),
 								},
-								18: {
+								17: {
 									Name:    "boundary19",
-									Subject: "case7-component5",
+									Subject: "case0-component5",
 									Type:    "maxReplicas",
 									Value:   []byte("50"),
 								},
@@ -444,61 +493,61 @@ func TestDescToComponents(t *testing.T) {
 							HPA: []appsv1alpha1.XPA{
 								0: {
 									Name:    "decrease replicas1",
-									Subject: "case7-component5",
+									Subject: "case0-component5",
 									Trigger: "boundary6 && boundary8 && boundary10",
 									Strategy: appsv1alpha1.XPAStrategy{
 										Type:  "decrease",
-										Value: []byte("3"),
+										Value: []byte("1"),
 									},
 								},
 								1: {
 									Name:    "increase replicas1",
-									Subject: "case7-component5",
+									Subject: "case0-component5",
 									Trigger: "boundary7 || boundary9 || boundary11",
 									Strategy: appsv1alpha1.XPAStrategy{
 										Type:  "increase",
-										Value: []byte("3"),
+										Value: []byte("1"),
 									},
 								},
 								2: {
 									Name:    "decrease replicas 1",
-									Subject: "case7-component4",
+									Subject: "case0-component4",
 									Trigger: "boundary13",
 									Strategy: appsv1alpha1.XPAStrategy{
 										Type:  "decrease",
-										Value: []byte("1"),
+										Value: []byte("10"),
 									},
 								},
 								3: {
 									Name:    "increase replicas1",
-									Subject: "case7-component4",
+									Subject: "case0-component4",
 									Trigger: "boundary14",
 									Strategy: appsv1alpha1.XPAStrategy{
 										Type:  "increase",
-										Value: []byte("1"),
+										Value: []byte("10"),
 									},
 								},
 								4: {
 									Name:    "decrease replicas 1",
-									Subject: "case7-component4",
+									Subject: "case0-component4",
 									Trigger: "boundary15",
 									Strategy: appsv1alpha1.XPAStrategy{
 										Type:  "decrease",
-										Value: []byte("1"),
+										Value: []byte("10"),
 									},
 								},
 								5: {
 									Name:    "increase replicas1",
-									Subject: "case7-component4",
+									Subject: "case0-component4",
 									Trigger: "boundary16",
 									Strategy: appsv1alpha1.XPAStrategy{
 										Type:  "increase",
-										Value: []byte("1"),
+										Value: []byte("10"),
 									},
 								},
 								6: {
 									Name:    "decrease replicas 1",
-									Subject: "case7-component6",
+									Subject: "case0-component6",
 									Trigger: "boundary17",
 									Strategy: appsv1alpha1.XPAStrategy{
 										Type:  "decrease",
@@ -507,7 +556,7 @@ func TestDescToComponents(t *testing.T) {
 								},
 								7: {
 									Name:    "increase replicas1",
-									Subject: "case7-component6",
+									Subject: "case0-component6",
 									Trigger: "boundary18",
 									Strategy: appsv1alpha1.XPAStrategy{
 										Type:  "increase",
@@ -519,21 +568,18 @@ func TestDescToComponents(t *testing.T) {
 					},
 				}},
 			},
-			wantAffinity: []int{0, 1, 2, 2, 4, 5, 6, 7},
+			wantAffinity: []int{0, 1, 2, 2, 4, 5, 6},
 			wantComLocation: map[string]int{
-				"case7-component1": 0,
-				"case7-component2": 1,
-				"case7-component3": 2,
-				"case7-component4": 3,
-				"case7-component5": 4,
-				"case7-component6": 5,
-				"case7-component7": 6,
-				"case7-component8": 7,
+				"case0-component1": 0,
+				"case0-component2": 1,
+				"case0-component3": 2,
+				"case0-component4": 3,
+				"case0-component5": 4,
+				"case0-component6": 5,
+				"case0-component7": 6,
 			},
 			wantComponents: oldDescComponents,
 		},
-		// TODO: Add test cases.
-
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -566,67 +612,28 @@ func TestGetWorkloadType(t *testing.T) {
 		args         args
 		wantWorkload appsv1alpha1.Workload
 	}{
-		// TODO: Add test cases.
 		0: {
-			name: "userappWorkloadTypeTest0",
+			name: "userAPPWorkloadTypeTest0",
 			args: args{"stateful-user-service"},
 			wantWorkload: appsv1alpha1.Workload{
 				Workloadtype: appsv1alpha1.WorkloadTypeUserApp,
-				TraitUserAPP: &appsv1alpha1.TraitUserAPP{
-					SN: "",
-				},
+				TraitUserAPP: &appsv1alpha1.TraitUserAPP{},
 			},
 		},
 		1: {
-			name: "userappWorkloadTypeTest1",
+			name: "userAPPWorkloadTypeTest1",
 			args: args{"stateless-user-service"},
 			wantWorkload: appsv1alpha1.Workload{
 				Workloadtype: appsv1alpha1.WorkloadTypeUserApp,
-				TraitUserAPP: &appsv1alpha1.TraitUserAPP{
-					SN: "",
-				},
+				TraitUserAPP: &appsv1alpha1.TraitUserAPP{},
 			},
 		},
 		2: {
-			name: "taskWorkloadTypeTest0",
-			args: args{"stateless-system-task"},
-			wantWorkload: appsv1alpha1.Workload{
-				Workloadtype: appsv1alpha1.WorkloadTypeTask,
-				TraitTask: &appsv1alpha1.TraitTask{
-					Completions: 1,
-				},
-			},
-		},
-		3: {
-			name: "taskWorkloadTypeTest1",
-			args: args{"stateful-system-task"},
-			wantWorkload: appsv1alpha1.Workload{
-				Workloadtype: appsv1alpha1.WorkloadTypeTask,
-				TraitTask: &appsv1alpha1.TraitTask{
-					Completions: 1,
-				},
-			},
-		},
-		4: {
-			name: "statefulsetworkloadtypeTest0",
-			args: args{
-				workloadType: "stateful-system-service",
-			},
-			wantWorkload: appsv1alpha1.Workload{
-				Workloadtype: appsv1alpha1.WorkloadTypeStatefulSet,
-				TraitStatefulSet: &appsv1alpha1.TraitStatefulSet{
-					Replicas: 1,
-				},
-			},
-		},
-		5: {
-			name: "othersworkloadtypeTest0",
+			name: "otherWorkloadTypeTest0",
 			args: args{
 				workloadType: "stateless-system-service",
 			},
-			wantWorkload: appsv1alpha1.Workload{
-				Workloadtype: appsv1alpha1.WorkloadTypeDeployment,
-			},
+			wantWorkload: appsv1alpha1.Workload{},
 		},
 	}
 	for _, tt := range tests {
@@ -647,7 +654,6 @@ func TestUnmarshalExtent(t *testing.T) {
 		args args
 		want []string
 	}{
-		// TODO: Add test cases.
 		0: {
 			name: "geolocation",
 			args: args{[]byte("[\"China-Huadong-Jiangsu-City-C21-District-E21\"]")},

@@ -1015,3 +1015,18 @@ func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, cluste
 	}
 	return false
 }
+
+func CreateRBtoParentWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clientset, namespace string, rb *appsv1alpha1.ResourceBinding) {
+	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+		_, lastError := gaiaClient.AppsV1alpha1().ResourceBindings(namespace).Create(context.TODO(), rb, metav1.CreateOptions{})
+		if lastError == nil {
+		}
+		return true, nil
+		return false, nil
+	})
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		klog.WarningDepth(2, "failed to create ResourceBinding %q to parent cluster, ERROR: %v, err is ", klog.KObj(rb), err)
+	} else {
+		klog.Infof("successfully created ResourceBinding %q/%q to parent cluster", klog.KObj(rb))
+	}
+}

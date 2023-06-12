@@ -404,13 +404,7 @@ func (rbMerger *RBMerger) createCollectedRBs(rb *appV1alpha1.ResourceBinding, rb
 		}
 		newResultRB.Kind = "ResourceBinding"
 		newResultRB.APIVersion = "apps.gaia.io/v1alpha1"
-		_, err = rbMerger.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).Create(context.TODO(), newResultRB, metaV1.CreateOptions{})
-		if err != nil && !apiErrors.IsAlreadyExists(err) {
-			klog.Infof("Failed to create ResourceBinding %q/%q to parent cluster. ERROR: %v", newResultRB.Namespace, newResultRB.Name, err)
-			return false
-		} else {
-			klog.Infof("successfully created ResourceBinding %q/%q to parent cluster", newResultRB.Namespace, newResultRB.Name)
-		}
+		utils.CreateRBtoParentWithRetry(context.TODO(), rbMerger.parentGaiaClient, common.GaiaRSToBeMergedReservedNamespace, newResultRB)
 	}
 	return true
 }

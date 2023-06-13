@@ -34,6 +34,10 @@ func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component, 
 	if cluster == nil {
 		return framework.AsStatus(fmt.Errorf("label invalid cluster "))
 	}
+	if com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory] == nil {
+		// The component doesn't have any scheduling conditions.
+		return nil
+	}
 	clusterLabels := cluster.GetGaiaLabels()
 	gaiaSelector, err := LabelSelectorAsSelector(com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory])
 	if err != nil {

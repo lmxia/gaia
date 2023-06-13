@@ -1064,16 +1064,6 @@ func (in *Workload) DeepCopyInto(out *Workload) {
 		*out = new(TraitUserAPP)
 		**out = **in
 	}
-	if in.TraitTask != nil {
-		in, out := &in.TraitTask, &out.TraitTask
-		*out = new(TraitTask)
-		**out = **in
-	}
-	if in.TraitStatefulSet != nil {
-		in, out := &in.TraitStatefulSet, &out.TraitStatefulSet
-		*out = new(TraitStatefulSet)
-		**out = **in
-	}
 	return
 }
 

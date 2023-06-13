@@ -20,7 +20,7 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 		comLocation[comn.ComponentName] = i
 
 		components[i] = appsv1alpha1.Component{
-			Namespace:   desc.Namespace,
+			Namespace:   comn.Namespace,
 			Name:        comn.ComponentName,
 			Preoccupy:   comn.Preoccupy,
 			Schedule:    comn.Schedule,
@@ -46,7 +46,7 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 	ParseExpectedPerformance(desc.Spec.ExpectedPerformance, components, comLocation)
 
 	// 4. Some transformations according to the different workload types.
-	// For sn, transfer it to the specified TtraitXxx.
+	// For sn, transfer it to the specified TraitXxx.
 	for _, comn := range components {
 		if comn.Workload.Workloadtype == appsv1alpha1.WorkloadTypeUserApp && comn.SchedulePolicy.Level != nil {
 			// use appsv1alpha1.SchedulePolicyMandatory for default
@@ -67,13 +67,8 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 			}
 			klog.V(5).Infof("%s's Workload.TraitAffinityDaemon is %+v", comn.Name, comn.Workload.TraitAffinityDaemon)
 		} else {
-			// for log view.
-			if comn.Workload.TraitStatefulSet != nil {
-				klog.V(5).Infof("%s's Workload.TraitStatefulSet is %+v", comn.Name, comn.Workload.TraitStatefulSet)
-			} else if comn.Workload.TraitTask != nil {
-				comn.Workload.TraitTask.Schedule = comn.Schedule
-				klog.V(5).Infof("%s's 'Workload.TraitTask is %+v", comn.Name, comn.Workload.TraitTask)
-			} else if comn.Workload.TraitServerless != nil {
+			// for log view
+			if comn.Workload.TraitServerless != nil {
 				klog.V(5).Infof("%s's 'Workload.TraitServerless is %+v", comn.Name, comn.Workload.TraitServerless)
 			} else if comn.Workload.TraitDeployment != nil {
 				klog.V(5).Infof("%s's Workload.TraitDeployment is %+v", comn.Name, comn.Workload.TraitDeployment)
@@ -85,47 +80,25 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 }
 
 // GetWorkloadType get the standard workload type according to the workloadType of description
+// Currently, only four types, deployment, serverless, userAPP and affinityDaemon, are supported.
+// So workloadType parameter can only be xxx-user-xxx and xxx-system-service, the former is userAPP and the latter
+// may be serverless, affinityDaemon or deployment.
 func GetWorkloadType(workloadType string) (workload appsv1alpha1.Workload) {
 	workloadArray := strings.Split(workloadType, "-")
 	for i, value := range workloadArray {
 		workloadArray[i] = strings.ToLower(value)
 	}
 
-	if ContainsString(workloadArray, "user") && ContainsString(workloadArray, "task") {
+	if ContainsString(workloadArray, "task") {
 		klog.V(5).Info("This case wouldn't be existed. That should be constrained by the UI")
-	}
-	if ContainsString(workloadArray, "user") {
+	} else if ContainsString(workloadArray, "user") {
 		// xxx-user-xxx
 		workload = appsv1alpha1.Workload{
 			Workloadtype: appsv1alpha1.WorkloadTypeUserApp,
-			TraitUserAPP: &appsv1alpha1.TraitUserAPP{
-				SN: "",
-			},
+			TraitUserAPP: &appsv1alpha1.TraitUserAPP{},
 		}
-	} else if ContainsString(workloadArray, "task") {
-		// xxx-xxx-task
-		workload = appsv1alpha1.Workload{
-			Workloadtype: appsv1alpha1.WorkloadTypeTask,
-			TraitTask: &appsv1alpha1.TraitTask{
-				Completions: 1,
-			},
-		}
-	} else if ContainsString(workloadArray, "system") && ContainsString(workloadArray, "service") {
-		if ContainsString(workloadArray, "stateful") {
-			// stateful-system-service
-			workload = appsv1alpha1.Workload{
-				Workloadtype: appsv1alpha1.WorkloadTypeStatefulSet,
-				TraitStatefulSet: &appsv1alpha1.TraitStatefulSet{
-					Replicas: 1,
-				},
-			}
-		} else {
-			// Init stateless-system-service to deployment.
-			// Change it to affinitydaemon or serverless later according to some others conditions.
-			workload = appsv1alpha1.Workload{
-				Workloadtype: appsv1alpha1.WorkloadTypeDeployment,
-			}
-		}
+	} else {
+		workload = appsv1alpha1.Workload{}
 	}
 
 	return workload
@@ -166,7 +139,7 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 	if "label" == condition.Object.Type && "component" == condition.Subject.Type {
 		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
 		_ = json.Unmarshal(condition.Extent, &extentStr)
-		klog.V(5).Infof("after ummarshal,extent is %v", extentStr)
+		klog.V(5).Infof("after unmarshal,extent is %v", extentStr)
 		req := metav1.LabelSelectorRequirement{
 			Key:      condition.Object.Name,
 			Operator: metav1.LabelSelectorOperator(condition.Relation),
@@ -192,7 +165,7 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 
 	// expectedPerformance.Boundaries.Inner
 	boundaryMap := make(map[string]appsv1alpha1.Boundary)
-	klog.V(5).Infof("start to parse expectedPerformance.Boundaries.Inner:")
+	klog.V(6).Infof("start to parse expectedPerformance.Boundaries.Inner:")
 	for _, inner := range boundary.Inner {
 		klog.V(5).Infof("inner is %+v", inner)
 		index := comLocation[inner.Subject]
@@ -200,12 +173,9 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 			var data int32
 			_ = json.Unmarshal(inner.Value, &data)
 			klog.V(5).Infof("%v's replicas is %v", inner.Subject, data)
-			if components[index].Workload.Workloadtype == appsv1alpha1.WorkloadTypeTask {
-				components[index].Workload.TraitTask.Completions = data
-			} else if components[index].Workload.Workloadtype == appsv1alpha1.WorkloadTypeStatefulSet {
-				components[index].Workload.TraitStatefulSet.Replicas = data
-			} else if components[index].Workload.TraitDeployment == nil {
+			if components[index].Workload.TraitDeployment == nil {
 				// TraitDeployment init
+				components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeDeployment
 				components[index].Workload.TraitDeployment = &appsv1alpha1.TraitDeployment{
 					Replicas: data,
 				}
@@ -218,9 +188,7 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 			if data {
 				// TraitAffinityDaemon init
 				components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeAffinityDaemon
-				components[index].Workload.TraitAffinityDaemon = &appsv1alpha1.TraitAffinityDaemon{
-					SNS: []string{},
-				}
+				components[index].Workload.TraitAffinityDaemon = &appsv1alpha1.TraitAffinityDaemon{}
 			} else {
 				continue
 			}
@@ -228,20 +196,17 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 			// serverless
 			var data int32
 			_ = json.Unmarshal(inner.Value, &data)
-			components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeServerless
+
+			if components[index].Workload.TraitServerless == nil {
+				// TraitServerless init
+				components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeServerless
+				components[index].Workload.TraitServerless = &lmmserverless.TraitServerless{}
+			}
 			if "maxReplicas" == inner.Type {
-				components[index].Workload.TraitServerless = &lmmserverless.TraitServerless{
-					MaxReplicas:   data,
-					ResplicasStep: 1, // default 1
-					Threshold:     "",
-				}
+				components[index].Workload.TraitServerless.MaxReplicas = data
 				klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxReplicas is %v", inner.Subject, index, components[index].Workload.TraitServerless.MaxReplicas)
 			} else if "maxQPS" == inner.Type {
-				components[index].Workload.TraitServerless = &lmmserverless.TraitServerless{
-					MaxQPS:    data,
-					QpsStep:   1,
-					Threshold: "",
-				}
+				components[index].Workload.TraitServerless.MaxQPS = data
 				klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxQPS is %v", inner.Subject, index, components[index].Workload.TraitServerless.MaxQPS)
 			} else {
 				// serverless threshold fields: cpuMax, cpuMin, memMax, memMin, qpsMax, qpsMin
@@ -251,14 +216,14 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 	}
 
 	// expectedPerformance.Boundaries.Inter
-	klog.V(5).Info("start to parse expectedPerformance.Boundaries.Inter:")
-	for _, _ = range boundary.Inter {
+	klog.V(6).Info("start to parse expectedPerformance.Boundaries.Inter:")
+	for range boundary.Inter {
 		// TODO
 	}
 
 	// expectedPerformance.Boundaries.Extra
-	klog.V(5).Info("start to parse expectedPerformance.Boundaries.Extra:")
-	for _, _ = range boundary.Extra {
+	klog.V(6).Info("start to parse expectedPerformance.Boundaries.Extra:")
+	for range boundary.Extra {
 		// TODO
 	}
 	return boundaryMap
@@ -269,18 +234,12 @@ func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[stri
 
 	// 1. expectedPerformance.Maintenance.HPA
 	threshold := make([]map[string]int32, len(components))
-	for i, _ := range threshold {
+	for i := range threshold {
 		threshold[i] = make(map[string]int32)
 	}
 	klog.V(5).Info("start to parse expectedPerformance.Maintenance.HPA:")
 	for _, hpa := range maintenance.HPA {
 		index := comLocation[hpa.Subject]
-		if components[index].Workload.TraitServerless == nil {
-			klog.Infof("init %s's TraitServerless", hpa.Subject)
-			components[index].Workload.TraitServerless = &lmmserverless.TraitServerless{
-				Threshold: "",
-			}
-		}
 
 		var value, step int32
 		_ = json.Unmarshal(hpa.Strategy.Value, &step)
@@ -288,6 +247,8 @@ func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[stri
 			components[index].Workload.TraitServerless.QpsStep = step
 		} else if components[index].Workload.TraitServerless.MaxReplicas != 0 {
 			components[index].Workload.TraitServerless.ResplicasStep = step
+		} else {
+			components[index].Workload.TraitServerless.ResplicasStep = 1 // default: 1
 		}
 		if "increase" == hpa.Strategy.Type {
 			// 扩 或 最大值
@@ -335,7 +296,7 @@ func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[stri
 	}
 
 	// 2. expectedPerformance.Maintenance.VPA
-	klog.V(5).Info("start to parse expectedPerformance.Maintenance.VPA:")
+	klog.V(6).Info("start to parse expectedPerformance.Maintenance.VPA:")
 	for _, vpa := range maintenance.VPA {
 		index := comLocation[vpa.Subject]
 		components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeServerless

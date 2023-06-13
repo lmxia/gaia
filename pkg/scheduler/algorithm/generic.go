@@ -57,7 +57,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 
 	// format desc to components
 	components, comLocation, affinity := utils.DescToComponents(desc)
-	klog.V(5).Infof("Components are %v", components)
+	klog.V(5).Infof("Components are %+v", components)
 	klog.V(5).Infof("comLocation is %+v,affinity is %v", comLocation, affinity) // 临时占用
 
 	numComponent := len(components)

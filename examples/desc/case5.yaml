@@ -61,7 +61,7 @@ spec:
             - { key: provider, operator: In, values: [ "Huawei", "Tencent" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "core" ] }
+            - { key: net-environment, operator: In, values: [ "core" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -114,7 +114,7 @@ spec:
             - { key: provider, operator: In, values: [ "Huawei", "Alibaba" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "core" ] }
+            - { key: net-environment, operator: In, values: [ "core" ] }
       workload:
         workloadtype: deployment
         traitDeployment:

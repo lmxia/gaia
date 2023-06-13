@@ -1,25 +1,50 @@
 apiVersion: apps.gaia.io/v1alpha1
 kind: Description
 metadata:
-  name: case
+  name: case0
   namespace: gaia-reserved
 spec:
-  appID: case
+  appID: case0
   workloadComponents:
-    - componentName: case-component0
+    - componentName: case0-component0
+      namespace: test
       sandbox: runc
       workloadType: "stateless-system-service"
+      schedule:
+        monday:
+          startSchedule: "2023-06-12T09:00:00+08:00"
+          endSchedule: "2023-06-12T18:00:00+08:00"
+        tuesday:
+          startSchedule: "2023-06-13T09:00:00+08:00"
+          endSchedule: "2023-06-13T18:00:00+08:00"
+        wednesday:
+          startSchedule: "2023-06-14T09:00:00+08:00"
+          endSchedule: "2023-06-14T18:00:00+08:00"
+        thursday:
+          startSchedule: "2023-06-15T09:00:00+08:00"
+          endSchedule: "2023-06-15T18:00:00+08:00"
+        friday:
+          startSchedule: "2023-06-16T09:00:00+08:00"
+          endSchedule: "2023-06-16T18:00:00+08:00"
+        saturday:
+          startSchedule: "2023-06-17T10:00:00+08:00"
+          endSchedule: "2023-06-17T16:00:00+08:00"
+        sunday:
+          startSchedule: "2023-06-18T10:00:00+08:00"
+          endSchedule: "2023-06-18T16:00:00+08:00"
+        startEnable: true
+        endEnable: true
       module:
         metadata:
           labels:
-            app: appcase
+            app: appcase0
         spec:
           containers:
-            - name: appcasecomp0
+            - name: appcase0comp0
               image: 172.17.9.231:8880/hyperio/app:latest
               env:
                 - name: SCNID
-                  value: "/pml/case/c0/1"
+                  value: "/pml/case0/c0/1"
               resources:
                 limits:
                   cpu: "100m"
@@ -27,10 +52,44 @@ spec:
                 requests:
                   cpu: "100m"
                   memory: "100Mi"
+  deploymentCondition:
+    mandatory:
+      - subject:
+          name: case0-component0
+          type: component
+        object:
+          name: geo-location
+          type: label
+        relation: In
+        extent: WyJDaGluYS1IdWFkb25nLUppYW5nc3UtQ2l0eS1DMjEtRGlzdHJpY3QtRTIxIl0= # ["China-Huadong-Jiangsu-City-C21-District-E21"]
+      - subject:
+          name: case0-component0
+          type: component
+        object:
+          name: net-environment
+          type: label
+        relation: In
+        extent: WyJlZGdlIl0= # ["edge"]
+      - subject:
+          name: case0-component0
+          type: component
+        object:
+          name: sn
+          type: label
+        relation: In
+        extent: WyJzbjEiXQ== # ["sn1"]
+      - subject:
+          name: case0-component0
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJBbGliYWJhIl0= # ["Alibaba"]
   expectedPerformance:
     boundaries:
       inner:
         - name: boundary0
-          subject: case-component0
+          subject: case0-component0
           type: replicas
           value: Mw==   # 3

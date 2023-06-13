@@ -33,7 +33,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-E21" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "edge" ] }
+            - { key: net-environment, operator: In, values: [ "edge" ] }
       workload:
         workloadtype: serverless
         traitServerless:
@@ -83,7 +83,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-C21" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "core" ] }
+            - { key: net-environment, operator: In, values: [ "core" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -131,7 +131,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-C21" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "core" ] }
+            - { key: net-environment, operator: In, values: [ "core" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -179,7 +179,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-C21" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "core" ] }
+            - { key: net-environment, operator: In, values: [ "core" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -227,7 +227,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C21-District-C21" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "core" ] }
+            - { key: net-environment, operator: In, values: [ "core" ] }
       workload:
         workloadtype: deployment
         traitDeployment:

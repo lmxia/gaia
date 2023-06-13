@@ -15,7 +15,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-E11" ] }
         netenvironment:
           matchExpressions:
-            - { key: net-enviroment, operator: In, values: [ "edge" ] }
+            - { key: net-environment, operator: In, values: [ "edge" ] }
       workload:
         workloadtype: serverless
         traitServerless:
@@ -65,7 +65,7 @@ spec:
             - { key: geo-location, operator: In, values: [ "China-Huadong-Jiangsu-City-C11-District-E11" ] }
         netenvironment:
           matchExpressions:
-            - { key: net-enviroment, operator: In, values: [ "edge" ] }
+            - { key: net-environment, operator: In, values: [ "edge" ] }
       workload:
         workloadtype: serverless
         traitServerless:
@@ -119,7 +119,7 @@ spec:
             - { key: provider, operator: In, values: [ "Huawei", "Tencent" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "core" ] }
+            - { key: net-environment, operator: In, values: [ "core" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -170,7 +170,7 @@ spec:
             - { key: provider, operator: In, values: [ "Huawei" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "core" ] }
+            - { key: net-environment, operator: In, values: [ "core" ] }
       workload:
         workloadtype: deployment
         traitDeployment:
@@ -221,7 +221,7 @@ spec:
             - { key: provider, operator: In, values: [ "Huawei" ] }
         netenvironment:
           matchExpressions:
-            - { key: netenviroment, operator: In, values: [ "core" ] }
+            - { key: net-environment, operator: In, values: [ "core" ] }
       workload:
         workloadtype: serverless
         traitServerless:

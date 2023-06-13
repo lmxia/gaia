@@ -1,0 +1,162 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.7.0
+  creationTimestamp: null
+  name: cronmasters.apps.gaia.io
+spec:
+  group: apps.gaia.io
+  names:
+    categories:
+    - gaia
+    kind: CronMaster
+    listKind: CronMasterList
+    plural: cronmasters
+    shortNames:
+    - cron
+    singular: cronmaster
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: CronMaster is a cron resource
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              resource:
+                description: deployment or serverless
+                properties:
+                  group:
+                    type: string
+                  kind:
+                    type: string
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                  rawData:
+                    description: deployment, serverless
+                    format: byte
+                    type: string
+                  version:
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+              schedule:
+                properties:
+                  endEnable:
+                    type: boolean
+                  friday:
+                    description: ScheduleTimeSet 调度时间设置
+                    properties:
+                      endSchedule:
+                        type: string
+                      startSchedule:
+                        type: string
+                    type: object
+                  monday:
+                    description: ScheduleTimeSet 调度时间设置
+                    properties:
+                      endSchedule:
+                        type: string
+                      startSchedule:
+                        type: string
+                    type: object
+                  saturday:
+                    description: ScheduleTimeSet 调度时间设置
+                    properties:
+                      endSchedule:
+                        type: string
+                      startSchedule:
+                        type: string
+                    type: object
+                  startEnable:
+                    type: boolean
+                  sunday:
+                    description: ScheduleTimeSet 调度时间设置
+                    properties:
+                      endSchedule:
+                        type: string
+                      startSchedule:
+                        type: string
+                    type: object
+                  thursday:
+                    description: ScheduleTimeSet 调度时间设置
+                    properties:
+                      endSchedule:
+                        type: string
+                      startSchedule:
+                        type: string
+                    type: object
+                  tuesday:
+                    description: ScheduleTimeSet 调度时间设置
+                    properties:
+                      endSchedule:
+                        type: string
+                      startSchedule:
+                        type: string
+                    type: object
+                  wednesday:
+                    description: ScheduleTimeSet 调度时间设置
+                    properties:
+                      endSchedule:
+                        type: string
+                      startSchedule:
+                        type: string
+                    type: object
+                required:
+                - endEnable
+                - friday
+                - monday
+                - saturday
+                - startEnable
+                - sunday
+                - thursday
+                - tuesday
+                - wednesday
+                type: object
+            type: object
+          status:
+            properties:
+              lastScheduleTime:
+                description: Information when was the last time the cron resource
+                  was successfully scheduled.
+                format: date-time
+                type: string
+              lastSuccessfulTime:
+                description: Information when was the last time the cron resource
+                  successfully completed.
+                format: date-time
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

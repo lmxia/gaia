@@ -18,6 +18,14 @@ limitations under the License.
 
 package v1alpha1
 
+// CronMasterListerExpansion allows custom methods to be added to
+// CronMasterLister.
+type CronMasterListerExpansion interface{}
+
+// CronMasterNamespaceListerExpansion allows custom methods to be added to
+// CronMasterNamespaceLister.
+type CronMasterNamespaceListerExpansion interface{}
+
 // DescriptionListerExpansion allows custom methods to be added to
 // DescriptionLister.
 type DescriptionListerExpansion interface{}

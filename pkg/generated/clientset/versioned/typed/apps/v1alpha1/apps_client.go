@@ -28,6 +28,7 @@ import (
 
 type AppsV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	CronMastersGetter
 	DescriptionsGetter
 	NetworkRequirementsGetter
 	ResourceBindingsGetter
@@ -37,6 +38,10 @@ type AppsV1alpha1Interface interface {
 // AppsV1alpha1Client is used to interact with features provided by the apps.gaia.io group.
 type AppsV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *AppsV1alpha1Client) CronMasters(namespace string) CronMasterInterface {
+	return newCronMasters(c, namespace)
 }
 
 func (c *AppsV1alpha1Client) Descriptions(namespace string) DescriptionInterface {

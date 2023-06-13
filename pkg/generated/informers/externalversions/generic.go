@@ -54,6 +54,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=apps.gaia.io, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("cronmasters"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().CronMasters().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("descriptions"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().Descriptions().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("networkrequirements"):

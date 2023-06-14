@@ -28,6 +28,10 @@ type FakeAppsV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeAppsV1alpha1) CronMasters(namespace string) v1alpha1.CronMasterInterface {
+	return &FakeCronMasters{c, namespace}
+}
+
 func (c *FakeAppsV1alpha1) Descriptions(namespace string) v1alpha1.DescriptionInterface {
 	return &FakeDescriptions{c, namespace}
 }

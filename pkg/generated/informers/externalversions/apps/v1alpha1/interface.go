@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// CronMasters returns a CronMasterInformer.
+	CronMasters() CronMasterInformer
 	// Descriptions returns a DescriptionInformer.
 	Descriptions() DescriptionInformer
 	// NetworkRequirements returns a NetworkRequirementInformer.
@@ -43,6 +45,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// CronMasters returns a CronMasterInformer.
+func (v *version) CronMasters() CronMasterInformer {
+	return &cronMasterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Descriptions returns a DescriptionInformer.

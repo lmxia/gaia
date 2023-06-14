@@ -98,6 +98,22 @@ func fillRBLabels(desc *appv1alpha1.Description) map[string]string {
 	return newLabels
 }
 
+func GetResultWithoutRB(result [][]mat.Matrix, levelIndex, comIndex int) mat.Matrix {
+	originMat := result[levelIndex][comIndex]
+	ar, ac := originMat.Dims()
+	got := mat.NewDense(ac, ar, nil)
+	got.Copy(originMat)
+	return got
+}
+
+func GetResultWithRB(result [][][]mat.Matrix, rbIndex, levelIndex, comIndex int) mat.Matrix {
+	originMat := result[rbIndex][levelIndex][comIndex]
+	ar, ac := originMat.Dims()
+	got := mat.NewDense(ac, ar, nil)
+	got.Copy(originMat)
+	return got
+}
+
 // make a matrix to a rbApps struct.
 func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedCluster, components []appv1alpha1.Component) []*appv1alpha1.ResourceBindingApps {
 	matR, matC := mat.Dims()

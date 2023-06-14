@@ -109,6 +109,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
 					//componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
 					componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), 1)
+					// allResultGlobal[j][i] = GetResultWithRB(allResultGlobal, j, <affinity component index>)
 					allResultGlobal[j][i] = componentMat
 				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 					componentMat := makeServelessPlan(allPlan, 1)

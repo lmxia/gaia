@@ -75,12 +75,22 @@ type WorkloadComponent struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	Schedule SchedulerConfig `json:"schedule,omitempty"`
+	// +optional
+	Scc []SccConfig `json:"scc,omitempty"`
 	// +required
 	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
 	WorkloadType string `json:"workloadType,omitempty"`
+}
+
+// SccConfig key is ScnId, value is time.second.
+type SccConfig struct {
+	// +required
+	ScnID string `json:"scn_id,omitempty"`
+	// +required
+	Scc int32 `json:"scc,omitempty"`
 }
 
 // ScheduleTimeSet 调度时间设置

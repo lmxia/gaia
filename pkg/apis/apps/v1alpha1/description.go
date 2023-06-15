@@ -103,6 +103,8 @@ type ScheduleTimeSet struct {
 
 type SchedulerConfig struct {
 	// +required
+	Sunday ScheduleTimeSet `json:"sunday"`
+	// +required
 	Monday ScheduleTimeSet `json:"monday"`
 	// +required
 	Tuesday ScheduleTimeSet `json:"tuesday"`
@@ -115,11 +117,11 @@ type SchedulerConfig struct {
 	// +required
 	Saturday ScheduleTimeSet `json:"saturday"`
 	// +required
-	Sunday ScheduleTimeSet `json:"sunday"`
-	// +required
 	StartEnable bool `json:"startEnable"`
 	// +required
 	EndEnable bool `json:"endEnable"`
+	// +required
+	CronEnable bool `json:"cronEnable"`
 }
 
 // Xject means Sub or Ob

@@ -3,16 +3,17 @@ package controllermanager
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/component-base/metrics/legacyregistry"
-	"net/http"
-	"os"
-	"strings"
-	"time"
 
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
 
@@ -42,6 +43,7 @@ import (
 	"k8s.io/klog/v2"
 	utilpointer "k8s.io/utils/pointer"
 
+	"github.com/lmxia/gaia/pkg/controllers/apps/cronmaster"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/server/mux"
@@ -70,10 +72,12 @@ type ControllerManager struct {
 	DedicatedNamespace *string
 
 	// report cluster status
-	statusManager       *Manager
-	crrApprover         *approver.CRRApprover
-	rbController        *resourcebinding.RBController
-	rbMerger            *resourcebinding.RBMerger
+	statusManager  *Manager
+	crrApprover    *approver.CRRApprover
+	rbController   *resourcebinding.RBController
+	rbMerger       *resourcebinding.RBMerger
+	cronController *cronmaster.Controller
+
 	gaiaInformerFactory gaiainformers.SharedInformerFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
 	triggerFunc         func(metav1.Object)
@@ -135,11 +139,14 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		klog.Error(rberr)
 	}
 	statusManager := NewStatusManager(ctx, localKubeConfig.Host, clusterHostName, managedCluster, localKubeClientSet, localGaiaClientSet, hypernodeClientSet)
-	rbMerger, nil := resourcebinding.NewRBMerger(localKubeClientSet, localGaiaClientSet)
+	rbMerger, err := resourcebinding.NewRBMerger(localKubeClientSet, localGaiaClientSet)
 	if err != nil {
 		klog.Error(err)
 	}
-
+	cronController, cronErr := cronmaster.NewController(localGaiaClientSet, localKubeClientSet, localGaiaInformerFactory, localKubeInformerFactory, localKubeConfig)
+	if cronErr != nil {
+		klog.Error(rberr)
+	}
 	agent := &ControllerManager{
 		ctx:                 ctx,
 		Identity:            identity,
@@ -152,6 +159,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		rbController:        rbController,
 		rbMerger:            rbMerger,
 		statusManager:       statusManager,
+		cronController:      cronController,
 	}
 
 	metrics.Register()
@@ -215,6 +223,11 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 					controller.rbMerger.SetParentRBController()
 					klog.Info("start 7. start rbMerger Controller...")
 					controller.rbMerger.RunToParentResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
+				}()
+				// 8. start cronmaster controller
+				go func() {
+					klog.Info("start 8. start cronmaster controller...")
+					controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
 				}()
 
 				// metrics

@@ -53,7 +53,7 @@ type SandboxType string
 const (
 	Runc    SandboxType = "runc"
 	Process SandboxType = "process"
-	Kata    SandboxType = "securecontainer"
+	Kata    SandboxType = "SecureContainer"
 	Wasm    SandboxType = "wasm"
 )
 

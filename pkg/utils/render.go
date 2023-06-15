@@ -24,6 +24,7 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 			Name:        comn.ComponentName,
 			Preoccupy:   comn.Preoccupy,
 			Schedule:    comn.Schedule,
+			Scc:         comn.Scc,
 			RuntimeType: string(comn.Sandbox),
 			Module:      comn.Module,
 			Workload:    GetWorkloadType(comn.WorkloadType),

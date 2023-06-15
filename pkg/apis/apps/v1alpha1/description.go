@@ -233,6 +233,8 @@ type Component struct {
 	// +kubebuilder:validation:Optional
 	Schedule SchedulerConfig `json:"schedule,omitempty"`
 	// +optional
+	Scc []SccConfig `json:"scc,omitempty"`
+	// +optional
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Serverless ServerlessSpec `json:"serverless,omitempty" protobuf:"bytes,3,opt,name=serverless"`

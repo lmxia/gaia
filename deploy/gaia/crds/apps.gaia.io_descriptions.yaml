@@ -8134,6 +8134,17 @@ spec:
                       type: string
                     sandbox:
                       type: string
+                    scc:
+                      items:
+                        description: SccConfig key is ScnId, value is time.second.
+                        properties:
+                          scc:
+                            format: int32
+                            type: integer
+                          scn_id:
+                            type: string
+                        type: object
+                      type: array
                     schedule:
                       properties:
                         endEnable:

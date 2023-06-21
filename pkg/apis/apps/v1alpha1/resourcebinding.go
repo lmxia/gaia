@@ -43,8 +43,11 @@ type ResourceBindingSpec struct {
 }
 
 type ResourceBindingApps struct {
-	ClusterName string           `json:"clusterName,omitempty"`
-	Replicas    map[string]int32 `json:"replicas,omitempty"`
+	// +optional
+	ClusterName string `json:"clusterName,omitempty"`
+	// +optional
+	ChosenOne map[string]int32 `json:"theChosenOne"`
+	Replicas  map[string]int32 `json:"replicas,omitempty"`
 	// +optional
 	Children []*ResourceBindingApps `json:"children,omitempty"`
 }

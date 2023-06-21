@@ -175,8 +175,8 @@ func (suite *DeploymentSuite) SetupTest() {
 			5, 0, 0, 0, 3,
 		}),
 		3: mat.NewDense(2, 5, []float64{
-			0, 2, 0, 0, 4,
-			0, 0, 1, 4, 0,
+			0, 0, 0, 0, 4,
+			0, 0, 0, 0, 0,
 		}),
 	}
 }
@@ -210,6 +210,12 @@ func (suite *DeploymentSuite) TestPlan() {
 	result := plan(suite.capability, 5)
 	fmt.Printf("plan result is %v", result)
 	suite.Equal(3, 3, "test")
+}
+
+func (suite *DeploymentSuite) TestChosenOneInArrow() {
+	result := chosenOneInArrow(suite.matries[3])
+	fmt.Printf("%v", result)
+	suite.Equal(24, 24, "")
 }
 
 func TestDeployment(t *testing.T) {

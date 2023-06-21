@@ -101,7 +101,7 @@ func fillRBLabels(desc *appv1alpha1.Description) map[string]string {
 func GetResultWithoutRB(result [][]mat.Matrix, levelIndex, comIndex int) mat.Matrix {
 	originMat := result[levelIndex][comIndex]
 	ar, ac := originMat.Dims()
-	got := mat.NewDense(ac, ar, nil)
+	got := mat.NewDense(ar, ac, nil)
 	got.Copy(originMat)
 	return got
 }
@@ -109,7 +109,7 @@ func GetResultWithoutRB(result [][]mat.Matrix, levelIndex, comIndex int) mat.Mat
 func GetResultWithRB(result [][][]mat.Matrix, rbIndex, levelIndex, comIndex int) mat.Matrix {
 	originMat := result[rbIndex][levelIndex][comIndex]
 	ar, ac := originMat.Dims()
-	got := mat.NewDense(ac, ar, nil)
+	got := mat.NewDense(ar, ac, nil)
 	got.Copy(originMat)
 	return got
 }
@@ -117,17 +117,20 @@ func GetResultWithRB(result [][][]mat.Matrix, rbIndex, levelIndex, comIndex int)
 // make a matrix to a rbApps struct.
 func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedCluster, components []appv1alpha1.Component) []*appv1alpha1.ResourceBindingApps {
 	matR, matC := mat.Dims()
+	chosenMat := chosenOneInArrow(mat)
 	rbapps := make([]*appv1alpha1.ResourceBindingApps, len(allClusters))
 	for i, item := range allClusters {
 		rbapps[i] = &appv1alpha1.ResourceBindingApps{
 			ClusterName: item.Name,
 			Replicas:    make(map[string]int32),
+			ChosenOne:   make(map[string]int32),
 		}
 	}
 
 	for i := 0; i < matR; i++ {
 		for j := 0; j < matC; j++ {
 			rbapps[j].Replicas[components[i].Name] = int32(mat.At(i, j))
+			rbapps[j].ChosenOne[components[i].Name] = int32(chosenMat.At(i, j))
 		}
 	}
 	return rbapps
@@ -474,4 +477,34 @@ func checkContainMatrix(matrices []mat.Matrix, matix mat.Matrix) bool {
 		}
 	}
 	return false
+}
+
+func randowChoseOneGreateThanZero(in []float64) []float64 {
+	indexArrow := make([]int, 0)
+	// init zero dense
+	denseOut := mat.NewDense(1, len(in), nil)
+	denseOut.Zero()
+	for i, item := range in {
+		if item > 0 {
+			indexArrow = append(indexArrow, i)
+		}
+	}
+	// 存在这个值
+	if len(indexArrow) > 0 {
+		indexChosen := indexArrow[rand.Intn(len(indexArrow))]
+		denseOut.Set(0, indexChosen, 1)
+	}
+	return denseOut.RawRowView(0)
+}
+
+// chosen one
+func chosenOneInArrow(in mat.Matrix) mat.Matrix {
+	aR, aC := in.Dims()
+	out := mat.NewDense(aR, aC, nil)
+	for i := 0; i < aR; i++ {
+		row := mat.DenseCopyOf(in).RawRowView(i)
+		dense := randowChoseOneGreateThanZero(row)
+		out.SetRow(i, dense)
+	}
+	return out
 }

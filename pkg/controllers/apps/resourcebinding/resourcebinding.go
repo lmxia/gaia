@@ -125,7 +125,7 @@ func NewRBController(localkubeclient *kubernetes.Clientset, localgaiaclient *gai
 
 // NewController creates and initializes a new Controller
 func NewController(gaiaClient gaiaClientSet.Interface,
-	rbsInformer informers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+		rbsInformer informers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
@@ -388,11 +388,18 @@ func (c *RBController) handleLocalDescription(desc *appsV1alpha1.Description) er
 	if desc.DeletionTimestamp != nil && desc.Namespace == common.GaiaReservedNamespace {
 		var allErrs []error
 		wg := sync.WaitGroup{}
-		errCh := make(chan error, 2)
-		wg.Add(2)
+		errCh := make(chan error, 3)
+		wg.Add(3)
 		go func(desc *appsV1alpha1.Description) {
 			defer wg.Done()
 			err := c.offloadLocalResourceBindingsByDescription(desc)
+			if err != nil {
+				errCh <- err
+			}
+		}(desc)
+		go func(desc *appsV1alpha1.Description) {
+			defer wg.Done()
+			err := c.offloadLocalNetworkRequirement(desc)
 			if err != nil {
 				errCh <- err
 			}
@@ -404,6 +411,7 @@ func (c *RBController) handleLocalDescription(desc *appsV1alpha1.Description) er
 				errCh <- err
 			}
 		}(desc)
+
 		wg.Wait()
 		close(errCh)
 
@@ -571,12 +579,12 @@ func (c *RBController) UpdateSelectedResourceBinding(rb *appsV1alpha1.ResourceBi
 		descName := rbLabels[common.OriginDescriptionNameLabel]
 		klog.V(4).Infof("Delete unselected ResourceBindings in namespace %q from Description %q.", common.GaiaRBMergedReservedNamespace, descName)
 		err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
-			DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-				common.OriginDescriptionNameLabel:      descName,
-				common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
-				common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
-				common.StatusScheduler:                 string(appsV1alpha1.ResourceBindingmerged),
-			}).String()})
+				DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+					common.OriginDescriptionNameLabel:      descName,
+					common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
+					common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
+					common.StatusScheduler:                 string(appsV1alpha1.ResourceBindingmerged),
+				}).String()})
 		if err != nil {
 			klog.Infof("failed to delete merged rbs in parent cluster %q namespace, ERROR: %v", common.GaiaRBMergedReservedNamespace, err)
 			return err
@@ -755,5 +763,14 @@ func (c *RBController) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.Resourc
 		return fmt.Errorf("waiting for local ResourceBings belongs to parent ResourceBinding %s getting deleted", klog.KObj(rb))
 	}
 
+	return nil
+}
+
+func (c *RBController) offloadLocalNetworkRequirement(desc *appsV1alpha1.Description) error {
+	err := c.localgaiaclient.AppsV1alpha1().NetworkRequirements(desc.Namespace).Delete(context.TODO(), desc.Name, metav1.DeleteOptions{})
+	if err != nil {
+		klog.Warningf("failed to delete NetworkRequirements of Description %q, error: %v", klog.KObj(desc), err)
+		return err
+	}
 	return nil
 }

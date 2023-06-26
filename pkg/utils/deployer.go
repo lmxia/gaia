@@ -77,7 +77,7 @@ func setNestedField(u *unstructured.Unstructured, value interface{}, fields ...s
 }
 
 // getStatusCause returns the named cause from the provided error if it exists and
-// the error is of the type APIStatus. Otherwise it returns false.
+// the error is of the type APIStatus, Otherwise it returns false.
 func getStatusCause(err error) ([]metav1.StatusCause, bool) {
 	apierr, ok := err.(apierrors.APIStatus)
 	if !ok || apierr == nil || apierr.Status().Details == nil {
@@ -340,8 +340,8 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 				}
 			}(unStructure)
 		case appsv1alpha1.WorkloadTypeServerless:
-			unstructure, errServiceless := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errServiceless != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
+			unstructure, errSer := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			if errSer != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
@@ -797,11 +797,13 @@ func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement) []
 }
 
 func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
-	serlessUnstructured := &unstructured.Unstructured{}
+	serUnstructured := &unstructured.Unstructured{}
 	var err error
+	comCopy := com.DeepCopy()
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[com.Name]
+			comCopy.Workload.TraitServerless.Foundingmember = rbApp.ChosenOne[com.Name] == 1
 			if replicas > 0 {
 				ser := &lmmserverless.Serverless{
 					TypeMeta: metav1.TypeMeta{
@@ -831,7 +833,7 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 						Module:      com.Module,
 						Workload: lmmserverless.Workload{
 							Workloadtype:    lmmserverless.WorkloadType(com.Workload.Workloadtype),
-							TraitServerless: com.Workload.TraitServerless,
+							TraitServerless: comCopy.Workload.TraitServerless,
 						},
 					}
 					nodeAffinity := AddNodeAffinity(&com)
@@ -843,9 +845,9 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 						}
 					}
 					ser.Spec.Module.Labels = ser.GetLabels()
-					serlessUnstructured, err = ObjectConvertToUnstructured(ser)
+					serUnstructured, err = ObjectConvertToUnstructured(ser)
 				} else {
-					serlessUnstructured, err = ObjectConvertToUnstructured(ser)
+					serUnstructured, err = ObjectConvertToUnstructured(ser)
 				}
 				if err != nil {
 					msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
@@ -861,7 +863,7 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 		klog.ErrorDepth(5, msg)
 		return nil, err
 	}
-	return serlessUnstructured, nil
+	return serUnstructured, nil
 }
 
 func ConstructDescriptionFromExistOne(old *appsv1alpha1.Description) *appsv1alpha1.Description {
@@ -988,7 +990,7 @@ func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
 	return err
 }
 
-// check if we should binding network path.
+// NeedBindNetworkInCluster check if we should bind network path.
 func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, networkReq *appsv1alpha1.NetworkRequirement) bool {
 	var compToClusterMap map[string]int32
 	for _, rbApp := range rbApps {

@@ -30,6 +30,8 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+var cronKind = appsV1alpha1.SchemeGroupVersion.WithKind("CronMaster")
+
 // Controller is a controller for cronMaster.
 // It is local cluster controller
 type Controller struct {
@@ -273,17 +275,16 @@ func (c *Controller) syncCronMaster(cron *appsV1alpha1.CronMaster, resource *uns
 	// handle current action start or stop
 	action := cron.Spec.NextScheduleAction
 	if action != "" {
-
 		kind := cron.GetResourceKind()
-		if kind == "" || (kind != "Serverless" && kind != "Description") {
+		if kind == "" || (kind != "Serverless" && kind != "Deployment") {
 			klog.WarningfDepth(2, "kind of cronmaster resource %q error", cron.GetResourceKind())
 			return cron, nil, fmt.Errorf("kind of cronmaster resource %q error", cron.GetResourceKind())
 		}
 
 		if kind == "Deployment" {
 			// start deploy
-			// todo add owerreferences
 			if action == "start" {
+				resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 				retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 				if retryErr != nil {
 					klog.Infof("apply Deployment %q of cronmaster %q err==%v \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
@@ -299,8 +300,8 @@ func (c *Controller) syncCronMaster(cron *appsV1alpha1.CronMaster, resource *uns
 		}
 		// todo serverless 存在则直接返回, 不存在则部署
 		if kind == "Serverless" {
-			// todo add ownerReferences
 			if action == "start" {
+				resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 				retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 				if retryErr != nil {
 					klog.Infof("apply Serverless %q of cronmaster %q err==%v \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)

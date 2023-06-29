@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -21,9 +22,18 @@ type CronMasterSpec struct {
 	// +optional
 	Schedule SchedulerConfig `json:"schedule,omitempty"`
 	// deployment or serverless
-	// +optional
+	// +required
 	Resource ReferenceResource `json:"resource,omitempty"`
+	// +optional
+	NextScheduleAction NextScheduleType `json:"nextScheduleAction,omitempty"`
 }
+
+type NextScheduleType string
+
+const (
+	Start NextScheduleType = "start"
+	Stop  NextScheduleType = "stop"
+)
 
 type ReferenceResource struct {
 	Namespace string `json:"namespace"`
@@ -39,6 +49,10 @@ type ReferenceResource struct {
 }
 
 type CronMasterStatus struct {
+	// A list of pointers to currently running jobs.
+	// +optional
+	// +listType=atomic
+	Active []v1.ObjectReference `json:"active,omitempty"`
 
 	// Information when was the last time the cron resource was successfully scheduled.
 	// +optional
@@ -57,4 +71,8 @@ type CronMasterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []CronMaster `json:"items"`
+}
+
+func (in *CronMaster) GetResourceKind() string {
+	return in.Spec.Resource.Kind
 }

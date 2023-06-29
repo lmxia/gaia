@@ -8147,6 +8147,8 @@ spec:
                       type: array
                     schedule:
                       properties:
+                        cronEnable:
+                          type: boolean
                         endEnable:
                           type: boolean
                         friday:
@@ -8208,6 +8210,7 @@ spec:
                               type: string
                           type: object
                       required:
+                      - cronEnable
                       - endEnable
                       - friday
                       - monday

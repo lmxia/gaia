@@ -44,11 +44,11 @@ spec:
     metadata:
       labels:
         control-plane: pml-manager
-        app: gaia-controller-manger
-        app.kubernetes.io/name: gaia-controller-manger
+        app: gaia
+        app.kubernetes.io/name: gaia
     spec:
       containers:
-        - name: gaia-controller-manager
+        - name: gaia
           image: {{ .Values.image.repository }}/gaia:{{ .Values.image.tag }}
           args:
             - --clustername={{ .Values.common.clusterName }}

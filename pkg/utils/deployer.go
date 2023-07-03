@@ -3,15 +3,15 @@ package utils
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"net/http"
 	"strings"
 	"sync"
 
-	"encoding/json"
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -251,7 +251,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 				}
 			}(depunstructured)
 		case appsv1alpha1.WorkloadTypeServerless:
-			SerUn, errservice := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, true)
+			SerUn, errservice := AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, true)
 			if errservice != nil || SerUn == nil {
 				continue
 			}
@@ -318,14 +318,20 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
 		discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
 	var allErrs []error
-
+	// annos := desc.GetAnnotations()
 	wg := sync.WaitGroup{}
 	comToBeApply := components
 	errCh := make(chan error, len(comToBeApply))
 	for _, com := range comToBeApply {
 		switch com.Workload.Workloadtype {
 		case appsv1alpha1.WorkloadTypeDeployment:
-			unStructure, errDep := AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			var unStructure *unstructured.Unstructured
+			var errDep error
+			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
+				unStructure, errDep = AssembledCronDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			} else {
+				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			}
 			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
@@ -340,8 +346,14 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 				}
 			}(unStructure)
 		case appsv1alpha1.WorkloadTypeServerless:
-			unstructure, errSer := AssembledServerlessStructure(com, rb.Spec.RbApps, clusterName, desc.Name, false)
-			if errSer != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
+			var unStructure *unstructured.Unstructured
+			var errSer error
+			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
+				unStructure, errSer = AssembledCronServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			} else {
+				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
+			}
+			if errSer != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
@@ -353,7 +365,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 					errCh <- retryErr
 					return
 				}
-			}(unstructure)
+			}(unStructure)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
 			unstructure, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, false)
 			if errdep != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
@@ -738,7 +750,6 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Namespace = metav1.NamespaceDefault
 			}
 			dep.Name = com.Name
-
 			if !delete {
 				dep.Spec.Template = com.Module
 				nodeAffinity := AddNodeAffinity(com)
@@ -837,7 +848,204 @@ func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement) []
 	return nodeSelectorTerms
 }
 
-func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
+	cronUnstructured := &unstructured.Unstructured{}
+	var err error
+	for _, rbApp := range rbApps {
+		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
+			replicas := rbApp.Replicas[com.Name]
+			if replicas > 0 {
+				cron := &appsv1alpha1.CronMaster{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "CronMaster",
+						APIVersion: "apps.gaia.io/v1alpha1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							known.GaiaDescriptionLabel: descName,
+							known.GaiaComponentLabel:   com.Name,
+						},
+					},
+				}
+				if len(com.Namespace) > 0 {
+					cron.Namespace = com.Namespace
+				} else {
+					cron.Namespace = metav1.NamespaceDefault
+				}
+				cron.Name = com.Name
+
+				if !delete {
+					cron.Spec = appsv1alpha1.CronMasterSpec{
+						Schedule: com.Schedule,
+						Resource: appsv1alpha1.ReferenceResource{
+							Namespace: com.Namespace,
+							Name:      com.Name,
+							Kind:      "Deployment",
+							Version:   "v1",
+							Group:     "apps",
+						},
+					}
+					// construct ReferenceResource.RawData
+					dep := &appsv1.Deployment{
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "Deployment",
+							APIVersion: "apps/v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								known.GaiaDescriptionLabel: descName,
+								known.GaiaComponentLabel:   com.Name,
+							},
+						}}
+					if len(com.Namespace) > 0 {
+						dep.Namespace = com.Namespace
+					} else {
+						dep.Namespace = metav1.NamespaceDefault
+					}
+					dep.Name = com.Name
+					dep.Spec.Template = com.Module
+					nodeAffinity := AddNodeAffinity(com)
+					dep.Spec.Template.Spec.Affinity = nodeAffinity
+					if dep.Spec.Template.Spec.NodeSelector == nil {
+						dep.Spec.Template.Spec.NodeSelector = map[string]string{
+							v1alpha1.ParsedRuntimeStateKey: com.RuntimeType,
+						}
+					}
+					dep.Spec.Replicas = &replicas
+					label := dep.GetLabels()
+					dep.Spec.Template.Labels = label
+					dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
+					// add  env variables log needed
+					newModContainers := addLogEnvVars(com.Module.Spec.Containers)
+					dep.Spec.Template.Spec.Containers = newModContainers
+					depJs, errDep := json.Marshal(dep)
+					if errDep != nil {
+						msg := fmt.Sprintf("deployment %q failed to marshal resource: %v", klog.KRef(dep.GetNamespace(), dep.GetName()), errDep)
+						klog.ErrorDepth(5, msg)
+						return nil, errDep
+					}
+
+					cron.Spec.Resource.RawData = depJs
+					cronUnstructured, err = ObjectConvertToUnstructured(cron)
+				} else {
+					cronUnstructured, err = ObjectConvertToUnstructured(cron)
+				}
+			}
+			break
+		}
+	}
+	if err != nil {
+		msg := fmt.Sprintf("deployment failed to unmarshal resource: %v", err)
+		klog.ErrorDepth(5, msg)
+		return nil, err
+	}
+	return cronUnstructured, nil
+}
+
+func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
+	cronUnstructured := &unstructured.Unstructured{}
+	var err error
+	for _, rbApp := range rbApps {
+		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
+			replicas := rbApp.Replicas[com.Name]
+			if replicas > 0 {
+				cron := &appsv1alpha1.CronMaster{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "CronMaster",
+						APIVersion: "apps.gaia.io/v1alpha1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Labels: map[string]string{
+							known.GaiaDescriptionLabel: descName,
+							known.GaiaComponentLabel:   com.Name,
+						},
+					},
+				}
+				if len(com.Namespace) > 0 {
+					cron.Namespace = com.Namespace
+				} else {
+					cron.Namespace = metav1.NamespaceDefault
+				}
+				cron.Name = com.Name
+
+				if !delete {
+					cron.Spec = appsv1alpha1.CronMasterSpec{
+						Schedule: com.Schedule,
+						Resource: appsv1alpha1.ReferenceResource{
+							Namespace: com.Namespace,
+							Name:      com.Name,
+							Kind:      "Serverless",
+							Version:   "v1",
+							Group:     "serverless.pml.com.cn",
+						},
+					}
+					// construct ReferenceResource.RawData
+					comCopy := com.DeepCopy()
+					comCopy.Workload.TraitServerless.Foundingmember = rbApp.ChosenOne[com.Name] == 1
+					ser := &lmmserverless.Serverless{
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "Serverless",
+							APIVersion: "serverless.pml.com.cn/v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								known.GaiaDescriptionLabel: descName,
+								known.GaiaComponentLabel:   com.Name,
+							},
+						},
+					}
+					if len(com.Namespace) > 0 {
+						ser.Namespace = com.Namespace
+					} else {
+						ser.Namespace = metav1.NamespaceDefault
+					}
+					ser.Name = com.Name
+					ser.Spec = lmmserverless.ServerlessSpec{
+						Namespace:   com.Namespace,
+						Name:        com.Name,
+						RuntimeType: com.RuntimeType,
+						Module:      com.Module,
+						Workload: lmmserverless.Workload{
+							Workloadtype:    lmmserverless.WorkloadType(com.Workload.Workloadtype),
+							TraitServerless: comCopy.Workload.TraitServerless,
+						},
+					}
+					nodeAffinity := AddNodeAffinity(com)
+					ser.Spec.Module.Spec.Affinity = nodeAffinity
+					// add  env variables log needed
+					newModContainers := addLogEnvVars(com.Module.Spec.Containers)
+					ser.Spec.Module.Spec.Containers = newModContainers
+					if ser.Spec.Module.Spec.NodeSelector == nil {
+						ser.Spec.Module.Spec.NodeSelector = map[string]string{
+							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
+							v1alpha1.ParsedRuntimeStateKey: com.RuntimeType,
+						}
+					}
+					ser.Spec.Module.Labels = ser.GetLabels()
+					serJs, errSer := json.Marshal(ser)
+					if errSer != nil {
+						msg := fmt.Sprintf("serverless %q failed to marshal resource: %v", klog.KRef(ser.GetNamespace(), ser.GetName()), errSer)
+						klog.ErrorDepth(5, msg)
+						return nil, errSer
+					}
+					cron.Spec.Resource.RawData = serJs
+					cronUnstructured, err = ObjectConvertToUnstructured(cron)
+				} else {
+					cronUnstructured, err = ObjectConvertToUnstructured(cron)
+				}
+			}
+			break
+		}
+	}
+	if err != nil {
+		msg := fmt.Sprintf("serverless failed to unmarshal resource: %v", err)
+		klog.ErrorDepth(5, msg)
+		return nil, err
+	}
+	return cronUnstructured, nil
+}
+
+func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, delete bool) (*unstructured.Unstructured, error) {
 	serUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -877,8 +1085,11 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 							TraitServerless: comCopy.Workload.TraitServerless,
 						},
 					}
-					nodeAffinity := AddNodeAffinity(&com)
+					nodeAffinity := AddNodeAffinity(com)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
+					// add  env variables log needed
+					newModContainers := addLogEnvVars(com.Module.Spec.Containers)
+					ser.Spec.Module.Spec.Containers = newModContainers
 					if ser.Spec.Module.Spec.NodeSelector == nil {
 						ser.Spec.Module.Spec.NodeSelector = map[string]string{
 							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
@@ -889,11 +1100,6 @@ func AssembledServerlessStructure(com appsv1alpha1.Component, rbApps []*appsv1al
 					serUnstructured, err = ObjectConvertToUnstructured(ser)
 				} else {
 					serUnstructured, err = ObjectConvertToUnstructured(ser)
-				}
-				if err != nil {
-					msg := fmt.Sprintf("failed to unmarshal resource: %v", err)
-					klog.ErrorDepth(5, msg)
-					return nil, err
 				}
 			}
 			break
@@ -963,7 +1169,7 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 	return nil
 }
 
-// OffloadResourceBindingByDescription by ssider
+// OffloadResourceByDescription offloads the specified resource
 func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Interface,
 		discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
 

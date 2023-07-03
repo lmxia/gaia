@@ -1,4 +1,4 @@
-apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: gaia-manager
@@ -10,7 +10,7 @@ rules:
     verbs: [ "get" ]
 
 ---
-apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: gaia-manager

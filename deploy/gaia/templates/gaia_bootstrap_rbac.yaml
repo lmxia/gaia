@@ -1,4 +1,4 @@
-apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: gaia:system:bootstrapping
@@ -11,7 +11,7 @@ rules:
       - get
       - create
 ---
-apiVersion: {{ include "common.capabilities.rbac.apiVersion" . }}
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: gaia:system:bootstrapping

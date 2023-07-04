@@ -19,6 +19,10 @@ package resourcebinding
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"sync"
+	"time"
+
 	appsV1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllers/apps/description"
@@ -36,9 +40,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/retry"
-	"reflect"
-	"sync"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -767,10 +768,19 @@ func (c *RBController) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.Resourc
 }
 
 func (c *RBController) offloadLocalNetworkRequirement(desc *appsV1alpha1.Description) error {
-	err := c.localgaiaclient.AppsV1alpha1().NetworkRequirements(desc.Namespace).Delete(context.TODO(), desc.Name, metav1.DeleteOptions{})
+	nwr, err := c.localgaiaclient.AppsV1alpha1().NetworkRequirements(common.GaiaReservedNamespace).Get(context.TODO(), desc.Name, metav1.GetOptions{})
 	if err != nil {
-		klog.Warningf("failed to delete NetworkRequirements of Description %q, error: %v", klog.KObj(desc), err)
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		klog.InfoS("failed to get network requirement of Description", "NetworkRequirement", klog.KObj(desc))
 		return err
+	}
+
+	errDel := c.localgaiaclient.AppsV1alpha1().NetworkRequirements(common.GaiaReservedNamespace).Delete(context.TODO(), nwr.GetName(), metav1.DeleteOptions{})
+	if errDel != nil {
+		klog.Warningf("failed to delete NetworkRequirements of Description %q, error: %v", klog.KObj(desc), err)
+		return errDel
 	}
 	return nil
 }

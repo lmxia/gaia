@@ -1,6 +1,6 @@
 module github.com/lmxia/gaia
 
-go 1.18
+go 1.20
 
 require (
 	github.com/SUMMERLm/hyperNodes v0.0.0-20220411082828-8c56025edf7c

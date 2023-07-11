@@ -818,49 +818,47 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 
 func addEnvVars(containers []corev1.Container, scc []appsv1alpha1.SccConfig) []corev1.Container {
 	// add env variables log needed
-	for _, container := range containers {
-		env := []corev1.EnvVar{
-			{
-				Name: "HYPEROS_COMPONET",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.labels['apps.gaia.io/component']",
-					},
+	env := []corev1.EnvVar{
+		{
+			Name: "HYPEROS_COMPONET",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.labels['apps.gaia.io/component']",
 				},
 			},
-			{
-				Name: "HYPEROS_BLUEPRINT",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "metadata.labels['apps.gaia.io/description']",
-					},
+		},
+		{
+			Name: "HYPEROS_BLUEPRINT",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "metadata.labels['apps.gaia.io/description']",
 				},
 			},
-			{
-				Name: "HYPEROS_LOG_SERVER",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "status.hostIP",
-					},
+		},
+		{
+			Name: "HYPEROS_LOG_SERVER",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "status.hostIP",
 				},
 			},
-			{
-				Name:  "HYPEROS_LOG_SERVER_PORT",
-				Value: "12201",
-			},
+		},
+		{
+			Name:  "HYPEROS_LOG_SERVER_PORT",
+			Value: "12201",
+		},
+	}
+	// add scc env variables
+	if len(scc) > 0 {
+		for _, v := range scc {
+			env = append(env, corev1.EnvVar{
+				Name:  makeEnvVariableName(v.ScnID),
+				Value: fmt.Sprint(v.Scc),
+			})
 		}
-
-		// add scc env variables
-		if len(scc) > 0 {
-			for _, v := range scc {
-				env = append(env, corev1.EnvVar{
-					Name:  makeEnvVariableName(v.ScnID),
-					Value: fmt.Sprint(v.Scc),
-				})
-			}
-		}
-
-		container.Env = append(container.Env, env...)
+	}
+	for k := range containers {
+		containers[k].Env = append(containers[k].Env, env...)
 	}
 	return containers
 }

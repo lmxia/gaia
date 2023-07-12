@@ -239,10 +239,10 @@ func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface,
 }
 
 func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, parentGaiaclient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
+		discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
 	var allErrs []error
 	var err error
-	annoDesc := desc.GetAnnotations()
+	descLabels := desc.GetLabels()
 	wg := sync.WaitGroup{}
 	comToBeDeleted := components
 	errCh := make(chan error, len(comToBeDeleted))
@@ -252,9 +252,9 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 			var unStructure *unstructured.Unstructured
 			var errDep error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
-				unStructure, errDep = AssembledCronDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+				unStructure, errDep = AssembledCronDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			} else {
-				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			}
 			if errDep != nil || unStructure == nil {
 				continue
@@ -274,9 +274,9 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 			var unStructure *unstructured.Unstructured
 			var errSer error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
-				unStructure, errSer = AssembledCronServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+				unStructure, errSer = AssembledCronServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			} else {
-				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			}
 			if errSer != nil || unStructure == nil {
 				continue
@@ -292,7 +292,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 				}
 			}(unStructure)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			depunstructured, deperr := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, true)
+			depunstructured, deperr := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, true)
 			if deperr != nil || depunstructured == nil {
 				continue
 			}
@@ -308,7 +308,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 				}
 			}(depunstructured)
 		case appsv1alpha1.WorkloadTypeUserApp:
-			depunstructured, deperr := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, true)
+			depunstructured, deperr := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, true)
 			if deperr != nil || depunstructured == nil {
 				continue
 			}
@@ -343,7 +343,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 
 func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
 	var allErrs []error
-	annoDesc := desc.GetAnnotations()
+	descLabels := desc.GetLabels()
 	wg := sync.WaitGroup{}
 	comToBeApply := components
 	errCh := make(chan error, len(comToBeApply))
@@ -353,9 +353,9 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 			var unStructure *unstructured.Unstructured
 			var errDep error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
-				unStructure, errDep = AssembledCronDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+				unStructure, errDep = AssembledCronDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			} else {
-				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			}
 			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
@@ -374,9 +374,9 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 			var unStructure *unstructured.Unstructured
 			var errSer error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
-				unStructure, errSer = AssembledCronServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+				unStructure, errSer = AssembledCronServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			} else {
-				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			}
 			if errSer != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
@@ -392,7 +392,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 				}
 			}(unStructure)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			unstructure, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+			unstructure, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			if errdep != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
@@ -407,7 +407,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 				}
 			}(unstructure)
 		case appsv1alpha1.WorkloadTypeUserApp:
-			unstructure, errUserapp := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, annoDesc, false)
+			unstructure, errUserapp := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			if errUserapp != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
@@ -459,7 +459,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 }
 
 func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,
-	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement) error {
+		rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement) error {
 	var allErrs []error
 	var err error
 	errCh := make(chan error, len(rb.Spec.RbApps))
@@ -562,26 +562,28 @@ func postRequest(url, descriptionName string, path []byte) {
 	defer resp.Body.Close()
 }
 
-func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, annoDesc map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
-	annotations := make(map[string]string, len(annoDesc))
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
+				newLabels := map[string]string{
+					known.GaiaDescriptionLabel: descName,
+					known.GaiaComponentLabel:   comCopy.Name,
+				}
+				if descLabels[known.UserIDLabel] != "" {
+					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+				}
 				ds := &appsv1.DaemonSet{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "DaemonSet",
 						APIVersion: "apps/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							known.GaiaDescriptionLabel: descName,
-							known.GaiaComponentLabel:   comCopy.Name,
-						},
-						Annotations: annotations,
+						Labels: newLabels,
 					}}
 				if len(comCopy.Namespace) > 0 {
 					ds.Namespace = comCopy.Namespace
@@ -600,7 +602,6 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					ds.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 					// add  env variables log needed
 					ds.Spec.Template.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
-					ds.Spec.Template.SetAnnotations(addAnnotations(ds.GetAnnotations(), comCopy.Module.Annotations))
 
 					depUnstructured, err = ObjectConvertToUnstructured(ds)
 				} else {
@@ -619,16 +620,22 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 	return depUnstructured, nil
 }
 
-func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, annoDesc map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
-	annotations := make(map[string]string, len(annoDesc))
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas == 0 {
 				return nil, nil
+			}
+			newLabels := map[string]string{
+				known.GaiaDescriptionLabel: descName,
+				known.GaiaComponentLabel:   comCopy.Name,
+			}
+			if descLabels[known.UserIDLabel] != "" {
+				newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
 			}
 			userAPP := &appsv1alpha1.UserAPP{
 				TypeMeta: metav1.TypeMeta{
@@ -636,11 +643,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 					APIVersion: "apps.gaia.io/v1alpha1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						known.GaiaDescriptionLabel: descName,
-						known.GaiaComponentLabel:   comCopy.Name,
-					},
-					Annotations: annotations,
+					Labels: newLabels,
 				},
 			}
 			userAPP.Name = comCopy.Name
@@ -651,7 +654,6 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				userAPP.Spec.Module.Labels = label
 				// add  env variables log needed
 				userAPP.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
-				userAPP.Spec.Module.SetAnnotations(addAnnotations(userAPP.GetAnnotations(), comCopy.Module.Annotations))
 
 				depUnstructured, err = ObjectConvertToUnstructured(userAPP)
 			} else {
@@ -701,7 +703,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = make([]corev1.NodeSelectorTerm, 0)
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
 			return nodeAffinity
 		}
 	}
@@ -716,7 +718,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, providers...)
+					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, providers...)
 		}
 	}
 
@@ -730,7 +732,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, netEnvironments...)
+					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, netEnvironments...)
 		}
 	}
 
@@ -744,7 +746,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, specificResources...)
+					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, specificResources...)
 		}
 	}
 
@@ -758,24 +760,27 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, geoLocations...)
+					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, geoLocations...)
 		}
 	}
 	return nodeAffinity
 }
-func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, annoDesc map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
-	annotations := make(map[string]string, len(annoDesc))
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas <= 0 {
 				return nil, fmt.Errorf("deployment name==%s, have zero replicas", comCopy.Name)
 			}
-			if annoDesc[known.UserID] != "" {
-				annotations[known.UserID] = annoDesc[known.UserID]
+			newLabels := map[string]string{
+				known.GaiaDescriptionLabel: descName,
+				known.GaiaComponentLabel:   comCopy.Name,
+			}
+			if descLabels[known.UserIDLabel] != "" {
+				newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
 			}
 			dep := &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -783,11 +788,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						known.GaiaDescriptionLabel: descName,
-						known.GaiaComponentLabel:   comCopy.Name,
-					},
-					Annotations: annotations,
+					Labels: newLabels,
 				}}
 			if len(comCopy.Namespace) > 0 {
 				dep.Namespace = comCopy.Namespace
@@ -810,7 +811,6 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 				// add  env variables log needed
 				dep.Spec.Template.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
-				dep.Spec.Template.SetAnnotations(addAnnotations(dep.GetAnnotations(), comCopy.Module.Annotations))
 
 				depUnstructured, err = ObjectConvertToUnstructured(dep)
 			} else {
@@ -910,17 +910,20 @@ func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement) []
 	return nodeSelectorTerms
 }
 
-func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, annoDesc map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	cronUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
-	annotations := make(map[string]string, len(annoDesc))
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
-				if annoDesc[known.UserID] != "" {
-					annotations[known.UserID] = annoDesc[known.UserID]
+				newLabels := map[string]string{
+					known.GaiaDescriptionLabel: descName,
+					known.GaiaComponentLabel:   comCopy.Name,
+				}
+				if descLabels[known.UserIDLabel] != "" {
+					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
 				}
 				cron := &appsv1alpha1.CronMaster{
 					TypeMeta: metav1.TypeMeta{
@@ -928,11 +931,7 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 						APIVersion: "apps.gaia.io/v1alpha1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							known.GaiaDescriptionLabel: descName,
-							known.GaiaComponentLabel:   comCopy.Name,
-						},
-						Annotations: annotations,
+						Labels: newLabels,
 					},
 				}
 				if len(comCopy.Namespace) > 0 {
@@ -960,11 +959,7 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 							APIVersion: "apps/v1",
 						},
 						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								known.GaiaDescriptionLabel: descName,
-								known.GaiaComponentLabel:   comCopy.Name,
-							},
-							Annotations: annotations,
+							Labels: newLabels,
 						}}
 					if len(comCopy.Namespace) > 0 {
 						dep.Namespace = comCopy.Namespace
@@ -986,7 +981,6 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 					dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 					// add  env variables log needed
 					dep.Spec.Template.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
-					dep.Spec.Template.SetAnnotations(addAnnotations(dep.GetAnnotations(), comCopy.Module.Annotations))
 
 					depJs, errDep := json.Marshal(dep)
 					if errDep != nil {
@@ -994,8 +988,8 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 						klog.ErrorDepth(5, msg)
 						return nil, errDep
 					}
-
 					cron.Spec.Resource.RawData = depJs
+
 					cronUnstructured, err = ObjectConvertToUnstructured(cron)
 				} else {
 					cronUnstructured, err = ObjectConvertToUnstructured(cron)
@@ -1012,30 +1006,20 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 	return cronUnstructured, nil
 }
 
-func addAnnotations(base, origin map[string]string) map[string]string {
-	if base == nil {
-		base = map[string]string{}
-	}
-	if origin != nil {
-		for k, v := range origin {
-			base[k] = v
-		}
-	}
-
-	return base
-}
-
-func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, annoDesc map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	cronUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
-	annotations := make(map[string]string, len(annoDesc))
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
-				if annoDesc[known.UserID] != "" {
-					annotations[known.UserID] = annoDesc[known.UserID]
+				newLabels := map[string]string{
+					known.GaiaDescriptionLabel: descName,
+					known.GaiaComponentLabel:   comCopy.Name,
+				}
+				if descLabels[known.UserIDLabel] != "" {
+					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
 				}
 				cron := &appsv1alpha1.CronMaster{
 					TypeMeta: metav1.TypeMeta{
@@ -1043,11 +1027,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 						APIVersion: "apps.gaia.io/v1alpha1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							known.GaiaDescriptionLabel: descName,
-							known.GaiaComponentLabel:   comCopy.Name,
-						},
-						Annotations: annotations,
+						Labels: newLabels,
 					},
 				}
 				if len(comCopy.Namespace) > 0 {
@@ -1076,11 +1056,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 							APIVersion: "serverless.pml.com.cn/v1",
 						},
 						ObjectMeta: metav1.ObjectMeta{
-							Labels: map[string]string{
-								known.GaiaDescriptionLabel: descName,
-								known.GaiaComponentLabel:   comCopy.Name,
-							},
-							Annotations: annotations,
+							Labels: newLabels,
 						},
 					}
 					if len(comCopy.Namespace) > 0 {
@@ -1103,7 +1079,6 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
 					// add  env variables log needed
 					ser.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
-					ser.Spec.Module.SetAnnotations(addAnnotations(ser.GetAnnotations(), comCopy.Module.Annotations))
 					if ser.Spec.Module.Spec.NodeSelector == nil {
 						ser.Spec.Module.Spec.NodeSelector = map[string]string{
 							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
@@ -1119,6 +1094,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 						return nil, errSer
 					}
 					cron.Spec.Resource.RawData = serJs
+
 					cronUnstructured, err = ObjectConvertToUnstructured(cron)
 				} else {
 					cronUnstructured, err = ObjectConvertToUnstructured(cron)
@@ -1135,18 +1111,21 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 	return cronUnstructured, nil
 }
 
-func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, annoDesc map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	serUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
-	annotations := make(map[string]string, len(annoDesc))
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			comCopy.Workload.TraitServerless.Foundingmember = rbApp.ChosenOne[comCopy.Name] == 1
 			if replicas > 0 {
-				if annoDesc[known.UserID] != "" {
-					annotations[known.UserID] = annoDesc[known.UserID]
+				newLabels := map[string]string{
+					known.GaiaDescriptionLabel: descName,
+					known.GaiaComponentLabel:   comCopy.Name,
+				}
+				if descLabels[known.UserIDLabel] != "" {
+					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
 				}
 				ser := &lmmserverless.Serverless{
 					TypeMeta: metav1.TypeMeta{
@@ -1154,11 +1133,7 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 						APIVersion: "serverless.pml.com.cn/v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Labels: map[string]string{
-							known.GaiaDescriptionLabel: descName,
-							known.GaiaComponentLabel:   comCopy.Name,
-						},
-						Annotations: annotations,
+						Labels: newLabels,
 					},
 				}
 				if len(comCopy.Namespace) > 0 {
@@ -1183,7 +1158,6 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
 					// add  env variables log needed
 					ser.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
-					ser.Spec.Module.SetAnnotations(addAnnotations(ser.GetAnnotations(), comCopy.Module.Annotations))
 					if ser.Spec.Module.Spec.NodeSelector == nil {
 						ser.Spec.Module.Spec.NodeSelector = map[string]string{
 							known.HypernodeClusterNodeRole: known.HypernodeClusterNodeRolePublic,
@@ -1266,7 +1240,7 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 
 // OffloadResourceByDescription offloads the specified resource
 func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
+		discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
 
 	var descriptionsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "ResourceBinding"}
 	restMapping, err := discoveryRESTMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
@@ -1286,14 +1260,14 @@ func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Int
 }
 
 func OffloadDescription(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
+		discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
 
 	descUnstructured, _ := ObjectConvertToUnstructured(desc)
 	return DeleteResource(ctx, dynamicClient, discoveryRESTMapper, descUnstructured)
 }
 
 func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+		discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
 	wg := sync.WaitGroup{}
 	var err error
 	wg.Add(1)
@@ -1313,7 +1287,7 @@ func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
 }
 
 func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+		discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
 	wg := sync.WaitGroup{}
 	var err error
 	wg.Add(1)

@@ -2,20 +2,21 @@ package option
 
 import (
 	"fmt"
+	"net"
+	"net/url"
+	"regexp"
+	"strings"
+
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	"github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
 	"k8s.io/component-base/metrics"
-	"net/url"
-	"regexp"
-	"strings"
 
 	gaiaappconfig "github.com/lmxia/gaia/cmd/gaia-controllers/app/config"
 	cliflag "k8s.io/component-base/cli/flag"
 	netutils "k8s.io/utils/net"
-	"net"
 )
 
 // ClusterRegistrationOptions holds the command-line options for command
@@ -70,7 +71,7 @@ func NewOptions() *Options {
 	// Set the PairName but leave certificate directory blank to generate in-memory by default
 	o.SecureServing.ServerCert.CertDirectory = ""
 	o.SecureServing.ServerCert.PairName = "gaia-controller-manager"
-	o.SecureServing.BindPort = 12113
+	o.SecureServing.BindPort = 12111
 
 	o.initFlags()
 

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gaia
+  namespace: gaia-system
+spec:
+  ports:
+    - name: http
+      port: 12111
+      protocol: TCP
+      targetPort: 12111
+      nodePort: 31521
+  selector:
+    app.kubernetes.io/name: gaia
+  type: NodePort
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gaia-scheduler
+  namespace: gaia-system
+spec:
+  ports:
+    - name: http
+      port: 12112
+      protocol: TCP
+      targetPort: 12112
+      nodePort: 31522
+  selector:
+    app.kubernetes.io/name: gaia-scheduler
+  type: NodePort
+
+
+

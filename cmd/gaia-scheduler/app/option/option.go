@@ -2,13 +2,14 @@ package option
 
 import (
 	"fmt"
+	"net"
+
 	schedulerappconfig "github.com/lmxia/gaia/cmd/gaia-scheduler/app/config"
 	"github.com/spf13/pflag"
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/metrics"
 	netutils "k8s.io/utils/net"
-	"net"
 )
 
 // ClusterRegistrationOptions holds the command-line options for command
@@ -46,7 +47,7 @@ func NewOptions() *Options {
 	// Set the PairName but leave certificate directory blank to generate in-memory by default
 	o.SecureServing.ServerCert.CertDirectory = ""
 	o.SecureServing.ServerCert.PairName = "gaia-scheduler"
-	o.SecureServing.BindPort = 12116
+	o.SecureServing.BindPort = 12112
 
 	o.initFlags()
 

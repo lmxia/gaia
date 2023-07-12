@@ -78,9 +78,9 @@ spec:
             - --topoSyncBaseUrl={{ .Values.common.topoSyncBaseUrl }}
             - --networkBindUrl={{ .Values.common.networkBindUrl }}
           ports:
-            - name: http
-              containerPort: 2111
-              hostPort: 2111
+            - name: metric
+              containerPort: 12111
+              protocol: TCP
           resources:
             limits:
               cpu: 100m
@@ -133,9 +133,9 @@ spec:
         - name: gaia-scheduler
           image: {{ .Values.image.repository }}/gaia-scheduler:{{ .Values.image.tag }}
           ports:
-            - name: http
-              containerPort: 2112
-              hostPort: 2112
+            - name: metric
+              containerPort: 12112
+              protocol: TCP
           resources:
             limits:
               cpu: 100m

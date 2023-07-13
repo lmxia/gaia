@@ -206,7 +206,7 @@ func GetDescription(ctx context.Context, dynamicClient dynamic.Interface, restMa
 	var descriptionsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "Description"}
 	restMapping, err := restMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
 	if err != nil {
-		klog.Errorf("cannot get its descrito %v", err)
+		klog.Errorf("cannot get its Description, %q, err==%v", klog.KRef(desNs, name), err)
 		return nil, err
 	}
 	curObj, queryErr := dynamicClient.Resource(restMapping.Resource).Namespace(desNs).Get(ctx, name, metav1.GetOptions{})
@@ -238,8 +238,7 @@ func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface,
 	return nwr, nil
 }
 
-func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, parentGaiaclient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
-		discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
+func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, localDynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
 	var allErrs []error
 	var err error
 	descLabels := desc.GetLabels()
@@ -256,7 +255,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 			} else {
 				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			}
-			if errDep != nil || unStructure == nil {
+			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
@@ -278,7 +277,7 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 			} else {
 				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			}
-			if errSer != nil || unStructure == nil {
+			if errSer != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
@@ -292,37 +291,37 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 				}
 			}(unStructure)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			depunstructured, deperr := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, true)
-			if deperr != nil || depunstructured == nil {
+			unStructure, errAff := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, true)
+			if errAff != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(depunstructured *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				klog.V(5).Infof(" workloadTypeAffinityDaemon deleting %s %s defined in ResourceBinding %s", depunstructured.GetKind(),
-					klog.KObj(depunstructured), klog.KObj(rb))
-				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, depunstructured)
+				klog.V(5).Infof(" workloadTypeAffinityDaemon deleting %s %s defined in ResourceBinding %s", unstructure.GetKind(),
+					klog.KObj(unstructure), klog.KObj(rb))
+				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
 				if err2 != nil {
-					klog.Infof("offloadRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", depunstructured.GetName(), err2)
+					klog.Infof("offloadRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", unstructure.GetName(), err2)
 					errCh <- err2
 				}
-			}(depunstructured)
+			}(unStructure)
 		case appsv1alpha1.WorkloadTypeUserApp:
-			depunstructured, deperr := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, true)
-			if deperr != nil || depunstructured == nil {
+			unStructure, errApp := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, true)
+			if errApp != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(depunstructured *unstructured.Unstructured) {
+			go func(unstructure *unstructured.Unstructured) {
 				defer wg.Done()
-				klog.V(5).Infof(" userApp deleting %s %s defined in ResourceBinding %s", depunstructured.GetKind(),
-					klog.KObj(depunstructured), klog.KObj(rb))
-				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, depunstructured)
+				klog.V(5).Infof(" userApp deleting %s %s defined in ResourceBinding %s", unstructure.GetKind(),
+					klog.KObj(unstructure), klog.KObj(rb))
+				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
 				if err2 != nil {
-					klog.Infof("offloadRBWorkloads userApp name==%s err===%v \n", depunstructured.GetName(), err2)
+					klog.Infof("offloadRBWorkloads userApp name==%s err===%v \n", unstructure.GetName(), err2)
 					errCh <- err2
 				}
-			}(depunstructured)
+			}(unStructure)
 		}
 		wg.Wait()
 	}
@@ -459,7 +458,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 }
 
 func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,
-		rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement) error {
+	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement) error {
 	var allErrs []error
 	var err error
 	errCh := make(chan error, len(rb.Spec.RbApps))
@@ -703,7 +702,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = make([]corev1.NodeSelectorTerm, 0)
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
 			return nodeAffinity
 		}
 	}
@@ -718,7 +717,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, providers...)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, providers...)
 		}
 	}
 
@@ -732,7 +731,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, netEnvironments...)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, netEnvironments...)
 		}
 	}
 
@@ -746,7 +745,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, specificResources...)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, specificResources...)
 		}
 	}
 
@@ -760,7 +759,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, geoLocations...)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, geoLocations...)
 		}
 	}
 	return nodeAffinity
@@ -1240,7 +1239,7 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 
 // OffloadResourceByDescription offloads the specified resource
 func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Interface,
-		discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
+	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
 
 	var descriptionsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "ResourceBinding"}
 	restMapping, err := discoveryRESTMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
@@ -1260,14 +1259,14 @@ func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Int
 }
 
 func OffloadDescription(ctx context.Context, dynamicClient dynamic.Interface,
-		discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
+	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
 
 	descUnstructured, _ := ObjectConvertToUnstructured(desc)
 	return DeleteResource(ctx, dynamicClient, discoveryRESTMapper, descUnstructured)
 }
 
 func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
-		discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
 	wg := sync.WaitGroup{}
 	var err error
 	wg.Add(1)
@@ -1287,7 +1286,7 @@ func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
 }
 
 func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
-		discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
 	wg := sync.WaitGroup{}
 	var err error
 	wg.Add(1)

@@ -126,7 +126,7 @@ func NewRBController(localkubeclient *kubernetes.Clientset, localgaiaclient *gai
 
 // NewController creates and initializes a new Controller
 func NewController(gaiaClient gaiaClientSet.Interface,
-		rbsInformer informers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+	rbsInformer informers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
@@ -547,8 +547,7 @@ func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBind
 					return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ", rb.Name, err)
 				}
 			} else {
-				err := utils.OffloadRBWorkloads(context.TODO(), desc, components, c.localgaiaclient, c.localdynamicClient,
-					c.restMapper, rb, clusterName)
+				err := utils.OffloadRBWorkloads(context.TODO(), desc, components, c.localdynamicClient, c.restMapper, rb, clusterName)
 				if err != nil {
 					return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ", rb.Name, err)
 				}
@@ -580,12 +579,12 @@ func (c *RBController) UpdateSelectedResourceBinding(rb *appsV1alpha1.ResourceBi
 		descName := rbLabels[common.OriginDescriptionNameLabel]
 		klog.V(4).Infof("Delete unselected ResourceBindings in namespace %q from Description %q.", common.GaiaRBMergedReservedNamespace, descName)
 		err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
-				DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-					common.OriginDescriptionNameLabel:      descName,
-					common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
-					common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
-					common.StatusScheduler:                 string(appsV1alpha1.ResourceBindingmerged),
-				}).String()})
+			DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+				common.OriginDescriptionNameLabel:      descName,
+				common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
+				common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
+				common.StatusScheduler:                 string(appsV1alpha1.ResourceBindingmerged),
+			}).String()})
 		if err != nil {
 			klog.Infof("failed to delete merged rbs in parent cluster %q namespace, ERROR: %v", common.GaiaRBMergedReservedNamespace, err)
 			return err

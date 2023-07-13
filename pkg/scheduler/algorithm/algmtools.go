@@ -12,6 +12,7 @@ import (
 	"gonum.org/v1/gonum/mat"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/klog/v2"
 
 	appv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
@@ -41,7 +42,8 @@ func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster)
 }
 
 // spawn a brank new resourcebindings on multi spread level.
-func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCluster, desc *appv1alpha1.Description, components []appv1alpha1.Component) []*appv1alpha1.ResourceBinding {
+func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCluster, desc *appv1alpha1.Description,
+	components []appv1alpha1.Component, affinity []int) []*appv1alpha1.ResourceBinding {
 	result := make([]*appv1alpha1.ResourceBinding, 0)
 	matResult := make([]mat.Matrix, 0)
 	rbIndex := 0
@@ -54,6 +56,11 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 			continue
 		}
 		for _, item := range indexMatrix {
+			// check whether every item fit the affinity condition
+			if !checkAffinityCondition(item, affinity) {
+				continue
+			}
+
 			rb := &appv1alpha1.ResourceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex),
@@ -112,6 +119,124 @@ func GetResultWithRB(result [][][]mat.Matrix, rbIndex, levelIndex, comIndex int)
 	got := mat.NewDense(ar, ac, nil)
 	got.Copy(originMat)
 	return got
+}
+
+// GetAffinityComPlanForDeployment return a new mat.Matrix according to the destination component when that is dispersion or serverless
+func GetAffinityComPlanForDeployment(m mat.Matrix, replicas int64, dispersion bool) mat.Matrix {
+	if dispersion {
+		return GetAffinityComPlan(m, replicas)
+	}
+
+	rows, cols := m.Dims()
+	rowNums := make([]int, rows)
+	// 计算每一行非零位
+	for i := 0; i < rows; i++ {
+		for j := 0; j < cols; j++ {
+			if m.At(i, j) != 0 {
+				rowNums[i]++
+			}
+		}
+	}
+
+	newResult := mat.NewDense(rows, cols, nil)
+
+	for i := 0; i < rows; i++ {
+		if rowNums[i] == 0 {
+			newResult.SetRow(i, mat.DenseCopyOf(m).RawRowView(i))
+		} else if rowNums[i] >= 1 {
+			// 目的component有跨域或者是serverless
+			for k := 0; k < cols; k++ {
+				// 取一个不为零的位置置为replicas
+				if m.At(i, k) != 0 {
+					data := make([]float64, cols)
+					data[k] = float64(replicas)
+					newResult.SetRow(i, data)
+					break
+				}
+			}
+		}
+	}
+
+	return newResult
+}
+
+// GetAffinityComPlan return a mat.Matrix according to the new replicas
+func GetAffinityComPlan(result mat.Matrix, replicas int64) mat.Matrix {
+	// 按比例缩放实现
+	rows, cols := result.Dims()
+
+	// 计算每一行的总和
+	rowSums := make([]float64, rows)
+	for i := 0; i < rows; i++ {
+		for j := 0; j < cols; j++ {
+			rowSums[i] += result.At(i, j)
+		}
+	}
+
+	// 创建新的结果矩阵
+	newResult := mat.NewDense(rows, cols, nil)
+
+	// 缩放每一行的值并四舍五入为整数
+	for i := 0; i < rows; i++ {
+		if rowSums[i] == 0 {
+			newResult.SetRow(i, mat.DenseCopyOf(result).RawRowView(i))
+			klog.Infof("-----newResult is %+v", newResult)
+			continue
+		}
+
+		scaleFactor := float64(replicas) / rowSums[i]
+		rowSum := float64(0)
+		for j := 0; j < cols; j++ {
+			newValue := result.At(i, j) * scaleFactor
+			roundedValue := int64(newValue + 0.5) // 四舍五入为最接近的整数
+			newResult.Set(i, j, float64(roundedValue))
+			rowSum += float64(roundedValue)
+		}
+
+		// 如果行的总和不等于 replicas，则需要进行微调
+		diff := replicas - int64(rowSum)
+		for diff != 0 {
+			if diff > 0 {
+				// 将剩余的差值依次分配到每个元素中
+				for j := 0; j < cols; j++ {
+					newValue := newResult.At(i, j) + 1
+					newResult.Set(i, j, newValue)
+					diff--
+					if diff == 0 {
+						break
+					}
+				}
+			} else {
+				// 将剩余的差值依次从每个元素中减去
+				for j := 0; j < cols; j++ {
+					newValue := newResult.At(i, j) - 1
+					newResult.Set(i, j, newValue)
+					diff++
+					if diff == 0 {
+						break
+					}
+				}
+			}
+		}
+	}
+	return newResult
+}
+
+// GetAffinityComPlanForServerless return a mat.Matrix according to the destination component
+func GetAffinityComPlanForServerless(m mat.Matrix) mat.Matrix {
+	rows, cols := m.Dims()
+	newData := make([]float64, rows*cols)
+
+	for i := 0; i < rows; i++ {
+		for j := 0; j < cols; j++ {
+			val := m.At(i, j)
+			if val != 0 {
+				// set 1 at the place whose value is not equal 0
+				newData[i*cols+j] = 1
+			}
+		}
+	}
+	return mat.NewDense(rows, cols, newData)
 }
 
 // make a matrix to a rbApps struct.
@@ -507,4 +632,45 @@ func chosenOneInArrow(in mat.Matrix) mat.Matrix {
 		out.SetRow(i, dense)
 	}
 	return out
+}
+
+// checkAffinityCondition return whether one mat.Matrix fit the affinity conditions
+func checkAffinityCondition(m mat.Matrix, affinity []int) bool {
+	for i, j := range affinity {
+		if i != j {
+			if !checkMatrix(m, i, j) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func checkMatrix(m mat.Matrix, i, j int) bool {
+	_, ac := m.Dims()
+
+	for k := 0; k < ac; k++ {
+
+		if checkSpread(mat.DenseCopyOf(m).RawRowView(j)) {
+			if m.At(i, k) != 0 && m.At(j, k) == 0 {
+				return false
+			}
+		} else if (m.At(i, k) != 0 && m.At(j, k) == 0) || (m.At(i, k) == 0 && m.At(j, k) != 0) {
+			return false
+		}
+	}
+	return true
+}
+
+func checkSpread(a []float64) bool {
+	num := 0
+	for _, v := range a {
+		if v != 0 {
+			num++
+		}
+	}
+	if num > 1 {
+		return true
+	}
+	return false
 }

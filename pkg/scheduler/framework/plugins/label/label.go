@@ -4,17 +4,16 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
+	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/helper"
+	gaiaLabels "github.com/lmxia/gaia/pkg/scheduler/framework/plugins/label/labels"
+	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/names"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
-
-	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
-	gaiaLabels "github.com/lmxia/gaia/pkg/scheduler/framework/plugins/label/labels"
-	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/names"
 )
 
 // ClusterAffinity is a plugin that checks if a cluster filter various labels.
@@ -46,7 +45,7 @@ func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component, 
 	if gaiaSelector.Matches(gaiaLabels.Set(clusterLabels)) {
 		return nil
 	}
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no geoLocation fit for this com. cluster name is %v, component name is %v", cluster.Name, com.Name))
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no label fit for this com. cluster name is %v, component name is %v, clusterLabels is %+v, gaiaSelector is %+v", cluster.Name, com.Name, clusterLabels, gaiaSelector))
 }
 
 // NormalizeScore invoked after scoring all clusters.

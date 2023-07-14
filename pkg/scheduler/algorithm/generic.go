@@ -81,6 +81,69 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 
 	for i, comm := range components {
 		localComponent := &comm
+		affinityDest := affinity[comLocation[comm.Name]]
+		var componentMat mat.Matrix
+
+		// spread level info: full level, 2 level, 1 level
+		// spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}
+		// todo only 1 as default spread level
+		spreadLevels := []int64{1}
+
+		if affinityDest != i {
+			// this  is an affinity component
+			klog.V(5).Infof("There is no need to filter for affinity component:%s", comm.Name)
+
+			// get the affinityDest component filter Plan
+			if desc.Namespace == common.GaiaReservedNamespace {
+				for j, _ := range spreadLevels {
+					if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
+						//componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
+						// affinity logic
+						// components[i] is affinity with component[affinityDest]
+						componentMat = GetAffinityComPlanForDeployment(GetResultWithoutRB(allResultGlobal, j, affinityDest), int64(comm.Workload.TraitDeployment.Replicas), false)
+						allResultGlobal[j][i] = componentMat
+					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
+						componentMat = GetAffinityComPlanForServerless(GetResultWithoutRB(allResultGlobal, j, affinityDest))
+						allResultGlobal[j][i] = componentMat
+					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
+						// TODO no entrance in the UI about HyperOS S2 version
+						// same as serverless.
+						//componentMat := makeServelessPlan(allPlan, 1)
+						//allResultGlobal[j][i] = componentMat
+					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
+						// TODO no entrance in the UI about HyperOS S2 version
+						//componentMat, _ := makeUserAPPPlan(allPlan)
+						//allResultGlobal[j][i] = componentMat
+					}
+				}
+			} else {
+				for j, rb := range rbs {
+					replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
+					for k, _ := range spreadLevels {
+						if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
+							// affinity logic
+							// components[i] is affinity with component[affinityDest]
+							componentMat = GetAffinityComPlanForDeployment(GetResultWithRB(allResultWithRB, j, k, affinityDest), replicas, false)
+							allResultWithRB[j][k][i] = componentMat
+						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
+							componentMat = GetAffinityComPlanForServerless(GetResultWithRB(allResultWithRB, j, k, affinityDest))
+							allResultWithRB[j][k][i] = componentMat
+						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
+							// TODO no entrance in the UI about HyperOS S2 version
+							// same as serverless.
+							//componentMat := makeServelessPlan(allPlan, replicas)
+							//allResultWithRB[j][k][i] = componentMat
+						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
+							// TODO no entrance in the UI about HyperOS S2 version
+							//componentMat, _ := makeUserAPPPlan(allPlan)
+							//allResultWithRB[j][k][i] = componentMat
+						}
+					}
+				}
+			}
+			continue
+		}
+
 		// NO.1 pre filter
 		feasibleClusters, diagnosis, _ := g.findClustersThatFitComponent(ctx, fwk, localComponent)
 		// if err != nil {
@@ -97,11 +160,6 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			}
 			klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
 		}
-
-		// spread level info: full level, 2 level, 1 level
-		// spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}
-		// todo only 1 as default spread level
-		spreadLevels := []int64{1}
 		allPlan := nomalizeClusters(feasibleClusters, allClusters)
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {
@@ -151,7 +209,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	// NO.2 first we should spawn rbs.
 	if desc.Namespace == common.GaiaReservedNamespace {
 		// all 5
-		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc, components)
+		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc, components, affinity)
 		// 1. add networkFilter only if we can get nwr
 		if nwr, err := g.cache.GetNetworkRequirement(desc); err == nil {
 			networkInfoMap := g.getTopologyInfoMap()
@@ -167,7 +225,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			// score plugins.
 			priorityList, scoreError := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResultFinal)
 			if scoreError != nil {
-				klog.Warningf("score pulgin run error %v", scoreError)
+				klog.Warningf("score plugin run error %v", scoreError)
 			}
 			// select 2
 			rbsResultFinal, err = g.selectResourceBindings(priorityList, rbsResultFinal)
@@ -176,7 +234,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		rbIndex := 0
 		for i, rbOld := range rbs {
 			rbsResult := make([]*v1alpha1.ResourceBinding, 0)
-			rbForrb := spawnResourceBindings(allResultWithRB[i], allClusters, desc, components)
+			rbForrb := spawnResourceBindings(allResultWithRB[i], allClusters, desc, components, affinity)
 			for j, _ := range rbForrb {
 				subRBApps := make([]*v1alpha1.ResourceBindingApps, 0)
 				for _, rbapp := range rbOld.Spec.RbApps {

@@ -16,8 +16,8 @@ var (
 func nextScheduledTimeDuration(config appsV1alpha1.SchedulerConfig, now time.Time) (*time.Duration, bool, error) {
 	t, isStart, err := getNextScheduledTime(config, now)
 	if err != nil {
-		klog.WarningDepth(2, "failed go get nextScheduledTimeDuration, err: %v", err)
-		return nil, false, fmt.Errorf("failed go get nextScheduledTimeDuration, cronmaster start and stop are all nil")
+		klog.WarningDepth(2, "failed go get nextScheduledTimeDuration, error=", err)
+		return nil, false, fmt.Errorf("failed go get nextScheduledTimeDuration, cronmaster start and stop are all error")
 	}
 	td := t.Add(nextScheduleDelta).Sub(now)
 	return &td, isStart, nil
@@ -75,19 +75,20 @@ func getRecentStartTime(now time.Time, scheduleOfWeekday map[time.Weekday]appsV1
 		if scheduleOfWeekday[nowWeekday].StartSchedule != "" {
 			tOnly, err := time.Parse(time.TimeOnly, scheduleOfWeekday[nowWeekday].StartSchedule)
 			if err != nil {
-				klog.WarningDepth(2, "invalid ScheduleTimeSet %q %q", nowWeekday, scheduleOfWeekday[nowWeekday].StartSchedule)
+				klog.WarningDepth(2, "invalid ScheduleTimeSet, 'Weekday' is ", nowWeekday, "'StartSchedule' is ", scheduleOfWeekday[nowWeekday].StartSchedule)
 				return now, err
 			}
-			klog.V(5).Info("schedule time: %q", tOnly)
+			klog.V(5).Info("StartSchedule Time: ", tOnly)
 			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(), tOnly.Second(), 0, now.Location())
-			klog.V(5).Info("next end schedule time: %q", tSchedule)
+			tSchedule = tSchedule.AddDate(0, 0, j)
+			klog.V(5).Info("next start schedule DateTime: ", tSchedule)
 			if tSchedule.After(now) {
 				return tSchedule, nil
 			}
 		}
 		nowWeekday++
 	}
-	return now, fmt.Errorf("no available EndSchedule datetime")
+	return now, fmt.Errorf("no available StartSchedule datetime")
 }
 
 func getRecentEndTime(now time.Time, scheduleOfWeekday map[time.Weekday]appsV1alpha1.ScheduleTimeSet) (time.Time, error) {
@@ -99,12 +100,13 @@ func getRecentEndTime(now time.Time, scheduleOfWeekday map[time.Weekday]appsV1al
 		if scheduleOfWeekday[nowWeekday].EndSchedule != "" {
 			tOnly, err := time.Parse(time.TimeOnly, scheduleOfWeekday[nowWeekday].EndSchedule)
 			if err != nil {
-				klog.WarningDepth(2, "invalid ScheduleTimeSet %q %q", nowWeekday, scheduleOfWeekday[nowWeekday].EndSchedule)
+				klog.WarningDepth(2, "invalid ScheduleTimeSet, 'Weekday' is ", nowWeekday, "'EndSchedule' is ", scheduleOfWeekday[nowWeekday].EndSchedule)
 				return now, err
 			}
 			klog.V(5).Info("schedule time: %q", tOnly)
 			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(), tOnly.Second(), 0, now.Location())
-			klog.V(5).Info("next end schedule time: %q", tSchedule)
+			tSchedule = tSchedule.AddDate(0, 0, j)
+			klog.V(5).Info("next end schedule DateTime: ", tSchedule)
 			if tSchedule.After(now) {
 				return tSchedule, nil
 			}

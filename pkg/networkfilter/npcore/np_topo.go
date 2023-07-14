@@ -3,6 +3,7 @@ package npcore
 import (
 	"fmt"
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
+	"sort"
 )
 
 /***********************************************************************************************************************/
@@ -64,6 +65,81 @@ type DomainSrNamePath struct {
 /**********************************************************************************************/
 /******************************************* API ********************************************/
 /**********************************************************************************************/
+func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr, reverseDelay uint32) bool {
+	nputil.TraceInfoBegin("")
+
+	var bCheckSla bool
+	var bRttCheck bool
+	var bProviderCheck bool
+
+	//Check Sla
+	if appLinkAttr.LinkSlaAttr.Mandatory == true {
+		bCheckSla = domainSrPath.IsSatisfiedSla(appLinkAttr.LinkSlaAttr.SlaAttr)
+		//如果设置的Mandatory属性
+		if bCheckSla == false {
+			nputil.TraceInfoEnd("False: Sla is not satisfied")
+			return false
+		}
+	}
+	//Check RTT
+	if appLinkAttr.LinkRttAttr.Mandatory == true {
+		bRttCheck = domainSrPath.IsSatisfiedRtt(reverseDelay, appLinkAttr.LinkRttAttr)
+		//如果设置的Mandatory属性
+		if bRttCheck == false {
+			nputil.TraceInfoEnd("False: Sla is not satisfied")
+			return false
+		}
+	}
+	//Check Providers
+	if appLinkAttr.Providers.Mandatory == true {
+		bProviderCheck = domainSrPath.IsSatisfiedProvider(appLinkAttr.Providers)
+		//如果设置的Mandatory属性
+		if bProviderCheck == false {
+			nputil.TraceInfoEnd("False: Provider is not satisfied")
+			return false
+		}
+	}
+
+	nputil.TraceInfoEnd("NetworkRequirment is satisfied, True")
+	return true
+}
+
+func (domainSrPath *DomainSrPath) IsSatisfiedRtt(reverseDelay uint32, rttAttr AppLinkRttAttr) bool {
+	nputil.TraceInfoBegin("")
+
+	_, tmpDelay := domainSrPath.GetDomainSrPathDelay()
+	//标识通信有rt指标要求
+	if rttAttr.Rtt != 0 && (tmpDelay+reverseDelay) > (uint32)(rttAttr.Rtt) {
+		nputil.TraceInfoEnd("False: Rtt is not satisfied")
+		return false
+	}
+	nputil.TraceInfoEnd("RTT is satisfied, True")
+	return true
+
+}
+
+func (domainSrPath *DomainSrPath) IsSatisfiedProvider(provider AppLinkProviderAttr) bool {
+	nputil.TraceInfoBegin("")
+
+	graph := GraphFindByGraphType(GraphTypeAlgo_Cspf)
+	domainInfoPath := graph.GetDomainPathNameWithFaric(*domainSrPath)
+	var domainNameList []string
+	for _, domainInfo := range domainInfoPath {
+		domainNameList = append(domainNameList, domainInfo.DomainName)
+	}
+	for _, proName := range provider.Providers {
+		sort.Strings(domainNameList)
+		index := sort.SearchStrings(domainNameList, proName)
+		if !(index < len(domainNameList) && domainNameList[index] == proName) {
+			nputil.TraceInfoEnd("False: Provider is not satisfied")
+			return false
+		}
+	}
+
+	nputil.TraceInfoEnd("Provider is satisfied, True")
+	return true
+
+}
 
 func (domainSrPath *DomainSrPath) IsSatisfiedSla(appSlaAttr AppSlaAttr) bool {
 	nputil.TraceInfoBegin("")
@@ -72,38 +148,41 @@ func (domainSrPath *DomainSrPath) IsSatisfiedSla(appSlaAttr AppSlaAttr) bool {
 	if appSlaAttr.ThroughputValue != 0 {
 		bCheck := domainSrPath.isSatisfiedThroughput(appSlaAttr)
 		if bCheck == false {
-			nputil.TraceInfoEnd("False: throughput is not satisy")
+			nputil.TraceInfoEnd("False: throughput is not satisfied")
 			return false
 		}
 	}
 	//时延是否满足SLA,因为NBI对外接口是int32值，所以输入最大值是0x7fffffff，最大值认为是不需要关注时延
-	if appSlaAttr.DelayValue < 0xffffffff {
+	if appSlaAttr.DelayValue != 0 &&
+		appSlaAttr.DelayValue < 0xffff {
 		bCheck := domainSrPath.isSatisfiedDelay(appSlaAttr)
 		if bCheck == false {
-			nputil.TraceInfoEnd("False: delay")
+			nputil.TraceInfoEnd("False: delay is not satisfied")
 			return false
 		}
 	}
 
 	//丢包率是否满足SLA,100认为是最大值，不需要关注丢包率
-	if appSlaAttr.LostValue < 100 {
+	if appSlaAttr.LostValue != 0 &&
+		appSlaAttr.LostValue < 100 {
 		bCheck := domainSrPath.isSatisfiedLost(appSlaAttr)
 		if bCheck == false {
-			nputil.TraceInfoEnd("False: lostrate")
+			nputil.TraceInfoEnd("False: lostrate is not satisfied")
 			return false
 		}
 	}
 
 	//抖动是否满足SLA
-	if appSlaAttr.JitterValue < 0xffffffff {
+	if appSlaAttr.JitterValue != 0 &&
+		appSlaAttr.JitterValue < 0xffff {
 		bCheck := domainSrPath.isSatisfiedJitter(appSlaAttr)
 		if bCheck == false {
-			nputil.TraceInfoEnd("False: jitter")
+			nputil.TraceInfoEnd("False: jitter is not satisfied")
 			return false
 		}
 	}
 
-	nputil.TraceInfoEnd("Sla is satisfy,True")
+	nputil.TraceInfoEnd("Sla is satisfied, True")
 	return true
 }
 
@@ -118,11 +197,11 @@ func (domainSrPath *DomainSrPath) isSatisfiedThroughput(appSlaAttr AppSlaAttr) b
 		infoString := fmt.Sprintf("srcDomainSid(%+v), dstDomainSid(%+v)", srcDomainSid, dstDomainSid)
 		nputil.TraceInfo(infoString)
 
-		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.SrcNodeSN, dstDomainSid.DomainId, dstDomainSid.DstNodeSN)
+		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.DstNodeSN, dstDomainSid.DomainId, dstDomainSid.SrcNodeSN)
 		infoString = fmt.Sprintf("baseDomainLink.BaseDomainLinkDbV(%+v), slaAttr(%+v)", baseDomainLink.BaseDomainLinkDbV, appSlaAttr)
 		nputil.TraceInfo(infoString)
 		//If free-bandwidth is lower than requirement, return false
-		if appSlaAttr.ThroughputValue > baseDomainLink.BaseDomainLinkDbV.Sla.FreeThroughputValue {
+		if uint64(appSlaAttr.ThroughputValue) > baseDomainLink.BaseDomainLinkDbV.Sla.FreeThroughputValue {
 			nputil.TraceInfoEnd("Throughput is not satisfied!")
 			return false
 		}
@@ -155,11 +234,11 @@ func (domainSrPath *DomainSrPath) isSatisfiedThroughputAndUpdate(appSlaAttr AppS
 		infoString := fmt.Sprintf("srcDomainSid(%+v), dstDomainSid(%+v)", srcDomainSid, dstDomainSid)
 		nputil.TraceInfo(infoString)
 
-		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.SrcNodeSN, dstDomainSid.DomainId, dstDomainSid.DstNodeSN)
+		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.DstNodeSN, dstDomainSid.DomainId, dstDomainSid.SrcNodeSN)
 		infoString = fmt.Sprintf("baseDomainLink.BaseDomainLinkDbV(%+v), slaAttr(%+v)", baseDomainLink.BaseDomainLinkDbV, appSlaAttr)
 		nputil.TraceInfo(infoString)
 		//If free-bandwidth is lower than requirement, return false
-		if appSlaAttr.ThroughputValue > baseDomainLink.BaseDomainLinkDbV.Sla.FreeThroughputValue {
+		if uint64(appSlaAttr.ThroughputValue) > baseDomainLink.BaseDomainLinkDbV.Sla.FreeThroughputValue {
 			nputil.TraceInfoEnd("Throughput is not satisfied!")
 			return false
 		}
@@ -171,33 +250,41 @@ func (domainSrPath *DomainSrPath) isSatisfiedThroughputAndUpdate(appSlaAttr AppS
 		dstDomainSid := domainSrPath.DomainSidArray[j+1]
 
 		//找domainlink，比较Fabric SLA质量矩阵中值是否满足SLA
-		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.SrcNodeSN, dstDomainSid.DomainId, dstDomainSid.DstNodeSN)
+		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.DstNodeSN, dstDomainSid.DomainId, dstDomainSid.SrcNodeSN)
 		infoString := fmt.Sprintf("Update baseDomainLink free bandwidth: BaseDomainLinkDbV(%+v), slaAttr(%+v)", baseDomainLink.BaseDomainLinkDbV, appSlaAttr)
 		nputil.TraceInfo(infoString)
-		baseDomainLink.UpdateBaseDomainLinkFreeBandwidth(appSlaAttr.ThroughputValue)
+		baseDomainLink.UpdateBaseDomainLinkFreeBandwidth(uint64(appSlaAttr.ThroughputValue))
 	}
 	nputil.TraceInfoEnd("Throughput is satisfied!")
 	return true
 }
 
-func (domainSrPath *DomainSrPath) isSatisfiedDelay(appSlaAttr AppSlaAttr) bool {
+func (domainSrPath *DomainSrPath) GetDomainSrPathDelay() (bool, uint32) {
 	nputil.TraceInfoBegin("")
 
 	var totalDelay uint32
 
+	infoString := fmt.Sprintf("domainSrPath is:(%+v)", domainSrPath)
+	nputil.TraceInfo(infoString)
 	//遍历路径中所有节点，获取节点link的delay值
 	for j := 0; j < len(domainSrPath.DomainSidArray)-1; j++ {
 		srcDomainSid := domainSrPath.DomainSidArray[j]
 		dstDomainSid := domainSrPath.DomainSidArray[j+1]
 
+		/*domainSrPath:
+		[{DomainId:4 SrcNodeSN:Node42 DstNodeSN:Node42 DomainType:1}
+		{DomainId:2 SrcNodeSN:Node24 DstNodeSN:Node21 DomainType:1}
+		{DomainId:1 SrcNodeSN:Node12 DstNodeSN: DomainType:1}]})"*/
+		infoString := fmt.Sprintf("SrcDomain is:(%+v),SrcNode is:(%+v), dstDomain is:(%+v), dstNode is:(%+v)", srcDomainSid.DomainId, srcDomainSid.DstNodeSN, dstDomainSid.DomainId, dstDomainSid.SrcNodeSN)
+		nputil.TraceInfo(infoString)
 		//找domainlink，比较Fabric SLA质量矩阵中值是否满足SLA
-		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.SrcNodeSN, dstDomainSid.DomainId, dstDomainSid.DstNodeSN)
+		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.DstNodeSN, dstDomainSid.DomainId, dstDomainSid.SrcNodeSN)
 		if baseDomainLink == nil {
 			nputil.TraceErrorStringWithStack("baseDomainLink is nil")
-			return false
+			return false, totalDelay
 		}
 
-		infoString := fmt.Sprintf("baseDomainLink.BaseDomainLinkDbV(%+v), slaAttr(%+v)", baseDomainLink.BaseDomainLinkDbV, appSlaAttr)
+		infoString = fmt.Sprintf("baseDomainLink.BaseDomainLinkDbV(%+v).", baseDomainLink.BaseDomainLinkDbV)
 		nputil.TraceInfo(infoString)
 
 		tmpDelay := baseDomainLink.BaseDomainLinkDbV.Sla.DelayValue
@@ -209,7 +296,24 @@ func (domainSrPath *DomainSrPath) isSatisfiedDelay(appSlaAttr AppSlaAttr) bool {
 	}
 
 	totalDelay = totalDelay + Field_Domain_Inner_Delay //最后尾域Field域内的预估时延
-	if totalDelay > appSlaAttr.DelayValue {
+	infoString = fmt.Sprintf("totalDelay(%d)", totalDelay)
+	nputil.TraceInfo(infoString)
+
+	nputil.TraceInfoEnd("")
+	return true, totalDelay
+}
+
+func (domainSrPath *DomainSrPath) isSatisfiedDelay(appSlaAttr AppSlaAttr) bool {
+	nputil.TraceInfoBegin("")
+
+	var totalDelay uint32
+
+	ret, totalDelay := domainSrPath.GetDomainSrPathDelay()
+	if ret == false {
+		nputil.TraceErrorStringWithStack("baseDomainLink is nil")
+		return false
+	}
+	if totalDelay > uint32(appSlaAttr.DelayValue) {
 		nputil.TraceInfoEnd("Delay is not satisfied!")
 		return false
 	} else {
@@ -229,7 +333,7 @@ func (domainSrPath *DomainSrPath) isSatisfiedLost(appSlaAttr AppSlaAttr) bool {
 		dstDomainSid := domainSrPath.DomainSidArray[j+1]
 
 		//找domainlink，比较Fabric SLA质量矩阵中值是否满足SLA
-		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.SrcNodeSN, dstDomainSid.DomainId, dstDomainSid.DstNodeSN)
+		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.DstNodeSN, dstDomainSid.DomainId, dstDomainSid.SrcNodeSN)
 		if baseDomainLink == nil {
 			nputil.TraceErrorStringWithStack("baseDomainLink is nil")
 			return false
@@ -245,7 +349,7 @@ func (domainSrPath *DomainSrPath) isSatisfiedLost(appSlaAttr AppSlaAttr) bool {
 		nputil.TraceInfo(infoString)
 	}
 
-	if (100 - totalNotLost) > appSlaAttr.LostValue {
+	if (100 - totalNotLost) > uint32(appSlaAttr.LostValue) {
 		nputil.TraceInfoEnd("Lost rate is not satisfied!")
 		return false
 	} else {
@@ -263,7 +367,7 @@ func (domainSrPath *DomainSrPath) isSatisfiedJitter(appSlaAttr AppSlaAttr) bool 
 		dstDomainSid := domainSrPath.DomainSidArray[j+1]
 
 		//找domainlink，比较Fabric SLA质量矩阵中值是否满足SLA
-		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.SrcNodeSN, dstDomainSid.DomainId, dstDomainSid.DstNodeSN)
+		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.DstNodeSN, dstDomainSid.DomainId, dstDomainSid.SrcNodeSN)
 		if baseDomainLink == nil {
 			nputil.TraceErrorStringWithStack("baseDomainLink is nil")
 			return false
@@ -274,7 +378,7 @@ func (domainSrPath *DomainSrPath) isSatisfiedJitter(appSlaAttr AppSlaAttr) bool 
 
 		tmpJitter := baseDomainLink.BaseDomainLinkDbV.Sla.JitterValue
 
-		if tmpJitter > appSlaAttr.JitterValue {
+		if tmpJitter > uint32(appSlaAttr.JitterValue) {
 			nputil.TraceInfoEnd("Jitter is not satisfied!")
 			return false
 		}

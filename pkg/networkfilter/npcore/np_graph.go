@@ -478,12 +478,12 @@ func (domainGraph *DomainGraph) DomainFindById(domainId uint32) *Domain {
 	return val.(*Domain)
 }
 
-func (graph *Graph) AppConnect(domainLinkKspGraph *DomainLinkKspGraph, spfCalcMaxNum int, query simple.Edge, appConnectAttr AppConnectAttr) []DomainSrPath {
+func (graph *Graph) AppConnect(domainLinkKspGraph *DomainLinkKspGraph, spfCalcMaxNum int, appLinkAttr AppLinkAttr) []DomainSrPath {
 	nputil.TraceInfoBegin("")
 
 	domainGraph := graph.DomainGraphPoint
-	domain := domainGraph.DomainFindById(appConnectAttr.Key.SrcDomainId)
-	domainSrPathArray := domain.SpfCalcDomainPathForAppConnect(domainLinkKspGraph, spfCalcMaxNum, query, appConnectAttr.SlaAttr)
+	domain := domainGraph.DomainFindById(appLinkAttr.Key.SrcDomainId)
+	domainSrPathArray := domain.SpfCalcDomainPathForAppConnect(domainLinkKspGraph, spfCalcMaxNum, appLinkAttr)
 	nputil.TraceInfoBegin("")
 
 	return domainSrPathArray
@@ -645,61 +645,108 @@ func (domainGraph *DomainGraph) DomainSrPathCreateByKspPath(path PathAttr) *Doma
 		nputil.TraceInfo(infoString)
 		domainSrPath.DomainSidArray[j].DomainId = domainKey.DomainId
 		domainSrPath.DomainSidArray[j].DomainType = String2DomainType(domainTypeString_Field)
-	}
-	for j := 0; j < len(path.PathIds); j++ {
+
+		//get SrcNodeSN
 		if j > 0 {
 			srcDomainID := domainSrPath.DomainSidArray[j-1].DomainId
 			destDomainID := domainSrPath.DomainSidArray[j].DomainId
 			LastDomainLink, _ := GetMiniDalyDomainLink(srcDomainID, destDomainID, domainGraph)
-			domainSrPath.DomainSidArray[j].DstNodeSN = LastDomainLink.Key.DstNodeSN
+			domainSrPath.DomainSidArray[j].SrcNodeSN = LastDomainLink.Key.DstNodeSN
 		}
 		if j < (len(path.PathIds) - 1) {
 			srcDomainID := domainSrPath.DomainSidArray[j].DomainId
+			nextDomainKey := domainGraph.SpfID2DomainKey[path.PathIds[j+1]]
+			domainSrPath.DomainSidArray[j+1].DomainId = nextDomainKey.DomainId
 			destDomainID := domainSrPath.DomainSidArray[j+1].DomainId
 			NextDomainLink, _ := GetMiniDalyDomainLink(srcDomainID, destDomainID, domainGraph)
-			domainSrPath.DomainSidArray[j].SrcNodeSN = NextDomainLink.Key.SrcNodeSN
-			//baseDomain := baseDomainGraph.BaseDomainFindById(NextDomainLink.Key.SrcDomainId)
-			//baseDomainLink := baseDomain.BaseDomainLinkFindByKey(NextDomainLink.Key)
-			//domainVlink := DomainVLinkCreateByBaseDomainLink(baseDomainLink)
-			//domainSrPath.DomainSidArray[j].DomainVlink = *domainVlink
+			infoString := fmt.Sprintf(" NextDomainLink Key is : (%+v)", NextDomainLink.Key)
+			nputil.TraceInfo(infoString)
+			domainSrPath.DomainSidArray[j].DstNodeSN = NextDomainLink.Key.SrcNodeSN
 		}
 	}
 	//等前面for循环，赋值好以后，单独处理头节点的Hub
 	domainLink, _ := GetMiniDalyDomainLink(domainSrPath.DomainSidArray[0].DomainId, domainSrPath.DomainSidArray[1].DomainId, domainGraph)
 	domainSrPath.DomainSidArray[0].SrcNodeSN = domainLink.Key.SrcNodeSN
 
-	infoString = fmt.Sprintf("domainSrPath is %+v", domainSrPath)
+	infoString = fmt.Sprintf("domainSrPath is (%+v).", domainSrPath)
 	nputil.TraceInfo(infoString)
 
 	nputil.TraceInfoEnd("")
 	return domainSrPath
 }
 
-func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainLinkKspGraph, spfCalcMaxNum int, query simple.Edge, appSlaAttr AppSlaAttr) []DomainSrPath {
+func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainLinkKspGraph, spfCalcMaxNum int, appLinkAttr AppLinkAttr) []DomainSrPath {
 	nputil.TraceInfoBegin("")
 
+	//如果蓝图有rt指标要求：
+	//1.计算反向的APP连接请求路径，且只验证时延是否满足要求：
+	// (1)正向路径时延+反向路径时延<rt指标
+	//2.单条路径总时延=KSP路径的总weight+4ms*单条KSP的节点数   （各个filed节点的4ms时延）
+	//3.对于特定的appconnect,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
+	//4.将剩余的rt,返回给计算调度
+	var domainSrPathArray []DomainSrPath
 	domainGraph := domain.DomainGraphPoint
+	//计算APP连接请求的正向K条domainsr路径
+	srcDomainSpfID, _ := getDomainSpfID(appLinkAttr.Key.SrcDomainId)
+	dstDomainSpfID, _ := getDomainSpfID(appLinkAttr.Key.DstDomainId)
+	query := simple.Edge{F: simple.Node(srcDomainSpfID), T: simple.Node(dstDomainSpfID)}
 	bestPathGroups := KspCalcDomainPath(domainLinkKspGraph, spfCalcMaxNum, query)
 	if len(bestPathGroups) == 0 {
 		nputil.TraceInfoEnd("No shortest path!")
-		retDomainSrPathArray := []DomainSrPath{}
-		return retDomainSrPathArray
+		return domainSrPathArray
 	}
-	var domainSrPathArray []DomainSrPath
+
+	//计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
+	reverseDelay, err := domain.CalReverseDomainPathMinDelay(domainLinkKspGraph, spfCalcMaxNum, appLinkAttr)
+	if err != nil {
+		nputil.TraceInfoEnd("No reverse shortest path!")
+		return domainSrPathArray
+	}
+
 	for _, bestPath := range bestPathGroups {
 		domainSrPath := domainGraph.DomainSrPathCreateByKspPath(bestPath)
-		if domainSrPath.IsSatisfiedSla(appSlaAttr) == true {
+		if domainSrPath.IsSatisfiedNetworkReq(appLinkAttr, reverseDelay) == true {
 			domainSrPathArray = append(domainSrPathArray, *domainSrPath)
 		}
 	}
 	if len(domainSrPathArray) == 0 {
-		infoString := fmt.Sprintf("Calc Domain path for AppConnect is not satisified.")
+		infoString := fmt.Sprintf("Calc Domain path for AppConnect is not satisified!")
 		nputil.TraceInfo(infoString)
 	}
 	infoString := fmt.Sprintf("SpfCalcDomainPathForAppConnect: domainSrPathArray is (%+v)!\n", domainSrPathArray)
 	nputil.TraceInfo(infoString)
 	nputil.TraceInfoEnd("")
 	return domainSrPathArray
+}
+
+func (domain *Domain) CalReverseDomainPathMinDelay(domainLinkKspGraph *DomainLinkKspGraph, spfCalcMaxNum int, appLinkAttr AppLinkAttr) (uint32, error) {
+	nputil.TraceInfoBegin("")
+
+	domainGraph := domain.DomainGraphPoint
+
+	//计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
+	srcReverseDomainSpfID, _ := getDomainSpfID(appLinkAttr.Key.DstDomainId)
+	dstReverseDomainSpfID, _ := getDomainSpfID(appLinkAttr.Key.SrcDomainId)
+	queryReverse := simple.Edge{F: simple.Node(srcReverseDomainSpfID), T: simple.Node(dstReverseDomainSpfID)}
+	reverseBestPathGroups := KspCalcDomainPath(domainLinkKspGraph, spfCalcMaxNum, queryReverse)
+	if len(reverseBestPathGroups) == 0 {
+		infoString := fmt.Sprintf("No reverse shortest path!\"")
+		nputil.TraceErrorString(infoString)
+		rtnErr := errors.New(infoString)
+		nputil.TraceInfoEnd("")
+		return 0, rtnErr
+	}
+
+	reverseDomainSrPath := domainGraph.DomainSrPathCreateByKspPath(reverseBestPathGroups[0])
+	ret, reverseMinDelay := reverseDomainSrPath.GetDomainSrPathDelay()
+	if ret == false {
+		infoString := fmt.Sprintf("Reverse baseDomainLink is nil!")
+		nputil.TraceErrorString(infoString)
+		rtnErr := errors.New(infoString)
+		nputil.TraceInfoEnd("")
+		return 0, rtnErr
+	}
+	return reverseMinDelay, nil
 }
 
 func (graph *Graph) GetDomainPathNameWithFaric(domainSrPath DomainSrPath) []DomainInfo {

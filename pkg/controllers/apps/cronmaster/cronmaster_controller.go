@@ -267,6 +267,7 @@ func (c *Controller) getResourceToBeReconciled(cron *appsV1alpha1.CronMaster) (*
 }
 
 func (c *Controller) syncCronMaster(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured) (*appsV1alpha1.CronMaster, bool, *time.Duration, error) {
+	klog.V(2).InfoS("syncCronMaster: handle CronMaster ... ", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
 	cron = cron.DeepCopy()
 	now := c.now()
 	var err error

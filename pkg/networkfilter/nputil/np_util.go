@@ -6,7 +6,6 @@ import (
 	"github.com/lmxia/gaia/pkg/networkfilter/logx"
 	"hash/fnv"
 	"math/rand"
-	"os"
 	"runtime"
 	"runtime/debug"
 	"strconv"
@@ -19,7 +18,7 @@ type LocalStatus uint32
 const (
 	LocalStatus_Invalid LocalStatus = 0
 	LocalStatus_Running LocalStatus = 1
-	LogSwitch                       = "Off"
+	LogSwitch                       = "ON"
 )
 
 func TraceInfo(inputString string) {
@@ -33,10 +32,11 @@ func TraceInfo(inputString string) {
 }
 
 func TraceInfoAlwaysPrint(inputString string) {
-	LogEnable := os.Getenv("NetFilterLogEnable")
-	if len(LogEnable) == 0 || LogEnable != "ON" {
+	/*LogEnable := os.Getenv("NetFilterLogEnable")
+	//if len(LogEnable) == 0 || LogEnable != "ON" {
+	if len(LogEnable) == 0 {
 		return
-	}
+	}*/
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()

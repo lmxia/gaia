@@ -63,15 +63,32 @@ spec:
           type: link
         object:
           name: sla
-          type: QOS-sla
+          type: sla
         relation: Is
-        extent: ewogICJzbGEiOiB7CiAgICAiZGVsYXkiOiA5OTk5OTksCiAgICAibG9zdCI6IDEwMCwKICAgICJqaXR0ZXIiOiA5OTk5OTksCiAgICAiYmFuZHdpZHRoIjogOAogIH0KfQo= # {"sla": {"delay": 999999, "lost": 100, "jitter": 999999, "bandwidth": 8}}
+        extent: eyJkZWxheVZhbHVlIjoxMDAwMCwibG9zdFZhbHVlIjoxMDAsImppdHRlclZhbHVlIjoxMDAsInRocm91Z2hwdXRWYWx1ZSI6MTAwfQ== # {"delayValue":10000,"lostValue":100,"jitterValue":100,"throughputValue":100}
+      - subject:
+          name: link1
+          type: link
+        object:
+          name: rtt
+          type: rtt
+        relation: Is
+        extent: eyJydHQiOjUwfQ== # {"rtt":50}
+
     BestEffort:
       - subject:
           name: link2
           type: link
         object:
           name: rtt
-          type: QOS
+          type: rtt
         relation: Is
-        extent: ewogICJydHQiOiAxMAp9Cg== # {"rtt": 10}
+        extent: eyJydHQiOjUwfQ== # {"rtt":50}
+      - subject:
+          name: link2
+          type: link
+        object:
+          name: accelerate
+          type: accelerate
+        relation: Is
+        extent: eyJhY2NlbGVyYXRlIjogInRydWUifQ= # {"accelerate": "true"}

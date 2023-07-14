@@ -90,6 +90,7 @@ message AppConnectAttr {
     AppSlaAttr    SlaAttr = 2;
     repeated KVAttribute SrcScnidKVList  = 3;
     repeated KVAttribute DestScnidKVList = 4;
+    bool Accelerate = 5;
 }
 
 message AppConnectKey {

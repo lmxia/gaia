@@ -53,6 +53,8 @@ const (
 	domainTypeString_Fabric_Mpls     = "Fabric_Mpls"
 	domainTypeString_Fabric_Otn      = "Fabric_Otn"
 	domainTypeString_Fabric_Sdwan    = "Fabric_Sdwan"
+	domainTypeString_Fabric_Srte     = "Fabric_Srte"
+	domainTypeString_Fabric_Ceni     = "Fabric_Ceni"
 )
 
 const (
@@ -62,6 +64,8 @@ const (
 	DomainType_Fabric_MPLS     DomainType = 3
 	DomainType_Fabric_OTN      DomainType = 4
 	DomainType_Fabric_SDWAN    DomainType = 5
+	DomainType_Fabric_SRTE     DomainType = 6
+	DomainType_Fabric_CENI     DomainType = 7
 )
 
 /***********************************************************************************************************************/
@@ -185,6 +189,12 @@ func String2DomainType(domainTypeString string) DomainType {
 	} else if domainTypeString == domainTypeString_Fabric_Sdwan {
 		nputil.TraceInfoEnd("DomainType_Fabric_SDWAN")
 		return DomainType_Fabric_SDWAN
+	} else if domainTypeString == domainTypeString_Fabric_Srte {
+		nputil.TraceInfoEnd("DomainType_Fabric_SRTE")
+		return DomainType_Fabric_SRTE
+	} else if domainTypeString == domainTypeString_Fabric_Ceni {
+		nputil.TraceInfoEnd("DomainType_Fabric_Ceni")
+		return DomainType_Fabric_CENI
 	}
 
 	nputil.TraceInfoEnd("DomainType_Invalid")

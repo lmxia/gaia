@@ -77,125 +77,626 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 
 	var networkReq = v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
+							},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+					1: {
+						LinkName:      "link-a-c",
+						SourceID:      "sca2",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca2-sk1",
+								Value: "sca2-sv1",
+							},
+							1: {
+								Key:   "sca2-sk2",
+								Value: "sca2-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
+					2: {
+						LinkName:      "link-b-c",
+						SourceID:      "scb1",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-sk1",
+								Value: "scb1-sv1",
+							},
+							1: {
+								Key:   "scb1-sk2",
+								Value: "scb1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
+				},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "provider",
+							Type: "label",
+						},
+						Relation: "In",
+						Extent:   []byte("[\"Fabric12\"]"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					2: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "rtt",
+							Type: "rtt",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Rtt\":50}"),
+					},
+				},
+				BestEffort: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "accelerate",
+							Type: "accelerate",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Accelerate\": true}"),
+					},
+				},
+			},
+		},
+	}
+	return rbs, &networkReq
+}
+
+func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+
+	var rbs []*v1alpha1.ResourceBinding
+	var rb0 = v1alpha1.ResourceBinding{
+		Spec: v1alpha1.ResourceBindingSpec{
+			AppID: "0",
+			RbApps: []*v1alpha1.ResourceBindingApps{
 				0: {
-					Name:   "a",
-					SelfID: []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-sk1",
-										Value: "sca1-sv1",
-									},
-									1: {
-										Key:   "sca1-sk2",
-										Value: "sca1-sv2",
-									},
-								},
-							},
-							Destination: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
-							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
-							},
-						},
-						1: {
-							Source: v1alpha1.Direction{
-								Id: "sca2",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca2-sk1",
-										Value: "sca2-sv1",
-									},
-									1: {
-										Key:   "sca2-sk2",
-										Value: "sca2-sv2",
-									},
-								},
-							},
-							Destination: v1alpha1.Direction{
-								Id: "scc1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scc1-dk1",
-										Value: "scc1-dv1",
-									},
-									1: {
-										Key:   "scc1-dk2",
-										Value: "scc1-dv2",
-									},
-								},
-							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
-							},
-						},
+					ClusterName: "Domain1",
+					Replicas: map[string]int32{
+						"a": 2,
+						"b": 0,
 					},
 				},
 				1: {
-					Name:   "b",
-					SelfID: []string{"scb1"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-sk1",
-										Value: "scb1-sv1",
-									},
-									1: {
-										Key:   "scb1-sk2",
-										Value: "scb1-sv2",
-									},
-								},
+					ClusterName: "Domain4",
+					Replicas: map[string]int32{
+						"a": 0,
+						"b": 1,
+					},
+				},
+				2: {
+					ClusterName: "Domain3",
+					Replicas: map[string]int32{
+						"a": 0,
+						"c": 2,
+					},
+				},
+			},
+		},
+	}
+	rbs = append(rbs, &rb0)
+
+	var networkReq = v1alpha1.NetworkRequirement{
+		Spec: v1alpha1.NetworkRequirementSpec{
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
 							},
-							Destination: v1alpha1.Direction{
-								Id: "scc1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scc1-dk1",
-										Value: "scc1-dv1",
-									},
-									1: {
-										Key:   "scc1-dk2",
-										Value: "scc1-dv2",
-									},
-								},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
 							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
 							},
 						},
 					},
 				},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "rtt",
+							Type: "rtt",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Rtt\":100}"),
+					},
+				},
+			},
+		},
+	}
+	return rbs, &networkReq
+}
+
+func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+
+	var rbs []*v1alpha1.ResourceBinding
+	var rb0 = v1alpha1.ResourceBinding{
+		Spec: v1alpha1.ResourceBindingSpec{
+			AppID: "0",
+			RbApps: []*v1alpha1.ResourceBindingApps{
+				0: {
+					ClusterName: "Domain1",
+					Replicas: map[string]int32{
+						"a": 2,
+						"b": 0,
+					},
+				},
+				1: {
+					ClusterName: "Domain4",
+					Replicas: map[string]int32{
+						"a": 0,
+						"b": 1,
+					},
+				},
 				2: {
-					Name:       "c",
-					SelfID:     []string{"scc1"},
-					InterSCNID: []v1alpha1.InterSCNID{},
+					ClusterName: "Domain3",
+					Replicas: map[string]int32{
+						"a": 0,
+						"c": 2,
+					},
+				},
+			},
+		},
+	}
+	rbs = append(rbs, &rb0)
+
+	var networkReq = v1alpha1.NetworkRequirement{
+		Spec: v1alpha1.NetworkRequirementSpec{
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
+							},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+				},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "provider",
+							Type: "label",
+						},
+						Relation: "In",
+						Extent:   []byte("[\"Fabric12\"]"),
+					},
+				},
+			},
+		},
+	}
+	return rbs, &networkReq
+}
+
+func SetRbsAndNetReqAccelerate() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+
+	var rbs []*v1alpha1.ResourceBinding
+	var rb0 = v1alpha1.ResourceBinding{
+		Spec: v1alpha1.ResourceBindingSpec{
+			AppID: "0",
+			RbApps: []*v1alpha1.ResourceBindingApps{
+				0: {
+					ClusterName: "Domain1",
+					Replicas: map[string]int32{
+						"a": 2,
+						"b": 0,
+					},
+				},
+				1: {
+					ClusterName: "Domain4",
+					Replicas: map[string]int32{
+						"a": 0,
+						"b": 1,
+					},
+				},
+				2: {
+					ClusterName: "Domain3",
+					Replicas: map[string]int32{
+						"a": 0,
+						"c": 2,
+					},
+				},
+			},
+		},
+	}
+	rbs = append(rbs, &rb0)
+
+	var networkReq = v1alpha1.NetworkRequirement{
+		Spec: v1alpha1.NetworkRequirementSpec{
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
+							},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+				},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "accelerate",
+							Type: "accelerate",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Accelerate\": true}"),
+					},
+				},
+			},
+		},
+	}
+	return rbs, &networkReq
+}
+
+func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+
+	var rbs []*v1alpha1.ResourceBinding
+	var rb0 = v1alpha1.ResourceBinding{
+		Spec: v1alpha1.ResourceBindingSpec{
+			AppID: "0",
+			RbApps: []*v1alpha1.ResourceBindingApps{
+				0: {
+					ClusterName: "Domain1",
+					Replicas: map[string]int32{
+						"a": 2,
+						"b": 0,
+					},
+				},
+				1: {
+					ClusterName: "Domain4",
+					Replicas: map[string]int32{
+						"a": 0,
+						"b": 1,
+					},
+				},
+				2: {
+					ClusterName: "Domain3",
+					Replicas: map[string]int32{
+						"a": 0,
+						"c": 2,
+					},
+				},
+			},
+		},
+	}
+	rbs = append(rbs, &rb0)
+
+	var networkReq = v1alpha1.NetworkRequirement{
+		Spec: v1alpha1.NetworkRequirementSpec{
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
+							},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+					1: {
+						LinkName:      "link-a-c",
+						SourceID:      "sca2",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca2-sk1",
+								Value: "sca2-sv1",
+							},
+							1: {
+								Key:   "sca2-sk2",
+								Value: "sca2-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
+					2: {
+						LinkName:      "link-b-c",
+						SourceID:      "scb1",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-sk1",
+								Value: "scb1-sv1",
+							},
+							1: {
+								Key:   "scb1-sk2",
+								Value: "scb1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
+				},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				BestEffort: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "provider",
+							Type: "label",
+						},
+						Relation: "In",
+						Extent:   []byte("[\"Fabric12\"]"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					2: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "rtt",
+							Type: "rtt",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Rtt\":50}"),
+					},
 				},
 			},
 		},
@@ -224,51 +725,60 @@ func SetRbsAndNetReqSameDomain() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 
 	var networkReq = v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
-				0: {
-					Name:   "a",
-					SelfID: []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-dk1",
-										Value: "sca1-dv1",
-									},
-									1: {
-										Key:   "sca1-dk2",
-										Value: "sca1-dv2",
-									},
-								},
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
 							},
-							Destination: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
 							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
 							},
 						},
 					},
 				},
-				1: {
-					Name:       "b",
-					SelfID:     []string{"scb1"},
-					InterSCNID: []v1alpha1.InterSCNID{},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
 				},
 			},
 		},
@@ -311,91 +821,103 @@ func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 
 	var networkReq = v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
-				0: {
-					Name:   "a",
-					SelfID: []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-dk1",
-										Value: "sca1-dv1",
-									},
-									1: {
-										Key:   "sca1-dk2",
-										Value: "sca1-dv2",
-									},
-								},
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
 							},
-							Destination: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
 							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+					1: {
+						LinkName:      "link-b-c",
+						SourceID:      "scb1",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-sk1",
+								Value: "scb1-sv1",
+							},
+							1: {
+								Key:   "scb1-sk2",
+								Value: "scb1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
 							},
 						},
 					},
 				},
-				1: {
-					Name:   "b",
-					SelfID: []string{"scb1"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
-							},
-							Destination: v1alpha1.Direction{
-								Id: "scc1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scc1-dk1",
-										Value: "scc1-dv1",
-									},
-									1: {
-										Key:   "scc1-dk2",
-										Value: "scc1-dv2",
-									},
-								},
-							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
-							},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
 						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
 					},
 				},
-				2: {
-					Name:       "c",
-					SelfID:     []string{"scc1"},
-					InterSCNID: []v1alpha1.InterSCNID{},
+				BestEffort: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
 				},
 			},
 		},
@@ -438,91 +960,101 @@ func SetRbsAndNetReqDelaySlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Net
 
 	var networkReq = v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
-				0: {
-					Name:   "a",
-					SelfID: []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-dk1",
-										Value: "sca1-dv1",
-									},
-									1: {
-										Key:   "sca1-dk2",
-										Value: "sca1-dv2",
-									},
-								},
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
 							},
-							Destination: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scc1-dk1",
-										Value: "scc1-dv1",
-									},
-									1: {
-										Key:   "scc1-dk2",
-										Value: "scc1-dv2",
-									},
-								},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
 							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+					1: {
+						LinkName:      "link-b-c",
+						SourceID:      "scb1",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-sk1",
+								Value: "scb1-sv1",
+							},
+							1: {
+								Key:   "scb1-sk2",
+								Value: "scb1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
 							},
 						},
 					},
 				},
-				1: {
-					Name:   "b",
-					SelfID: []string{"scb1"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
-							},
-							Destination: v1alpha1.Direction{
-								Id: "scc1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scc1-dk1",
-										Value: "scc1-dv1",
-									},
-									1: {
-										Key:   "scc1-dk2",
-										Value: "scc1-dv2",
-									},
-								},
-							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     2,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
-							},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
 						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":2,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
 					},
-				},
-				2: {
-					Name:       "c",
-					SelfID:     []string{"scc1"},
-					InterSCNID: []v1alpha1.InterSCNID{},
+					2: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "rtt",
+							Type: "rtt",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Rtt\":50}"),
+					},
 				},
 			},
 		},
@@ -558,51 +1090,164 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 
 	var networkReq = v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
-				0: {
-					Name:   "a",
-					SelfID: []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-dk1",
-										Value: "sca1-dv1",
-									},
-									1: {
-										Key:   "sca1-dk2",
-										Value: "sca1-dv2",
-									},
-								},
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
 							},
-							Destination: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
 							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 6000,
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+					1: {
+						LinkName:      "link-a-c",
+						SourceID:      "sca2",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca2-sk1",
+								Value: "sca2-sv1",
+							},
+							1: {
+								Key:   "sca2-sk2",
+								Value: "sca2-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
+					2: {
+						LinkName:      "link-b-c",
+						SourceID:      "scb1",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-sk1",
+								Value: "scb1-sv1",
+							},
+							1: {
+								Key:   "scb1-sk2",
+								Value: "scb1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
 							},
 						},
 					},
 				},
-				1: {
-					Name:       "b",
-					SelfID:     []string{"scb1"},
-					InterSCNID: []v1alpha1.InterSCNID{},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "provider",
+							Type: "label",
+						},
+						Relation: "In",
+						Extent:   []byte("[\"Fabric12\"]"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					2: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "rtt",
+							Type: "rtt",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Rtt\":50}"),
+					},
+				},
+				BestEffort: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "accelerate",
+							Type: "accelerate",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Accelerate\": true}"),
+					},
 				},
 			},
 		},
@@ -638,51 +1283,164 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 
 	var networkReq = v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
-				0: {
-					Name:   "a",
-					SelfID: []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-dk1",
-										Value: "sca1-dv1",
-									},
-									1: {
-										Key:   "sca1-dk2",
-										Value: "sca1-dv2",
-									},
-								},
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
 							},
-							Destination: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
 							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 8000,
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+					1: {
+						LinkName:      "link-a-c",
+						SourceID:      "sca2",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca2-sk1",
+								Value: "sca2-sv1",
+							},
+							1: {
+								Key:   "sca2-sk2",
+								Value: "sca2-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
+					2: {
+						LinkName:      "link-b-c",
+						SourceID:      "scb1",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-sk1",
+								Value: "scb1-sv1",
+							},
+							1: {
+								Key:   "scb1-sk2",
+								Value: "scb1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
 							},
 						},
 					},
 				},
-				1: {
-					Name:       "b",
-					SelfID:     []string{"scb1"},
-					InterSCNID: []v1alpha1.InterSCNID{},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "provider",
+							Type: "label",
+						},
+						Relation: "In",
+						Extent:   []byte("[\"Fabric12\"]"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					2: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "rtt",
+							Type: "rtt",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Rtt\":50}"),
+					},
+				},
+				BestEffort: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "accelerate",
+							Type: "accelerate",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Accelerate\": true}"),
+					},
 				},
 			},
 		},
@@ -725,21 +1483,164 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 
 	var networkReq = v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
-				0: {
-					Name:       "a",
-					SelfID:     []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{},
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
 				},
-				1: {
-					Name:       "b",
-					SelfID:     []string{"scb1"},
-					InterSCNID: []v1alpha1.InterSCNID{},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
+							},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+					1: {
+						LinkName:      "link-a-c",
+						SourceID:      "sca2",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca2-sk1",
+								Value: "sca2-sv1",
+							},
+							1: {
+								Key:   "sca2-sk2",
+								Value: "sca2-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
+					2: {
+						LinkName:      "link-b-c",
+						SourceID:      "scb1",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-sk1",
+								Value: "scb1-sv1",
+							},
+							1: {
+								Key:   "scb1-sk2",
+								Value: "scb1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
 				},
-				2: {
-					Name:       "c",
-					SelfID:     []string{"scc1"},
-					InterSCNID: []v1alpha1.InterSCNID{},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "provider",
+							Type: "label",
+						},
+						Relation: "In",
+						Extent:   []byte("[\"Fabric12\"]"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					2: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "rtt",
+							Type: "rtt",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Rtt\":50}"),
+					},
+				},
+				BestEffort: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "accelerate",
+							Type: "accelerate",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Accelerate\": true}"),
+					},
 				},
 			},
 		},
@@ -776,85 +1677,163 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 
 	var networkReq = v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
-				0: {
-					Name:   "a",
-					SelfID: []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-dk1",
-										Value: "sca1-dv1",
-									},
-									1: {
-										Key:   "sca1-dk2",
-										Value: "sca1-dv2",
-									},
-								},
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
 							},
-							Destination: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
 							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+					1: {
+						LinkName:      "link-a-c",
+						SourceID:      "sca2",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca2-sk1",
+								Value: "sca2-sv1",
+							},
+							1: {
+								Key:   "sca2-sk2",
+								Value: "sca2-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
+					2: {
+						LinkName:      "link-b-c",
+						SourceID:      "scb1",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-sk1",
+								Value: "scb1-sv1",
+							},
+							1: {
+								Key:   "scb1-sk2",
+								Value: "scb1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
 							},
 						},
 					},
 				},
-				1: {
-					Name:   "b",
-					SelfID: []string{"scb1"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
-							},
-							Destination: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-dk1",
-										Value: "sca1-dv1",
-									},
-									1: {
-										Key:   "sca1-dk2",
-										Value: "sca1-dv2",
-									},
-								},
-							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 100,
-							},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
 						},
+						Object: v1alpha1.Xject{
+							Name: "provider",
+							Type: "label",
+						},
+						Relation: "In",
+						Extent:   []byte("[\"Fabric12\"]"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					2: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "rtt",
+							Type: "rtt",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Rtt\":50}"),
+					},
+				},
+				BestEffort: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-b-c",
+							Type: "component",
+						},
+						Object: v1alpha1.Xject{
+							Name: "accelerate",
+							Type: "accelerate",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Accelerate\": true}"),
 					},
 				},
 			},
@@ -1213,6 +2192,100 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	return domainTopoMsg
 }
 
+func PrintKspPathBase64() {
+	logx.NewLogger()
+	infoString := fmt.Sprintf("=== RUN   PrintKspPathBase64  BEGIN ===")
+	nputil.TraceInfo(infoString)
+
+	nputil.TraceInfoBegin("------------TestBindingSelectedDomainPathAvailable-------------------")
+	npBase64String := "Q3YwQkNxUUJDbG9LS1M5cGJtNWxjaTF3Y21sMllYUmxMMk5sYkdWMlpXNHZZMkZ6WlRFeFkyOXRjRzl1Wlc1ME1pOHhFaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1TZ0VNQU1TQ2dnZUVHUVl2NFE5SUFvYUhRb05VRTlNU1VOWlgxTlBWVkpEUlJJTWNHOXNhV041WDJsdWMzUXhJaHNLQzFCUFRFbERXVjlFUlZOVUVneHdiMnhwWTNsZmFXNXpkRElTRWdvTVkyOXlaVFF0Wm1sbGJHUXhFQVFZQVJJc0NpWnFhV0Z1WjI1aGJpMW1ZV0p5YVdNdE1UQXpMWE5rZDJGdUxYTnliM1V0YUhsd1pYSnZjeEJuR0FJU0Vnb01ZMjl5WlRNdFptbGxiR1F4RUFNWUFRcTlBUXFtQVFwY0Npa3ZhVzV1WlhJdGNISnBkbUYwWlM5alpXeGxkbVZ1TDJOaGMyVXhNV052YlhCdmJtVnVkREl2TVJJcEwybHVibVZ5TFhCeWFYWmhkR1V2WTJWc1pYWmxiaTlqWVhObE1URmpiMjF3YjI1bGJuUXpMekVZQVNnRE1BTVNDZ2dlRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUXIrQVFxbEFRcGFDaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1SSXBMMmx1Ym1WeUxYQnlhWFpoZEdVdlkyVnNaWFpsYmk5allYTmxNVEZqYjIxd2IyNWxiblF5THpFb0F6QUVFZ3NJa0U0UVpCaS9oRDBnQ2hvZENnMVFUMHhKUTFsZlUwOVZVa05GRWd4d2IyeHBZM2xmYVc1emRERWlHd29MVUU5TVNVTlpYMFJGVTFRU0RIQnZiR2xqZVY5cGJuTjBNaElTQ2d4amIzSmxNeTFtYVdWc1pERVFBeGdCRWl3S0ptcHBZVzVuYm1GdUxXWmhZbkpwWXkweE1ETXRjMlIzWVc0dGMzSnZkUzFvZVhCbGNtOXpFR2NZQWhJU0NneGpiM0psTkMxbWFXVnNaREVRQkJnQkNvQUNDcWNCQ2x3S0tTOXBibTVsY2kxd2NtbDJZWFJsTDJObGJHVjJaVzR2WTJGelpURXhZMjl0Y0c5dVpXNTBNeTh4RWlrdmFXNXVaWEl0Y0hKcGRtRjBaUzlqWld4bGRtVnVMMk5oYzJVeE1XTnZiWEJ2Ym1WdWRESXZNUmdCS0FNd0JCSUxDSkJPRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUklzQ2lacWFXRnVaMjVoYmkxbVlXSnlhV010TVRBekxYTmtkMkZ1TFhOeWIzVXRhSGx3WlhKdmN4Qm5HQUlTRWdvTVkyOXlaVFF0Wm1sbGJHUXhFQVFZQVFyQUFRcXBBUXBlQ2lrdmFXNXVaWEl0Y0hKcGRtRjBaUzlqWld4bGRtVnVMMk5oYzJVeE1XTnZiWEJ2Ym1WdWRETXZNUklwTDJsdWJtVnlMWEJ5YVhaaGRHVXZZMlZzWlhabGJpOWpZWE5sTVRGamIyMXdiMjVsYm5ReUx6RVlBaUFCS0FNd0F4SUxDSkJPRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUT09"
+
+	//Verify the unmarshal action
+	npBase64Bytes, _ := base64.StdEncoding.DecodeString(npBase64String)
+	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(npBase64Bytes)))
+	n, _ := base64.StdEncoding.Decode(dbuf, []byte(npBase64Bytes))
+	npConentByteConvert := dbuf[:n]
+	infoString = fmt.Sprintf("npConentByteConvert bytes is: [%+v]", npConentByteConvert)
+	nputil.TraceInfo(infoString)
+	TmpRbDomainPaths := new(ncsnp.BindingSelectedDomainPath)
+	err := proto.Unmarshal(npConentByteConvert, TmpRbDomainPaths)
+	if err != nil {
+		infoString = fmt.Sprintf("TmpRbDomainPaths Proto unmarshal is failed!")
+		nputil.TraceInfo(infoString)
+	}
+	infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath is: [%+v]", TmpRbDomainPaths)
+	nputil.TraceInfoAlwaysPrint(infoString)
+
+	/*
+		npBase64Bytes, _ := base64.StdEncoding.DecodeString(npBase64String)
+		infoString = fmt.Sprintf("The npBase64Bytes string is: [%+v]", string(npBase64Bytes))
+		nputil.TraceInfoAlwaysPrint(infoString)
+		npBytes := make([]byte, base64.StdEncoding.DecodedLen(len(npBase64Bytes)))
+		_, _ = base64.StdEncoding.Decode(npBytes, npBase64Bytes)
+		infoString = fmt.Sprintf("The NpBase64Byte is: [%+v]", npBase64Bytes)
+		nputil.TraceInfoAlwaysPrint(infoString)
+		TmpRbDomainPaths := new(ncsnp.BindingSelectedDomainPath)
+		err := proto.Unmarshal(npBytes, TmpRbDomainPaths)
+		if err != nil {
+			infoString = fmt.Sprintf("TmpRbDomainPaths Proto unmarshal is failed!")
+			nputil.TraceInfoAlwaysPrint(infoString)
+		} else {
+			infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath is: [%+v]", TmpRbDomainPaths)
+			nputil.TraceInfoAlwaysPrint(infoString)
+		}*/
+
+	infoString = fmt.Sprintf("=== RUN   TestBindingDomainPathAvailable  END ===")
+	nputil.TraceInfo(infoString)
+}
+
+func PrintKspPath() {
+	logx.NewLogger()
+	infoString := fmt.Sprintf("=== RUN   PrintKspPath  BEGIN ===")
+	nputil.TraceInfo(infoString)
+
+	nputil.TraceInfoBegin("------------TestBindingSelectedDomainPathAvailable-------------------")
+	//npBase64String := "CogCCm4KJgoPL3BtbC9jYXNlMi9jMS8xEg8vcG1sL2Nhc2UyL2MyLzEoATADEggIZBBkGGQgZBodCg1QT0xJQ1lfU09VUkNFEgxwb2xpY3lfaW5zdDEiGwoLUE9MSUNZX0RFU1QSDHBvbGljeV9pbnN0MhISCgxjb3JlMS1maWVsZDEQARgBEiwKJmppYW5nbmFuLWZhYnJpYy0xMDEtc2R3YW4tc3JvdS1oeXBlcm9zEGUYAhISCgxjb3JlMi1maWVsZDEQAhgBEiwKJmppYW5nbmFuLWZhYnJpYy0xMDItc2R3YW4tc3JvdS1oeXBlcm\n9zEGYYAhISCgxjb3JlMy1maWVsZDEQAxgBCsYBCm4KJgoPL3BtbC9jYXNlMi9jMi8xEg8vcG1sL2Nhc2UyL2MxLzEoAzABEggIZBBkGGQgZBodCg1QT0xJQ1lfU09VUkNFEgxwb2xpY3lfaW5zdDEiGwoLUE9MSUNZX0RFU1QSDHBvbGljeV9pbnN0MhISCgxjb3JlMy1maWVsZDEQAxgBEiwKJmppYW5nbmFuLWZhYnJpYy0xMDMtc2R3YW4tc3JvdS1oeXBlcm9zEGcYAhISCgxjb3JlMS1maWVsZDEQARgB"
+	npBase64String := "Q3YwQkNxUUJDbG9LS1M5cGJtNWxjaTF3Y21sMllYUmxMMk5sYkdWMlpXNHZZMkZ6WlRFeFkyOXRjRzl1Wlc1ME1pOHhFaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1TZ0VNQU1TQ2dnZUVHUVl2NFE5SUFvYUhRb05VRTlNU1VOWlgxTlBWVkpEUlJJTWNHOXNhV041WDJsdWMzUXhJaHNLQzFCUFRFbERXVjlFUlZOVUVneHdiMnhwWTNsZmFXNXpkRElTRWdvTVkyOXlaVFF0Wm1sbGJHUXhFQVFZQVJJc0NpWnFhV0Z1WjI1aGJpMW1ZV0p5YVdNdE1UQXpMWE5rZDJGdUxYTnliM1V0YUhsd1pYSnZjeEJuR0FJU0Vnb01ZMjl5WlRNdFptbGxiR1F4RUFNWUFRcTlBUXFtQVFwY0Npa3ZhVzV1WlhJdGNISnBkbUYwWlM5alpXeGxkbVZ1TDJOaGMyVXhNV052YlhCdmJtVnVkREl2TVJJcEwybHVibVZ5TFhCeWFYWmhkR1V2WTJWc1pYWmxiaTlqWVhObE1URmpiMjF3YjI1bGJuUXpMekVZQVNnRE1BTVNDZ2dlRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUXErQVFxbkFRcGNDaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1SSXBMMmx1Ym1WeUxYQnlhWFpoZEdVdlkyVnNaWFpsYmk5allYTmxNVEZqYjIxd2IyNWxiblF5THpFZ0FTZ0RNQU1TQ3dpUVRoQmtHTCtFUFNBS0doMEtEVkJQVEVsRFdWOVRUMVZTUTBVU0RIQnZiR2xqZVY5cGJuTjBNU0liQ2d0UVQweEpRMWxmUkVWVFZCSU1jRzlzYVdONVgybHVjM1F5RWhJS0RHTnZjbVV6TFdacFpXeGtNUkFER0FFS3dnSUtwd0VLWEFvcEwybHVibVZ5TFhCeWFYWmhkR1V2WTJWc1pYWmxiaTlqWVhObE1URmpiMjF3YjI1bGJuUXpMekVTS1M5cGJtNWxjaTF3Y21sMllYUmxMMk5sYkdWMlpXNHZZMkZ6WlRFeFkyOXRjRzl1Wlc1ME1pOHhHQUVvQXpBRUVnc0lrRTRRWkJpL2hEMGdDaG9kQ2cxUVQweEpRMWxmVTA5VlVrTkZFZ3h3YjJ4cFkzbGZhVzV6ZERFaUd3b0xVRTlNU1VOWlgwUkZVMVFTREhCdmJHbGplVjlwYm5OME1oSVNDZ3hqYjNKbE15MW1hV1ZzWkRFUUF4Z0JFaXdLSm1wcFlXNW5ibUZ1TFdaaFluSnBZeTB4TURJdGMyUjNZVzR0YzNKdmRTMW9lWEJsY205ekVHWVlBaElTQ2d4amIzSmxNaTFtYVdWc1pERVFBaGdCRWl3S0ptcHBZVzVuYm1GdUxXWmhZbkpwWXkweE1ERXRjMlIzWVc0dGMzSnZkUzFvZVhCbGNtOXpFR1VZQWhJU0NneGpiM0psTkMxbWFXVnNaREVRQkJnQkNzSUNDcWNCQ2x3S0tTOXBibTVsY2kxd2NtbDJZWFJsTDJObGJHVjJaVzR2WTJGelpURXhZMjl0Y0c5dVpXNTBNeTh4RWlrdmFXNXVaWEl0Y0hKcGRtRjBaUzlqWld4bGRtVnVMMk5oYzJVeE1XTnZiWEJ2Ym1WdWRESXZNUmdDS0FNd0JCSUxDSkJPRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUklzQ2lacWFXRnVaMjVoYmkxbVlXSnlhV010TVRBeUxYTmtkMkZ1TFhOeWIzVXRhSGx3WlhKdmN4Qm1HQUlTRWdvTVkyOXlaVEl0Wm1sbGJHUXhFQUlZQVJJc0NpWnFhV0Z1WjI1aGJpMW1ZV0p5YVdNdE1UQXhMWE5rZDJGdUxYTnliM1V0YUhsd1pYSnZjeEJsR0FJU0Vnb01ZMjl5WlRRdFptbGxiR1F4RUFRWUFRPT0="
+	//npBase64Bytes, _ := base64.StdEncoding.DecodeString(npBase64String)
+	npBase64Bytes := ([]byte)(npBase64String)
+	npBytes := make([]byte, base64.StdEncoding.DecodedLen(len(npBase64Bytes)))
+	_, _ = base64.StdEncoding.Decode(npBytes, npBase64Bytes)
+	infoString = fmt.Sprintf("The NpBase64Byte is: [%+v]", npBase64Bytes)
+	nputil.TraceInfoAlwaysPrint(infoString)
+	TmpRbDomainPaths := new(ncsnp.BindingSelectedDomainPath)
+	err := proto.Unmarshal(npBytes, TmpRbDomainPaths)
+	if err != nil {
+		infoString = fmt.Sprintf("TmpRbDomainPaths Proto unmarshal is failed!")
+		nputil.TraceInfoAlwaysPrint(infoString)
+	} else {
+		infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath is: [%+v]", TmpRbDomainPaths)
+		nputil.TraceInfoAlwaysPrint(infoString)
+	}
+
+	infoString = fmt.Sprintf("=== RUN   TestBindingDomainPathAvailable  END ===")
+	nputil.TraceInfo(infoString)
+}
+
+func GetSchCacheTopoInfo() {
+
+	var topoContents map[string]string
+	topoContents = make(map[string]string)
+
+	topoContents["core2-field1"] = "COIrEAIaDGNvcmUyLWZpZWxkMSr7AQoMY29yZTItZmllbGQxEAIaDGNvcmU0LWZpZWxkMSAEKiAzYmFkZjU2MjA3MWM0Y2ZmYTJhYzM4NTBmM2Q2MDBmZDIgZjMyZmIwN2Q1MzJkNDM2OGI4MDI5YTM4OTM4ZmMyZWI6GWxvb3AtR2lnYWJpdEV0aGVybmV0MC9hLzBAZUoMCBQggK3iBCiAreIEWiZqaWFuZ25hbi1mYWJyaWMtMTAxLXNkd2FuLXNyb3UtaHlwZXJvc2IgZThkOTZiODM5MWM3NGI5ZmI4OWFjNGQ1OGY1M2ZiMmJqIGQyZjRkNWIzZWNhOTQ4OWRhOTJmYjJlMTJiZTcwZGRlKvsBCgxjb3JlMi1maWVsZDEQAhoMY29yZTMtZmllbGQxIAMqIDAwMzg0Y2Y5N2E2MjRmMGQ4MTE3NmJkMDQ5ZjdmNmVkMiBiMTU2Nzc5NTZjYTY0OGZjYmVkOGRmOGVjNTI0NGYzNzoZbG9vcC1HaWdhYml0RXRoZXJuZXQwL2EvMEBmSgwIDyCAreIEKICt4gRaJmppYW5nbmFuLWZhYnJpYy0xMDItc2R3YW4tc3JvdS1oeXBlcm9zYiA3Y2I1ZWE3Mzk1NmU0YWYxOWRjZTI1NzY2ZDFlMTM1YWogYjdlNDU5MTM4YjY3NDlmZGJiMjQ4YmEyNDg0YzlhNGUqgQEKDGNvcmUyLWZpZWxkMRACGgxjb3JlMy1maWVsZDEgAyogMDAzODRjZjk3YTYyNGYwZDgxMTc2YmQwNDlmN2Y2ZWQyIGIxNTY3Nzk1NmNhNjQ4ZmNiZWQ4ZGY4ZWM1MjQ0ZjM3Ohlsb29wLUdpZ2FiaXRFdGhlcm5ldDAvYi8wSgAqgQEKDGNvcmUyLWZpZWxkMRACGgxjb3JlNC1maWVsZDEgBCogM2JhZGY1NjIwNzFjNGNmZmEyYWMzODUwZjNkNjAwZmQyIGYzMmZiMDdkNTMyZDQzNjhiODAyOWEzODkzOGZjMmViOhlsb29wLUdpZ2FiaXRFdGhlcm5ldDAvYi8wSgA="
+	topoContents["core3-field1"] = "CNXgOBADGgxjb3JlMy1maWVsZDEq0wEKDGNvcmUzLWZpZWxkMRADGgxjb3JlMi1maWVsZDEgAiogYjE1Njc3OTU2Y2E2NDhmY2JlZDhkZjhlYzUyNDRmMzcyIDAwMzg0Y2Y5N2E2MjRmMGQ4MTE3NmJkMDQ5ZjdmNmVkOhlsb29wLUdpZ2FiaXRFdGhlcm5ldDAvYS8wQGZKDAgPIICt4gQogK3iBGIgYjdlNDU5MTM4YjY3NDlmZGJiMjQ4YmEyNDg0YzlhNGVqIDdjYjVlYTczOTU2ZTRhZjE5ZGNlMjU3NjZkMWUxMzVhKtMBCgxjb3JlMy1maWVsZDEQAxoMY29yZTQtZmllbGQxIAQqIDIwNGFmZGE5ZjlmNjRhNGVhZTdiMWRiMGNiYzA0NzMwMiAzYjI1ZjZmMDVkYzQ0OGZhYTUzYzBjZGEzOTcxZTI3YzoZbG9vcC1HaWdhYml0RXRoZXJuZXQwL2IvMEBnSgwIFCCAreIEKICt4gRiIGM2ZTA3MThhZWQ2YzQ4MmU5YjQzZjA4ZDNkMmMxNWEzaiA2YWU0ZDVmNTdmZWM0OTA4OTMwOWYxOTY3NDBmMmU1MSqBAQoMY29yZTMtZmllbGQxEAMaDGNvcmU0LWZpZWxkMSAEKiAyMDRhZmRhOWY5ZjY0YTRlYWU3YjFkYjBjYmMwNDczMDIgM2IyNWY2ZjA1ZGM0NDhmYWE1M2MwY2RhMzk3MWUyN2M6GWxvb3AtR2lnYWJpdEV0aGVybmV0MC9hLzBKACqBAQoMY29yZTMtZmllbGQxEAMaDGNvcmUyLWZpZWxkMSACKiBiMTU2Nzc5NTZjYTY0OGZjYmVkOGRmOGVjNTI0NGYzNzIgMDAzODRjZjk3YTYyNGYwZDgxMTc2YmQwNDlmN2Y2ZWQ6GWxvb3AtR2lnYWJpdEV0aGVybmV0MC9iLzBKAA=="
+	topoContents["core4-field1"] = "CJWeNxAEGgxjb3JlNC1maWVsZDEq+wEKDGNvcmU0LWZpZWxkMRAEGgxjb3JlMi1maWVsZDEgAiogZjMyZmIwN2Q1MzJkNDM2OGI4MDI5YTM4OTM4ZmMyZWIyIDNiYWRmNTYyMDcxYzRjZmZhMmFjMzg1MGYzZDYwMGZkOhlsb29wLUdpZ2FiaXRFdGhlcm5ldDAvYS8wQGVKDAgUIICt4gQogK3iBFomamlhbmduYW4tZmFicmljLTEwMS1zZHdhbi1zcm91LWh5cGVyb3NiIGQyZjRkNWIzZWNhOTQ4OWRhOTJmYjJlMTJiZTcwZGRlaiBlOGQ5NmI4MzkxYzc0YjlmYjg5YWM0ZDU4ZjUzZmIyYir7AQoMY29yZTQtZmllbGQxEAQaDGNvcmUzLWZpZWxkMSADKiAzYjI1ZjZmMDVkYzQ0OGZhYTUzYzBjZGEzOTcxZTI3YzIgMjA0YWZkYTlmOWY2NGE0ZWFlN2IxZGIwY2JjMDQ3MzA6GWxvb3AtR2lnYWJpdEV0aGVybmV0MC9hLzBAZ0oMCBQggK3iBCiAreIEWiZqaWFuZ25hbi1mYWJyaWMtMTAzLXNkd2FuLXNyb3UtaHlwZXJvc2IgNmFlNGQ1ZjU3ZmVjNDkwODkzMDlmMTk2NzQwZjJlNTFqIGM2ZTA3MThhZWQ2YzQ4MmU5YjQzZjA4ZDNkMmMxNWEzKoEBCgxjb3JlNC1maWVsZDEQBBoMY29yZTMtZmllbGQxIAMqIDNiMjVmNmYwNWRjNDQ4ZmFhNTNjMGNkYTM5NzFlMjdjMiAyMDRhZmRhOWY5ZjY0YTRlYWU3YjFkYjBjYmMwNDczMDoZbG9vcC1HaWdhYml0RXRoZXJuZXQwL2IvMEoAKoEBCgxjb3JlNC1maWVsZDEQBBoMY29yZTItZmllbGQxIAIqIGYzMmZiMDdkNTMyZDQzNjhiODAyOWEzODkzOGZjMmViMiAzYmFkZjU2MjA3MWM0Y2ZmYTJhYzM4NTBmM2Q2MDBmZDoZbG9vcC1HaWdhYml0RXRoZXJuZXQwL2IvMEoA"
+	for filedName, topoMsg := range topoContents {
+		domainTopoByte64, _ := base64.StdEncoding.DecodeString(topoMsg)
+		domainTopoCache := new(ncsnp.DomainTopoCacheNotify)
+		err := proto.Unmarshal(domainTopoByte64, domainTopoCache)
+		if err != nil {
+			nputil.TraceError(err)
+			return
+		}
+		infoString := fmt.Sprintf("Domain(%s)'s domainTopoCache is:(%+v)", filedName, *domainTopoCache)
+		nputil.TraceInfoAlwaysPrint(infoString)
+	}
+}
 
 func TestParseBindingDomainPathAvailable(t *testing.T) {
 	logx.NewLogger()
@@ -1244,7 +2317,7 @@ func TestNetworkFilterAvailable(t *testing.T) {
 	infoString := fmt.Sprintf("=== RUN   TestNetworkFilterAvailable  BEGIN ===")
 	nputil.TraceInfo(infoString)
 
-	rbs, networkRequirement := SetRbsAndNetReqAvailable()
+	rbs, networkRequirement := SetRbsAndNetReqRtt()
 	networkInfoMap := BuildNetworkDomainEdge()
 	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
 	if reflect.DeepEqual(0, len(rbsRet)) {
@@ -1254,6 +2327,78 @@ func TestNetworkFilterAvailable(t *testing.T) {
 	}
 
 	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterAvailable  END ===")
+	nputil.TraceInfo(infoString)
+}
+
+func TestNetworkFilterRtt(t *testing.T) {
+	logx.NewLogger()
+	infoString := fmt.Sprintf("=== RUN   TestNetworkFilterRtt  BEGIN ===")
+	nputil.TraceInfo(infoString)
+
+	rbs, networkRequirement := SetRbsAndNetReqRtt()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if reflect.DeepEqual(0, len(rbsRet)) {
+		infoString := fmt.Sprintf("The rbs should be available!")
+		nputil.TraceErrorString(infoString)
+		t.Errorf("The rbs should be available!")
+	}
+
+	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterRtt  END ===")
+	nputil.TraceInfo(infoString)
+}
+
+func TestNetworkFilterProviders(t *testing.T) {
+	logx.NewLogger()
+	infoString := fmt.Sprintf("=== RUN   TestNetworkFilterProviders  BEGIN ===")
+	nputil.TraceInfo(infoString)
+
+	rbs, networkRequirement := SetRbsAndNetReqProviders()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if reflect.DeepEqual(0, len(rbsRet)) {
+		infoString := fmt.Sprintf("The rbs should be available!")
+		nputil.TraceErrorString(infoString)
+		t.Errorf("The rbs should be available!")
+	}
+
+	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterProviders  END ===")
+	nputil.TraceInfo(infoString)
+}
+
+func TestNetworkFilterAccelerate(t *testing.T) {
+	logx.NewLogger()
+	infoString := fmt.Sprintf("=== RUN   TestNetworkFilterAccelerate  BEGIN ===")
+	nputil.TraceInfo(infoString)
+
+	rbs, networkRequirement := SetRbsAndNetReqAccelerate()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if reflect.DeepEqual(0, len(rbsRet)) {
+		infoString := fmt.Sprintf("The rbs should be available!")
+		nputil.TraceErrorString(infoString)
+		t.Errorf("The rbs should be available!")
+	}
+
+	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterAccelerate  END ===")
+	nputil.TraceInfo(infoString)
+}
+
+func TestNetworkFilterBestEffort(t *testing.T) {
+	logx.NewLogger()
+	infoString := fmt.Sprintf("=== RUN   TestNetworkFilterBestEffort  BEGIN ===")
+	nputil.TraceInfo(infoString)
+
+	rbs, networkRequirement := SetRbsAndNetReqBestEffort()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if reflect.DeepEqual(0, len(rbsRet)) {
+		infoString := fmt.Sprintf("The rbs should be available!")
+		nputil.TraceErrorString(infoString)
+		t.Errorf("The rbs should be available!")
+	}
+
+	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterBestEffort  END ===")
 	nputil.TraceInfo(infoString)
 }
 

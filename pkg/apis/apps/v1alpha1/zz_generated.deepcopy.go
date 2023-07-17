@@ -262,6 +262,10 @@ func (in *CronMasterStatus) DeepCopyInto(out *CronMasterStatus) {
 		*out = make([]v1.ObjectReference, len(*in))
 		copy(*out, *in)
 	}
+	if in.NextScheduleDateTime != nil {
+		in, out := &in.NextScheduleDateTime, &out.NextScheduleDateTime
+		*out = (*in).DeepCopy()
+	}
 	if in.LastScheduleTime != nil {
 		in, out := &in.LastScheduleTime, &out.LastScheduleTime
 		*out = (*in).DeepCopy()

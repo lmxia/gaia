@@ -20,7 +20,14 @@ spec:
     singular: cronmaster
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.resource.kind
+      name: KIND
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: CronMaster is a cron resource
@@ -39,8 +46,6 @@ spec:
             type: object
           spec:
             properties:
-              nextScheduleAction:
-                type: string
               resource:
                 description: deployment or serverless
                 properties:
@@ -213,6 +218,11 @@ spec:
               lastSuccessfulTime:
                 description: Information when was the last time the cron resource
                   successfully completed.
+                format: date-time
+                type: string
+              nextScheduleAction:
+                type: string
+              nextScheduleDateTime:
                 format: date-time
                 type: string
             type: object

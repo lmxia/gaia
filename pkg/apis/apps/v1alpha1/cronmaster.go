@@ -9,6 +9,8 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope="Namespaced",shortName=cron,categories=gaia
+// +kubebuilder:printcolumn:name="KIND",type="string",JSONPath=".spec.resource.kind"
+// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 // CronMaster is a cron resource
 type CronMaster struct {
@@ -24,15 +26,14 @@ type CronMasterSpec struct {
 	// deployment or serverless
 	// +required
 	Resource ReferenceResource `json:"resource,omitempty"`
-	// +optional
-	NextScheduleAction NextScheduleType `json:"nextScheduleAction,omitempty"`
 }
 
 type NextScheduleType string
 
 const (
-	Start NextScheduleType = "start"
-	Stop  NextScheduleType = "stop"
+	Start     NextScheduleType = "start"
+	Stop      NextScheduleType = "stop"
+	Processed NextScheduleType = "processed"
 )
 
 type ReferenceResource struct {
@@ -53,6 +54,11 @@ type CronMasterStatus struct {
 	// +optional
 	// +listType=atomic
 	Active []v1.ObjectReference `json:"active,omitempty"`
+
+	// +required
+	NextScheduleAction NextScheduleType `json:"nextScheduleAction,omitempty"`
+	// +optional
+	NextScheduleDateTime *metav1.Time `json:"nextScheduleDateTime,omitempty"`
 
 	// Information when was the last time the cron resource was successfully scheduled.
 	// +optional

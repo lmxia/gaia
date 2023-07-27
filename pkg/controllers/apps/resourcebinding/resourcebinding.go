@@ -169,7 +169,7 @@ func (c *Controller) updateRB(old, cur interface{}) {
 		return
 	}
 
-	klog.V(4).Infof("updating resource-binding %q", klog.KObj(oldRB))
+	klog.V(4).Infof("updating resource-binding %q, re-enqueuing", klog.KObj(oldRB))
 	c.enqueue(newRB)
 }
 
@@ -480,7 +480,8 @@ func (c *RBController) handleParentDescription(desc *appsV1alpha1.Description) e
 
 		descCopy := desc.DeepCopy()
 		descCopy.Finalizers = utils.RemoveString(descCopy.Finalizers, common.AppFinalizer)
-		if _, err = c.parentGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{}); err != nil {
+		_, err = c.parentGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{})
+		if err != nil {
 			klog.WarningDepth(4, fmt.Sprintf("handleParentDescription: failed to remove finalizer %s from parent Descriptions %s: %v", common.AppFinalizer, klog.KObj(desc), err))
 		}
 		return err
@@ -493,9 +494,33 @@ func (c *RBController) handleParentDescription(desc *appsV1alpha1.Description) e
 func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
 	klog.V(5).Infof("handleParentResourceBinding: handle parent resourceBinding %q ...", klog.KObj(rb))
 	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
-		err := c.UpdateSelectedResourceBinding(rb)
-		if err != nil {
-			utilruntime.HandleError(fmt.Errorf("handleParentResourceBinding: failed to update selected ResourceBinding %q, ERROR: %v", klog.KObj(rb), err))
+		rbLabels := rb.GetLabels()
+		if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
+			rb.Finalizers = append(rb.Finalizers, common.AppFinalizer)
+			rbLabels[common.StatusScheduler] = string(appsV1alpha1.ResourceBindingSelected)
+			_, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).Update(context.TODO(), rb, metav1.UpdateOptions{})
+			switch {
+			case apierrors.IsConflict(err):
+				klog.V(5).InfoS("handleParentResourceBinding: update rb conflict for add label and inject finalizer", "ResourceBinding", klog.KObj(rb), "err", err)
+				return fmt.Errorf("handleParentResourceBinding: update resourcebinding %q conflict for add label and inject finalizer", klog.KObj(rb))
+			case err != nil:
+				klog.Warning("handleParentResourceBinding: failed to inject finalizer %s and update ResourceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err)
+				return err
+			}
+			// delete unselected rbs
+			descName := rbLabels[common.OriginDescriptionNameLabel]
+			klog.V(4).Infof("Delete unselected ResourceBindings in namespace %q from Description %q.", common.GaiaRBMergedReservedNamespace, descName)
+			err = c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
+				DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+					common.OriginDescriptionNameLabel:      descName,
+					common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
+					common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
+					common.StatusScheduler:                 string(appsV1alpha1.ResourceBindingmerged),
+				}).String()})
+			if err != nil {
+				klog.Errorf("failed to delete merged rbs in parent cluster %q namespace, err: %v", common.GaiaRBMergedReservedNamespace, err)
+				return err
+			}
 		}
 
 		createRB := false
@@ -535,8 +560,9 @@ func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBind
 				return utils.ApplyResourceBinding(context.TODO(), c.localdynamicClient, c.restMapper, rb, clusterName, descriptionName, c.networkBindUrl, nwr)
 			} else {
 				// need schedule across clusters
-				if err := utils.ApplyRBWorkloads(context.TODO(), desc, components, c.parentGaiaClient, c.localdynamicClient,
-					c.restMapper, rb, clusterName); err != nil {
+				err := utils.ApplyRBWorkloads(context.TODO(), desc, components, c.parentGaiaClient, c.localdynamicClient,
+					c.restMapper, rb, clusterName)
+				if err != nil {
 					return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
 				}
 			}
@@ -562,34 +588,6 @@ func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBind
 		}
 	}
 
-	return nil
-}
-
-func (c *RBController) UpdateSelectedResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
-	if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
-		rb.Finalizers = append(rb.Finalizers, common.AppFinalizer)
-		rbLabels := rb.GetLabels()
-		rbLabels[common.StatusScheduler] = string(appsV1alpha1.ResourceBindingSelected)
-		if _, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).Update(context.TODO(), rb, metav1.UpdateOptions{}); err != nil {
-			msg := fmt.Sprintf("failed to inject  finalizer %s and select ResouceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err)
-			klog.WarningDepth(4, msg)
-			return err
-		}
-
-		descName := rbLabels[common.OriginDescriptionNameLabel]
-		klog.V(4).Infof("Delete unselected ResourceBindings in namespace %q from Description %q.", common.GaiaRBMergedReservedNamespace, descName)
-		err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
-			DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-				common.OriginDescriptionNameLabel:      descName,
-				common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
-				common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
-				common.StatusScheduler:                 string(appsV1alpha1.ResourceBindingmerged),
-			}).String()})
-		if err != nil {
-			klog.Infof("failed to delete merged rbs in parent cluster %q namespace, ERROR: %v", common.GaiaRBMergedReservedNamespace, err)
-			return err
-		}
-	}
 	return nil
 }
 

@@ -242,6 +242,15 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 					subRBApps = append(subRBApps, rbItemApp)
 					if rbItemApp.ClusterName == g.cache.GetSelfClusterName() {
 						rbItemApp.Children = rbForrb[j].Spec.RbApps
+						// 第二次修改掉chosen one 的矩阵
+						for _, rbApp := range rbItemApp.Children {
+							for key, v := range rbItemApp.ChosenOne {
+								// 当前field 没有在该component上选中
+								if v == 0 {
+									rbApp.ChosenOne[key] = 0
+								}
+							}
+						}
 					}
 				}
 				rbLabels := rbForrb[j].GetLabels()

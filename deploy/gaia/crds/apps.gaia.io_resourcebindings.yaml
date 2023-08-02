@@ -20,7 +20,17 @@ spec:
     singular: resourcebinding
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.statusScheduler
+      name: SCHEDULE
+      type: string
+    - jsonPath: .status.status
+      name: BIND
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         properties:

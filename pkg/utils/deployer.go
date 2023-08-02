@@ -331,13 +331,14 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 	for err := range errCh {
 		allErrs = append(allErrs, err)
 	}
-
 	err = utilerrors.NewAggregate(allErrs)
 	if err != nil {
-		msg := fmt.Sprintf("failed to deleting Description %s: %v", klog.KObj(desc), err)
-		klog.ErrorDepth(5, msg)
+		klog.Errorf("failed to offload workloads", "ResourceBinding", klog.KObj(rb), "err", err)
+		return err
 	}
-	return err
+
+	klog.InfoS("offload workloads successfully", "ResourceBinding", klog.KObj(rb))
+	return nil
 }
 
 func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
@@ -435,17 +436,12 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 	if len(allErrs) > 0 {
 		statusScheduler = known.ResourceBindingRed
 		reason = utilerrors.NewAggregate(allErrs).Error()
-
-		msg := fmt.Sprintf("failed to ResourceBindings deploying  %s: %s", klog.KObj(rb), reason)
-		klog.ErrorDepth(5, msg)
+		klog.Errorf("failed to deploy workloads", "ResourceBinding", klog.KObj(rb), "reason", reason)
 	} else {
 		statusScheduler = known.ResourceBindingGreen
 		reason = ""
-
-		msg := fmt.Sprintf("ResourceBindings %s is deployed successfully", klog.KObj(rb))
-		klog.V(5).Info(msg)
+		klog.InfoS("deploy workloads successfully", "ResourceBinding", klog.KObj(rb))
 	}
-
 	// update status
 	rb.Status.Status = statusScheduler
 	rb.Status.Reason = reason
@@ -458,7 +454,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 }
 
 func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,
-		rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement) error {
+	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement) error {
 	var allErrs []error
 	var err error
 	errCh := make(chan error, len(rb.Spec.RbApps))
@@ -521,9 +517,13 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 		allErrs = append(allErrs, err)
 	}
 	if len(allErrs) > 0 {
-		return utilerrors.NewAggregate(allErrs)
+		err = utilerrors.NewAggregate(allErrs)
+		klog.Errorf("failed to apply resourcebinding", "ResourceBinding", klog.KObj(rb), "err", err)
+		return err
 	}
-	return err
+
+	klog.InfoS("apply resourcebinding successfully", "ResourceBinding", klog.KObj(rb))
+	return nil
 }
 
 type NetworkScheme struct {
@@ -702,7 +702,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = make([]corev1.NodeSelectorTerm, 0)
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
 			return nodeAffinity
 		}
 	}
@@ -717,7 +717,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, providers...)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, providers...)
 		}
 	}
 
@@ -731,7 +731,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, netEnvironments...)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, netEnvironments...)
 		}
 	}
 
@@ -745,7 +745,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, specificResources...)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, specificResources...)
 		}
 	}
 
@@ -759,7 +759,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-					append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, geoLocations...)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, geoLocations...)
 		}
 	}
 	return nodeAffinity
@@ -1239,7 +1239,7 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 
 // OffloadResourceByDescription offloads the specified resource
 func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Interface,
-		discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
+	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
 
 	var descriptionsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "ResourceBinding"}
 	restMapping, err := discoveryRESTMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
@@ -1259,14 +1259,14 @@ func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Int
 }
 
 func OffloadDescription(ctx context.Context, dynamicClient dynamic.Interface,
-		discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
+	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
 
 	descUnstructured, _ := ObjectConvertToUnstructured(desc)
 	return DeleteResource(ctx, dynamicClient, discoveryRESTMapper, descUnstructured)
 }
 
 func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
-		discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
 	wg := sync.WaitGroup{}
 	var err error
 	wg.Add(1)
@@ -1286,7 +1286,7 @@ func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
 }
 
 func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
-		discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
 	wg := sync.WaitGroup{}
 	var err error
 	wg.Add(1)

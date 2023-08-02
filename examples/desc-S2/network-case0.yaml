@@ -1,0 +1,137 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: NetworkRequirement
+metadata:
+  name: case
+  namespace: gaia-reserved
+spec:
+  workloadComponents:
+    scns:
+      - name: onlystart-deploy-component1
+        selfID:
+          - /pml/cronmaster-examples/c1/1
+          - /pml/cronmaster-examples/c1/2
+          - /pml/cronmaster-examples/c1/3
+          - /pml/cronmaster-examples/c1/4
+          - /pml/cronmaster-examples/c1/5
+          - /pml/cronmaster-examples/c1/6
+      - name: onlystart-serverless-component2
+        selfID:
+          - /pml/cronmaster-examples/c2/1
+      - name: onlystop-deploy-component3
+        selfID:
+          - /pml/cronmaster-examples/c3/1
+      - name: startstop-serverless-component4
+        selfID:
+          - /pml/cronmaster-examples/c4/1
+      - name: cronstart-deploy-component5
+        selfID:
+          - /pml/cronmaster-examples/c5/1
+      - name: cronstartstop-serverless-component6
+        selfID:
+          - /pml/cronmaster-examples/c6/1
+    links:
+      - linkName: linkc1-1-c4-1
+        sourceID: /pml/cronmaster-examples/c1/1
+        destinationID: /pml/cronmaster-examples/c4/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: linkc2-1-c3-1
+        sourceID: /pml/cronmaster-examples/c2/1
+        destinationID: /pml/cronmaster-examples/c3/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: linkc2-1-c4-1
+        sourceID: /pml/cronmaster-examples/c2/1
+        destinationID: /pml/cronmaster-examples/c4/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: linkc2-1-c5-1
+        sourceID: /pml/cronmaster-examples/c2/1
+        destinationID: /pml/cronmaster-examples/c5/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: linkc3-1-c5-1
+        sourceID: /pml/cronmaster-examples/c3/1
+        destinationID: /pml/cronmaster-examples/c5/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+  deployconditions:
+    mandatory:
+      - subject:
+          name: linkc1-1-c4-1
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjo0MCwibG9zdFZhbHVlIjoxMDAsImppdHRlclZhbHVlIjo5OTk5OTksInRocm91Z2hwdXRWYWx1ZSI6MTAwfQ== # {"delayValue":40,"lostValue":100,"jitterValue":999999,"throughputValue":100}
+      - subject:
+          name: linkc1-1-c4-1
+          type: link
+        object:
+          name: provider
+          type: label
+        relation: In
+        extent: WyJqaWFuZ25hbi1mYWJyaWMtMTAxLXNkd2FuLXNyb3UtaHlwZXJvcyIsImppYW5nbmFuLWZhYnJpYy0xMDItc2R3YW4tc3JvdS1oeXBlcm9zIiwiamlhbmduYW4tZmFicmljLTEwMy1zZHdhbi1zcm91LWh5cGVyb3MiXQ== # ["jiangnan-fabric-101-sdwan-srou-hyperos","jiangnan-fabric-102-sdwan-srou-hyperos","jiangnan-fabric-103-sdwan-srou-hyperos"]
+      - subject:
+          name: linkc2-1-c3-1
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjo1MCwibG9zdFZhbHVlIjoxMDAsImppdHRlclZhbHVlIjo5OTk5OTksInRocm91Z2hwdXRWYWx1ZSI6MTAwfQ== # {"delayValue":50,"lostValue":100,"jitterValue":999999,"throughputValue":100}
+      - subject:
+          name: linkc2-1-c4-1
+          type: link
+        object:
+          name: rtt
+          type: rtt
+        relation: Is
+        extent:  eyJydHQiOjUwfQ== # {"rtt":50}
+
+    BestEffort:
+      - subject:
+          name: linkc2-1-c5-1
+          type: link
+        object:
+          name: provider
+          type: label
+        relation: In
+        extent: WyJqaWFuZ25hbi1mYWJyaWMtMTA0LXNkd2FuLXNyb3UtaHlwZXJvcyIsImppYW5nbmFuLWZhYnJpYy0xMDUtc2R3YW4tc3JvdS1oeXBlcm9zIiwiamlhbmduYW4tZmFicmljLTEwNi1zZHdhbi1zcm91LWh5cGVyb3MiXQ== # ["jiangnan-fabric-104-sdwan-srou-hyperos","jiangnan-fabric-105-sdwan-srou-hyperos","jiangnan-fabric-106-sdwan-srou-hyperos"]
+      - subject:
+          name: linkc3-1-c5-1
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjo1LCJsb3N0VmFsdWUiOjEwMCwiaml0dGVyVmFsdWUiOjk5OTk5OSwidGhyb3VnaHB1dFZhbHVlIjoxMDB9 # {"delayValue":5,"lostValue":100,"jitterValue":999999,"throughputValue":100}
+      - subject:
+          name: linkc3-1-c5-1
+          type: link
+        object:
+          name: accelerate
+          type: accelerate
+        relation: Is
+        extent: eyJhY2NlbGVyYXRlIjogInRydWUifQ== # {"accelerate": "true"}

@@ -195,7 +195,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delayValue\":10000,\"lostValue\":100,\"jitterValue\":100,\"throughputValue\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -207,7 +207,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "rtt",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"Rtt\":50}"),
+						Extent:   []byte("{\"rtt\":50}"),
 					},
 				},
 				BestEffort: []v1alpha1.Condition{
@@ -221,7 +221,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delayValue\":10000,\"lostValue\":100,\"jitterValue\":100,\"throughputValue\":100}"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -233,7 +233,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "accelerate",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"Accelerate\": true}"),
+						Extent:   []byte("{\"accelerate\": true}"),
 					},
 				},
 			},
@@ -425,7 +425,7 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 				},
 			},
@@ -783,6 +783,7 @@ func SetRbsAndNetReqSameDomain() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 			},
 		},
 	}
+
 	return rbs, &networkReq
 }
 
@@ -922,6 +923,7 @@ func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 			},
 		},
 	}
+
 	return rbs, &networkReq
 }
 
@@ -1059,6 +1061,7 @@ func SetRbsAndNetReqDelaySlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Net
 			},
 		},
 	}
+
 	return rbs, &networkReq
 }
 
@@ -1252,6 +1255,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 			},
 		},
 	}
+
 	return rbs, &networkReq
 }
 
@@ -1445,6 +1449,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 			},
 		},
 	}
+
 	return rbs, &networkReq
 }
 
@@ -1645,10 +1650,11 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 			},
 		},
 	}
+
 	return rbs, &networkReq
 }
 
-//Case 5
+// Case 5
 func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
 
 	var rbs []*v1alpha1.ResourceBinding
@@ -1839,6 +1845,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 			},
 		},
 	}
+
 	return rbs, &networkReq
 }
 
@@ -2537,7 +2544,7 @@ func TestNetworkFilterSameDomain(t *testing.T) {
 	nputil.TraceInfo(infoString)
 }
 
-//Case 5: Component存在相互的连接属性
+// Case 5: Component存在相互的连接属性
 func TestNetworkFilterInterCommunication(t *testing.T) {
 	logx.NewLogger()
 

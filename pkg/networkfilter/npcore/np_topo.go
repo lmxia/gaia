@@ -29,30 +29,30 @@ type DomainSrPath struct {
 	DomainSidArray []DomainSid
 }
 
-//多条最短路径的多个domainSrPath
+// 多条最短路径的多个domainSrPath
 type DomainSrPathArray struct {
 	DomainSrPathArray []DomainSrPath
 }
 
-//连接属性的特定实例的domainPathArray,多条路径
+// 连接属性的特定实例的domainPathArray,多条路径
 type AppDomainPathArray struct {
 	AppConnect        AppConnectAttr //带实例号的AppConnectAttr
 	DomainSrPathArray []DomainSrPath //AppConnect特定实例的多条可达的domainSrPath
 }
 
-//指定源连接属性的所有实例的domainPathGroup
+// 指定源连接属性的所有实例的domainPathGroup
 type ScnIdAppDomainPathGroup struct {
 	ScnIdInstance      ScnIdInstance        //特定源scnID实例
 	AppDomainPathArray []AppDomainPathArray //特定源scnID实例的AppConnect的多路径domainSrPath(源实例相同，目的实例不相同组成的AppConnect)
 }
 
-//连接属性的特定实例的一条domainPath：单条路径
+// 连接属性的特定实例的一条domainPath：单条路径
 type AppDomainPath struct {
 	AppConnect   AppConnectAttr //带实例号的AppConnectAttr
 	DomainSrPath DomainSrPath   //特定AppConnect实例的一条domainPath
 }
 
-//连接属性的特定实例的domainNamePath:包含fabricName
+// 连接属性的特定实例的domainNamePath:包含fabricName
 type AppDomainNamePathArray struct {
 	AppConnect          AppConnectAttr
 	DomainNamePathArray []DomainSrNamePath //AppConnect特定实例的domainNamePathArray
@@ -107,6 +107,8 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 func (domainSrPath *DomainSrPath) IsSatisfiedRtt(reverseDelay uint32, rttAttr AppLinkRttAttr) bool {
 	nputil.TraceInfoBegin("")
 
+	infoString := fmt.Sprintf("reverseDelay is: (%+v), rttAttr is: (%+v)", rttAttr)
+	nputil.TraceInfo(infoString)
 	_, tmpDelay := domainSrPath.GetDomainSrPathDelay()
 	//标识通信有rt指标要求
 	if rttAttr.Rtt != 0 && (tmpDelay+reverseDelay) > (uint32)(rttAttr.Rtt) {
@@ -121,16 +123,25 @@ func (domainSrPath *DomainSrPath) IsSatisfiedRtt(reverseDelay uint32, rttAttr Ap
 func (domainSrPath *DomainSrPath) IsSatisfiedProvider(provider AppLinkProviderAttr) bool {
 	nputil.TraceInfoBegin("")
 
+	infoString := fmt.Sprintf("Providerlist is: (%+v)", provider)
+	nputil.TraceInfo(infoString)
 	graph := GraphFindByGraphType(GraphTypeAlgo_Cspf)
 	domainInfoPath := graph.GetDomainPathNameWithFaric(*domainSrPath)
 	var domainNameList []string
 	for _, domainInfo := range domainInfoPath {
-		domainNameList = append(domainNameList, domainInfo.DomainName)
+		if domainInfo.DomainType == uint32(String2DomainType(domainTypeString_Fabric_Internet)) {
+			domainNameList = append(domainNameList, domainInfo.DomainName)
+		}
 	}
-	for _, proName := range provider.Providers {
-		sort.Strings(domainNameList)
-		index := sort.SearchStrings(domainNameList, proName)
-		if !(index < len(domainNameList) && domainNameList[index] == proName) {
+	info := fmt.Sprintf("Providerlist is (%+v): domainNameList is: (%+v)", provider.Providers, domainNameList)
+	nputil.TraceInfo(info)
+	providerLits := provider.Providers
+	for _, domainName := range domainNameList {
+		sort.Strings(providerLits)
+		info := fmt.Sprintf("domainName is (%+v).", domainName)
+		nputil.TraceInfo(info)
+		index := sort.SearchStrings(providerLits, domainName)
+		if !(index < len(providerLits) && providerLits[index] == domainName) {
 			nputil.TraceInfoEnd("False: Provider is not satisfied")
 			return false
 		}
@@ -144,6 +155,8 @@ func (domainSrPath *DomainSrPath) IsSatisfiedProvider(provider AppLinkProviderAt
 func (domainSrPath *DomainSrPath) IsSatisfiedSla(appSlaAttr AppSlaAttr) bool {
 	nputil.TraceInfoBegin("")
 
+	infoString := fmt.Sprintf("appSlaAttr is: (%+v)", appSlaAttr)
+	nputil.TraceInfo(infoString)
 	//带宽是否满足SLA, 带宽为0说明不关注带宽属性
 	if appSlaAttr.ThroughputValue != 0 {
 		bCheck := domainSrPath.isSatisfiedThroughput(appSlaAttr)
@@ -186,7 +199,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedSla(appSlaAttr AppSlaAttr) bool {
 	return true
 }
 
-//Check and update free bandwidth of baseDomainlink
+// Check and update free bandwidth of baseDomainlink
 func (domainSrPath *DomainSrPath) isSatisfiedThroughput(appSlaAttr AppSlaAttr) bool {
 	nputil.TraceInfoBegin("")
 
@@ -214,7 +227,7 @@ func (domainSrPath *DomainSrPath) isSatisfiedThroughput(appSlaAttr AppSlaAttr) b
 		dstDomainSid := domainSrPath.DomainSidArray[j+1]
 
 		//找domainlink，比较Fabric SLA质量矩阵中值是否满足SLA
-		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.SrcNodeSN, dstDomainSid.DomainId, dstDomainSid.DstNodeSN)
+		baseDomainLink := BaseDomainLinkFindByNodeSN(srcDomainSid.DomainId, srcDomainSid.DstNodeSN, dstDomainSid.DomainId, dstDomainSid.SrcNodeSN)
 		infoString := fmt.Sprintf("Update baseDomainLink free bandwidth: BaseDomainLinkDbV(%+v), slaAttr(%+v)", baseDomainLink.BaseDomainLinkDbV, appSlaAttr)
 		nputil.TraceInfo(infoString)
 		baseDomainLink.UpdateBaseDomainLinkFreeBandwidth(appSlaAttr.ThroughputValue)
@@ -223,7 +236,7 @@ func (domainSrPath *DomainSrPath) isSatisfiedThroughput(appSlaAttr AppSlaAttr) b
 	return true
 }
 
-//Check and update free bandwidth of baseDomainlink
+// Check and update free bandwidth of baseDomainlink
 func (domainSrPath *DomainSrPath) isSatisfiedThroughputAndUpdate(appSlaAttr AppSlaAttr) bool {
 	nputil.TraceInfoBegin("")
 

@@ -1,0 +1,405 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: case1-no-field2
+  namespace: gaia-reserved
+  labels:
+    apps.gaia.io/user.id: user123_test
+spec:
+  appID: case1-no-field2
+  workloadComponents:
+    - componentName: case1-component1
+      namespace: test
+      sandbox: runc
+      schedule:
+        cronEnable: false
+        endEnable: false
+        friday: {}
+        monday:
+          startSchedule: "16:20:00"
+        saturday: {}
+        startEnable: true
+        sunday: {}
+        thursday: {}
+        tuesday: {}
+        wednesday: {}
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: appcronmaster
+        spec:
+          containers:
+            - name: appcronmastercomp1
+              image: 172.17.9.231:8880/hyperio/app:latest
+              env:
+                - name: SCNID
+                  value: "/pml/case1/c1/1"
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+    - componentName: case1-component2
+      namespace: test
+      sandbox: runc
+      schedule:
+        cronEnable: false
+        endEnable: false
+        friday: {}
+        monday:
+          startSchedule: "15:45:00"
+        saturday: {}
+        startEnable: true
+        sunday: {}
+        thursday: {}
+        tuesday: {}
+        wednesday: {}
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: appserverless-com2
+        spec:
+          containers:
+            - name: appserverless-com2
+              image: 172.17.9.231:8880/hyperio/app:latest
+              env:
+                - name: SCNID
+                  value: "/pml/case1/c2/1"
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+    - componentName: case1-component3
+      namespace: test
+      sandbox: runc
+      schedule:
+        cronEnable: false
+        endEnable: true
+        friday: {}
+        monday:
+          endSchedule: "16:30:00"
+        saturday: {}
+        startEnable: false
+        sunday: {}
+        thursday: {}
+        tuesday: {}
+        wednesday: {}
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: appcronmaster
+        spec:
+          containers:
+            - name: appcronmastercomp1
+              image: 172.17.9.231:8880/hyperio/app:latest
+              env:
+                - name: SCNID
+                  value: "/pml/case1/c3/1"
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+    - componentName: case1-component4
+      namespace: test
+      sandbox: runc
+      schedule:
+        cronEnable: false
+        endEnable: true
+        friday: {}
+        monday: {}
+        saturday: {}
+        startEnable: true
+        sunday: {}
+        thursday: {}
+        tuesday:
+          endSchedule: "17:20:00"
+          startSchedule: "17:05:00"
+        wednesday: {}
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: appserverless-com1
+        spec:
+          containers:
+            - name: appserverless-com1
+              image: 172.17.9.231:8880/hyperio/app:latest
+              env:
+                - name: SCNID
+                  value: "/pml/case1/c4/1"
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+    - componentName: case1-component5
+      namespace: test
+      sandbox: runc
+      schedule:
+        cronEnable: true
+        endEnable: false
+        friday: {}
+        monday:
+          startSchedule: "17:45:00"
+        saturday: {}
+        startEnable: true
+        sunday: {}
+        thursday: {}
+        tuesday:
+          startSchedule: "09:10:00"
+        wednesday:
+          startSchedule: "09:20:00"
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: app-cronstart
+        spec:
+          containers:
+            - name: appcronstartcomp1
+              image: 172.17.9.231:8880/hyperio/app:latest
+              env:
+                - name: SCNID
+                  value: "/pml/case1/c5/1"
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+    - componentName: case1-component6
+      namespace: test
+      sandbox: runc
+      schedule:
+        cronEnable: true
+        endEnable: true
+        friday: {}
+        monday: {}
+        saturday: {}
+        startEnable: true
+        sunday: {}
+        thursday: {}
+        tuesday: {}
+        wednesday:
+          endSchedule: "14:40:00"
+          startSchedule: "14:25:00"
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: appserverless-com1
+        spec:
+          containers:
+            - name: appserverless-com1
+              image: 172.17.9.231:8880/hyperio/app:latest
+              env:
+                - name: SCNID
+                  value: "/pml/case1/c6/1"
+              resources:
+                limits:
+                  cpu: "100m"
+                  memory: "100Mi"
+                requests:
+                  cpu: "100m"
+                  memory: "100Mi"
+  deploymentCondition:
+    mandatory:
+      - subject:
+          name: case1-component1
+          type: component
+        object:
+          name: geo-location
+          type: label
+        relation: In
+        extent: WyAiQ2hpbmEtSHVhZG9uZy1KaWFuZ3N1LUNpdHktQzExLURpc3RyaWN0LUMxMSIsIkNoaW5hLUh1YWRvbmctSmlhbmdzdS1DaXR5LUMxMS1EaXN0cmljdC1FMTEiXQ== # [ "China-Huadong-Jiangsu-City-C11-District-C11","China-Huadong-Jiangsu-City-C11-District-E11"]
+      - subject:
+          name: case1-component2
+          type: component
+        object:
+          name: case1-component1
+          type: component
+        relation: Affinity
+        extent: Cg== # [""]
+      - subject:
+          name: case1-component3
+          type: component
+        object:
+          name: case1-component1
+          type: component
+        relation: Affinity
+        extent: Cg== # [ ""]
+      - subject:
+          name: case1-component4
+          type: component
+        object:
+          name: case1-component1
+          type: component
+        relation: Affinity
+        extent: Cg== # [""]
+      - subject:
+          name: case1-component5
+          type: component
+        object:
+          name: case1-component1
+          type: component
+        relation: Affinity
+        extent: Cg== # [ ""]
+      - subject:
+          name: case1-component6
+          type: component
+        object:
+          name: geo-location
+          type: label
+        relation: In
+        extent: WyJDaGluYS1IdWFkb25nLUppYW5nc3UtQ2l0eS1DMzEtRGlzdHJpY3QtQzMxIiwiQ2hpbmEtSHVhZG9uZy1KaWFuZ3N1LUNpdHktQzMxLURpc3RyaWN0LUUzMSJdCg== # ["China-Huadong-Jiangsu-City-C31-District-C31","China-Huadong-Jiangsu-City-C31-District-E31"]
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary1
+          subject: case1-component1
+          type: replicas
+          value: Mg== # 2
+        - name: boundary20
+          subject: case1-component2
+          type: "maxReplicas"
+          value: NQ== # 5
+        - name: boundary21
+          subject: case1-component2
+          type: "cpu"
+          value: MjA= # 20
+        - name: boundary22
+          subject: case1-component2
+          type: "cpu"
+          value: ODA= # 80
+        - name: boundary23
+          subject: case1-component2
+          type: "mem"
+          value: MjA= # 20
+        - name: boundary24
+          subject: case1-component2
+          type: "mem"
+          value: NzA= # 70
+        - name: boundary25
+          subject: case1-component2
+          type: "QPS"
+          value: MTU= # 15
+        - name: boundary26
+          subject: case1-component2
+          type: "QPS"
+          value: ODU= # 85
+        - name: boundary31
+          subject: case1-component3
+          type: replicas
+          value: Mg== # 2
+        - name: boundary41
+          subject: case1-component4
+          type: "maxReplicas"
+          value: NQ== # 5
+        - name: boundary42
+          subject: case1-component4
+          type: "cpu"
+          value: MjA= # 20
+        - name: boundary43
+          subject: case1-component4
+          type: "cpu"
+          value: ODA= # 80
+        - name: boundary44
+          subject: case1-component4
+          type: "mem"
+          value: MjA= # 20
+        - name: boundary45
+          subject: case1-component4
+          type: "mem"
+          value: NzA= # 70
+        - name: boundary46
+          subject: case1-component4
+          type: "QPS"
+          value: MTU= # 15
+        - name: boundary47
+          subject: case1-component4
+          type: "QPS"
+          value: ODU= # 85
+        - name: boundary52
+          subject: case1-component5
+          type: replicas
+          value: Mw== # 3
+        - name: boundary61
+          subject: case1-component6
+          type: "maxReplicas"
+          value: NQ== # 5
+        - name: boundary62
+          subject: case1-component6
+          type: "cpu"
+          value: MjA= # 20
+        - name: boundary63
+          subject: case1-component6
+          type: "cpu"
+          value: ODA= # 80
+        - name: boundary64
+          subject: case1-component6
+          type: "mem"
+          value: MjA= # 20
+        - name: boundary65
+          subject: case1-component6
+          type: "mem"
+          value: NzA= # 70
+        - name: boundary66
+          subject: case1-component6
+          type: "QPS"
+          value: MTU= # 15
+        - name: boundary67
+          subject: case1-component6
+          type: "QPS"
+          value: ODU= # 85
+    maintenance:
+      hpa:
+        - name: "decrease replicas1"
+          subject: case1-component2
+          trigger: boundary21 && boundary23 && boundary25
+          strategy:
+            type: decrease
+            value: MQ== # 1
+        - name: "increase replicas1"
+          subject: case1-component2
+          trigger: boundary22 || boundary24 || boundary26
+          strategy:
+            type: increase
+            value: MQ== # 1
+        - name: "decrease replicas1"
+          subject: case1-component4
+          trigger: boundary42 && boundary44 && boundary46
+          strategy:
+            type: decrease
+            value: MQ== # 1
+        - name: "increase replicas1"
+          subject: case1-component4
+          trigger: boundary43 || boundary45 || boundary47
+          strategy:
+            type: increase
+            value: MQ== # 1
+        - name: "decrease replicas1"
+          subject: case1-component6
+          trigger: boundary62 && boundary64 && boundary66
+          strategy:
+            type: decrease
+            value: MQ== # 1
+        - name: "increase replicas1"
+          subject: case1-component6
+          trigger: boundary63 || boundary65 || boundary67
+          strategy:
+            type: increase
+            value: MQ== # 1

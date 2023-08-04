@@ -75,7 +75,7 @@ spec:
           name: sla
           type: sla
         relation: Is
-        extent: eyJkZWxheVZhbHVlIjo0MCwibG9zdFZhbHVlIjoxMDAsImppdHRlclZhbHVlIjo5OTk5OTksInRocm91Z2hwdXRWYWx1ZSI6MTAwfQ== # {"delayValue":40,"lostValue":100,"jitterValue":999999,"throughputValue":100}
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":999999,"throughputValue":100}
       - subject:
           name: linkc1-1-c6-1
           type: link
@@ -91,7 +91,7 @@ spec:
           name: sla
           type: sla
         relation: Is
-        extent: eyJkZWxheVZhbHVlIjo1MCwibG9zdFZhbHVlIjoxMDAsImppdHRlclZhbHVlIjo5OTk5OTksInRocm91Z2hwdXRWYWx1ZSI6MTAwfQ== # {"delayValue":50,"lostValue":100,"jitterValue":999999,"throughputValue":100}
+        extent:  eyJkZWxheVZhbHVlIjoxNTAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":150,"lostValue":100,"jitterValue":999999,"throughputValue":100}
       - subject:
           name: linkc2-1-c6-1
           type: link
@@ -99,7 +99,7 @@ spec:
           name: rtt
           type: rtt
         relation: Is
-        extent:  eyJydHQiOjUwfQ== # {"rtt":50}
+        extent:  eyJydHQiOjEwMH0= # {"rtt":100}
 
     BestEffort:
       - subject:
@@ -117,7 +117,7 @@ spec:
           name: sla
           type: sla
         relation: Is
-        extent: eyJkZWxheVZhbHVlIjo1LCJsb3N0VmFsdWUiOjEwMCwiaml0dGVyVmFsdWUiOjk5OTk5OSwidGhyb3VnaHB1dFZhbHVlIjoxMDB9 # {"delayValue":5,"lostValue":100,"jitterValue":999999,"throughputValue":100}
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":999999,"throughputValue":100}
       - subject:
           name: linkc3-1-c6-1
           type: link

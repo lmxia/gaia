@@ -72,6 +72,8 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 	var bRttCheck bool
 	var bProviderCheck bool
 
+	infoString := fmt.Sprintf("appLinkAttr is: (%+v).", appLinkAttr)
+	nputil.TraceInfo(infoString)
 	//Check Sla
 	if appLinkAttr.LinkSlaAttr.Mandatory == true {
 		bCheckSla = domainSrPath.IsSatisfiedSla(appLinkAttr.LinkSlaAttr.SlaAttr)
@@ -107,7 +109,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 func (domainSrPath *DomainSrPath) IsSatisfiedRtt(reverseDelay uint32, rttAttr AppLinkRttAttr) bool {
 	nputil.TraceInfoBegin("")
 
-	infoString := fmt.Sprintf("reverseDelay is: (%+v), rttAttr is: (%+v)", rttAttr)
+	infoString := fmt.Sprintf("reverseDelay is: (%+v), rttAttr is: (%+v)", reverseDelay, rttAttr)
 	nputil.TraceInfo(infoString)
 	_, tmpDelay := domainSrPath.GetDomainSrPathDelay()
 	//标识通信有rt指标要求

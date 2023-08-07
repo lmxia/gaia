@@ -1287,29 +1287,28 @@ func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
 
 // NeedBindNetworkInCluster check if we should bind network path.
 func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, networkReq *appsv1alpha1.NetworkRequirement) bool {
-	var compToClusterMap map[string]int32
+	var compToReplicasMap map[string]int32
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName {
-			compToClusterMap = rbApp.Replicas
+			compToReplicasMap = rbApp.Replicas
 		}
 	}
-	idToComponentMap := make(map[string]string, 0)
-	for _, netCommu := range networkReq.Spec.NetworkCommunication {
-		for _, selfID := range netCommu.SelfID {
-			idToComponentMap[selfID] = netCommu.Name
+	idToComponentMap := make(map[string]string)
+	for _, scn := range networkReq.Spec.WorkloadComponents.Scns {
+		for _, selfID := range scn.SelfID {
+			idToComponentMap[selfID] = scn.Name
 		}
 	}
 
-	for _, netCommu := range networkReq.Spec.NetworkCommunication {
-		if len(netCommu.InterSCNID) > 0 {
-			for _, internalSCN := range netCommu.InterSCNID {
-				comName := idToComponentMap[internalSCN.Source.Id]
-				if compToClusterMap[comName] > 0 {
-					return true
-				}
+	if len(networkReq.Spec.WorkloadComponents.Links) > 0 {
+		for _, link := range networkReq.Spec.WorkloadComponents.Links {
+			comName := idToComponentMap[link.SourceID]
+			if compToReplicasMap[comName] > 0 {
+				return true
 			}
 		}
 	}
+
 	return false
 }
 

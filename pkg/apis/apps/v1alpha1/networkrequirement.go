@@ -24,20 +24,9 @@ type NetworkRequirement struct {
 // NetworkRequirementSpec defines the spec of NetworkRequirement
 type NetworkRequirementSpec struct {
 	// +optional
-	NetworkCommunication []NetworkCommunication `json:"networkCommunication,omitempty"`
-	// +optional
 	WorkloadComponents WorkloadComponents `json:"workloadComponents,omitempty"`
 	// +optional
 	Deployconditions DeploymentCondition `json:"deployconditions,omitempty"`
-}
-
-type NetworkCommunication struct {
-	// +optional
-	Name string `json:"name,omitempty"`
-	// +optional
-	SelfID []string `json:"selfID,omitempty"`
-	// +optional
-	InterSCNID []InterSCNID `json:"interSCNID,omitempty"`
 }
 
 type Scn struct {
@@ -67,25 +56,6 @@ type WorkloadComponents struct {
 	Links []Link `json:"links,omitempty"`
 }
 
-type InterSCNID struct {
-	// +optional
-	Source      Direction  `json:"source,omitempty"`
-	Destination Direction  `json:"destination,omitempty"`
-	Sla         AppSlaAttr `json:"sla,omitempty"`
-	Providers   []string   `json:"providers,omitempty"`
-}
-type AppSlaAttr struct {
-	Delay     int32 `json:"delay,omitempty"`
-	Lost      int32 `json:"lost,omitempty"`
-	Jitter    int32 `json:"jitter,omitempty"`
-	Bandwidth int64 `json:"bandwidth,omitempty"`
-}
-type Direction struct {
-	// +optional
-	Id string `json:"id,omitempty"`
-	// +optional
-	Attributes []Attributes `json:"attributes,omitempty"`
-}
 type Attributes struct {
 	// +optional
 	Key string `json:"key,omitempty"`

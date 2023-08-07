@@ -50,121 +50,139 @@ func (suite *DeployerSuite) SetupTest() {
 			Namespace: "default",
 		},
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
-				0: {
-					Name:   "a",
-					SelfID: []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-dk1",
-										Value: "sca1-dv1",
-									},
-									1: {
-										Key:   "sca1-dk2",
-										Value: "sca1-dv2",
-									},
-								},
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					{
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					{
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+				},
+				Links: []v1alpha1.Link{
+					{
+						LinkName:      "a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-dk1",
+								Value: "sca1-dv1",
 							},
-							Destination: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
+							1: {
+								Key:   "sca1-dk2",
+								Value: "sca1-dv2",
 							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 6000,
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
 							},
 						},
 					},
+					{
+						LinkName:      "b-a",
+						SourceID:      "scb1",
+						DestinationID: "sca1",
+					},
 				},
-				1: {
-					Name:   "b",
-					SelfID: []string{"scb1"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "scb1",
-							},
-							Destination: v1alpha1.Direction{
-								Id: "sca1",
-							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 6000,
-							},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					{
+						Subject: v1alpha1.Xject{
+							Name: "a-b",
+							Type: "link",
 						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":999999,\"throughputValue\":100}"),
+					},
+					{
+						Subject: v1alpha1.Xject{
+							Name: "b-a",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":999999,\"throughputValue\":100}"),
 					},
 				},
 			},
 		},
 	}
-
 	suite.network2 = &v1alpha1.NetworkRequirement{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "case4",
 			Namespace: "default",
 		},
 		Spec: v1alpha1.NetworkRequirementSpec{
-			NetworkCommunication: []v1alpha1.NetworkCommunication{
-				0: {
-					Name:   "a",
-					SelfID: []string{"sca1", "sca2"},
-					InterSCNID: []v1alpha1.InterSCNID{
-						0: {
-							Source: v1alpha1.Direction{
-								Id: "sca1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "sca1-dk1",
-										Value: "sca1-dv1",
-									},
-									1: {
-										Key:   "sca1-dk2",
-										Value: "sca1-dv2",
-									},
-								},
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					{
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					{
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+				},
+				Links: []v1alpha1.Link{
+					{
+						LinkName:      "a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-dk1",
+								Value: "sca1-dv1",
 							},
-							Destination: v1alpha1.Direction{
-								Id: "scb1",
-								Attributes: []v1alpha1.Attributes{
-									0: {
-										Key:   "scb1-dk1",
-										Value: "scb1-dv1",
-									},
-									1: {
-										Key:   "scb1-dk2",
-										Value: "scb1-dv2",
-									},
-								},
+							1: {
+								Key:   "sca1-dk2",
+								Value: "sca1-dv2",
 							},
-							Sla: v1alpha1.AppSlaAttr{
-								Delay:     10000,
-								Lost:      10000,
-								Jitter:    1000,
-								Bandwidth: 6000,
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
 							},
 						},
 					},
 				},
-				1: {
-					Name:   "b",
-					SelfID: []string{"scb1"},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					{
+						Subject: v1alpha1.Xject{
+							Name: "a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "sla",
+							Type: "sla",
+						},
+						Relation: "Is",
+						Extent:   []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":999999,\"throughputValue\":100}"),
+					},
 				},
 			},
 		},

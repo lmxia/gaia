@@ -99,69 +99,6 @@ spec:
                       type: object
                     type: array
                 type: object
-              networkCommunication:
-                items:
-                  properties:
-                    interSCNID:
-                      items:
-                        properties:
-                          destination:
-                            properties:
-                              attributes:
-                                items:
-                                  properties:
-                                    key:
-                                      type: string
-                                    value:
-                                      type: string
-                                  type: object
-                                type: array
-                              id:
-                                type: string
-                            type: object
-                          providers:
-                            items:
-                              type: string
-                            type: array
-                          sla:
-                            properties:
-                              bandwidth:
-                                format: int64
-                                type: integer
-                              delay:
-                                format: int32
-                                type: integer
-                              jitter:
-                                format: int32
-                                type: integer
-                              lost:
-                                format: int32
-                                type: integer
-                            type: object
-                          source:
-                            properties:
-                              attributes:
-                                items:
-                                  properties:
-                                    key:
-                                      type: string
-                                    value:
-                                      type: string
-                                  type: object
-                                type: array
-                              id:
-                                type: string
-                            type: object
-                        type: object
-                      type: array
-                    name:
-                      type: string
-                    selfID:
-                      items:
-                        type: string
-                      type: array
-                  type: object
-                type: array
               workloadComponents:
                 properties:
                   links:

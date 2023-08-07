@@ -523,24 +523,13 @@ func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBind
 			}
 		}
 
-		createRB := false
 		descriptionName := rb.GetLabels()[common.GaiaDescriptionLabel]
 		clusterName, descNs, errCluster := utils.GetLocalClusterName(c.localkubeclient)
 		if errCluster != nil {
 			klog.Errorf("handleParentResourceBinding: failed to get local clusterName From secret: %v", errCluster)
 			return errCluster
 		}
-		desc, descErr := c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName, metav1.GetOptions{})
-		// format desc to components
-		components, _, _ := utils.DescToComponents(desc)
-		if descErr != nil {
-			if apierrors.IsNotFound(descErr) {
-				klog.Infof("handleParentResourceBinding: failed get parent Description %s/%s, have no description \n", descNs, descriptionName)
-				return nil
-			}
-			klog.Errorf("handleParentResourceBinding: failed get parent Description %s/%s, error == %v", descNs, descriptionName, descErr)
-			return descErr
-		}
+		createRB := false
 		if len(clusterName) > 0 && len(rb.Spec.RbApps) > 0 {
 			for _, rba := range rb.Spec.RbApps {
 				if len(rba.Children) > 0 {
@@ -559,6 +548,17 @@ func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBind
 				}
 				return utils.ApplyResourceBinding(context.TODO(), c.localdynamicClient, c.restMapper, rb, clusterName, descriptionName, c.networkBindUrl, nwr)
 			} else {
+				desc, descErr := c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName, metav1.GetOptions{})
+				if descErr != nil {
+					if apierrors.IsNotFound(descErr) {
+						klog.Infof("handleParentResourceBinding: failed get parent Description %s/%s, have no description \n", descNs, descriptionName)
+						return nil
+					}
+					klog.Errorf("handleParentResourceBinding: failed get parent Description %s/%s, error == %v", descNs, descriptionName, descErr)
+					return descErr
+				}
+				// format desc to components
+				components, _, _ := utils.DescToComponents(desc)
 				// need schedule across clusters
 				err := utils.ApplyRBWorkloads(context.TODO(), desc, components, c.parentGaiaClient, c.localdynamicClient,
 					c.restMapper, rb, clusterName)
@@ -573,7 +573,7 @@ func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBind
 					return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ", rb.Name, err)
 				}
 			} else {
-				err := utils.OffloadRBWorkloads(context.TODO(), desc, components, c.localdynamicClient, c.restMapper, rb, clusterName)
+				err := utils.OffloadRBWorkloads(context.TODO(), c.localdynamicClient, c.restMapper, rb.GetLabels())
 				if err != nil {
 					return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ", rb.Name, err)
 				}

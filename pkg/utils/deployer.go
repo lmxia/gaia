@@ -238,91 +238,53 @@ func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface,
 	return nwr, nil
 }
 
-func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, localDynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
+func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, rbLabel map[string]string) error {
+	var resources []unstructured.Unstructured
+	var (
+		serverlessGVK     = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+		deployGVK         = schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"}
+		affinityDaemonGVK = schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "DaemonSet"}
+		cronGVK           = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "CronMaster"}
+		userAppGVK        = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "UserAPP"}
+	)
+	gvks := []schema.GroupVersionKind{
+		serverlessGVK, deployGVK, affinityDaemonGVK, cronGVK, userAppGVK,
+	}
+	for _, gvk := range gvks {
+		restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			klog.Warningf("failed to get restMapping for %q, error==%v", gvk.String(), err)
+			return err
+		}
+		unList, err := dynamicClient.Resource(restMapping.Resource).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+			known.OriginDescriptionNameLabel:      rbLabel[known.OriginDescriptionNameLabel],
+			known.OriginDescriptionNamespaceLabel: rbLabel[known.OriginDescriptionNamespaceLabel],
+			known.OriginDescriptionUIDLabel:       rbLabel[known.OriginDescriptionUIDLabel],
+		}).String()})
+		if err != nil {
+			klog.Warningf("failed to list resources of %q, error==%v", gvk.String(), err)
+			return err
+		}
+		resources = append(resources, unList.Items...)
+	}
+
 	var allErrs []error
 	var err error
-	descLabels := desc.GetLabels()
 	wg := sync.WaitGroup{}
-	comToBeDeleted := components
-	errCh := make(chan error, len(comToBeDeleted))
-	for _, com := range comToBeDeleted {
-		switch com.Workload.Workloadtype {
-		case appsv1alpha1.WorkloadTypeDeployment:
-			var unStructure *unstructured.Unstructured
-			var errDep error
-			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
-				unStructure, errDep = AssembledCronDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
-			} else {
-				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
+	errCh := make(chan error, len(resources))
+	descName := rbLabel[known.OriginDescriptionNameLabel]
+	for _, resource := range resources {
+		wg.Add(1)
+		go func(unStructure *unstructured.Unstructured) {
+			defer wg.Done()
+			klog.V(5).Infof("deleting %s %s defined of Description %s", unStructure.GetKind(),
+				klog.KObj(unStructure), descName)
+			err2 := DeleteResourceWithRetry(ctx, dynamicClient, restMapper, unStructure)
+			if err2 != nil {
+				klog.Infof("offload workloads name==%q err===%v \n", klog.KRef(unStructure.GetNamespace(), unStructure.GetName()), err2)
+				errCh <- err2
 			}
-			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
-				continue
-			}
-			wg.Add(1)
-			go func(unstructure *unstructured.Unstructured) {
-				defer wg.Done()
-				klog.V(5).Infof("deleting %s %s defined in ResourceBinding %s", unstructure.GetKind(),
-					klog.KObj(unstructure), klog.KObj(rb))
-				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
-				if err2 != nil {
-					klog.Infof("offloadRBWorkloads Deployment name==%q err===%v \n", klog.KRef(unstructure.GetNamespace(), unstructure.GetName()), err2)
-					errCh <- err2
-				}
-			}(unStructure)
-		case appsv1alpha1.WorkloadTypeServerless:
-			var unStructure *unstructured.Unstructured
-			var errSer error
-			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
-				unStructure, errSer = AssembledCronServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
-			} else {
-				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
-			}
-			if errSer != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
-				continue
-			}
-			wg.Add(1)
-			go func(unstructure *unstructured.Unstructured) {
-				defer wg.Done()
-				retryErr := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
-				if retryErr != nil {
-					klog.Infof("offloadRBWorkloads Serverless name==%q err===%v \n", klog.KRef(unstructure.GetNamespace(), unstructure.GetName()), retryErr)
-					errCh <- retryErr
-					return
-				}
-			}(unStructure)
-		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			unStructure, errAff := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, true)
-			if errAff != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
-				continue
-			}
-			wg.Add(1)
-			go func(unstructure *unstructured.Unstructured) {
-				defer wg.Done()
-				klog.V(5).Infof(" workloadTypeAffinityDaemon deleting %s %s defined in ResourceBinding %s", unstructure.GetKind(),
-					klog.KObj(unstructure), klog.KObj(rb))
-				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
-				if err2 != nil {
-					klog.Infof("offloadRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", unstructure.GetName(), err2)
-					errCh <- err2
-				}
-			}(unStructure)
-		case appsv1alpha1.WorkloadTypeUserApp:
-			unStructure, errApp := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, true)
-			if errApp != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
-				continue
-			}
-			wg.Add(1)
-			go func(unstructure *unstructured.Unstructured) {
-				defer wg.Done()
-				klog.V(5).Infof(" userApp deleting %s %s defined in ResourceBinding %s", unstructure.GetKind(),
-					klog.KObj(unstructure), klog.KObj(rb))
-				err2 := DeleteResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
-				if err2 != nil {
-					klog.Infof("offloadRBWorkloads userApp name==%s err===%v \n", unstructure.GetName(), err2)
-					errCh <- err2
-				}
-			}(unStructure)
-		}
+		}(&resource)
 		wg.Wait()
 	}
 
@@ -333,11 +295,11 @@ func OffloadRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, com
 	}
 	err = utilerrors.NewAggregate(allErrs)
 	if err != nil {
-		klog.Errorf("failed to offload workloads", "ResourceBinding", klog.KObj(rb), "err", err)
+		klog.Errorf("failed to offload workloads", "Description", descName, "err", err)
 		return err
 	}
 
-	klog.InfoS("offload workloads successfully", "ResourceBinding", klog.KObj(rb))
+	klog.InfoS("offload workloads successfully", "Description", descName)
 	return nil
 }
 
@@ -392,7 +354,7 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 				}
 			}(unStructure)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			unstructure, errdep := AssembledDeamonsetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
+			unstructure, errdep := AssembledDaemonSetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
 			if errdep != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
 				continue
 			}
@@ -561,7 +523,7 @@ func postRequest(url, descriptionName string, path []byte) {
 	defer resp.Body.Close()
 }
 
-func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -570,8 +532,11 @@ func AssembledDeamonsetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
 				newLabels := map[string]string{
-					known.GaiaDescriptionLabel: descName,
-					known.GaiaComponentLabel:   comCopy.Name,
+					known.GaiaDescriptionLabel:            descName,
+					known.GaiaComponentLabel:              comCopy.Name,
+					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
 				}
 				if descLabels[known.UserIDLabel] != "" {
 					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
@@ -630,8 +595,11 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 				return nil, nil
 			}
 			newLabels := map[string]string{
-				known.GaiaDescriptionLabel: descName,
-				known.GaiaComponentLabel:   comCopy.Name,
+				known.GaiaDescriptionLabel:            descName,
+				known.GaiaComponentLabel:              comCopy.Name,
+				known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+				known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+				known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
 			}
 			if descLabels[known.UserIDLabel] != "" {
 				newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
@@ -775,8 +743,11 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				return nil, fmt.Errorf("deployment name==%s, have zero replicas", comCopy.Name)
 			}
 			newLabels := map[string]string{
-				known.GaiaDescriptionLabel: descName,
-				known.GaiaComponentLabel:   comCopy.Name,
+				known.GaiaDescriptionLabel:            descName,
+				known.GaiaComponentLabel:              comCopy.Name,
+				known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+				known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+				known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
 			}
 			if descLabels[known.UserIDLabel] != "" {
 				newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
@@ -918,8 +889,11 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
 				newLabels := map[string]string{
-					known.GaiaDescriptionLabel: descName,
-					known.GaiaComponentLabel:   comCopy.Name,
+					known.GaiaDescriptionLabel:            descName,
+					known.GaiaComponentLabel:              comCopy.Name,
+					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
 				}
 				if descLabels[known.UserIDLabel] != "" {
 					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
@@ -1014,8 +988,11 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
 				newLabels := map[string]string{
-					known.GaiaDescriptionLabel: descName,
-					known.GaiaComponentLabel:   comCopy.Name,
+					known.GaiaDescriptionLabel:            descName,
+					known.GaiaComponentLabel:              comCopy.Name,
+					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
 				}
 				if descLabels[known.UserIDLabel] != "" {
 					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
@@ -1120,8 +1097,11 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			comCopy.Workload.TraitServerless.Foundingmember = rbApp.ChosenOne[comCopy.Name] == 1
 			if replicas > 0 {
 				newLabels := map[string]string{
-					known.GaiaDescriptionLabel: descName,
-					known.GaiaComponentLabel:   comCopy.Name,
+					known.GaiaDescriptionLabel:            descName,
+					known.GaiaComponentLabel:              comCopy.Name,
+					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
 				}
 				if descLabels[known.UserIDLabel] != "" {
 					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]

@@ -200,11 +200,11 @@ func (m *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding
 				m.descUID[uid] = true
 
 				err = m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
-						DeleteCollection(context.TODO(), metaV1.DeleteOptions{}, metaV1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-							common.OriginDescriptionNameLabel:      rbLabels[common.OriginDescriptionNameLabel],
-							common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
-							common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
-						}).String()})
+					DeleteCollection(context.TODO(), metaV1.DeleteOptions{}, metaV1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+						common.OriginDescriptionNameLabel:      rbLabels[common.OriginDescriptionNameLabel],
+						common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
+						common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
+					}).String()})
 				if err != nil {
 					klog.Infof("failed to delete rbs in %s namespace", common.GaiaRBMergedReservedNamespace, err)
 					return err
@@ -338,8 +338,8 @@ func (m *RBMerger) getMergedResourceBindings(chanResult chan []*appV1alpha1.Reso
 				},
 			},
 			Spec: appV1alpha1.ResourceBindingSpec{
-				AppID:           descName,
-				TotalPeer:       rb.Spec.TotalPeer,
+				AppID: descName,
+				// TotalPeer:       rb.Spec.TotalPeer,
 				ParentRB:        rb.Spec.ParentRB,
 				RbApps:          rbN,
 				NetworkPath:     rb.Spec.NetworkPath,

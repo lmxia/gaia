@@ -33,6 +33,7 @@ import (
 	"github.com/lmxia/gaia/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	utilErrors "k8s.io/apimachinery/pkg/util/errors"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
@@ -254,6 +255,7 @@ func (c *Controller) syncHandler(key string) error {
 		// The Foo resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
+			klog.Errorf("resourcebinding '%s' in work queue no longer exists", key)
 			utilruntime.HandleError(fmt.Errorf("resourcebinding '%s' in work queue no longer exists", key))
 			return nil
 		}
@@ -388,30 +390,34 @@ func (c *RBController) handleLocalDescription(desc *appsV1alpha1.Description) er
 	// delete gaia-reserved description
 	if desc.DeletionTimestamp != nil && desc.Namespace == common.GaiaReservedNamespace {
 		var allErrs []error
-		wg := sync.WaitGroup{}
+		descName := desc.GetName()
+		descNS := desc.GetNamespace()
+		descUID := desc.GetUID()
+
 		errCh := make(chan error, 3)
+		wg := sync.WaitGroup{}
 		wg.Add(3)
-		go func(desc *appsV1alpha1.Description) {
+		go func(name, namespace string, uid types.UID) {
 			defer wg.Done()
-			err := c.offloadLocalResourceBindingsByDescription(desc)
+			err := c.offloadLocalResourceBindingsByDescription(name, namespace, uid)
 			if err != nil {
 				errCh <- err
 			}
-		}(desc)
-		go func(desc *appsV1alpha1.Description) {
+		}(descName, descNS, descUID)
+		go func(name, namespace string) {
 			defer wg.Done()
-			err := c.offloadLocalNetworkRequirement(desc)
+			err := c.offloadLocalNetworkRequirement(name, namespace)
 			if err != nil {
 				errCh <- err
 			}
-		}(desc)
-		go func(desc *appsV1alpha1.Description) {
+		}(descName, descNS)
+		go func(name, namespace string, uid types.UID) {
 			defer wg.Done()
-			err := c.offloadLocalDescriptions(desc)
+			err := c.offloadLocalDescriptions(name, namespace, string(uid))
 			if err != nil {
 				errCh <- err
 			}
-		}(desc)
+		}(descName, descNS, descUID)
 
 		wg.Wait()
 		close(errCh)
@@ -439,49 +445,59 @@ func (c *RBController) handleLocalDescription(desc *appsV1alpha1.Description) er
 func (c *RBController) handleParentDescription(desc *appsV1alpha1.Description) error {
 	klog.V(5).Infof("handleParentDescription: handle Description %q ...", klog.KObj(desc))
 	if desc.DeletionTimestamp != nil {
-		if err := c.offloadLocalDescriptions(desc); err != nil {
+		descLabels := desc.GetLabels()
+		descName := descLabels[common.OriginDescriptionNameLabel]
+		descNS := descLabels[common.OriginDescriptionNamespaceLabel]
+		descUID := descLabels[common.OriginDescriptionUIDLabel]
+
+		if err := c.offloadLocalDescriptions(descName, descNS, descUID); err != nil {
 			return err
 		}
-		descLabels := desc.GetLabels()
 		localRbs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
-			common.OriginDescriptionNameLabel:      descLabels[common.OriginDescriptionNameLabel],
-			common.OriginDescriptionNamespaceLabel: descLabels[common.OriginDescriptionNamespaceLabel],
-			common.OriginDescriptionUIDLabel:       descLabels[common.OriginDescriptionUIDLabel],
+			common.OriginDescriptionNameLabel:      descName,
+			common.OriginDescriptionNamespaceLabel: descNS,
+			common.OriginDescriptionUIDLabel:       descUID,
 		}))
 		if err != nil {
 			return err
 		}
 		if localRbs != nil {
-			return fmt.Errorf("handleParentDescription: waiting for local ResourceBings belongs to Description %s getting deleted", klog.KObj(desc))
+			return fmt.Errorf("handleParentDescription: waiting for local ResourceBing of Description %s deleted", klog.KObj(desc))
 		}
 
+		// gaia-merged rb
 		parentRbs, err := c.parentMergedGaiaInformerFactory.Apps().V1alpha1().ResourceBindings().Lister().List(labels.SelectorFromSet(labels.Set{
-			common.OriginDescriptionNameLabel:      descLabels[common.OriginDescriptionNameLabel],
-			common.OriginDescriptionNamespaceLabel: descLabels[common.OriginDescriptionNamespaceLabel],
-			common.OriginDescriptionUIDLabel:       descLabels[common.OriginDescriptionUIDLabel],
+			common.OriginDescriptionNameLabel:      descName,
+			common.OriginDescriptionNamespaceLabel: descNS,
+			common.OriginDescriptionUIDLabel:       descUID,
 		}))
 		if err != nil {
 			return err
 		}
 		if parentRbs != nil {
-			return fmt.Errorf("handleParentDescription: waiting for parent gaia-Merged NS ResourceBings belongs to Description %s getting deleted", klog.KObj(desc).String())
+			klog.V(5).Info("handleParentDescription: waiting for parent gaia-merged ResourceBing of Description %q deleted", klog.KObj(desc).String())
+			return fmt.Errorf("waiting for parent gaia-merged rb of Description %s deleted", klog.KObj(desc).String())
 		}
+		// parent dedicated rbs
 		parentDeRbs, err := c.parentDedicatedGaiaInformerFactory.Apps().V1alpha1().ResourceBindings().Lister().List(labels.SelectorFromSet(labels.Set{
-			common.OriginDescriptionNameLabel:      descLabels[common.OriginDescriptionNameLabel],
-			common.OriginDescriptionNamespaceLabel: descLabels[common.OriginDescriptionNamespaceLabel],
-			common.OriginDescriptionUIDLabel:       descLabels[common.OriginDescriptionUIDLabel],
+			common.OriginDescriptionNameLabel:      descName,
+			common.OriginDescriptionNamespaceLabel: descNS,
+			common.OriginDescriptionUIDLabel:       descUID,
 		}))
 		if err != nil {
 			return err
 		}
 		if parentDeRbs != nil {
-			return fmt.Errorf("handleParentDescription: waiting for parent DedicatedNS ResourceBings belongs to Description %s getting deleted", klog.KObj(desc).String())
+			return fmt.Errorf("handleParentDescription: waiting for parent Dedicated ResourceBing of Description %s  deleted", klog.KObj(desc).String())
 		}
 
 		descCopy := desc.DeepCopy()
 		descCopy.Finalizers = utils.RemoveString(descCopy.Finalizers, common.AppFinalizer)
 		_, err = c.parentGaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).Update(context.TODO(), descCopy, metav1.UpdateOptions{})
 		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
 			klog.WarningDepth(4, fmt.Sprintf("handleParentDescription: failed to remove finalizer %s from parent Descriptions %s: %v", common.AppFinalizer, klog.KObj(desc), err))
 		}
 		return err
@@ -572,18 +588,42 @@ func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBind
 				if err != nil {
 					return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ", rb.Name, err)
 				}
+				// remove finalizers
+				rbCopy := rb.DeepCopy()
+				rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
+				if _, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(context.TODO(), rbCopy, metav1.UpdateOptions{}); err != nil {
+					if apierrors.IsNotFound(err) {
+						return nil
+					}
+					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from ResourceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err))
+					return err
+				}
 			} else {
 				err := utils.OffloadRBWorkloads(context.TODO(), c.localdynamicClient, c.restMapper, rb.GetLabels())
 				if err != nil {
 					return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ", rb.Name, err)
 				}
-			}
-			// remove finalizers
-			rbCopy := rb.DeepCopy()
-			rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
-			if _, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(context.TODO(), rbCopy, metav1.UpdateOptions{}); err != nil {
-				klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from ResourceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err))
-				return err
+				// remove RbApp of this cluster
+				var newRbApps []*appsV1alpha1.ResourceBindingApps
+				for _, rbApp := range rb.Spec.RbApps {
+					if rbApp.ClusterName == clusterName {
+						continue
+					}
+					newRbApps = append(newRbApps, rbApp)
+				}
+				rb.Spec.RbApps = newRbApps
+				rbCopy := rb.DeepCopy()
+				if len(rbCopy.Spec.RbApps) == 0 {
+					// remove finalizers
+					rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
+				}
+				if _, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(context.TODO(), rbCopy, metav1.UpdateOptions{}); err != nil {
+					if apierrors.IsNotFound(err) {
+						return nil
+					}
+					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from ResourceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err))
+					return err
+				}
 			}
 		}
 	}
@@ -634,29 +674,27 @@ func (c *RBController) SetLocalDescriptionController() (*RBController, error) {
 	return c, nil
 }
 
-func (c *RBController) offloadLocalDescriptions(desc *appsV1alpha1.Description) error {
+func (c *RBController) offloadLocalDescriptions(descName, descNS, uid string) error {
+	klog.V(5).Infof("Start deleting local Descriptions derived by %s", klog.KRef(descName, descNS))
 	var derivedDescs []*appsV1alpha1.Description
 	var allErrs []error
 	var err error
-	descLabels := desc.GetLabels()
-	if _, ok := descLabels[common.OriginDescriptionUIDLabel]; ok {
+	if len(uid) != 0 {
 		derivedDescs, err = c.localDescLister.List(labels.SelectorFromSet(labels.Set{
-			common.OriginDescriptionNameLabel:      descLabels[common.OriginDescriptionNameLabel],
-			common.OriginDescriptionNamespaceLabel: descLabels[common.OriginDescriptionNamespaceLabel],
-			common.OriginDescriptionUIDLabel:       descLabels[common.OriginDescriptionUIDLabel],
+			common.OriginDescriptionNameLabel:      descName,
+			common.OriginDescriptionNamespaceLabel: descNS,
+			common.OriginDescriptionUIDLabel:       uid,
 		}))
 	} else {
 		derivedDescs, err = c.localDescLister.List(labels.SelectorFromSet(labels.Set{
-			common.OriginDescriptionNameLabel:      desc.Name,
-			common.OriginDescriptionNamespaceLabel: desc.Namespace,
-			common.OriginDescriptionUIDLabel:       string(desc.UID),
+			common.OriginDescriptionNameLabel:      descName,
+			common.OriginDescriptionNamespaceLabel: descNS,
 		}))
 	}
 	if err != nil {
 		return err
 	}
 
-	klog.V(5).Infof("Start deleting local Descriptions derived by %s", klog.KObj(desc).String())
 	for _, deleteDesc := range derivedDescs {
 		if deleteDesc.DeletionTimestamp != nil {
 			continue
@@ -668,7 +706,7 @@ func (c *RBController) offloadLocalDescriptions(desc *appsV1alpha1.Description) 
 		}
 	}
 	if derivedDescs != nil || len(allErrs) > 0 {
-		return fmt.Errorf("waiting for local Descriptions belongs to Description %s getting deleted", klog.KObj(desc))
+		return fmt.Errorf("waiting for local Descriptions belongs to Description %s getting deleted", klog.KRef(descName, descNS))
 	}
 
 	return nil
@@ -690,18 +728,18 @@ func (c *RBController) deleteDescription(ctx context.Context, namespacedKey stri
 	return err
 }
 
-func (c *RBController) offloadLocalResourceBindingsByDescription(desc *appsV1alpha1.Description) error {
+func (c *RBController) offloadLocalResourceBindingsByDescription(descName, descNS string, uid types.UID) error {
+	klog.V(5).InfoS("Start deleting local ResourceBindings ...", "Description", klog.KRef(descName, descNS))
 	// offload gaia-merged && gaia-to-be-merged  Rbs
 	derivedRBs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
-		common.OriginDescriptionNameLabel:      desc.Name,
-		common.OriginDescriptionNamespaceLabel: desc.Namespace,
-		common.OriginDescriptionUIDLabel:       string(desc.UID),
+		common.OriginDescriptionNameLabel:      descName,
+		common.OriginDescriptionNamespaceLabel: descNS,
+		common.OriginDescriptionUIDLabel:       string(uid),
 	}))
 	if err != nil {
 		return err
 	}
 	var allErrs []error
-	klog.Infof("Start deleting local ResourceBindings derived by %s", klog.KObj(desc).String())
 	for _, deleteRB := range derivedRBs {
 		if deleteRB.DeletionTimestamp != nil {
 			continue
@@ -714,7 +752,7 @@ func (c *RBController) offloadLocalResourceBindingsByDescription(desc *appsV1alp
 		}
 	}
 	if derivedRBs != nil || len(allErrs) > 0 {
-		return fmt.Errorf("waiting for local ResourceBings belongs to Description %s getting deleted", klog.KObj(desc))
+		return fmt.Errorf("waiting for local ResourceBings of Description %q getting deleted", klog.KRef(descName, descNS))
 	}
 
 	return nil
@@ -764,19 +802,22 @@ func (c *RBController) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.Resourc
 	return nil
 }
 
-func (c *RBController) offloadLocalNetworkRequirement(desc *appsV1alpha1.Description) error {
-	nwr, err := c.localgaiaclient.AppsV1alpha1().NetworkRequirements(common.GaiaReservedNamespace).Get(context.TODO(), desc.Name, metav1.GetOptions{})
+func (c *RBController) offloadLocalNetworkRequirement(descName, descNS string) error {
+	klog.V(5).InfoS("Start deleting local NetworkRequirement ...", "Description", klog.KRef(descName, descNS))
+	nwr, err := c.localgaiaclient.AppsV1alpha1().NetworkRequirements(common.GaiaReservedNamespace).Get(context.TODO(), descName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		klog.InfoS("failed to get network requirement of Description", "NetworkRequirement", klog.KObj(desc))
+		klog.InfoS("failed to get network requirement of Description", "NetworkRequirement", klog.KRef(descName, descNS))
 		return err
 	}
 
-	errDel := c.localgaiaclient.AppsV1alpha1().NetworkRequirements(common.GaiaReservedNamespace).Delete(context.TODO(), nwr.GetName(), metav1.DeleteOptions{})
+	errDel := c.localgaiaclient.AppsV1alpha1().NetworkRequirements(common.GaiaReservedNamespace).Delete(context.TODO(), nwr.GetName(), metav1.DeleteOptions{
+		PropagationPolicy: &deletePropagationBackground,
+	})
 	if errDel != nil {
-		klog.Warningf("failed to delete NetworkRequirements of Description %q, error: %v", klog.KObj(desc), err)
+		klog.Warningf("failed to delete NetworkRequirements of Description %q, error: %v", klog.KRef(descName, descNS), err)
 		return errDel
 	}
 	return nil

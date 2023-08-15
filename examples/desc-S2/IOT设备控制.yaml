@@ -1,0 +1,151 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: iot-device
+  namespace: gaia-reserved
+  labels:
+    apps.gaia.io/user.id: user123
+spec:
+  appID: iot-device
+  workloadComponents:
+    - componentName: case3usermanage
+      namespace: ar3
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case3usermanage
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID1
+                  value: /IOT/usermanage
+              image: 122.96.144.180:30080/ar/iot-user:latest
+              name: case3usermanage
+              resources:
+                limits:
+                  cpu: 2000m
+                  memory: 512Mi
+                requests:
+                  cpu: 2000m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case3property
+      namespace: ar3
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case3property
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "2"
+                - name: SCNID2
+                  value: /IOT/propertyservice
+              image: 122.96.144.180:30080/ar/empty-app:latest
+              name: case3property
+              resources:
+                limits:
+                  cpu: 100m
+                  memory: 512Mi
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case3iotservice
+      namespace: ar3
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case3iotservice
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "3"
+                - name: SCNID3
+                  value: /IOT/autoservice
+              image: 122.96.144.180:30080/ar/iot-device:latest
+              name: case3iotservice
+              resources:
+                limits:
+                  cpu: 2000m
+                  memory: 512Mi
+                requests:
+                  cpu: 2000m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+
+  deploymentCondition:
+    mandatory:
+      - subject:
+          name: case3usermanage
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
+      - subject:
+          name: case3property
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJzaGFuZ2hhaS10ZW5jZW50Il0K # ["shanghai-tencent"]
+      - subject:
+          name: case3iotservice
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary1
+          subject: case3usermanage
+          type: replicas
+          value: MQo= # 1
+        - name: boundary2
+          subject: case3property
+          type: replicas
+          value: MQo= # 1
+        - name: boundary3
+          subject: case3iotservice
+          type: replicas
+          value: MQo= # 1

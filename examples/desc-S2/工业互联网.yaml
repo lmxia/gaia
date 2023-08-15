@@ -1,0 +1,286 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: industry-net
+  namespace: gaia-reserved
+  labels:
+    apps.gaia.io/user.id: user123
+spec:
+  appID: industry-net
+  workloadComponents:
+    - componentName: case2equipment
+      namespace: ar2
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case2equipment
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID1
+                  value: /industry/eqmanage
+              image: 122.96.144.180:30080/ar/empty-app:latest
+              name: case2equipment
+              resources:
+                limits:
+                  cpu: 100m
+                  memory: 512Mi
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case2usermanage
+      namespace: ar2
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case2usermanage
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "2"
+                - name: SCNID2
+                  value: /industry/usermanage
+              image: 122.96.144.180:30080/ar/industry-user:latest
+              name: case2usermanage
+              resources:
+                limits:
+                  cpu: 1500m
+                  memory: 512Mi
+                requests:
+                  cpu: 1500m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case2productstatistics
+      namespace: ar2
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case2productstatistics
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "3"
+                - name: SCNID3
+                  value: /industry/statistics
+              image: 122.96.144.180:30080/ar/empty-app:latest
+              name: case2productstatistics
+              resources:
+                limits:
+                  cpu: 100m
+                  memory: 512Mi
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case2productschedule
+      namespace: ar2
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case2productschedule
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "4"
+                - name: SCNID4
+                  value: /industry/schedule
+              image: 122.96.144.180:30080/ar/empty-app:latest
+              name: case2productschedule
+              resources:
+                limits:
+                  cpu: 100m
+                  memory: 512Mi
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case2carcontrol
+      namespace: ar2
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case2carcontrol
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "5"
+                - name: SCNID5
+                  value: /industry/control
+              image: 122.96.144.180:30080/ar/industry-device:latest
+              name: case2carcontrol
+              resources:
+                limits:
+                  cpu: 2000m
+                  memory: 512Mi
+                requests:
+                  cpu: 2000m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case2identifysvc
+      namespace: ar2
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case2identifysvc
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "6"
+                - name: SCNID6
+                  value: /industry/idenitify
+              image: 122.96.144.180:30080/ar/ezxr-identification:latest
+              name: case2identifysvc
+              resources:
+                limits:
+                  cpu: 4000m
+                  memory: 16384Mi
+                requests:
+                  cpu: 4000m
+                  memory: 16384Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+
+  deploymentCondition:
+    mandatory:
+      - subject:
+          name: case2equipment
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
+      - subject:
+          name: case2usermanage
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJzaGFuZ2hhaS10ZW5jZW50Il0K # ["shanghai-tencent"]
+      - subject:
+          name: case2productstatistics
+          type: component
+        object:
+          name: sns
+          type: label
+        relation: In
+        extent: WyI1MmM4YWUzMjI4NGIzMzAyMDY3MGQ3ZTQwM2U4NGMwMDc2ZjM4ZmEwIl0K # ["52c8ae32284b33020670d7e403e84c0076f38fa0"]
+      - subject:
+          name: case2productschedule
+          type: component
+        object:
+          name: sns
+          type: label
+        relation: In
+        extent: WyI1MmM4YWUzMjI4NGIzMzAyMDY3MGQ3ZTQwM2U4NGMwMDc2ZjM4ZmEwIl0K # ["52c8ae32284b33020670d7e403e84c0076f38fa0"]
+      - subject:
+          name: case2carcontrol
+          type: component
+        object:
+          name: sns
+          type: label
+        relation: In
+        extent: WyI1MmM4YWUzMjI4NGIzMzAyMDY3MGQ3ZTQwM2U4NGMwMDc2ZjM4ZmEwIl0K # ["52c8ae32284b33020670d7e403e84c0076f38fa0"]
+      - subject:
+          name: case2identifysvc
+          type: component
+        object:
+          name: sns
+          type: label
+        relation: In
+        extent: WyI1MmM4YWUzMjI4NGIzMzAyMDY3MGQ3ZTQwM2U4NGMwMDc2ZjM4ZmEwIl0K # ["52c8ae32284b33020670d7e403e84c0076f38fa0"]
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary1
+          subject: case2equipment
+          type: replicas
+          value: MQo= # 1
+        - name: boundary2
+          subject: case2usermanage
+          type: replicas
+          value: MQo= # 1
+        - name: boundary3
+          subject: case2productstatistics
+          type: replicas
+          value: MQo= # 1
+        - name: boundary4
+          subject: case2productschedule
+          type: replicas
+          value: MQo= # 1
+        - name: boundary5
+          subject: case2carcontrol
+          type: replicas
+          value: MQo= # 1
+        - name: boundary6
+          subject: case2identifysvc
+          type: replicas
+          value: MQo= # 1

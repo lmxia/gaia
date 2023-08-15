@@ -1,0 +1,151 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: life-assistant
+  namespace: gaia-reserved
+  labels:
+    apps.gaia.io/user.id: user123
+spec:
+  appID: life-assistant
+  workloadComponents:
+    - componentName: case1wear
+      namespace: ar1
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case1wear
+        spec:
+          containers:
+            - env:
+                - name: SCNID1
+                  value: /assistant/wear
+              image: 122.96.144.180:30080/ar/life-assistant-data:latest
+              imagePullPolicy: Always
+              name: case1wear
+              resources:
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+                requests:
+                  cpu: 1000m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case1eamil
+      namespace: ar1
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case1email
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "2"
+                - name: SCNID2
+                  value: /assistant/email
+              image: 122.96.144.180:30080/ar/life-assistant-email:latest
+              imagePullPolicy: Always
+              name: case1email
+              resources:
+                limits:
+                  cpu: 2000m
+                  memory: 512Mi
+                requests:
+                  cpu: 1000m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case1usermanage
+      namespace: ar1
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case1usermanage
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "3"
+                - name: SCNID3
+                  value: /assistant/usermanage
+              image: 122.96.144.180:30080/ar/life-assistant-user:latest
+              imagePullPolicy: Always
+              name: case1usermanage
+              resources:
+                limits:
+                  cpu: 2000m
+                  memory: 512Mi
+                requests:
+                  cpu: 2000m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+  deploymentCondition:
+    mandatory:
+      - subject:
+          name: case1wear
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
+      - subject:
+          name: case1email
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
+      - subject:
+          name: case1usermanage
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJzaGFuZ2hhaS10ZW5jZW50Il0K # ["shanghai-tencent"]
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary1
+          subject: case1wear
+          type: replicas
+          value: MQo= # 1
+        - name: boundary2
+          subject: case1email
+          type: replicas
+          value: MQo= # 1
+        - name: boundary3
+          subject: case1usermanage
+          type: replicas
+          value: MQo= # 1

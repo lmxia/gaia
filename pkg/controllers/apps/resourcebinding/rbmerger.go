@@ -388,6 +388,12 @@ func (m *RBMerger) createCollectedRBs(ctx context.Context, rb *appV1alpha1.Resou
 	wg := sync.WaitGroup{}
 	descName := rbLabels[common.OriginDescriptionNameLabel]
 	uid := rbLabels[common.OriginDescriptionUIDLabel]
+	totalPeer, err := strconv.Atoi(rbLabels[common.TotalPeerOfParentRB])
+	if err != nil {
+		klog.V(5).Infof("Failed to get totalPeer from label.")
+		totalPeer = 0
+	}
+	delete(rbLabels, common.TotalPeerOfParentRB)
 	// field: all rb collected by InxParentRB
 	for _, InxParentRB := range m.parentRBsOfDescUID[UID(uid)] {
 		var rbApps []*appV1alpha1.ResourceBindingApps
@@ -398,12 +404,6 @@ func (m *RBMerger) createCollectedRBs(ctx context.Context, rb *appV1alpha1.Resou
 			}
 			rbApps = append(rbApps, rbApp)
 		}
-		totalPeer, err := strconv.Atoi(rbLabels[common.TotalPeerOfParentRB])
-		if err != nil {
-			klog.V(5).Infof("Failed to get totalPeer from label.")
-			totalPeer = 0
-		}
-		delete(rbLabels, common.TotalPeerOfParentRB)
 		parenRB := InxParentRB[len(uid)+1:]
 		// create new result ResourceBinding in parent cluster
 		newResultRB := &appV1alpha1.ResourceBinding{

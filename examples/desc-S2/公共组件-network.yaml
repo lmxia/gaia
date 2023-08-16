@@ -1,0 +1,239 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: NetworkRequirement
+metadata:
+  name: case1
+  namespace: gaia-reserved
+spec:
+  workloadComponents:
+    scns:
+      - name: casepublicweather
+        selfID:
+          - /public/weather
+      - name: casepublicuserauth
+        selfID:
+          - /public/usreauther
+      - name: casepublicdata
+        selfID:
+          - /public/dataauthorize
+      - name: casepublicscene
+        selfID:
+          - /public/scene
+      - name: casepubliclocate
+        selfID:
+          - /public/cloudlocate
+      - name: casepublicidenitify
+        selfID:
+          - /public/serviceidenitify
+      - name: case1systemaccess
+        selfID:
+          - /assistant/systemaccess
+    links:
+      - linkName: link-weather-systemaccess
+        sourceID: /public/weather
+        destinationID: /public/systemaccess
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-systemaccess-weather
+        sourceID: /public/systemaccess
+        destinationID: /public/weather
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-usreauther-systemaccess
+        sourceID: /public/usreauther
+        destinationID: /public/systemaccess
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-systemaccess-usreauther
+        sourceID: /public/systemaccess
+        destinationID: /public/usreauther
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-dataauthorize-systemaccess
+        sourceID: /public/dataauthorize
+        destinationID: /public/systemaccess
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-systemaccess-dataauthorize
+        sourceID: /public/systemaccess
+        destinationID: /public/dataauthorize
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-scene-systemaccess
+        sourceID: /public/scene
+        destinationID: /public/systemaccess
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-systemaccess-scene
+        sourceID: /public/systemaccess
+        destinationID: /public/scene
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-cloudlocate-systemaccess
+        sourceID: /public/cloudlocate
+        destinationID: /public/systemaccess
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-systemaccess-cloudlocate
+        sourceID: /public/systemaccess
+        destinationID: /public/cloudlocate
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-serviceidenitify-systemaccess
+        sourceID: /public/serviceidenitify
+        destinationID: /public/systemaccess
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: link-systemaccess-serviceidenitify
+        sourceID: /public/systemaccess
+        destinationID: /public/serviceidenitify
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+   
+  deployconditions:
+    mandatory:
+      - subject:
+          name: link-weather-systemaccess
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-systemaccess-weather
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-usreauther-systemaccess
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-systemaccess-usreauther
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-dataauthorize-systemaccess
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-systemaccess-dataauthorize
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-scene-systemaccess
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-systemaccess-scene
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-cloudlocate-systemaccess
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-systemaccess-cloudlocate
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":1,"throughputValue":2}
+      - subject:
+          name: link-casepublicidenitify-systemaccess
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoyMCwibG9zdFZhbHVlIjoxMDAsImppdHRlclZhbHVlIjoxLCJ0aHJvdWdocHV0VmFsdWUiOjEwfQ== # {"delayValue":20,"lostValue":100,"jitterValue":1,"throughputValue":10}
+      - subject:
+          name: link-systemaccess-casepublicidenitify
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoyMCwibG9zdFZhbHVlIjoxMDAsImppdHRlclZhbHVlIjoxLCJ0aHJvdWdocHV0VmFsdWUiOjEwfQ== # {"delayValue":20,"lostValue":100,"jitterValue":1,"throughputValue":10}
+    
+    BestEffort:

@@ -507,15 +507,22 @@ func (m *RBMerger) postMergedRBs(descName string) {
 	}
 	fmt.Printf("postMergedRBs: postBody:\n%s\n", string(postBody))
 
-	res, err := http.Post(m.postURL, "application/json", bytes.NewReader(postBody))
+	resp, err := http.Post(m.postURL, "application/json", bytes.NewReader(postBody))
+	if resp != nil {
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				utilRuntime.HandleError(fmt.Errorf("postMergedRBs: failed to close response body, Description: %q ERROR: %v", klog.KRef(descNS, descName), err))
+			}
+		}(resp.Body)
+	}
 	if err != nil {
-		utilRuntime.HandleError(fmt.Errorf("postHyperOM: post to HyperOM error, Description: %q/%q ERROR: %v", descNS, descName, err))
+		utilRuntime.HandleError(fmt.Errorf("postHyperOM: post to HyperOM error, Description: %q ERROR: %v", klog.KRef(descNS, descName), err))
 		return
 	}
-	content, errRd := io.ReadAll(res.Body)
-	defer func() { _ = res.Body.Close() }()
+	content, errRd := io.ReadAll(resp.Body)
 	if errRd != nil {
-		utilRuntime.HandleError(fmt.Errorf("ERROR: PostHyperOM: read response error, Description: %q/%q ERROR: %v", descNS, descName, errRd))
+		utilRuntime.HandleError(fmt.Errorf("ERROR: PostHyperOM: read response error, Description: %q ERROR: %v", klog.KRef(descNS, descName), errRd))
 		return
 	}
 	klog.Infof("PostHyperOM: post the ResourceBindings of desc %q to HyperOM, Response: %s", descName, content)

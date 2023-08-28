@@ -809,26 +809,6 @@ func (in *SchedulePolicy) DeepCopyInto(out *SchedulePolicy) {
 			(*out)[key] = outVal
 		}
 	}
-	if in.SpecificResource != nil {
-		in, out := &in.SpecificResource, &out.SpecificResource
-		*out = new(metav1.LabelSelector)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.NetEnvironment != nil {
-		in, out := &in.NetEnvironment, &out.NetEnvironment
-		*out = new(metav1.LabelSelector)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.GeoLocation != nil {
-		in, out := &in.GeoLocation, &out.GeoLocation
-		*out = new(metav1.LabelSelector)
-		(*in).DeepCopyInto(*out)
-	}
-	if in.Provider != nil {
-		in, out := &in.Provider, &out.Provider
-		*out = new(metav1.LabelSelector)
-		(*in).DeepCopyInto(*out)
-	}
 	return
 }
 

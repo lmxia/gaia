@@ -675,9 +675,9 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 		}
 	}
 
-	if com.SchedulePolicy.Provider != nil && com.SchedulePolicy.Provider.MatchExpressions != nil {
-		providers := setNodeSelectorTerms(com.SchedulePolicy.Provider.MatchExpressions)
-		if len(providers) > 0 {
+	if len(com.SchedulePolicy.Level) > 0 {
+		nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions)
+		if len(nodeSelectorTerms) > 0 {
 			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
 			}
@@ -685,51 +685,10 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
 			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, providers...)
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
 		}
 	}
 
-	if com.SchedulePolicy.NetEnvironment != nil && com.SchedulePolicy.NetEnvironment.MatchExpressions != nil {
-		netEnvironments := setNodeSelectorTerms(com.SchedulePolicy.NetEnvironment.MatchExpressions)
-		if len(netEnvironments) > 0 {
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
-			}
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-			}
-			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, netEnvironments...)
-		}
-	}
-
-	if com.SchedulePolicy.SpecificResource != nil && com.SchedulePolicy.SpecificResource.MatchExpressions != nil {
-		specificResources := setNodeSelectorTerms(com.SchedulePolicy.SpecificResource.MatchExpressions)
-		if len(specificResources) > 0 {
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
-			}
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-			}
-			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, specificResources...)
-		}
-	}
-
-	if com.SchedulePolicy.GeoLocation != nil && com.SchedulePolicy.GeoLocation.MatchExpressions != nil {
-		geoLocations := setNodeSelectorTerms(com.SchedulePolicy.GeoLocation.MatchExpressions)
-		if len(geoLocations) > 0 {
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
-			}
-			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
-			}
-			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, geoLocations...)
-		}
-	}
 	return nodeAffinity
 }
 func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {

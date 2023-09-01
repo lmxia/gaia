@@ -8139,8 +8139,7 @@ spec:
                         description: SccConfig key is ScnId, value is time.second.
                         properties:
                           scc:
-                            format: int32
-                            type: integer
+                            type: string
                           scn_id:
                             type: string
                         type: object

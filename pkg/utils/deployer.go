@@ -795,7 +795,7 @@ func addEnvVars(containers []corev1.Container, scc []appsv1alpha1.SccConfig) []c
 		for k := range scc {
 			env = append(env, corev1.EnvVar{
 				Name:  makeEnvVariableName(scc[k].ScnID),
-				Value: fmt.Sprint(scc[k].Scc),
+				Value: scc[k].Scc,
 			})
 		}
 	}

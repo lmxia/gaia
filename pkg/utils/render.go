@@ -29,7 +29,16 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 			Module:      comn.Module,
 			Workload:    GetWorkloadType(comn.WorkloadType),
 			SchedulePolicy: appsv1alpha1.SchedulePolicy{
-				Level: make(map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector),
+				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
+					appsv1alpha1.SchedulePolicyMandatory: {
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							0: {
+								Key:      "runtime-state",
+								Operator: metav1.LabelSelectorOpIn,
+								Values:   []string{string(comn.Sandbox)}},
+						},
+					},
+				},
 			},
 		}
 	}

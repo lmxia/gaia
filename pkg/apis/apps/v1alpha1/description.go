@@ -90,7 +90,7 @@ type SccConfig struct {
 	// +required
 	ScnID string `json:"scn_id,omitempty"`
 	// +required
-	Scc int32 `json:"scc,omitempty"`
+	Scc string `json:"scc,omitempty"`
 }
 
 // ScheduleTimeSet 调度时间设置

@@ -28,8 +28,9 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
 					appsv1alpha1.SchedulePolicyMandatory: {
 						MatchExpressions: []metav1.LabelSelectorRequirement{
-							0: {Key: "geo-location", Operator: "In", Values: []string{"China-Huadong-Jiangsu-City-C21-District-E21"}},
-							1: {Key: "netenvironment", Operator: "In", Values: []string{"edge"}},
+							0: {Key: "runtime-state", Operator: "In", Values: []string{string(appsv1alpha1.Kata)}},
+							1: {Key: "geo-location", Operator: "In", Values: []string{"China-Huadong-Jiangsu-City-C21-District-E21"}},
+							2: {Key: "netenvironment", Operator: "In", Values: []string{"edge"}},
 						},
 					},
 				},
@@ -50,7 +51,8 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
 					appsv1alpha1.SchedulePolicyMandatory: {
 						MatchExpressions: []metav1.LabelSelectorRequirement{
-							0: {Key: "sn", Operator: "In", Values: []string{"sn1"}},
+							0: {Key: "runtime-state", Operator: "In", Values: []string{string(appsv1alpha1.Runc)}},
+							1: {Key: "sn", Operator: "In", Values: []string{"sn1"}},
 						},
 					},
 				},
@@ -71,7 +73,8 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
 					appsv1alpha1.SchedulePolicyMandatory: {
 						MatchExpressions: []metav1.LabelSelectorRequirement{
-							0: {Key: "sn", Operator: "In", Values: []string{"sn1", "sn2"}},
+							0: {Key: "runtime-state", Operator: "In", Values: []string{string(appsv1alpha1.Runc)}},
+							1: {Key: "sn", Operator: "In", Values: []string{"sn1", "sn2"}},
 						},
 					},
 				},
@@ -91,7 +94,13 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 				},
 			},
 			SchedulePolicy: appsv1alpha1.SchedulePolicy{
-				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{},
+				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
+					appsv1alpha1.SchedulePolicyMandatory: {
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							0: {Key: "runtime-state", Operator: "In", Values: []string{string(appsv1alpha1.Runc)}},
+						},
+					},
+				},
 			},
 		},
 		4: {
@@ -111,7 +120,8 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
 					appsv1alpha1.SchedulePolicyMandatory: {
 						MatchExpressions: []metav1.LabelSelectorRequirement{
-							0: {Key: "geo-location", Operator: "In", Values: []string{"China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-E22"}},
+							0: {Key: "runtime-state", Operator: "In", Values: []string{string(appsv1alpha1.Runc)}},
+							1: {Key: "geo-location", Operator: "In", Values: []string{"China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-E22"}},
 						},
 					},
 					appsv1alpha1.SchedulePolicyBestEffort: {
@@ -136,7 +146,13 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 				},
 			},
 			SchedulePolicy: appsv1alpha1.SchedulePolicy{
-				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{},
+				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
+					appsv1alpha1.SchedulePolicyMandatory: {
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							0: {Key: "runtime-state", Operator: "In", Values: []string{string(appsv1alpha1.Runc)}},
+						},
+					},
+				},
 			},
 		},
 		6: {
@@ -181,7 +197,13 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 				},
 			},
 			SchedulePolicy: appsv1alpha1.SchedulePolicy{
-				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{},
+				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
+					appsv1alpha1.SchedulePolicyMandatory: {
+						MatchExpressions: []metav1.LabelSelectorRequirement{
+							0: {Key: "runtime-state", Operator: "In", Values: []string{string(appsv1alpha1.Runc)}},
+						},
+					},
+				},
 			},
 		},
 	}

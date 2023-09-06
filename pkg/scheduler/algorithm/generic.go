@@ -57,6 +57,8 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 
 	// format desc to components
 	components, comLocation, affinity := utils.DescToComponents(desc)
+
+	group2HugeCom := utils.DescToHugeComponents(desc)
 	klog.V(5).Infof("Components are %+v", components)
 	klog.V(5).Infof("comLocation is %+v,affinity is %v", comLocation, affinity) // 临时占用
 
@@ -80,9 +82,10 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	}
 
 	for i, comm := range components {
-		localComponent := &comm
 		affinityDest := affinity[comLocation[comm.Name]]
 		var componentMat mat.Matrix
+		var feasibleClusters []*framework2.ClusterInfo
+		var diagnosis framework.Diagnosis
 
 		// spread level info: full level, 2 level, 1 level
 		// spreadLevels := []int64{int64(len(feasibleClusters)), 2, 1}
@@ -145,30 +148,39 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		}
 
 		// NO.1 pre filter
-		feasibleClusters, diagnosis, _ := g.findClustersThatFitComponent(ctx, fwk, localComponent)
-		// if err != nil {
-		//	return result, err
-		// }
-		// case global
-		if desc.Namespace == common.GaiaReservedNamespace {
-			if len(feasibleClusters) == 0 {
-				return result, &framework.FitError{
-					Description:    desc,
-					NumAllClusters: g.cache.NumClusters(),
-					Diagnosis:      diagnosis,
-				}
-			}
-			klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
+		if comm.GroupName != "" {
+			hugeComm := group2HugeCom[comm.GroupName]
+			commonHugeComponent := utils.HugeComponentToCommanComponent(hugeComm)
+			feasibleClusters, diagnosis, err = g.findClustersThatFitComponent(ctx, fwk, commonHugeComponent)
+		} else {
+			feasibleClusters, diagnosis, _ = g.findClustersThatFitComponent(ctx, fwk, &comm)
 		}
+
+		//if desc.Namespace == common.GaiaReservedNamespace {
+		if len(feasibleClusters) == 0 {
+			return result, &framework.FitError{
+				Description:    desc,
+				NumAllClusters: g.cache.NumClusters(),
+				Diagnosis:      diagnosis,
+			}
+		}
+		klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
+		//}
 		allPlan := nomalizeClusters(feasibleClusters, allClusters)
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {
 			for j, _ := range spreadLevels {
 				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
-					//componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
-					componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), 1)
-					// allResultGlobal[j][i] = GetResultWithRB(allResultGlobal, j, <affinity component index>)
-					allResultGlobal[j][i] = componentMat
+					if comm.GroupName != "" {
+						componentMat := makeDeployPlans(allPlan, int64(1), 1)
+						var m mat.Dense
+						m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)
+						allResultGlobal[j][i] = &m
+					} else {
+						//componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
+						componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), 1)
+						allResultGlobal[j][i] = componentMat
+					}
 				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 					componentMat := makeServelessPlan(allPlan, 1)
 					allResultGlobal[j][i] = componentMat
@@ -186,8 +198,15 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
 				for k, _ := range spreadLevels {
 					if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
-						componentMat := makeDeployPlans(allPlan, replicas, spreadLevels[k])
-						allResultWithRB[j][k][i] = componentMat
+						if comm.GroupName != "" {
+							componentMat := makeDeployPlans(allPlan, int64(1), 1)
+							var m mat.Dense
+							m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)
+							allResultWithRB[j][k][i] = &m
+						} else {
+							componentMat := makeDeployPlans(allPlan, replicas, spreadLevels[k])
+							allResultWithRB[j][k][i] = componentMat
+						}
 					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 						componentMat := makeServelessPlan(allPlan, replicas)
 						allResultWithRB[j][k][i] = componentMat
@@ -411,7 +430,7 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 	}
 
 	// aggregate all container resource
-	non0CPU, non0MEM, _ := calculateResource(comm.Module)
+	non0CPU, non0MEM, _ := utils.CalculateResource(comm.Module)
 	result, _ := scheduleWorkload(non0CPU, non0MEM, feasibleClusters)
 
 	return result, diagnosis, nil

@@ -62,6 +62,10 @@ type WorkloadComponent struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
 	ComponentName string `json:"componentName,omitempty"`
+	// +optional
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Type=string
+	GroupName string `json:"groupName,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
@@ -224,11 +228,22 @@ type ExpectedPerformance struct {
 	Maintenance Maintenance `json:"maintenance,omitempty"`
 }
 
+type HugeComponent struct {
+	// +optional
+	GroupName      string
+	TotalCPU       int64
+	TotalMem       int64
+	FirstComponent Component
+	SchedulePolicy SchedulePolicy
+}
+
 type Component struct {
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
 	// +required
 	Name string `json:"name,omitempty"`
+	// +optional
+	GroupName string `json:"groupName,omitempty"`
 	// +optional
 	Preoccupy string `json:"preoccupy,omitempty"`
 	// +optional

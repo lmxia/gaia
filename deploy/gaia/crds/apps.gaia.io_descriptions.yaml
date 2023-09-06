@@ -202,6 +202,8 @@ spec:
                   properties:
                     componentName:
                       type: string
+                    groupName:
+                      type: string
                     module:
                       description: PodTemplateSpec describes the data a pod should
                         have when created from a template

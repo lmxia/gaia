@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"gonum.org/v1/gonum/mat"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
@@ -18,13 +17,6 @@ import (
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/scheduler/framework"
-)
-
-const (
-	// DefaultMilliCPURequest defines default milli cpu request number.
-	DefaultMilliCPURequest int64 = 100 // 0.1 core
-	// DefaultMemoryRequest defines default memory request size.
-	DefaultMemoryRequest int64 = 200 * 1024 * 1024 // 200 MB
 )
 
 func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster) ([]*framework.ClusterInfo, int64) {
@@ -58,6 +50,10 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 		for _, item := range indexMatrix {
 			// check whether every item fit the affinity condition
 			if !checkAffinityCondition(item, affinity) {
+				continue
+			}
+
+			if !checkAGroupValid(item, components) {
 				continue
 			}
 
@@ -407,34 +403,6 @@ func getComponentClusterTotal(rbApps []*appv1alpha1.ResourceBindingApps, cluster
 	return 0
 }
 
-func calculateResource(templateSpec corev1.PodTemplateSpec) (non0CPU int64, non0Mem int64, pod *corev1.Pod) {
-
-	pod = &corev1.Pod{
-		ObjectMeta: templateSpec.ObjectMeta,
-		Spec:       templateSpec.Spec,
-	}
-
-	for _, c := range templateSpec.Spec.Containers {
-		non0CPUReq, non0MemReq := GetNonzeroRequests(&c.Resources.Requests)
-		non0CPU += non0CPUReq
-		non0Mem += non0MemReq
-		// No non-zero resources for GPUs or opaque resources.
-	}
-
-	// If Overhead is being utilized, add to the total requests for the pod
-	if templateSpec.Spec.Overhead != nil {
-		if _, found := templateSpec.Spec.Overhead[corev1.ResourceCPU]; found {
-			non0CPU += templateSpec.Spec.Overhead.Cpu().MilliValue()
-		}
-
-		if _, found := templateSpec.Spec.Overhead[corev1.ResourceMemory]; found {
-			non0Mem += templateSpec.Spec.Overhead.Memory().Value()
-		}
-	}
-
-	return
-}
-
 // plan https://www.jianshu.com/p/12b89147993c
 func plan(weight []*framework.ClusterInfo, request int64) []float64 {
 	sum := int64(0)
@@ -517,40 +485,6 @@ func Argsort(src []float64, inds []int) {
 	}
 	a := argsort{s: src, inds: inds}
 	sort.Sort(a)
-}
-
-// GetNonzeroRequests returns the default cpu and memory resource request if none is found or
-// what is provided on the request.
-func GetNonzeroRequests(requests *corev1.ResourceList) (int64, int64) {
-	return GetNonzeroRequestForResource(corev1.ResourceCPU, requests),
-		GetNonzeroRequestForResource(corev1.ResourceMemory, requests)
-}
-
-// GetNonzeroRequestForResource returns the default resource request if none is found or
-// what is provided on the request.
-func GetNonzeroRequestForResource(resource corev1.ResourceName, requests *corev1.ResourceList) int64 {
-	switch resource {
-	case corev1.ResourceCPU:
-		// Override if un-set, but not if explicitly set to zero
-		if _, found := (*requests)[corev1.ResourceCPU]; !found {
-			return DefaultMilliCPURequest
-		}
-		return requests.Cpu().MilliValue()
-	case corev1.ResourceMemory:
-		// Override if un-set, but not if explicitly set to zero
-		if _, found := (*requests)[corev1.ResourceMemory]; !found {
-			return DefaultMemoryRequest
-		}
-		return requests.Memory().Value()
-	case corev1.ResourceEphemeralStorage:
-		quantity, found := (*requests)[corev1.ResourceEphemeralStorage]
-		if !found {
-			return 0
-		}
-		return quantity.Value()
-	default:
-		return 0
-	}
 }
 
 func GenerateRandomClusterInfos(capacities []*framework.ClusterInfo, count int) ([]*framework.ClusterInfo, error) {
@@ -643,6 +577,41 @@ func checkAffinityCondition(m mat.Matrix, affinity []int) bool {
 			}
 		}
 	}
+	return true
+}
+
+// checkAGroupValid return whether one mat.Matrix valid the group conditions
+func checkAGroupValid(m mat.Matrix, components []appv1alpha1.Component) bool {
+	groupName2Index := make(map[string]int, 0)
+	for _, component := range components {
+		if component.GroupName != "" {
+			groupName2Index[component.GroupName] = -1
+		}
+	}
+	row, col := m.Dims()
+	for r := 0; r < row; r++ {
+		// 在某个组里
+		if components[r].GroupName != "" {
+			for c := 0; c < col; c++ {
+				replica := m.At(r, c)
+				if replica > 0 {
+					// 没有赋值过
+					if groupName2Index[components[r].GroupName] == -1 {
+						groupName2Index[components[r].GroupName] = c
+					} else {
+						// 过去有过赋值
+						if groupName2Index[components[r].GroupName] != c {
+							return false
+						}
+					}
+					break
+				}
+			}
+		} else {
+			continue
+		}
+	}
+
 	return true
 }
 

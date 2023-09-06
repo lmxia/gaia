@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"reflect"
+	"sync"
+	"time"
+
 	"github.com/lmxia/gaia/cmd/gaia-scheduler/app/option"
 	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/scheduler/metrics"
@@ -15,11 +21,6 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
-	"net/http"
-	"os"
-	"reflect"
-	"sync"
-	"time"
 
 	schedulerserverconfig "github.com/lmxia/gaia/cmd/gaia-scheduler/app/config"
 	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
@@ -207,10 +208,10 @@ func (scheduler *Scheduler) Run(cxt context.Context, cc *schedulerserverconfig.C
 			scheduler.localGaiaAllFactory.Start(ctx.Done())
 			scheduler.localGaiaAllFactory.WaitForCacheSync(ctx.Done())
 
-			scheduler.localNamespacedInformerFactory.Start(ctx.Done())
-			scheduler.localNamespacedInformerFactory.WaitForCacheSync(ctx.Done())
 			// 2. start local scheduler.
 			go func() {
+				scheduler.localNamespacedInformerFactory.Start(ctx.Done())
+				scheduler.localNamespacedInformerFactory.WaitForCacheSync(ctx.Done())
 				wait.UntilWithContext(ctx, scheduler.RunLocalScheduler, 0)
 			}()
 

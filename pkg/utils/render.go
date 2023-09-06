@@ -6,9 +6,91 @@ import (
 
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
+
+func HugeComponentToCommanComponent(hugeComponent *appsv1alpha1.HugeComponent) *appsv1alpha1.Component {
+	component := &appsv1alpha1.Component{
+		Name:           hugeComponent.GroupName,
+		Preoccupy:      hugeComponent.FirstComponent.Preoccupy,
+		Schedule:       hugeComponent.FirstComponent.Schedule,
+		Scc:            hugeComponent.FirstComponent.Scc,
+		RuntimeType:    hugeComponent.FirstComponent.RuntimeType,
+		Module:         hugeComponent.FirstComponent.Module,
+		SchedulePolicy: hugeComponent.SchedulePolicy,
+	}
+	component.Module.Spec = corev1.PodSpec{
+		Containers: []corev1.Container{{
+			Name:  "huge",
+			Image: "busybox",
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    *resource.NewMilliQuantity(hugeComponent.TotalCPU, resource.DecimalSI),
+					corev1.ResourceMemory: *resource.NewQuantity(hugeComponent.TotalMem, resource.BinarySI),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    *resource.NewMilliQuantity(hugeComponent.TotalCPU, resource.DecimalSI),
+					corev1.ResourceMemory: *resource.NewQuantity(hugeComponent.TotalMem, resource.BinarySI),
+				},
+			},
+		}},
+	}
+	return component
+}
+
+func DescToHugeComponents(desc *appsv1alpha1.Description) map[string]*appsv1alpha1.HugeComponent {
+	groupedComponent := make(map[string]*appsv1alpha1.HugeComponent)
+
+	groupSchedulePolicy := make(map[string]*appsv1alpha1.SchedulePolicy)
+	ParseGroupCondition(desc.Spec.DeploymentCondition.Mandatory, groupSchedulePolicy)
+
+	// 1. workloadComponents
+	for _, com := range desc.Spec.WorkloadComponents {
+		if com.GroupName != "" {
+			non0CPU, non0MEM, _ := CalculateResource(com.Module)
+			if groupHuge, ok := groupedComponent[com.ComponentName]; !ok {
+				huge := &appsv1alpha1.HugeComponent{
+					GroupName: com.GroupName,
+					FirstComponent: appsv1alpha1.Component{
+						Namespace:   com.Namespace,
+						GroupName:   com.GroupName,
+						Name:        com.ComponentName,
+						Preoccupy:   com.Preoccupy,
+						Schedule:    com.Schedule,
+						Scc:         com.Scc,
+						RuntimeType: string(com.Sandbox),
+						Module:      com.Module,
+						Workload:    GetWorkloadType(com.WorkloadType),
+						SchedulePolicy: appsv1alpha1.SchedulePolicy{
+							Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
+								appsv1alpha1.SchedulePolicyMandatory: {
+									MatchExpressions: []metav1.LabelSelectorRequirement{
+										0: {
+											Key:      "runtime-state",
+											Operator: metav1.LabelSelectorOpIn,
+											Values:   []string{string(com.Sandbox)}},
+									},
+								},
+							},
+						},
+					},
+					TotalCPU:       non0CPU,
+					TotalMem:       non0MEM,
+					SchedulePolicy: *groupSchedulePolicy[com.GroupName],
+				}
+				groupedComponent[com.GroupName] = huge
+			} else {
+				groupHuge.TotalCPU += non0CPU
+				groupHuge.TotalMem += non0MEM
+			}
+		}
+	}
+
+	return groupedComponent
+}
 
 // DescToComponents reflect a description to Components
 func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1.Component, comLocation map[string]int, affinity []int) {
@@ -16,18 +98,19 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 	components = make([]appsv1alpha1.Component, len(desc.Spec.WorkloadComponents))
 
 	// 1. workloadComponents
-	for i, comn := range desc.Spec.WorkloadComponents {
-		comLocation[comn.ComponentName] = i
+	for i, com := range desc.Spec.WorkloadComponents {
+		comLocation[com.ComponentName] = i
 
 		components[i] = appsv1alpha1.Component{
-			Namespace:   comn.Namespace,
-			Name:        comn.ComponentName,
-			Preoccupy:   comn.Preoccupy,
-			Schedule:    comn.Schedule,
-			Scc:         comn.Scc,
-			RuntimeType: string(comn.Sandbox),
-			Module:      comn.Module,
-			Workload:    GetWorkloadType(comn.WorkloadType),
+			Namespace:   com.Namespace,
+			GroupName:   com.GroupName,
+			Name:        com.ComponentName,
+			Preoccupy:   com.Preoccupy,
+			Schedule:    com.Schedule,
+			Scc:         com.Scc,
+			RuntimeType: string(com.Sandbox),
+			Module:      com.Module,
+			Workload:    GetWorkloadType(com.WorkloadType),
 			SchedulePolicy: appsv1alpha1.SchedulePolicy{
 				Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
 					appsv1alpha1.SchedulePolicyMandatory: {
@@ -35,7 +118,7 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 							0: {
 								Key:      "runtime-state",
 								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{string(comn.Sandbox)}},
+								Values:   []string{string(com.Sandbox)}},
 						},
 					},
 				},
@@ -126,19 +209,37 @@ func ParseDeploymentCondition(deploymentCondition appsv1alpha1.DeploymentConditi
 func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alpha1.SchedulePolicyLevel, components []appsv1alpha1.Component, comLocation map[string]int, affinity []int) {
 	for _, condition := range deploymentConditions {
 		klog.V(5).Info("parse DeploymentConditions")
-		index := comLocation[condition.Subject.Name]
 
-		// when affinity, change the affinity index array
-		if "Affinity" == condition.Relation && "component" == condition.Object.Type && "component" == condition.Subject.Type {
-			// component对应的索引位置的值用亲和对象的索引值表示
-			affinity[index] = comLocation[condition.Object.Name]
-		} else {
-			if _, ok := components[index].SchedulePolicy.Level[spl]; !ok {
-				components[index].SchedulePolicy.Level[spl] = &metav1.LabelSelector{
+		if "component" == condition.Subject.Type {
+			index := comLocation[condition.Subject.Name]
+
+			// when affinity, change the affinity index array
+			if "Affinity" == condition.Relation && "component" == condition.Object.Type {
+				// component对应的索引位置的值用亲和对象的索引值表示
+				affinity[index] = comLocation[condition.Object.Name]
+			} else {
+				if _, ok := components[index].SchedulePolicy.Level[spl]; !ok {
+					components[index].SchedulePolicy.Level[spl] = &metav1.LabelSelector{
+						MatchExpressions: nil,
+					}
+				}
+				components[index].SchedulePolicy.Level[spl] = SchedulePolicyReflect(condition, components[index].SchedulePolicy.Level[spl])
+			}
+		}
+	}
+}
+
+func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition, policy map[string]*appsv1alpha1.SchedulePolicy) {
+	for _, condition := range deploymentConditions {
+		klog.V(5).Info("parse DeploymentConditions for group condition")
+
+		if "group" == condition.Subject.Type {
+			if _, ok := policy[condition.Subject.Name]; !ok {
+				policy[condition.Subject.Name].Level[appsv1alpha1.SchedulePolicyMandatory] = &metav1.LabelSelector{
 					MatchExpressions: nil,
 				}
 			}
-			components[index].SchedulePolicy.Level[spl] = SchedulePolicyReflect(condition, components[index].SchedulePolicy.Level[spl])
+			SchedulePolicyGroupReflect(condition, policy[condition.Subject.Name].Level[appsv1alpha1.SchedulePolicyMandatory])
 		}
 	}
 }
@@ -158,7 +259,21 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 		spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
 	}
 	return spLevel
+}
 
+func SchedulePolicyGroupReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector) {
+	var extentStr []string
+	if "label" == condition.Object.Type && "group" == condition.Subject.Type {
+		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
+		_ = json.Unmarshal(condition.Extent, &extentStr)
+		klog.V(5).Infof("after unmarshal,extent is %v", extentStr)
+		req := metav1.LabelSelectorRequirement{
+			Key:      condition.Object.Name,
+			Operator: metav1.LabelSelectorOperator(condition.Relation),
+			Values:   extentStr,
+		}
+		spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
+	}
 }
 
 // ParseExpectedPerformance parse desc.Spec.ExpectedPerformance

@@ -156,16 +156,16 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			feasibleClusters, diagnosis, _ = g.findClustersThatFitComponent(ctx, fwk, &comm)
 		}
 
-		//if desc.Namespace == common.GaiaReservedNamespace {
-		if len(feasibleClusters) == 0 {
-			return result, &framework.FitError{
-				Description:    desc,
-				NumAllClusters: g.cache.NumClusters(),
-				Diagnosis:      diagnosis,
+		if desc.Namespace == common.GaiaReservedNamespace {
+			if len(feasibleClusters) == 0 {
+				return result, &framework.FitError{
+					Description:    desc,
+					NumAllClusters: g.cache.NumClusters(),
+					Diagnosis:      diagnosis,
+				}
 			}
+			klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
 		}
-		klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
-		//}
 		allPlan := nomalizeClusters(feasibleClusters, allClusters)
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {

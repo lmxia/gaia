@@ -134,7 +134,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		klog.Error(apprerr)
 	}
 
-	rbController, rberr := resourcebinding.NewRBController(localKubeClientSet, localGaiaClientSet, localKubeConfig, networkBindUrl)
+	rbController, rberr := resourcebinding.NewRBController(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory, localKubeConfig, networkBindUrl)
 	if rberr != nil {
 		klog.Error(rberr)
 	}

@@ -466,6 +466,7 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 			wg.Wait()
 
 			if len(newRB.Spec.NetworkPath) > 0 && len(networkBindUrl) > 0 && nwr != nil {
+				klog.V(2).Infof("networkBindUrl is %q", networkBindUrl)
 				if NeedBindNetworkInCluster(rb.Spec.RbApps, clusterName, nwr) {
 					postRequest(networkBindUrl, descriptionName, newRB.Spec.NetworkPath[0])
 				}
@@ -508,11 +509,11 @@ func postRequest(url, descriptionName string, path []byte) {
 	}
 	data, jsonerr := json.Marshal(networkScheme)
 	if jsonerr != nil {
-		klog.Errorf("request  post new request, error=%v \n", jsonerr)
+		klog.Errorf("request post new request, error=%v \n", jsonerr)
 	}
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
-		klog.Errorf("request  post new request, error=%v \n", err)
+		klog.Errorf("request post new request, error=%v \n", err)
 	}
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("cache-control", "no-cache")
@@ -521,6 +522,8 @@ func postRequest(url, descriptionName string, path []byte) {
 		klog.Errorf("post do sent, error====%v\n", resperr)
 	}
 	defer resp.Body.Close()
+
+	klog.InfoS("successfully post network path", "Description", descriptionName, "NetworkPath", string(path))
 }
 
 func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {

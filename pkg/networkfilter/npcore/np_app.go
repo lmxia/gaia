@@ -302,6 +302,9 @@ func getComponentBySrcScnId(scnId string) string {
 func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, mandatory bool) {
 	nputil.TraceInfoBegin("")
 
+	infoString := fmt.Sprintf("appReq is: (%+v), condition is:  (%+v)\n.", appReq, condition)
+	nputil.TraceInfoAlwaysPrint(infoString)
+
 	if condition.Subject.Type == "link" {
 		if condition.Object.Type == "sla" {
 			sla := new(AppSlaAttr)
@@ -396,29 +399,29 @@ func SetAppConnectReqList(networkReq v1alpha1.NetworkRequirement) {
 			return
 		}
 		appComponent := local.ComponentArray[comName]
-			appReq := new(AppConnectReq)
+		appReq := new(AppConnectReq)
 
 		//解析源目的标识
 		srcScnID := link.SourceID
 		dstScnID := link.DestinationID
-			appReq.Key.SrcUrl = srcScnID
-			appReq.Key.DstUrl = dstScnID
+		appReq.Key.SrcUrl = srcScnID
+		appReq.Key.DstUrl = dstScnID
 
 		//解析源目的标识的KV lists
 		for _, kv := range link.SourceAttributes {
-				var srcKv KVAttribute
-				srcKv.Key = kv.Key
-				srcKv.Value = kv.Value
-				appReq.Key.SrcScnidKVList = append(appReq.Key.SrcScnidKVList, srcKv)
+			var srcKv KVAttribute
+			srcKv.Key = kv.Key
+			srcKv.Value = kv.Value
+			appReq.Key.SrcScnidKVList = append(appReq.Key.SrcScnidKVList, srcKv)
 			appReq.linkAttr.SrcScnidKVList = append(appReq.linkAttr.SrcScnidKVList, srcKv)
-			}
+		}
 		for _, kv := range link.DestinationAttributes {
-				var dstKv KVAttribute
-				dstKv.Key = kv.Key
-				dstKv.Value = kv.Value
-				appReq.Key.DestScnidKVList = append(appReq.Key.DestScnidKVList, dstKv)
+			var dstKv KVAttribute
+			dstKv.Key = kv.Key
+			dstKv.Value = kv.Value
+			appReq.Key.DestScnidKVList = append(appReq.Key.DestScnidKVList, dstKv)
 			appReq.linkAttr.DestScnidKVList = append(appReq.linkAttr.DestScnidKVList, dstKv)
-			}
+		}
 
 		//解析deployconditions中的mandatory links属性：SLA, RTT, Providers, 加速启动等属性
 		for _, condition := range networkReq.Spec.Deployconditions.Mandatory {
@@ -430,7 +433,7 @@ func SetAppConnectReqList(networkReq v1alpha1.NetworkRequirement) {
 		for _, condition := range networkReq.Spec.Deployconditions.BestEffort {
 			if condition.Subject.Name == link.LinkName {
 				ParseDeployCondition(appReq, condition, false)
-		}
+			}
 		}
 		infoString := fmt.Sprintf("appReq is: (%+v).\n", *appReq)
 		nputil.TraceInfoAlwaysPrint(infoString)
@@ -614,6 +617,8 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 			pDstKv.Value = dstKv.Value
 			pbAppConnectAttr.DestScnidKVList = append(pbAppConnectAttr.DestScnidKVList, pDstKv)
 		}
+		pbAppConnectAttr.Accelerate = appConnectDomainPath.AppConnectAttr.Accelerate
+
 		pbAppConnectDomainPath.AppConnect = pbAppConnectAttr
 		infoString := fmt.Sprintf("pbAppConnectDomainPath.AppConnect(%+v)!", pbAppConnectDomainPath.AppConnect)
 		nputil.TraceInfo(infoString)
@@ -898,11 +903,11 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 		infoString := fmt.Sprintf("The netCom is (%+v)!\n", link)
 		nputil.TraceInfo(infoString)
 		available = CalAppConnectAttrForLink(link)
-			if available == false {
+		if available == false {
 			infoString := fmt.Sprintf("The interComm (%+v) is unavailable!\n", link)
-				nputil.TraceInfoAlwaysPrint(infoString)
-				nputil.TraceInfoEnd("")
-				return nil
+			nputil.TraceInfoAlwaysPrint(infoString)
+			nputil.TraceInfoEnd("")
+			return nil
 		}
 	}
 

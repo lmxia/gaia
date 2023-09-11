@@ -214,7 +214,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 					0: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "sla",
@@ -226,7 +226,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 					1: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "accelerate",
@@ -321,7 +321,7 @@ func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequire
 				Mandatory: []v1alpha1.Condition{
 					0: {
 						Subject: v1alpha1.Xject{
-							Name: "link-a-c",
+							Name: "link-a-b",
 							Type: "link",
 						},
 						Object: v1alpha1.Xject{
@@ -514,7 +514,7 @@ func SetRbsAndNetReqAccelerate() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 					0: {
 						Subject: v1alpha1.Xject{
 							Name: "link-a-b",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "accelerate",
@@ -910,7 +910,7 @@ func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 					0: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "sla",
@@ -1230,7 +1230,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 					0: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "sla",
@@ -1242,7 +1242,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 					1: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "accelerate",
@@ -1424,7 +1424,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 					0: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "sla",
@@ -1436,7 +1436,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 					1: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "accelerate",
@@ -1625,7 +1625,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 					0: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "sla",
@@ -1637,7 +1637,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 					1: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "accelerate",
@@ -1820,7 +1820,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 					0: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "sla",
@@ -1832,7 +1832,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 					1: {
 						Subject: v1alpha1.Xject{
 							Name: "link-b-c",
-							Type: "component",
+							Type: "link",
 						},
 						Object: v1alpha1.Xject{
 							Name: "accelerate",

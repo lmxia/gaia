@@ -81,6 +81,13 @@ func DescToHugeComponents(desc *appsv1alpha1.Description) map[string]*appsv1alph
 					TotalMem:       non0MEM,
 					SchedulePolicy: *groupSchedulePolicy[com.GroupName],
 				}
+				huge.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions = append(huge.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions,
+					metav1.LabelSelectorRequirement{
+						Key:      "runtime-state",
+						Operator: metav1.LabelSelectorOpIn,
+						Values:   []string{string(com.Sandbox)},
+					},
+				)
 				groupedComponent[com.GroupName] = huge
 			} else {
 				groupHuge.TotalCPU += non0CPU
@@ -235,8 +242,12 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition, policy m
 
 		if "group" == condition.Subject.Type {
 			if _, ok := policy[condition.Subject.Name]; !ok {
-				policy[condition.Subject.Name].Level[appsv1alpha1.SchedulePolicyMandatory] = &metav1.LabelSelector{
-					MatchExpressions: nil,
+				policy[condition.Subject.Name] = &appsv1alpha1.SchedulePolicy{
+					Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
+						appsv1alpha1.SchedulePolicyMandatory: {
+							MatchExpressions: []metav1.LabelSelectorRequirement{},
+						},
+					},
 				}
 			}
 			SchedulePolicyGroupReflect(condition, policy[condition.Subject.Name].Level[appsv1alpha1.SchedulePolicyMandatory])

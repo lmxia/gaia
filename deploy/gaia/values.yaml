@@ -9,7 +9,7 @@ common:
   promUrlPrefix: "http://prometheus-kube-prometheus-hypermoni.hypermonitor:9090"
   useHypernodeController: true
   topoSyncBaseUrl: "http://ssiexpose.synccontroller.svc:8080"
-  networkBindUrl: nbi.domain1 # only on field level
+  networkBindUrl: http://nbi.domain1.svc.cluster.local/v1.0/network/scheme        # only on field level
   resourceBindingMergePostURL: http://192.168.101.73:37100/api/server/preScheduleSchemeReceiver
   useNodeRoleSelector: true
 
@@ -19,7 +19,7 @@ image:
   repository: 172.17.9.231:8880/gaia
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: 0.1.91
+  tag: v2.0.0-beta
 
 imagePullSecrets: []
 nameOverride: ""

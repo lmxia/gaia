@@ -17,7 +17,7 @@ replicaCount: 3
 
 image:
   repository: 122.96.144.180:30080/gaia
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: v2.0.0-beta
 

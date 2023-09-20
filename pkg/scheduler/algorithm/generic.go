@@ -198,7 +198,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
 				for k, _ := range spreadLevels {
 					if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
-						if comm.GroupName != "" {
+						if comm.GroupName != "" && replicas != 0 {
 							componentMat := makeDeployPlans(allPlan, int64(1), 1)
 							var m mat.Dense
 							m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)

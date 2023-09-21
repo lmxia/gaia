@@ -86,8 +86,8 @@ spec:
               cpu: 1000m
               memory: 1024Mi
             requests:
-              cpu: 1000m
-              memory: 512Mi
+              cpu: 200m
+              memory: 128Mi
           env:
             - name: RESOURCEBINDING_MERGER_POST_URL
               value: {{ .Values.common.resourceBindingMergePostURL }}
@@ -141,8 +141,8 @@ spec:
               cpu: 1000m
               memory: 1024Mi
             requests:
-              cpu: 1000m
-              memory: 512Mi
+              cpu: 200m
+              memory: 128Mi
           env:
             - name: NetFilterLogEnable
               value: "OFF"

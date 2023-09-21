@@ -83,11 +83,11 @@ spec:
               protocol: TCP
           resources:
             limits:
-              cpu: 100m
-              memory: 30Mi
+              cpu: 1000m
+              memory: 1024Mi
             requests:
-              cpu: 100m
-              memory: 20Mi
+              cpu: 1000m
+              memory: 512Mi
           env:
             - name: RESOURCEBINDING_MERGER_POST_URL
               value: {{ .Values.common.resourceBindingMergePostURL }}
@@ -138,11 +138,11 @@ spec:
               protocol: TCP
           resources:
             limits:
-              cpu: 100m
-              memory: 30Mi
+              cpu: 1000m
+              memory: 1024Mi
             requests:
-              cpu: 100m
-              memory: 20Mi
+              cpu: 1000m
+              memory: 512Mi
           env:
             - name: NetFilterLogEnable
               value: "OFF"

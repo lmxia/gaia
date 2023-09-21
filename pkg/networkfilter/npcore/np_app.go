@@ -106,7 +106,7 @@ type AppLinkAttr struct {
 	Accelerate      bool //冷启动加速
 }
 
-//component的连接请求AppConnectReq
+// component的连接请求AppConnectReq
 type AppConnectReq struct {
 	Key                  AppConnectReqKey
 	linkAttr             AppLinkAttr
@@ -133,7 +133,7 @@ type ScnIdInstance struct {
 	Id    uint32
 }
 
-//指定标识scn_id的实例列表
+// 指定标识scn_id的实例列表
 type ScnIdInstanceArray struct {
 	ScnIdInstList []ScnIdInstance
 }
@@ -144,7 +144,7 @@ type DomainInfo struct {
 	DomainType uint32
 }
 
-//InterCommunication只选取一个副本的DomainSrPathArray
+// InterCommunication只选取一个副本的DomainSrPathArray
 type AppConnectSelectedDomainPath struct {
 	AppConnectAttr AppConnectAttr
 	DomainInfoPath []DomainInfo
@@ -157,7 +157,7 @@ type AppConnectDomainPathForRb struct {
 	DomainSrPath   DomainSrPath
 }
 
-//一种resourcebing的方案
+// 一种resourcebing的方案
 type BindingSelectedDomainPath struct {
 	SelectedDomainPath []AppConnectSelectedDomainPath
 }
@@ -196,7 +196,7 @@ func GetFiledNamebyComponent(rbApp *v1alpha1.ResourceBindingApps, componentName 
 	return fieldName, ret
 }
 
-//Map SCN_ID to Component name
+// Map SCN_ID to Component name
 func SetSelfId2Component(networkReq v1alpha1.NetworkRequirement) {
 	nputil.TraceInfoBegin("")
 
@@ -377,7 +377,7 @@ func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, m
 	nputil.TraceInfoEnd("")
 }
 
-//set the connection attributes requirement for components
+// set the connection attributes requirement for components
 func SetAppConnectReqList(networkReq v1alpha1.NetworkRequirement) {
 	nputil.TraceInfoBegin("")
 
@@ -617,10 +617,16 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 			pDstKv.Value = dstKv.Value
 			pbAppConnectAttr.DestScnidKVList = append(pbAppConnectAttr.DestScnidKVList, pDstKv)
 		}
-		pbAppConnectAttr.Accelerate = appConnectDomainPath.AppConnectAttr.Accelerate
+		if appConnectDomainPath.AppConnectAttr.Accelerate == true {
+			pbAppConnectAttr.Accelerate = appConnectDomainPath.AppConnectAttr.Accelerate
+		} else {
+			pbAppConnectAttr.Accelerate = false
+		}
+		infoString1 := fmt.Sprintf("pbAppConnectAttr.Accelerate is (%+v).", pbAppConnectAttr.Accelerate)
+		nputil.TraceInfo(infoString1)
 
 		pbAppConnectDomainPath.AppConnect = pbAppConnectAttr
-		infoString := fmt.Sprintf("pbAppConnectDomainPath.AppConnect(%+v)!", pbAppConnectDomainPath.AppConnect)
+		infoString := fmt.Sprintf("pbAppConnectDomainPath.AppConnect is (%+v)!", pbAppConnectDomainPath.AppConnect)
 		nputil.TraceInfo(infoString)
 
 		for _, domainInfoPath := range appConnectDomainPath.DomainInfoPath {
@@ -636,6 +642,8 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 
 	for i, rbDomainPaths := range pbRbDomainPaths.SelectedDomainPath {
 		infoString := fmt.Sprintf("pbRbDomainPaths[%d] is: (%+v).", i, rbDomainPaths)
+		infoString1 := fmt.Sprintf("pbRbDomainPaths.AppConnect.Accelerate is (%+v)!", rbDomainPaths.AppConnect.Accelerate)
+		nputil.TraceInfo(infoString1)
 		nputil.TraceInfo(infoString)
 	}
 
@@ -656,7 +664,7 @@ func ClearLocalComConnectArray() {
 	nputil.TraceInfoEnd("")
 }
 
-//从各个连接属性的实例的pathgroup中各选出一个，组合成一组方案返回给resourceBinding
+// 从各个连接属性的实例的pathgroup中各选出一个，组合成一组方案返回给resourceBinding
 func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 	nputil.TraceInfoBegin("")
 	local := GetCoreLocal()
@@ -758,9 +766,9 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 	}
 }
 
-//假设连接属性的源srcScnId的component有5个副本，则每个副本实例在该连接属性都可达，才认为该连接属性有效。
-//每个副本实例只要有一条可达实例就认为该副本的连接属性是有效的：即a1--b1可达就认为有效
-//尽量满足负荷分担，如：a1--b1可达，那a2尝试从b2开始连接，如果到a2---b2……b5都不可达，则再从头计算a2-b1，截至的实例为上次循环的前一个实例b2-1=b1
+// 假设连接属性的源srcScnId的component有5个副本，则每个副本实例在该连接属性都可达，才认为该连接属性有效。
+// 每个副本实例只要有一条可达实例就认为该副本的连接属性是有效的：即a1--b1可达就认为有效
+// 尽量满足负荷分担，如：a1--b1可达，那a2尝试从b2开始连接，如果到a2---b2……b5都不可达，则再从头计算a2-b1，截至的实例为上次循环的前一个实例b2-1=b1
 func CalAppConnectAttrForLink(link v1alpha1.Link) bool {
 	nputil.TraceInfoBegin("")
 
@@ -991,7 +999,10 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			}
 			infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath[%d] is: [%+v]", i, TmpRbDomainPaths)
 			nputil.TraceInfoAlwaysPrint(infoString)
-
+			for _, appDomainPath := range TmpRbDomainPaths.SelectedDomainPath {
+				infoString = fmt.Sprintf("appDomainPath.AppConnect.Accelerate is: [%+v]", appDomainPath.AppConnect.Accelerate)
+				nputil.TraceInfoAlwaysPrint(infoString)
+			}
 			rb.Spec.NetworkPath = append(rb.Spec.NetworkPath, NpContentBase64)
 		}
 	}

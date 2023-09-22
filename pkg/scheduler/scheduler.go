@@ -406,6 +406,8 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
 					klog.Infof("scheduler success, but some rb not created success %v", err)
+				} else {
+					klog.InfoS("successfully created rb", "Description", desc.GetName(), "ResourceBinding", klog.KRef(itemRb.GetNamespace(), itemRb.GetName()))
 				}
 			}
 			// 2. create desc in to child cluster namespace
@@ -502,6 +504,8 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 				Create(ctx, rb, metav1.CreateOptions{})
 			if errCreate != nil {
 				klog.Infof("create rb in local to be merged ns error", errCreate)
+			} else {
+				klog.InfoS("successfully created rb", "Description", desc.GetName(), "ResourceBinding", klog.KRef(rb.GetNamespace(), rb.GetName()))
 			}
 		}
 		klog.V(3).InfoS("scheduler success just change rb namespace.")
@@ -553,6 +557,8 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
 					klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
+				} else {
+					klog.InfoS("successfully created rb", "Description", desc.GetName(), "ResourceBinding", klog.KRef(itemRb.GetNamespace(), itemRb.GetName()))
 				}
 			}
 			// 2. create desc in to child cluster namespace

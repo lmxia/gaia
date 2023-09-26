@@ -1,0 +1,187 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: ar-in-prod
+  namespace: gaia-reserved
+spec:
+  appID: ar-in-prod
+  workloadComponents:
+    - componentName: train
+      namespace: ai
+      sandbox: runc
+      workloadType: "stateless-system-service"
+      schedule:
+        monday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        tuesday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        wednesday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        thursday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        friday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        saturday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        sunday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        startEnable: true
+        endEnable: true
+        cronEnable: true    # 周期性标识
+      module:
+        metadata:
+          labels:
+            app: train
+        spec:
+          containers:
+            - name: train       #镜像名称（必填）
+              image: "122.96.144.180:30080/ai/train:latest"    #镜像地址（必填）
+              imagePullPolicy: IfNotPresent  #如果不存在则拉取（必填）
+              volumeMounts:
+                - mountPath: "/train"
+                  name: "logfiles"
+              env:
+                - name: EPOCHS
+                  value: "300"
+                - name: ENDPOINT
+                  value: 47.98.99.10:32001
+                - name: ACCESS_KEY
+                  value: YRSAQvxRzZ9qtVBn
+                - name: SECRET_KEY
+                  value: 5sUVeTfXiaVmahGJLm3f0wHBLiAnWM7V
+                - name: PYTHONUNBUFFERED
+                  value: "1"
+              resources:
+                limits:
+                  cpu: "8000m"
+                  memory: "16000Mi"
+                requests:
+                  cpu: "6000m"
+                  memory: "10000Mi"
+          volumes:
+            - name: logfiles
+              hostPath:
+                path: /var/log/train
+                type: DirectoryOrCreate
+    - componentName: predict
+      namespace: ai
+      sandbox: runc
+      schedule:
+        cronEnable: false
+        endEnable: false
+        friday: {}
+        monday: {}
+        saturday: {}
+        startEnable: true
+        sunday: {}
+        thursday: {}
+        tuesday: {}
+        wednesday: {}
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: predict
+        spec:
+          containers:
+            - name: predict       #镜像名称（必填）
+              image: "122.96.144.180:30080/ai/predict:latest"    #镜像地址（必填）
+              imagePullPolicy: IfNotPresent  #如果不存在则拉取（必填）
+              volumeMounts:
+                - mountPath: "/predict"
+                  name: "logfiles"
+              env:
+                - name: ENDPOINT
+                  value: 47.98.99.10:32001
+                - name: ACCESS_KEY
+                  value: YRSAQvxRzZ9qtVBn
+                - name: SECRET_KEY
+                  value: 5sUVeTfXiaVmahGJLm3f0wHBLiAnWM7V
+                - name: PYTHONUNBUFFERED
+                  value: "1"
+              resources:
+                limits:
+                  cpu: "8000m"
+                  memory: "4000Mi"
+                requests:
+                  cpu: "4000m"
+                  memory: "1000Mi"
+          volumes:
+            - name: logfiles
+              hostPath:
+                path: /var/log/predict
+                type: DirectoryOrCreate
+  deploymentCondition:
+    mandatory:
+      - subject:
+          name: train
+          type: component
+        object:
+          name: geo-location
+          type: label
+        relation: In
+        extent: WyIwMDAwMDAtMDAwMDA0LTExMDAwMC0xMTAxMDAtMTEwMTA1Il0K # ["000000-000004-110000-110100-110105"]
+      - subject:
+          name: predict
+          type: component
+        object:
+          name: geo-location
+          type: label
+        relation: In
+        extent: WyIwMDAwMDAtMDAwMDA0LTExMDAwMC0xMTAxMDAtMTEwMTA1Il0K # ["000000-000004-110000-110100-110105"]
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary0
+          subject: train
+          type: replicas
+          value: MQo=   # 1
+        - name: boundary61
+          subject: predict
+          type: "maxReplicas"
+          value: NQ== # 5
+        - name: boundary62
+          subject: predict
+          type: "cpu"
+          value: MjA= # 20
+        - name: boundary63
+          subject: predict
+          type: "cpu"
+          value: ODA= # 80
+        - name: boundary64
+          subject: predict
+          type: "mem"
+          value: MjA= # 20
+        - name: boundary65
+          subject: predict
+          type: "mem"
+          value: NzA= # 70
+        - name: boundary66
+          subject: predict
+          type: "QPS"
+          value: MTU= # 15
+        - name: boundary67
+          subject: predict
+          type: "QPS"
+          value: ODU= # 85
+    maintenance:
+      hpa:
+        - name: "decrease replicas1"
+          subject: predict
+          trigger: boundary62 && boundary64 && boundary66
+          strategy:
+            type: decrease
+            value: MQ== # 1
+        - name: "increase replicas1"
+          subject: predict
+          trigger: boundary63 || boundary65 || boundary67
+          strategy:
+            type: increase
+            value: MQ== # 1

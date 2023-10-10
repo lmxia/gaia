@@ -1,0 +1,137 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: NetworkRequirement
+metadata:
+  name: group-schedule-example
+  namespace: gaia-reserved
+spec:
+  workloadComponents:
+    scns:
+      - name: group-component1
+        selfID:
+          - /pml/case1/c1/1
+          - /pml/case1/c1/2
+          - /pml/case1/c1/3
+          - /pml/case1/c1/4
+          - /pml/case1/c1/5
+          - /pml/case1/c1/6
+      - name: group-component2
+        selfID:
+          - /pml/case1/c2/1
+      - name: group-component3
+        selfID:
+          - /pml/case1/c3/1
+      - name: group-component4
+        selfID:
+          - /pml/case1/c4/1
+      - name: group-component5
+        selfID:
+          - /pml/case1/c5/1
+      - name: group-component6
+        selfID:
+          - /pml/case1/c6/1
+    links:
+      - linkName: linkc1-1-c6-1
+        sourceID: /pml/case1/c1/1
+        destinationID: /pml/case1/c6/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: linkc2-1-c6-1
+        sourceID: /pml/case1/c2/1
+        destinationID: /pml/case1/c6/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: linkc3-1-c6-1
+        sourceID: /pml/case1/c3/1
+        destinationID: /pml/case1/c6/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: linkc4-1-c6-1
+        sourceID: /pml/case1/c4/1
+        destinationID: /pml/case1/c6/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+      - linkName: linkc5-1-c6-1
+        sourceID: /pml/case1/c5/1
+        destinationID: /pml/case1/c6/1
+        sourceAttributes:
+          - key: POLICY_SOURCE
+            value: policy_inst1
+        destinationAttributes:
+          - key: POLICY_DEST
+            value: policy_inst2
+  deployconditions:
+    mandatory:
+      - subject:
+          name: linkc1-1-c6-1
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {"delayValue":100,"lostValue":100,"jitterValue":999999,"throughputValue":100}
+      - subject:
+          name: linkc1-1-c6-1
+          type: link
+        object:
+          name: provider
+          type: label
+        relation: In
+        extent: WyJqaWFuZ25hbi1mYWJyaWMtMTA0LXNkd2FuLXNyb3UtaHlwZXJvcyIsImppYW5nbmFuLWZhYnJpYy0xMDUtc2R3YW4tc3JvdS1oeXBlcm9zIiwiamlhbmduYW4tZmFicmljLTEwNi1zZHdhbi1zcm91LWh5cGVyb3MiXQ== # ["jiangnan-fabric-104-sdwan-srou-hyperos","jiangnan-fabric-105-sdwan-srou-hyperos","jiangnan-fabric-106-sdwan-srou-hyperos"]
+      - subject:
+          name: linkc1-1-c6-1
+          type: link
+        object:
+          name: accelerate
+          type: accelerate
+        relation: Is
+        extent: eyJhY2NlbGVyYXRlIjp0cnVlfQ== # {"accelerate": true}
+      - subject:
+          name: linkc2-1-c6-1
+          type: link
+        object:
+          name: rtt
+          type: rtt
+        relation: Is
+        extent: eyJydHQiOjV9 # {"rtt":5}
+
+    BestEffort:
+      - subject:
+          name: linkc3-1-c6-1
+          type: link
+        object:
+          name: provider
+          type: label
+        relation: In
+        extent: WyJqaWFuZ25hbi1mYWJyaWMtMTA0LXNkd2FuLXNyb3UtaHlwZXJvcyIsImppYW5nbmFuLWZhYnJpYy0xMDUtc2R3YW4tc3JvdS1oeXBlcm9zIiwiamlhbmduYW4tZmFicmljLTEwNi1zZHdhbi1zcm91LWh5cGVyb3MiXQ== # ["jiangnan-fabric-104-sdwan-srou-hyperos","jiangnan-fabric-105-sdwan-srou-hyperos","jiangnan-fabric-106-sdwan-srou-hyperos"]
+      - subject:
+          name: linkc4-1-c6-1
+          type: link
+        object:
+          name: sla
+          type: sla
+        relation: Is
+        extent: eyJkZWxheVZhbHVlIjo1LCJsb3N0VmFsdWUiOjEwMCwiaml0dGVyVmFsdWUiOjk5OTk5OSwidGhyb3VnaHB1dFZhbHVlIjoxMDB9 # {"delayValue":5,"lostValue":100,"jitterValue":999999,"throughputValue":100}
+      - subject:
+          name: linkc5-1-c6-1
+          type: link
+        object:
+          name: rtt
+          type: rtt
+        relation: Is
+        extent: eyJydHQiOjV9 # {"rtt":5}

@@ -350,8 +350,7 @@ func makeUniqeDeployPlans(capability []*framework.ClusterInfo, componentTotal, s
 		result.SetRow(0, plan(capability, componentTotal))
 		return result
 	} else {
-		result := mat.NewDense(2, len(capability), nil)
-		result.Zero()
+		temResult := make([][]float64, 0)
 		// 2. get 2 plans
 		allCombile := GetClusterCombos(capability, int(spreadOver))
 		planNums := 0
@@ -371,14 +370,17 @@ func makeUniqeDeployPlans(capability []*framework.ClusterInfo, componentTotal, s
 				continue
 			} else {
 				r := plan(randomCapacity, componentTotal)
-				result.SetRow(planNums, r)
+				temResult = append(temResult, r)
 				planNums += 1
 			}
 			if planNums >= 2 {
 				break
 			}
 		}
-
+		result := mat.NewDense(len(temResult), len(capability), nil)
+		for i, item := range temResult {
+			result.SetRow(i, item)
+		}
 		return result
 	}
 }

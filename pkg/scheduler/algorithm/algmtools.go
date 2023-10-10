@@ -337,6 +337,61 @@ func makeDeployPlans(capability []*framework.ClusterInfo, componentTotal, spread
 	}
 }
 
+// makeDeployPlans make plans for specific component
+func makeUniqeDeployPlans(capability []*framework.ClusterInfo, componentTotal, spreadOver int64) mat.Matrix {
+	if componentTotal == 0 {
+		result := mat.NewDense(1, len(capability), nil)
+		result.Zero()
+		return result
+	}
+	// 1. check param,
+	if int(spreadOver) >= len(capability) {
+		result := mat.NewDense(1, len(capability), nil)
+		result.SetRow(0, plan(capability, componentTotal))
+		return result
+	} else {
+		result := mat.NewDense(2, len(capability), nil)
+		result.Zero()
+		// 2. get 2 plans
+		allCombile := GetClusterCombos(capability, int(spreadOver))
+		planNums := 0
+		for _, clusterPlan := range allCombile {
+			availableCountForThisPlan := int64(0)
+			randomCapacity := make([]*framework.ClusterInfo, len(capability))
+			for i, item := range capability {
+				if ifItemInTheArray(clusterPlan, item) {
+					randomCapacity[i] = item
+					availableCountForThisPlan += item.Total
+				} else {
+					randomCapacity[i] = nil
+				}
+			}
+			// we get a unavailable plan
+			if availableCountForThisPlan < componentTotal {
+				continue
+			} else {
+				r := plan(randomCapacity, componentTotal)
+				result.SetRow(planNums, r)
+				planNums += 1
+			}
+			if planNums >= 2 {
+				break
+			}
+		}
+
+		return result
+	}
+}
+
+func ifItemInTheArray(clusters []*framework.ClusterInfo, cluster *framework.ClusterInfo) bool {
+	for _, item := range clusters {
+		if item == cluster {
+			return true
+		}
+	}
+	return false
+}
+
 // make matrix from component matrix on same level, 1, n, full, return one schedule result.
 func makeResourceBindingMatrix(in []mat.Matrix) ([]mat.Matrix, error) {
 	totalCount := 1
@@ -525,6 +580,25 @@ func GenerateRandomClusterInfos(capacities []*framework.ClusterInfo, count int) 
 		}
 
 		return randomCapacity, nil
+	}
+}
+
+func GetClusterCombos(set []*framework.ClusterInfo, depth int) [][]*framework.ClusterInfo {
+	initPrefix := make([]*framework.ClusterInfo, 0)
+	return GetCombosHelper(set, depth, 0, initPrefix, [][]*framework.ClusterInfo{})
+}
+
+func GetCombosHelper(set []*framework.ClusterInfo, depth int, start int, prefix []*framework.ClusterInfo,
+	accum [][]*framework.ClusterInfo) [][]*framework.ClusterInfo {
+	if depth == 0 {
+		return append(accum, prefix)
+	} else {
+		for i := start; i <= len(set)-depth; i++ {
+			if set[i].Total != 0 {
+				accum = GetCombosHelper(set, depth-1, i+1, append(prefix, set[i]), accum)
+			}
+		}
+		return accum
 	}
 }
 

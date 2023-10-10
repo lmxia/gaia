@@ -172,7 +172,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			for j, _ := range spreadLevels {
 				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
 					if comm.GroupName != "" {
-						componentMat := makeDeployPlans(allPlan, int64(1), 1)
+						componentMat := makeUniqeDeployPlans(allPlan, int64(1), 1)
 						var m mat.Dense
 						m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)
 						allResultGlobal[j][i] = &m
@@ -199,7 +199,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				for k, _ := range spreadLevels {
 					if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
 						if comm.GroupName != "" && replicas != 0 {
-							componentMat := makeDeployPlans(allPlan, int64(1), 1)
+							componentMat := makeUniqeDeployPlans(allPlan, int64(1), 1)
 							var m mat.Dense
 							m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)
 							allResultWithRB[j][k][i] = &m

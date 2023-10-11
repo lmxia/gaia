@@ -1264,8 +1264,9 @@ func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, cluste
 
 	if len(networkReq.Spec.WorkloadComponents.Links) > 0 {
 		for _, link := range networkReq.Spec.WorkloadComponents.Links {
-			comName := idToComponentMap[link.SourceID]
-			if compToReplicasMap[comName] > 0 {
+			comNameSrc := idToComponentMap[link.SourceID]
+			comNameDst := idToComponentMap[link.DestinationID]
+			if compToReplicasMap[comNameSrc] > 0 || compToReplicasMap[comNameDst] > 0 {
 				return true
 			}
 		}

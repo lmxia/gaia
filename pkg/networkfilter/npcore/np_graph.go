@@ -683,7 +683,6 @@ func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainL
 	// (1)正向路径时延+反向路径时延<rt指标
 	//2.单条路径总时延=KSP路径的总weight+4ms*单条KSP的节点数   （各个filed节点的4ms时延）
 	//3.对于特定的appconnect,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
-	//4.将剩余的rt,返回给计算调度
 	var domainSrPathArray []DomainSrPath
 	domainGraph := domain.DomainGraphPoint
 	//计算APP连接请求的正向K条domainsr路径
@@ -719,6 +718,35 @@ func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainL
 	return domainSrPathArray
 }
 
+func GetReverseDomainPath(graph *Graph, appConnectAttr AppConnectAttr) *DomainSrPath {
+	nputil.TraceInfoBegin("")
+
+	domainGraph := graph.DomainGraphPoint
+	//计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
+	srcReverseDomainSpfID, _ := getDomainSpfID(appConnectAttr.Key.DstDomainId)
+	dstReverseDomainSpfID, _ := getDomainSpfID(appConnectAttr.Key.SrcDomainId)
+	queryReverse := simple.Edge{F: simple.Node(srcReverseDomainSpfID), T: simple.Node(dstReverseDomainSpfID)}
+	reverseBestPathGroups := KspCalcDomainPath(domainGraph.DomainLinkKspGraph, KspCalcMaxNum, queryReverse)
+	if len(reverseBestPathGroups) == 0 {
+		infoString := fmt.Sprintf("No reverse shortest path!\"")
+		nputil.TraceInfo(infoString)
+		nputil.TraceInfoEnd("")
+		return nil
+	}
+
+	reverseDomainSrPath := domainGraph.DomainSrPathCreateByKspPath(reverseBestPathGroups[0])
+	if reverseDomainSrPath == nil {
+		infoString := fmt.Sprintf("Reverse baseDomainLink is nil!")
+		nputil.TraceInfo(infoString)
+		nputil.TraceInfoEnd("")
+		return nil
+	}
+	infoString := fmt.Sprintf("reverseDomainSrPath is (%+v)", reverseDomainSrPath)
+	nputil.TraceInfo(infoString)
+	nputil.TraceInfoEnd("")
+	return reverseDomainSrPath
+}
+
 func (domain *Domain) CalReverseDomainPathMinDelay(domainLinkKspGraph *DomainLinkKspGraph, spfCalcMaxNum int, appLinkAttr AppLinkAttr) (uint32, error) {
 	nputil.TraceInfoBegin("")
 
@@ -746,6 +774,7 @@ func (domain *Domain) CalReverseDomainPathMinDelay(domainLinkKspGraph *DomainLin
 		nputil.TraceInfoEnd("")
 		return 0, rtnErr
 	}
+	nputil.TraceInfoEnd("")
 	return reverseMinDelay, nil
 }
 

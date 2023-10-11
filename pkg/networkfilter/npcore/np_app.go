@@ -79,6 +79,15 @@ type AppConnectAttr struct {
 	SrcScnidKVList  []KVAttribute
 	DestScnidKVList []KVAttribute
 	Accelerate      bool //冷启动加速
+	Rtt             int32
+}
+
+type SyncAppConnectAttr struct {
+	Key             AppConnectAttrKey
+	SlaAttr         AppSlaAttr
+	SrcScnidKVList  []KVAttribute
+	DestScnidKVList []KVAttribute
+	Accelerate      bool //冷启动加速
 }
 
 type AppLinkSlaAttr struct {
@@ -146,7 +155,7 @@ type DomainInfo struct {
 
 // InterCommunication只选取一个副本的DomainSrPathArray
 type AppConnectSelectedDomainPath struct {
-	AppConnectAttr AppConnectAttr
+	AppConnectAttr SyncAppConnectAttr
 	DomainInfoPath []DomainInfo
 	DomainSrPath   DomainSrPath //预占时给控制器的DomainPath
 }
@@ -809,6 +818,7 @@ func CalAppConnectAttrForLink(link v1alpha1.Link) bool {
 			appConnectAttr.SrcScnidKVList = appLinkAttr.SrcScnidKVList
 			appConnectAttr.DestScnidKVList = appLinkAttr.DestScnidKVList
 			appConnectAttr.Accelerate = appLinkAttr.Accelerate
+			appConnectAttr.Rtt = appLinkAttr.LinkRttAttr.Rtt
 
 			infoString := fmt.Sprintf("srcScnIdInstList[%d] is: (%+v).\n dstScnIdInstList[%d] is: (%+v).\n appLinkAttr is: (%+v)",
 				i, srcScnIdInstList[i], j, dstScnIdInstList[j], appLinkAttr)
@@ -894,6 +904,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 	nputil.TraceInfoBegin("")
 
 	graph := GraphFindByGraphType(GraphTypeAlgo_Cspf)
+
 	//set component map
 	SetComponentByNetReq(networkReq)
 	//Map SCN_ID to Component name
@@ -945,10 +956,34 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 				infoString := fmt.Sprintf("appPathGroup[%d] is: (%+v).\n\n", i, appDomainPath)
 				nputil.TraceInfo(infoString)
 				var appSelectedPath = AppConnectSelectedDomainPath{}
-				appSelectedPath.AppConnectAttr = appDomainPath.AppConnect
+				appSelectedPath.AppConnectAttr.Key = appDomainPath.AppConnect.Key
+				appSelectedPath.AppConnectAttr.SlaAttr = appDomainPath.AppConnect.SlaAttr
+				appSelectedPath.AppConnectAttr.SrcScnidKVList = appDomainPath.AppConnect.SrcScnidKVList
+				appSelectedPath.AppConnectAttr.DestScnidKVList = appDomainPath.AppConnect.DestScnidKVList
+				appSelectedPath.AppConnectAttr.Accelerate = appDomainPath.AppConnect.Accelerate
 				appSelectedPath.DomainSrPath = appDomainPath.DomainSrPath
 				appSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(appDomainPath.DomainSrPath)
 				rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
+				//如果有rtt要求，计算并同步最短时延的反向路径, rtt在计算正向路径时已经满足，此处不用校验，肯定会满足
+				if appDomainPath.AppConnect.Rtt != 0 {
+					appSelectedPath = AppConnectSelectedDomainPath{}
+					//获取反向路径的domainsr
+					reverseDomainSrPath := GetReverseDomainPath(graph, appDomainPath.AppConnect)
+					//构造反向通信请求
+					appSelectedPath.AppConnectAttr.Key.SrcUrl = appDomainPath.AppConnect.Key.DstUrl
+					appSelectedPath.AppConnectAttr.Key.DstUrl = appDomainPath.AppConnect.Key.SrcUrl
+					appSelectedPath.AppConnectAttr.Key.SrcID = appDomainPath.AppConnect.Key.DstID
+					appSelectedPath.AppConnectAttr.Key.DstID = appDomainPath.AppConnect.Key.SrcID
+					appSelectedPath.AppConnectAttr.Key.SrcDomainId = appDomainPath.AppConnect.Key.DstDomainId
+					appSelectedPath.AppConnectAttr.Key.DstDomainId = appDomainPath.AppConnect.Key.SrcDomainId
+					appSelectedPath.AppConnectAttr.SlaAttr = appDomainPath.AppConnect.SlaAttr
+					appSelectedPath.AppConnectAttr.SrcScnidKVList = appDomainPath.AppConnect.SrcScnidKVList
+					appSelectedPath.AppConnectAttr.DestScnidKVList = appDomainPath.AppConnect.DestScnidKVList
+					appSelectedPath.AppConnectAttr.Accelerate = appDomainPath.AppConnect.Accelerate
+					appSelectedPath.DomainSrPath = *reverseDomainSrPath
+					appSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(appSelectedPath.DomainSrPath)
+					rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
+				}
 			}
 			infoString := fmt.Sprintf("rbSdp : (%+v).\n\n", rbSdp)
 			nputil.TraceInfo(infoString)

@@ -331,6 +331,18 @@ func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequire
 						Relation: "Is",
 						Extent:   []byte("{\"Rtt\":100}"),
 					},
+					1: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "accelerate",
+							Type: "accelerate",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Accelerate\": true}"),
+					},
 				},
 			},
 		},
@@ -683,7 +695,7 @@ func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"DelayValue\":1,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -695,7 +707,19 @@ func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "rtt",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"Rtt\":50}"),
+						Extent:   []byte("{\"Rtt\":20}"),
+					},
+					3: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "accelerate",
+							Type: "accelerate",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Accelerate\": true}"),
 					},
 				},
 			},

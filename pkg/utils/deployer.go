@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilRuntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -517,11 +519,19 @@ func postRequest(url, descriptionName string, path []byte) {
 	}
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("cache-control", "no-cache")
-	resp, resperr := http.DefaultClient.Do(request)
-	if resperr != nil {
-		klog.Errorf("post do sent, error====%v\n", resperr)
+	resp, respErr := http.DefaultClient.Do(request)
+	if resp != nil {
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				utilRuntime.HandleError(fmt.Errorf("bindNetwork: failed to close response body, Description: %q ERROR: %v", descriptionName, err))
+			}
+		}(resp.Body)
 	}
-	defer resp.Body.Close()
+	if respErr != nil {
+		klog.Errorf("bindNetwork: post do sent, error====%v\n", respErr)
+		return
+	}
 
 	klog.InfoS("successfully post network path", "Description", descriptionName, "NetworkPath", string(path))
 }

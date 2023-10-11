@@ -12,18 +12,6 @@ spec:
       namespace: test
       groupName: group1
       sandbox: runc
-      schedule:
-        cronEnable: false
-        endEnable: false
-        friday: {}
-        monday:
-          startSchedule: "16:20:00"
-        saturday: {}
-        startEnable: true
-        sunday: {}
-        thursday: {}
-        tuesday: {}
-        wednesday: {}
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -47,18 +35,6 @@ spec:
       namespace: test
       sandbox: runc
       groupName: group1
-      schedule:
-        cronEnable: false
-        endEnable: false
-        friday: {}
-        monday:
-          startSchedule: "15:45:00"
-        saturday: {}
-        startEnable: true
-        sunday: {}
-        thursday: {}
-        tuesday: {}
-        wednesday: {}
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -82,18 +58,6 @@ spec:
       namespace: test
       sandbox: runc
       groupName: group1
-      schedule:
-        cronEnable: false
-        endEnable: true
-        friday: {}
-        monday:
-          endSchedule: "16:30:00"
-        saturday: {}
-        startEnable: false
-        sunday: {}
-        thursday: {}
-        tuesday: {}
-        wednesday: {}
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -117,19 +81,6 @@ spec:
       namespace: test
       sandbox: runc
       groupName: group1
-      schedule:
-        cronEnable: false
-        endEnable: true
-        friday: {}
-        monday: {}
-        saturday: {}
-        startEnable: true
-        sunday: {}
-        thursday: {}
-        tuesday:
-          endSchedule: "17:20:00"
-          startSchedule: "17:05:00"
-        wednesday: {}
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -153,20 +104,6 @@ spec:
       namespace: test
       sandbox: runc
       groupName: group1
-      schedule:
-        cronEnable: true
-        endEnable: false
-        friday: {}
-        monday:
-          startSchedule: "17:45:00"
-        saturday: {}
-        startEnable: true
-        sunday: {}
-        thursday: {}
-        tuesday:
-          startSchedule: "09:10:00"
-        wednesday:
-          startSchedule: "09:20:00"
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -189,19 +126,6 @@ spec:
     - componentName: group-component6
       namespace: test
       sandbox: runc
-      schedule:
-        cronEnable: true
-        endEnable: true
-        friday: {}
-        monday: {}
-        saturday: {}
-        startEnable: true
-        sunday: {}
-        thursday: {}
-        tuesday: {}
-        wednesday:
-          endSchedule: "14:40:00"
-          startSchedule: "14:25:00"
       workloadType: "stateless-system-service"
       module:
         metadata:

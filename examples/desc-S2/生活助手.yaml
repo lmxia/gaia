@@ -10,7 +10,7 @@ spec:
   workloadComponents:
     - componentName: case1wear
       namespace: ar1
-      sandbox: runc
+      sandbox: SecureContainer
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -42,7 +42,7 @@ spec:
               name: usock
     - componentName: case1eamil
       namespace: ar1
-      sandbox: runc
+      sandbox: SecureContainer
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -60,7 +60,7 @@ spec:
               name: case1email
               resources:
                 limits:
-                  cpu: 2000m
+                  cpu: 1000m
                   memory: 512Mi
                 requests:
                   cpu: 1000m
@@ -76,7 +76,7 @@ spec:
               name: usock
     - componentName: case1usermanage
       namespace: ar1
-      sandbox: runc
+      sandbox: SecureContainer
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -94,10 +94,78 @@ spec:
               name: case1usermanage
               resources:
                 limits:
-                  cpu: 2000m
+                  cpu: 1000m
                   memory: 512Mi
                 requests:
-                  cpu: 2000m
+                  cpu: 1000m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case1weather
+      namespace: ar1
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case1weather
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "3"
+                - name: SCNID3
+                  value: /assistant/case1weather
+              image: 122.96.144.180:30080/ar/life-assistant-user:latest
+              imagePullPolicy: Always
+              name: case1weather
+              resources:
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+                requests:
+                  cpu: 1000m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
+    - componentName: case1healthconsult
+      namespace: ar1
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case1healthconsult
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "3"
+                - name: SCNID3
+                  value: /assistant/case1healthconsult
+              image: 122.96.144.180:30080/ar/life-assistant-user:latest
+              imagePullPolicy: Always
+              name: case1healthconsult
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+                requests:
+                  cpu: 500m
                   memory: 512Mi
               volumeMounts:
                 - mountPath: /tmp
@@ -147,5 +215,13 @@ spec:
           value: MQo= # 1
         - name: boundary3
           subject: case1usermanage
+          type: replicas
+          value: MQo= # 1
+        - name: boundary4
+          subject: case1weather
+          type: replicas
+          value: MQo= # 1
+        - name: boundary5
+          subject: case1healthconsult
           type: replicas
           value: MQo= # 1

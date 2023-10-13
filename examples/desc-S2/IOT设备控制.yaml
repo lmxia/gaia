@@ -10,7 +10,7 @@ spec:
   workloadComponents:
     - componentName: case3usermanage
       namespace: ar3
-      sandbox: runc
+      sandbox: SecureContainer
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -27,10 +27,10 @@ spec:
               name: case3usermanage
               resources:
                 limits:
-                  cpu: 2000m
+                  cpu: 1000m
                   memory: 512Mi
                 requests:
-                  cpu: 2000m
+                  cpu: 1000m
                   memory: 512Mi
               volumeMounts:
                 - mountPath: /tmp
@@ -43,7 +43,7 @@ spec:
               name: usock
     - componentName: case3property
       namespace: ar3
-      sandbox: runc
+      sandbox: SecureContainer
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -60,11 +60,11 @@ spec:
               name: case3property
               resources:
                 limits:
-                  cpu: 100m
-                  memory: 512Mi
+                  cpu: 500m
+                  memory: 256Mi
                 requests:
-                  cpu: 100m
-                  memory: 512Mi
+                  cpu: 500m
+                  memory: 256Mi
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
@@ -76,7 +76,7 @@ spec:
               name: usock
     - componentName: case3iotservice
       namespace: ar3
-      sandbox: runc
+      sandbox: SecureContainer
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -93,10 +93,10 @@ spec:
               name: case3iotservice
               resources:
                 limits:
-                  cpu: 2000m
+                  cpu: 1000m
                   memory: 512Mi
                 requests:
-                  cpu: 2000m
+                  cpu: 1000m
                   memory: 512Mi
               volumeMounts:
                 - mountPath: /tmp
@@ -107,7 +107,39 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
               name: usock
-
+    - componentName: case3cloudlocate
+      namespace: ar3
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: case3cloudlocate
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "3"
+                - name: SCNID3
+                  value: /IOT/case3cloudlocate
+              image: 122.96.144.180:30080/ar/iot-device:latest
+              name: case3cloudlocate
+              resources:
+                limits:
+                  cpu: 2000m
+                  memory: 8192Mi
+                requests:
+                  cpu: 2000m
+                  memory: 8192Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: true
+          volumes:
+            - hostPath:
+                path: /tmp
+                type: DirectoryOrCreate
+              name: usock
   deploymentCondition:
     mandatory:
       - subject:
@@ -147,5 +179,9 @@ spec:
           value: MQo= # 1
         - name: boundary3
           subject: case3iotservice
+          type: replicas
+          value: MQo= # 1
+        - name: boundary4
+          subject: case3cloudlocate
           type: replicas
           value: MQo= # 1

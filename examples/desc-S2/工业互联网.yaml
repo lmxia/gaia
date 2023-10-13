@@ -27,10 +27,10 @@ spec:
               name: case2equipment
               resources:
                 limits:
-                  cpu: 100m
+                  cpu: 500m
                   memory: 512Mi
                 requests:
-                  cpu: 100m
+                  cpu: 500m
                   memory: 512Mi
               volumeMounts:
                 - mountPath: /tmp
@@ -43,7 +43,7 @@ spec:
               name: usock
     - componentName: case2usermanage
       namespace: ar2
-      sandbox: runc
+      sandbox: SecureContainer
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -60,10 +60,10 @@ spec:
               name: case2usermanage
               resources:
                 limits:
-                  cpu: 1500m
+                  cpu: 1000m
                   memory: 512Mi
                 requests:
-                  cpu: 1500m
+                  cpu: 1000m
                   memory: 512Mi
               volumeMounts:
                 - mountPath: /tmp
@@ -93,11 +93,11 @@ spec:
               name: case2productstatistics
               resources:
                 limits:
-                  cpu: 100m
-                  memory: 512Mi
+                  cpu: 2000m
+                  memory: 8192Mi
                 requests:
-                  cpu: 100m
-                  memory: 512Mi
+                  cpu: 2000m
+                  memory: 8192Mi
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
@@ -192,11 +192,11 @@ spec:
               name: case2identifysvc
               resources:
                 limits:
-                  cpu: 4000m
-                  memory: 16384Mi
+                  cpu: 2000m
+                  memory: 8192Mi
                 requests:
-                  cpu: 4000m
-                  memory: 16384Mi
+                  cpu: 2000m
+                  memory: 8192Mi
               volumeMounts:
                 - mountPath: /tmp
                   name: usock

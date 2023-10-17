@@ -19,8 +19,8 @@ spec:
         spec:
           containers:
             - env:
-                - name: SCNID1
-                  value: /assistant/wear
+                - name: SCNID
+                  value: /inner-private/lifeassistant/lifeassiswear/1
               image: 122.96.144.180:30080/ar/life-assistant-data:latest
               imagePullPolicy: Always
               name: case1wear
@@ -51,10 +51,8 @@ spec:
         spec:
           containers:
             - env:
-                - name: SCNNUM
-                  value: "2"
-                - name: SCNID2
-                  value: /assistant/email
+                - name: SCNID
+                  value: /inner-private/lifeassistant/lifeassisemail/1
               image: 122.96.144.180:30080/ar/life-assistant-email:latest
               imagePullPolicy: Always
               name: case1email
@@ -85,47 +83,11 @@ spec:
         spec:
           containers:
             - env:
-                - name: SCNNUM
-                  value: "3"
-                - name: SCNID3
-                  value: /assistant/usermanage
+                - name: SCNID
+                  value: /inner-private/lifeassistant/lifeassisusermanage/1
               image: 122.96.144.180:30080/ar/life-assistant-user:latest
               imagePullPolicy: Always
               name: case1usermanage
-              resources:
-                limits:
-                  cpu: 1000m
-                  memory: 512Mi
-                requests:
-                  cpu: 1000m
-                  memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
-          hostNetwork: true
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
-    - componentName: case1weather
-      namespace: ar1
-      sandbox: SecureContainer
-      workloadType: "stateless-system-service"
-      module:
-        metadata:
-          labels:
-            app: case1weather
-        spec:
-          containers:
-            - env:
-                - name: SCNNUM
-                  value: "3"
-                - name: SCNID3
-                  value: /assistant/case1weather
-              image: 122.96.144.180:30080/ar/life-assistant-user:latest
-              imagePullPolicy: Always
-              name: case1weather
               resources:
                 limits:
                   cpu: 1000m
@@ -153,10 +115,8 @@ spec:
         spec:
           containers:
             - env:
-                - name: SCNNUM
-                  value: "3"
-                - name: SCNID3
-                  value: /assistant/case1healthconsult
+                - name: SCNID
+                  value: /inner-private/lifeassistant/lifeassishealthy/1
               image: 122.96.144.180:30080/ar/life-assistant-user:latest
               imagePullPolicy: Always
               name: case1healthconsult
@@ -215,10 +175,6 @@ spec:
           value: MQo= # 1
         - name: boundary3
           subject: case1usermanage
-          type: replicas
-          value: MQo= # 1
-        - name: boundary4
-          subject: case1weather
           type: replicas
           value: MQo= # 1
         - name: boundary5

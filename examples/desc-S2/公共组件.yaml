@@ -9,7 +9,7 @@ spec:
   appID: public-app
   workloadComponents:
     - componentName: casepublicweather
-      sandbox: runc
+      sandbox: SecureContainer
       namespace: arpublic
       workloadType: "stateless-system-service"
       module:
@@ -22,28 +22,28 @@ spec:
                 - name: SCNNUM
                   value: "1"
                 - name: SCNID1
-                  value: /public/weather
+                  value: /public/pubappsrv/pubweather/1
               image: 122.96.144.180:30080/ar/life-assistant-weather:latest
               name: casepublicweather
               resources:
                 limits:
-                  cpu: 2000m
+                  cpu: 1000m
                   memory: 512Mi
                 requests:
-                  cpu: 2000m
+                  cpu: 1000m
                   memory: 512Mi
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
           dnsPolicy: ClusterFirstWithHostNet
-          hostNetwork: true
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
               name: usock
     - componentName: casepublicuserauth
-      sandbox: kata
+      sandbox: SecureContainer
       namespace: arpublic
       workloadType: "stateless-system-service"
       module:
@@ -53,12 +53,10 @@ spec:
         spec:
           containers:
             - env:
-                - name: SCNNUM
-                  value: "2"
-                - name: SCNID2
-                  value: /public/usreauther
-              image: 122.96.144.180:30080/ar/useragent-login:latest
-              name: casepublicuserauth
+                - name: SCNID
+                  value: /public/pubappsrv/pubuserauth/1
+              image: 122.96.144.180:30080/ar/useragent-scn-http:latest
+              name: casepublicuserauth1
               resources:
                 limits:
                   cpu: 2000m
@@ -69,14 +67,29 @@ spec:
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
-          hostNetwork: true
+            - env:
+                - name: SCNID
+                  value: /public/pubappsrv/pubuserauth/1
+              image: 122.96.144.180:30080/ar/useragent-login:latest
+              name: casepublicuserauth2
+              resources:
+                limits:
+                  cpu: 2000m
+                  memory: 512Mi
+                requests:
+                  cpu: 2000m
+                  memory: 512Mi
+              volumeMounts:
+                - mountPath: /tmp
+                  name: usock
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
               name: usock
     - componentName: casepublicdata
-      sandbox: kata
+      sandbox: SecureContainer
       namespace: arpublic
       workloadType: "stateless-system-service"
       module:
@@ -86,30 +99,28 @@ spec:
         spec:
           containers:
             - env:
-                - name: SCNNUM
-                  value: "3"
-                - name: SCNID3
-                  value: /public/dataauthorize
+                - name: SCNID
+                  value: /public/pubappsrv/pubdataauth/1
               image: 122.96.144.180:30080/ar/useragent-data:latest
               name: casepublicdata
               resources:
                 limits:
-                  cpu: 100m
+                  cpu: 2000m
                   memory: 512Mi
                 requests:
-                  cpu: 100m
+                  cpu: 1000m
                   memory: 512Mi
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
-          hostNetwork: true
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
               name: usock
     - componentName: casepublicscene
-      sandbox: kata
+      sandbox: SecureContainer
       namespace: arpublic
       workloadType: "stateless-system-service"
       module:
@@ -119,10 +130,8 @@ spec:
         spec:
           containers:
             - env:
-                - name: SCNNUM
-                  value: "4"
-                - name: SCNID4
-                  value: /public/scene
+                - name: SCNID
+                  value: /public/pubappsrv/pubscenejudge/1
               image: 122.96.144.180:30080/ar/useragent-app:latest
               name: casepublicscene
               resources:
@@ -135,47 +144,45 @@ spec:
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
-          hostNetwork: true
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
               name: usock
-    - componentName: casepubliclocate
-      sandbox: kata
+    - componentName: casepublicaccess
+      sandbox: SecureContainer
       namespace: arpublic
       workloadType: "stateless-system-service"
       module:
         metadata:
           labels:
-            app: casepubliclocate
+            app: casepublicaccess
         spec:
           containers:
             - env:
-                - name: SCNNUM
-                  value: "5"
-                - name: SCNID5
-                  value: /public/cloudlocate
+                - name: SCNID
+                  value: /public/pubappsrv/pubcldposplatform/1
               image: 122.96.144.180:30080/ar/ezxr-reloc:latest
-              name: casepubliclocate
+              name: casepublicaccess
               resources:
                 limits:
-                  cpu: 4000m
+                  cpu: 2000m
                   memory: 16384Mi
                 requests:
-                  cpu: 4000m
+                  cpu: 2000m
                   memory: 16384Mi
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
-          hostNetwork: true
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
                 type: DirectoryOrCreate
               name: usock
     - componentName: casepublicidenitify
-      sandbox: kata
+      sandbox: SecureContainer
       namespace: arpublic
       workloadType: "stateless-system-service"
       module:
@@ -185,10 +192,8 @@ spec:
         spec:
           containers:
             - env:
-                - name: SCNNUM
-                  value: "6"
-                - name: SCNID6
-                  value: /public/serviceidenitify
+                - name: SCNID
+                  value: /public/pubappsrv/pubsrvidentify/1
               image: 122.96.144.180:30080/ar/ezxr-identification:latest
               name: casepublicidenitify
               resources:
@@ -201,7 +206,7 @@ spec:
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
-          hostNetwork: true
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
@@ -211,87 +216,7 @@ spec:
     mandatory:
       - subject:
           name: casepublicweather
-          type: component
-        object:
-          name: supplier-name
-          type: label
-        relation: In
-        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
-      - subject:
-          name: casepublicuserauth
-          type: component
-        object:
-          name: supplier-name
-          type: label
-        relation: In
-        extent: WyJuYW5qaW5nLXd1c3VuIl0gCg== # ["nanjing-wusun"]
-      - subject:
-          name: casepublicuserauth
-          type: component
-        object:
-          name: net-enviroment
-          type: label
-        relation: In
-        extent: WyJlZGdlIl0gCg==  # ["edge"]
-      - subject:
-          name: casepublicdata
-          type: component
-        object:
-          name: supplier-name
-          type: label
-        relation: In
-        extent: WyJuYW5qaW5nLXd1c3VuIl0gCg== # ["nanjing-wusun"]
-      - subject:
-          name: casepublicdata
-          type: component
-        object:
-          name: net-enviroment
-          type: label
-        relation: In
-        extent: WyJlZGdlIl0gCg==  # ["edge"]
-      - subject:
-          name: casepublicscene
-          type: component
-        object:
-          name: supplier-name
-          type: label
-        relation: In
-        extent: WyJuYW5qaW5nLXd1c3VuIl0gCg== # ["nanjing-wusun"]
-      - subject:
-          name: casepublicscene
-          type: component
-        object:
-          name: net-enviroment
-          type: label
-        relation: In
-        extent: WyJlZGdlIl0gCg==  # ["edge"]
-      - subject:
-          name: casepubliclocate
-          type: component
-        object:
-          name: supplier-name
-          type: label
-        relation: In
-        extent: WyJuYW5qaW5nLXd1c3VuIl0gCg== # ["nanjing-wusun"]
-      - subject:
-          name: casepubliclocate
-          type: component
-        object:
-          name: net-enviroment
-          type: label
-        relation: In
-        extent: WyJlZGdlIl0gCg==  # ["edge"]
-      - subject:
-          name: casepublicidenitify
-          type: component
-        object:
-          name: supplier-name
-          type: label
-        relation: In
-        extent: WyJuYW5qaW5nLXd1c3VuIl0gCg== # ["nanjing-wusun"]
-      - subject:
-          name: casepublicidenitify
-          type: component
+          type: group
         object:
           name: net-enviroment
           type: label
@@ -321,26 +246,7 @@ spec:
           type: replicas
           value: MQo= # 1
         - name: boundary6
-          subject: casepubliclocate
-          type: "cpu"
-          value: NQo= # 5
-        - name: boundary7
-          subject: casepubliclocate
-          type: "cpu"
-          value: ODAK # 80
-        - name: boundary8
-          subject: casepubliclocate
-          type: "mem"
-          value: NQo= # 5
-        - name: boundary9
-          subject: casepubliclocate
-          type: "mem"
-          value: ODAK # 80
-        - name: boundary10
-          subject: casepubliclocate
-          type: "QPS"
-          value: NQo= # 5
-        - name: boundary11
-          subject: casepubliclocate
-          type: "QPS"
-          value: ODAK # 80
+          subject: casepublicaccess
+          type: replicas
+          value: MQo= # 1
+

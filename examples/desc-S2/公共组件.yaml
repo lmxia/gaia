@@ -4,13 +4,14 @@ metadata:
   name: public-app
   namespace: gaia-reserved
   labels:
-    apps.gaia.io/user.id: user123
+    apps.gaia.io/user.id: admin
 spec:
   appID: public-app
   workloadComponents:
     - componentName: casepublicweather
       sandbox: SecureContainer
       namespace: arpublic
+      groupName: group1
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -19,9 +20,7 @@ spec:
         spec:
           containers:
             - env:
-                - name: SCNNUM
-                  value: "1"
-                - name: SCNID1
+                - name: SCNID
                   value: /public/pubappsrv/pubweather/1
               image: 122.96.144.180:30080/ar/life-assistant-weather:latest
               name: casepublicweather
@@ -45,6 +44,7 @@ spec:
     - componentName: casepublicuserauth
       sandbox: SecureContainer
       namespace: arpublic
+      groupName: group1
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -91,6 +91,7 @@ spec:
     - componentName: casepublicdata
       sandbox: SecureContainer
       namespace: arpublic
+      groupName: group1
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -122,6 +123,7 @@ spec:
     - componentName: casepublicscene
       sandbox: SecureContainer
       namespace: arpublic
+      groupName: group1
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -150,21 +152,22 @@ spec:
                 path: /tmp
                 type: DirectoryOrCreate
               name: usock
-    - componentName: casepublicaccess
+    - componentName: casepubliclocate
       sandbox: SecureContainer
       namespace: arpublic
+      groupName: group1
       workloadType: "stateless-system-service"
       module:
         metadata:
           labels:
-            app: casepublicaccess
+            app: casepubliclocate
         spec:
           containers:
             - env:
                 - name: SCNID
                   value: /public/pubappsrv/pubcldposplatform/1
               image: 122.96.144.180:30080/ar/ezxr-reloc:latest
-              name: casepublicaccess
+              name: casepubliclocate
               resources:
                 limits:
                   cpu: 2000m
@@ -184,6 +187,7 @@ spec:
     - componentName: casepublicidenitify
       sandbox: SecureContainer
       namespace: arpublic
+      groupName: group1
       workloadType: "stateless-system-service"
       module:
         metadata:
@@ -215,13 +219,21 @@ spec:
   deploymentCondition:
     mandatory:
       - subject:
-          name: casepublicweather
+          name: group1
           type: group
         object:
           name: net-enviroment
           type: label
         relation: In
         extent: WyJlZGdlIl0gCg==  # ["edge"]
+      - subject:
+          name: group1
+          type: group
+        object:
+          name: geo-location
+          type: label
+        relation: In
+        extent: WyIwMDAwMDAtMDAwMDAxLTMyMDAwMC0zMjAxMDAtMzIwMTA2IiwiMDAwMDAwLTAwMDAwMS0zMjAwMDAtMzIwMTAwLTMyMDExNSJdCg== # ["000000-000001-320000-320100-320106","000000-000001-320000-320100-320115"]
   expectedPerformance:
     boundaries:
       inner:
@@ -246,7 +258,7 @@ spec:
           type: replicas
           value: MQo= # 1
         - name: boundary6
-          subject: casepublicaccess
+          subject: casepubliclocate
           type: replicas
           value: MQo= # 1
 

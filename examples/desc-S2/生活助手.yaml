@@ -4,7 +4,7 @@ metadata:
   name: life-assistant
   namespace: gaia-reserved
   labels:
-    apps.gaia.io/user.id: user123
+    apps.gaia.io/user.id: user1
 spec:
   appID: life-assistant
   workloadComponents:
@@ -34,7 +34,7 @@ spec:
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
-          hostNetwork: true
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
@@ -66,7 +66,7 @@ spec:
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
-          hostNetwork: true
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
@@ -98,7 +98,7 @@ spec:
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
-          hostNetwork: true
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
@@ -130,7 +130,7 @@ spec:
               volumeMounts:
                 - mountPath: /tmp
                   name: usock
-          hostNetwork: true
+          hostNetwork: false
           volumes:
             - hostPath:
                 path: /tmp
@@ -145,7 +145,7 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
+        extent: WyJoYW5nemhvdS1hbGl5dW4iLCJzaGFuZ2hhaS10ZW5jZW50Il0K # ["hangzhou-aliyun","shanghai-tencent"]
       - subject:
           name: case1email
           type: component
@@ -153,7 +153,7 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
+        extent: WyJoYW5nemhvdS1hbGl5dW4iLCJzaGFuZ2hhaS10ZW5jZW50Il0K # ["hangzhou-aliyun","shanghai-tencent"]
       - subject:
           name: case1usermanage
           type: component
@@ -161,7 +161,15 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJzaGFuZ2hhaS10ZW5jZW50Il0K # ["shanghai-tencent"]
+        extent: WyJoYW5nemhvdS1hbGl5dW4iLCJzaGFuZ2hhaS10ZW5jZW50Il0K # ["hangzhou-aliyun","shanghai-tencent"]
+      - subject:
+          name: case1healthconsult
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJoYW5nemhvdS1hbGl5dW4iLCJzaGFuZ2hhaS10ZW5jZW50Il0K # ["hangzhou-aliyun","shanghai-tencent"]
   expectedPerformance:
     boundaries:
       inner:

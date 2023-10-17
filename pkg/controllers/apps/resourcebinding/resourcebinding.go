@@ -551,6 +551,10 @@ func (c *RBController) handleParentResourceBinding(rb *appsV1alpha1.ResourceBind
 				if err != nil {
 					return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ", rb.Name, err)
 				}
+				if len(rb.Spec.NetworkPath) > 0 && len(c.networkBindUrl) > 0 {
+					klog.V(2).Infof("networkBindUrl is %q", c.networkBindUrl)
+					utils.PostNetworkRequest(c.networkBindUrl, descriptionName, "delete", rb.Spec.NetworkPath[0])
+				}
 			} else {
 				err := utils.OffloadRBWorkloads(context.TODO(), c.localDynamicClient, c.restMapper, rb.GetLabels())
 				if err != nil {

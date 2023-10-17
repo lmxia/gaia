@@ -470,7 +470,7 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 			if len(newRB.Spec.NetworkPath) > 0 && len(networkBindUrl) > 0 && nwr != nil {
 				klog.V(2).Infof("networkBindUrl is %q", networkBindUrl)
 				if NeedBindNetworkInCluster(rb.Spec.RbApps, clusterName, nwr) {
-					postRequest(networkBindUrl, descriptionName, newRB.Spec.NetworkPath[0])
+					PostNetworkRequest(networkBindUrl, descriptionName, "add", newRB.Spec.NetworkPath[0])
 				}
 			}
 		}
@@ -501,21 +501,23 @@ type NetworkScheme struct {
 
 	// buleprint ID
 	BuleprintID string `json:"buleprintID,omitempty"`
+	Operate     string `json:"operate,omitempty"`
 }
 
-func postRequest(url, descriptionName string, path []byte) {
+func PostNetworkRequest(url, descriptionName, operate string, path []byte) {
 	networkScheme := NetworkScheme{
 		IsResouceReserved: false,
 		Path:              path,
 		BuleprintID:       descriptionName,
+		Operate:           operate,
 	}
-	data, jsonerr := json.Marshal(networkScheme)
-	if jsonerr != nil {
-		klog.Errorf("request post new request, error=%v \n", jsonerr)
+	data, jsonErr := json.Marshal(networkScheme)
+	if jsonErr != nil {
+		klog.Errorf("marshal post new network request, error=%v \n", jsonErr)
 	}
 	request, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
 	if err != nil {
-		klog.Errorf("request post new request, error=%v \n", err)
+		klog.Errorf("PostNetworkRequest: request post new network request, error=%v \n", err)
 	}
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("cache-control", "no-cache")
@@ -524,16 +526,16 @@ func postRequest(url, descriptionName string, path []byte) {
 		defer func(Body io.ReadCloser) {
 			err := Body.Close()
 			if err != nil {
-				utilRuntime.HandleError(fmt.Errorf("bindNetwork: failed to close response body, Description: %q ERROR: %v", descriptionName, err))
+				utilRuntime.HandleError(fmt.Errorf("PostNetworkRequest: failed to close response body, Description: %q ERROR: %v", descriptionName, err))
 			}
 		}(resp.Body)
 	}
 	if respErr != nil {
-		klog.Errorf("bindNetwork: post do sent, error====%v\n", respErr)
+		klog.Errorf("PostNetworkRequest: post do sent, error====%v\n", respErr)
 		return
 	}
 
-	klog.InfoS("successfully post network path", "Description", descriptionName, "NetworkPath", string(path))
+	klog.InfoS("successfully post network path", "operate", operate, "Description", descriptionName, "NetworkPath", string(path))
 }
 
 func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {

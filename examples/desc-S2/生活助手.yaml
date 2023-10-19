@@ -31,16 +31,8 @@ spec:
                 requests:
                   cpu: 1000m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
-    - componentName: case1eamil
+    - componentName: case1email
       namespace: ar1
       sandbox: SecureContainer
       workloadType: "stateless-system-service"
@@ -63,15 +55,7 @@ spec:
                 requests:
                   cpu: 1000m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
     - componentName: case1usermanage
       namespace: ar1
       sandbox: SecureContainer
@@ -95,15 +79,7 @@ spec:
                 requests:
                   cpu: 1000m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
     - componentName: case1healthconsult
       namespace: ar1
       sandbox: SecureContainer
@@ -117,7 +93,7 @@ spec:
             - env:
                 - name: SCNID
                   value: /inner-private/lifeassistant/lifeassishealthy/1
-              image: 122.96.144.180:30080/ar/life-assistant-user:latest
+              image: 122.96.144.180:30080/ar/empty-app:latest
               imagePullPolicy: Always
               name: case1healthconsult
               resources:
@@ -126,16 +102,8 @@ spec:
                   memory: 512Mi
                 requests:
                   cpu: 500m
-                  memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
+                  memory: 256Mi
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
   deploymentCondition:
     mandatory:
       - subject:
@@ -145,7 +113,7 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJoYW5nemhvdS1hbGl5dW4iLCJzaGFuZ2hhaS10ZW5jZW50Il0K # ["hangzhou-aliyun","shanghai-tencent"]
+        extent: WyJoYW5nemhvdS1hbGkiXQo= # ["hangzhou-ali"]
       - subject:
           name: case1email
           type: component
@@ -153,7 +121,7 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJoYW5nemhvdS1hbGl5dW4iLCJzaGFuZ2hhaS10ZW5jZW50Il0K # ["hangzhou-aliyun","shanghai-tencent"]
+        extent: WyJoYW5nemhvdS1hbGkiXQo= # ["hangzhou-ali"]
       - subject:
           name: case1usermanage
           type: component
@@ -161,7 +129,7 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJoYW5nemhvdS1hbGl5dW4iLCJzaGFuZ2hhaS10ZW5jZW50Il0K # ["hangzhou-aliyun","shanghai-tencent"]
+        extent: WyJoYW5nemhvdS1hbGkiXQo= # ["hangzhou-ali"]
       - subject:
           name: case1healthconsult
           type: component
@@ -169,7 +137,7 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJoYW5nemhvdS1hbGl5dW4iLCJzaGFuZ2hhaS10ZW5jZW50Il0K # ["hangzhou-aliyun","shanghai-tencent"]
+        extent: WyJoYW5nemhvdS1hbGkiXQo= # ["hangzhou-ali"]
   expectedPerformance:
     boundaries:
       inner:

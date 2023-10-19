@@ -31,16 +31,8 @@ spec:
                 requests:
                   cpu: 1000m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           dnsPolicy: ClusterFirstWithHostNet
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
     - componentName: casepublicuserauth
       sandbox: SecureContainer
       namespace: arpublic
@@ -55,7 +47,7 @@ spec:
             - env:
                 - name: SCNID
                   value: /public/pubappsrv/pubuserauth/1
-              image: 122.96.144.180:30080/ar/useragent-scn-http:latest
+              image: 122.96.144.180:30080/ar/useragent-scn-http:v2.0.1
               name: casepublicuserauth1
               resources:
                 limits:
@@ -64,30 +56,19 @@ spec:
                 requests:
                   cpu: 2000m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
             - env:
                 - name: SCNID
                   value: /public/pubappsrv/pubuserauth/1
-              image: 122.96.144.180:30080/ar/useragent-login:latest
+              image: 122.96.144.180:30080/ar/useragent-login:v2.0.1
               name: casepublicuserauth2
               resources:
                 limits:
                   cpu: 2000m
                   memory: 512Mi
                 requests:
-                  cpu: 2000m
+                  cpu: 100m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
     - componentName: casepublicdata
       sandbox: SecureContainer
       namespace: arpublic
@@ -111,15 +92,7 @@ spec:
                 requests:
                   cpu: 1000m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
     - componentName: casepublicscene
       sandbox: SecureContainer
       namespace: arpublic
@@ -134,7 +107,7 @@ spec:
             - env:
                 - name: SCNID
                   value: /public/pubappsrv/pubscenejudge/1
-              image: 122.96.144.180:30080/ar/useragent-app:latest
+              image: 122.96.144.180:30080/ar/useragent-app:v2.0.1
               name: casepublicscene
               resources:
                 limits:
@@ -143,15 +116,7 @@ spec:
                 requests:
                   cpu: 2000m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
     - componentName: casepubliclocate
       sandbox: SecureContainer
       namespace: arpublic
@@ -175,15 +140,7 @@ spec:
                 requests:
                   cpu: 2000m
                   memory: 16384Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
     - componentName: casepublicidenitify
       sandbox: SecureContainer
       namespace: arpublic
@@ -207,22 +164,14 @@ spec:
                 requests:
                   cpu: 4000m
                   memory: 16384Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           hostNetwork: false
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
   deploymentCondition:
     mandatory:
       - subject:
           name: group1
           type: group
         object:
-          name: net-enviroment
+          name: net-environment
           type: label
         relation: In
         extent: WyJlZGdlIl0gCg==  # ["edge"]

@@ -1,13 +1,14 @@
 package logx
 
 import (
+	"os"
+	"time"
+
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/pkg/errors"
 	"github.com/rifflock/lfshook"
 	"github.com/sirupsen/logrus"
-	"os"
-	"time"
 )
 
 // 全局变量
@@ -41,40 +42,40 @@ func NewLogger() *logrus.Logger {
 	Logger.SetLevel(logrus.DebugLevel)
 	Logger.SetOutput(os.Stdout)
 
-	//日志切割
-	//path := "./logs/idmsagent/error.log" // 动态获取
-	var path = defaultLogPath
-	var name = defaultLogName
-	var rotateSize = defaultRotationSize
+	// 日志切割
+	// path := "./logs/idmsagent/error.log" // 动态获取
+	path := defaultLogPath
+	name := defaultLogName
+	rotateSize := defaultRotationSize
 
 	writerErr, err := rotatelogs.New(
 		path+"/"+"/"+name+".%Y%m%d",
 		rotatelogs.WithLinkName(path),              // 生成软链，指向最新日志文件
 		rotatelogs.WithRotationTime(5*time.Second), // 日志切割时间间隔
-		rotatelogs.WithMaxAge(1*time.Minute),       //clear 清理的时间
+		rotatelogs.WithMaxAge(1*time.Minute),       // clear 清理的时间
 		rotatelogs.ForceNewFile(),
-		rotatelogs.WithRotationSize(int64(rotateSize)*1000), //设置文件大小切分单位byte,这里用200Ml
+		rotatelogs.WithRotationSize(int64(rotateSize)*1000), // 设置文件大小切分单位byte,这里用200Ml
 	)
 	if err != nil {
 		Logger.Errorf("config local file system logger error. %+v", errors.WithStack(err))
 	}
 
-	//pathInfo := "./logs/idmsagent/info.log" // 动态获取,各个级别，合并成一个日志文件，对于Error或者打调用栈的，可分开
+	// pathInfo := "./logs/idmsagent/info.log" // 动态获取,各个级别，合并成一个日志文件，对于Error或者打调用栈的，可分开
 	writerInfo, _ := rotatelogs.New(
 		path+"/"+"/"+name+".%Y%m%d",
 		rotatelogs.WithLinkName(path),              // 生成软链，指向最新日志文件
 		rotatelogs.WithRotationTime(5*time.Second), // 日志切割时间间隔
-		rotatelogs.WithMaxAge(1*time.Minute),       //clear 清理的时间
+		rotatelogs.WithMaxAge(1*time.Minute),       // clear 清理的时间
 		rotatelogs.ForceNewFile(),
 		rotatelogs.WithRotationSize(int64(rotateSize)*1000),
 	)
 
-	//debug := "./logs/idmsagent/debug.log" // 动态获取
+	// debug := "./logs/idmsagent/debug.log" // 动态获取
 	_, _ = rotatelogs.New(
 		path+"/"+"/"+name+".%Y%m%d",
 		rotatelogs.WithLinkName(path),              // 生成软链，指向最新日志文件
 		rotatelogs.WithRotationTime(5*time.Second), // 日志切割时间间隔
-		rotatelogs.WithMaxAge(1*time.Minute),       //clear 清理的时间
+		rotatelogs.WithMaxAge(1*time.Minute),       // clear 清理的时间
 		rotatelogs.ForceNewFile(),
 		rotatelogs.WithRotationSize(int64(rotateSize)*1000),
 	)

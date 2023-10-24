@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+
 	"github.com/lmxia/gaia/cmd/gaia-controllers/app/option"
 	"github.com/lmxia/gaia/pkg/controllermanager"
 	"github.com/lmxia/gaia/pkg/features"
@@ -11,10 +12,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var (
-	// the command name
-	cmdName = "gaia-controllers"
-)
+// the command name
+var cmdName = "gaia-controllers"
 
 // NewGaiaControllerCmd creates a *cobra.Command object with default parameters
 func NewGaiaControllerCmd(ctx context.Context) *cobra.Command {
@@ -48,5 +47,4 @@ func NewGaiaControllerCmd(ctx context.Context) *cobra.Command {
 	opts.AddFlags(cmd.Flags())
 	features.DefaultMutableFeatureGate.AddFlag(cmd.Flags())
 	return cmd
-
 }

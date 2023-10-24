@@ -12,12 +12,13 @@ package toposync
 
 import (
 	"context"
-	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	"github.com/lmxia/gaia/pkg/common"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
+
+	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/common"
 )
 
 // Linger please
@@ -30,8 +31,8 @@ type TopoSyncApiService service
 /*
 TopoSyncApiService hyper topo sync
 hyper topo sync
- * @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
- * @param hyperTopoSync hyper topo sync
+  - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
+  - @param hyperTopoSync hyper topo sync
 
 @return Topos
 */

@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	flag "github.com/spf13/pflag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"path/filepath"
 
 	gaiav1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/generated/clientset/versioned"

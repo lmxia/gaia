@@ -36,3 +36,11 @@ CONTROLLER_GEN=$(GOBIN)/controller-gen
 else
 CONTROLLER_GEN=$(shell which controller-gen)
 endif
+
+.PHONY: fmt
+fmt:
+	gofumpt -l -w .
+
+PHONY: fmt-check
+fmt-check:
+	gofumpt -l -d -e .

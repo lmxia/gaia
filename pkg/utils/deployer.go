@@ -205,7 +205,7 @@ func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface
 }
 
 func GetDescription(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, name, desNs string) (*appsv1alpha1.Description, error) {
-	var descriptionsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "Description"}
+	descriptionsKind := schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "Description"}
 	restMapping, err := restMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
 	if err != nil {
 		klog.Errorf("cannot get its Description, %q, err==%v", klog.KRef(desNs, name), err)
@@ -223,7 +223,7 @@ func GetDescription(ctx context.Context, dynamicClient dynamic.Interface, restMa
 }
 
 func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, name, desNs string) (*appsv1alpha1.NetworkRequirement, error) {
-	var kind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "NetworkRequirement"}
+	kind := schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "NetworkRequirement"}
 	restMapping, err := restMapper.RESTMapping(kind.GroupKind(), kind.Version)
 	if err != nil {
 		klog.Errorf("cannot get networkRequirement= %v", err)
@@ -459,7 +459,8 @@ func getCondition(errs []error, clusterName, rbRef string) metav1.Condition {
 }
 
 func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,
-	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement) error {
+	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement,
+) error {
 	var allErrs []error
 	var err error
 	errCh := make(chan error, len(rb.Spec.RbApps))
@@ -533,7 +534,6 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 }
 
 type NetworkScheme struct {
-
 	// whether resource reserved or not
 	IsResouceReserved bool `json:"isResouceReserved,omitempty"`
 
@@ -604,7 +604,8 @@ func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Labels: newLabels,
-					}}
+					},
+				}
 				if len(comCopy.Namespace) > 0 {
 					ds.Namespace = comCopy.Namespace
 				} else {
@@ -725,8 +726,7 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = make([]corev1.NodeSelectorTerm, 0)
 			}
-			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
 			return nodeAffinity
 		}
 	}
@@ -740,13 +740,13 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
 			}
-			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
 		}
 	}
 
 	return nodeAffinity
 }
+
 func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
@@ -774,7 +774,8 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: newLabels,
-				}}
+				},
+			}
 			if len(comCopy.Namespace) > 0 {
 				dep.Namespace = comCopy.Namespace
 			} else {
@@ -890,7 +891,6 @@ func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement) []
 	}
 	if len(nsRequirements) > 0 {
 		nodeSelectorTerms = append(nodeSelectorTerms, nodeSelectorTerm)
-
 	}
 	return nodeSelectorTerms
 }
@@ -948,7 +948,8 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 						},
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: newLabels,
-						}}
+						},
+					}
 					if len(comCopy.Namespace) > 0 {
 						dep.Namespace = comCopy.Namespace
 					} else {
@@ -1216,7 +1217,7 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 				Name: namespace,
 			},
 		}
-		var nsKind = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}
+		nsKind := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}
 		restNS, _ := restMapper.RESTMapping(nsKind.GroupKind(), nsKind.Version)
 		nsUnstructured, errns := ObjectConvertToUnstructured(ns)
 		if errns != nil {
@@ -1234,9 +1235,9 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 
 // OffloadResourceByDescription offloads the specified resource
 func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
-
-	var descriptionsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "ResourceBinding"}
+	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description,
+) error {
+	descriptionsKind := schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "ResourceBinding"}
 	restMapping, err := discoveryRESTMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
 	if err != nil {
 		klog.Errorf("cannot get desc name=%s its descrito %v", desc.Name, err)
@@ -1245,7 +1246,8 @@ func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Int
 
 	klog.V(5).Infof("deleting description %s  defined in deploy %s", desc.Name, klog.KObj(desc))
 	err = dynamicClient.Resource(restMapping.Resource).Namespace(desc.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-		known.GaiaDescriptionLabel: desc.Name}).String()})
+		known.GaiaDescriptionLabel: desc.Name,
+	}).String()})
 	if err != nil && !apierrors.IsNotFound(err) {
 		klog.Errorf("deleting description %s  defined in deploy %s", desc.Name, klog.KObj(desc))
 		return err
@@ -1254,14 +1256,15 @@ func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Int
 }
 
 func OffloadDescription(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description) error {
-
+	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description,
+) error {
 	descUnstructured, _ := ObjectConvertToUnstructured(desc)
 	return DeleteResource(ctx, dynamicClient, discoveryRESTMapper, descUnstructured)
 }
 
 func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured,
+) error {
 	wg := sync.WaitGroup{}
 	var err error
 	wg.Add(1)
@@ -1281,7 +1284,8 @@ func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
 }
 
 func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured,
+) error {
 	wg := sync.WaitGroup{}
 	var err error
 	wg.Add(1)

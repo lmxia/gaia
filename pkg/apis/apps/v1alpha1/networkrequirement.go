@@ -64,8 +64,7 @@ type Attributes struct {
 }
 
 // NetworkRequirementStatus defines the observed state of NetworkRequirement
-type NetworkRequirementStatus struct {
-}
+type NetworkRequirementStatus struct{}
 
 // +kubebuilder:object:root=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

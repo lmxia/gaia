@@ -3,10 +3,11 @@ package description
 import (
 	"context"
 	"fmt"
-	known "github.com/lmxia/gaia/pkg/common"
-	"github.com/lmxia/gaia/pkg/utils"
 	"reflect"
 	"time"
+
+	known "github.com/lmxia/gaia/pkg/common"
+	"github.com/lmxia/gaia/pkg/utils"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,7 +51,8 @@ type Controller struct {
 
 // NewController creates and initializes a new Controller
 func NewController(gaiaClient gaiaClientSet.Interface,
-	descInformer appInformers.DescriptionInformer, rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+	descInformer appInformers.DescriptionInformer, rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc,
+) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
@@ -244,7 +246,6 @@ func (c *Controller) processNextWorkItem() bool {
 		klog.Infof("successfully synced Description %q", key)
 		return nil
 	}(obj)
-
 	if err != nil {
 		utilruntime.HandleError(err)
 		return true

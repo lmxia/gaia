@@ -13,9 +13,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var (
-	versionFlag *string
-)
+var versionFlag *string
 
 const (
 	versionFlagName = "version"

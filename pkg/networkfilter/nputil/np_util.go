@@ -3,7 +3,6 @@ package nputil
 import (
 	"bytes"
 	"errors"
-	"github.com/lmxia/gaia/pkg/networkfilter/logx"
 	"hash/fnv"
 	"math/rand"
 	"runtime"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"time"
 	"unsafe"
+
+	"github.com/lmxia/gaia/pkg/networkfilter/logx"
 )
 
 type LocalStatus uint32
@@ -129,7 +130,7 @@ func GetGIDString() string {
 	return gidString
 }
 
-//Str2bytes  string to []byte
+// Str2bytes  string to []byte
 func Str2bytes(s string) []byte {
 	x := (*[2]uintptr)(unsafe.Pointer(&s))
 	h := [3]uintptr{x[0], x[1], x[1]}
@@ -141,20 +142,20 @@ func Bytes2str(b []byte) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
-//生成count个[start,end)结束的不重复的随机数
+// 生成count个[start,end)结束的不重复的随机数
 func GenerateRandomIndex(start int, end int, count int) []int {
-	//范围检查
+	// 范围检查
 	if end < start || (end-start) < count {
 		return nil
 	}
-	//存放结果的slice
+	// 存放结果的slice
 	nums := make([]int, 0)
-	//随机数生成器，加入时间戳保证每次生成的随机数不一样
+	// 随机数生成器，加入时间戳保证每次生成的随机数不一样
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for len(nums) < count {
-		//生成随机数
+		// 生成随机数
 		num := r.Intn((end - start)) + start
-		//查重
+		// 查重
 		exist := false
 		for _, v := range nums {
 			if v == num {

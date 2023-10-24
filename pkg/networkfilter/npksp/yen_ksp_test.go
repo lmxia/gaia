@@ -2,12 +2,13 @@ package npksp
 
 import (
 	"fmt"
-	"github.com/lmxia/gaia/pkg/networkfilter/logx"
-	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
 	"math"
 	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/lmxia/gaia/pkg/networkfilter/logx"
+	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
 
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"

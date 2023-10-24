@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+
 	"github.com/lmxia/gaia/cmd/gaia-scheduler/app/option"
 	"github.com/lmxia/gaia/pkg/scheduler"
 	"github.com/lmxia/gaia/pkg/version"
@@ -10,10 +11,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var (
-	// the command name
-	cmdName = "gaia-scheduler"
-)
+// the command name
+var cmdName = "gaia-scheduler"
 
 // NewGaiaScheduleControllerCmd creates a *cobra.Command object with default parameters
 func NewGaiaScheduleControllerCmd(ctx context.Context) *cobra.Command {

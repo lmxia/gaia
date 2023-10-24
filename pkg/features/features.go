@@ -11,7 +11,7 @@ const (
 
 var (
 	DefaultMutableFeatureGate featuregate.MutableFeatureGate = featuregate.NewFeatureGate()
-	//DefaultFeatureGate        featuregate.FeatureGate        = DefaultMutableFeatureGate
+	// DefaultFeatureGate        featuregate.FeatureGate        = DefaultMutableFeatureGate
 	DefaultVectorFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
 		AbnormalScheduler: {Default: false, PreRelease: featuregate.Alpha},
 	}

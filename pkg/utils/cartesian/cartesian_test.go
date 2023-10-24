@@ -2,13 +2,13 @@ package cartesian_test
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/utils/cartesian"
-	"testing"
 )
 
 func TestIter(t *testing.T) {
-
 	children1 := []*v1alpha1.ResourceBindingApps{
 		0: {
 			ClusterName: "cluster-0",

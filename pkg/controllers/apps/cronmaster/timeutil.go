@@ -12,9 +12,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var (
-	nextScheduleDelta = 100 * time.Millisecond
-)
+var nextScheduleDelta = 100 * time.Millisecond
 
 // nextScheduledTimeDuration returns
 func nextScheduledTimeDuration(t, now time.Time) *time.Duration {

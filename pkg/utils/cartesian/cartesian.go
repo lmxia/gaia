@@ -2,8 +2,9 @@
 package cartesian
 
 import (
-	clusterapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"sync"
+
+	clusterapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 )
 
 // Iter takes interface-slices and returns a channel, receiving cartesian products

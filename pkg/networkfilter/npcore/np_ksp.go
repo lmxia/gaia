@@ -2,9 +2,10 @@ package npcore
 
 import (
 	"fmt"
+	"sort"
+
 	"github.com/lmxia/gaia/pkg/networkfilter/npksp"
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
-	"sort"
 
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
@@ -26,7 +27,7 @@ type PathAttr struct {
 func NewDomainLinkKspGraph() *DomainLinkKspGraph {
 	nputil.TraceInfoBegin("")
 
-	var domainLinkKspGraph = new(DomainLinkKspGraph)
+	domainLinkKspGraph := new(DomainLinkKspGraph)
 
 	nputil.TraceInfoEnd("")
 	return domainLinkKspGraph
@@ -41,7 +42,7 @@ func GetPathList(paths [][]graph.Node, g graph.Weighted) []PathAttr {
 	}
 	pathAttrList = make([]PathAttr, len(paths))
 
-	//ids := make([][]int64, len(paths))
+	// ids := make([][]int64, len(paths))
 	for i, p := range paths {
 		if p == nil {
 			continue
@@ -128,7 +129,7 @@ func KspCalcDomainPath(domainLinkGraph *DomainLinkKspGraph, spfCalcMaxNum int, q
 			PathsGroupNoLoop = append(PathsGroupNoLoop, Path)
 		}
 	}
-	//Path为domainspfid list
+	// Path为domainspfid list
 	infoString = fmt.Sprintf("PathsGroupNoLoop is:%+v", PathsGroupNoLoop)
 	nputil.TraceInfo(infoString)
 

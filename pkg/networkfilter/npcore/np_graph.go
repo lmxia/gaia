@@ -3,10 +3,11 @@ package npcore
 import (
 	"errors"
 	"fmt"
+	"math"
+
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
 	kspGraph "gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
-	"math"
 
 	"github.com/timtadh/data-structures/tree/avl"
 	"github.com/timtadh/data-structures/types"
@@ -36,10 +37,10 @@ type WeightedEdge struct {
 }
 
 type DomainGraph struct {
-	DomainTree      avl.AvlTree //树节点结构Domain
-	DomainKeyArray  []DomainKey //这里只存KEY即可，domain的属性都保存在basegraph中，这里不需要重复保存
-	SpfID2DomainKey []DomainKey //使用SPF lib库的临时数据结构，保存节点和lib库中节点编号的映射关系
-	GraphPoint      *Graph      //父节点指针
+	DomainTree      avl.AvlTree // 树节点结构Domain
+	DomainKeyArray  []DomainKey // 这里只存KEY即可，domain的属性都保存在basegraph中，这里不需要重复保存
+	SpfID2DomainKey []DomainKey // 使用SPF lib库的临时数据结构，保存节点和lib库中节点编号的映射关系
+	GraphPoint      *Graph      // 父节点指针
 
 	DomainKeyRevision     int64
 	DomainLinkKeyRevision int64
@@ -52,11 +53,11 @@ type DomainGraph struct {
 type Domain struct {
 	Key              DomainKey
 	DomainGraphPoint *DomainGraph
-	SpfLibID         int //使用SPF lib库的临时数据结构，保存节点当前在lib库中的序号
+	SpfLibID         int // 使用SPF lib库的临时数据结构，保存节点当前在lib库中的序号
 
-	DomainLinkTree     avl.AvlTree //树节点结构DomainLink
+	DomainLinkTree     avl.AvlTree // 树节点结构DomainLink
 	DomainLinkKeyArray []DomainLinkKey
-	//DomainLinkKeyRevision int64  //配置恢复外层需要使用，所以放在外层
+	// DomainLinkKeyRevision int64  //配置恢复外层需要使用，所以放在外层
 
 }
 
@@ -109,7 +110,7 @@ func GetDomainLinkByDomainId(srcDomainId uint32, dstDomainId uint32, domainGraph
 		return nil
 	}
 
-	//遍历domain中domainlink，找满足条件的
+	// 遍历domain中domainlink，找满足条件的
 	for _, v, next := srcDomain.DomainLinkTree.Iterate()(); next != nil; _, v, next = next() {
 		tmpDomainLink := v.(*DomainLink)
 		if tmpDomainLink.Key.SrcDomainId == srcDomainId &&
@@ -135,7 +136,7 @@ func GetMiniDalyDomainLink(srcDomainId uint32, dstDomainId uint32, domainGraph *
 	}
 	var MinDomainlinkDelay uint32 = 0xffffffff
 	domainLink := new(DomainLink)
-	//遍历domain中domainlink，找满足条件的
+	// 遍历domain中domainlink，找满足条件的
 	for _, v, next := srcDomain.DomainLinkTree.Iterate()(); next != nil; _, v, next = next() {
 		tmpDomainLink := v.(*DomainLink)
 		if tmpDomainLink.Key.SrcDomainId == srcDomainId &&
@@ -179,7 +180,6 @@ func GraphCreateByKey(graphTypeAlgo GraphTypeAlgo) *Graph {
 		nputil.TraceInfoEnd("")
 		return graph
 	}
-
 }
 
 func GraphFindByGraphType(graphTypeAlgo GraphTypeAlgo) *Graph {
@@ -204,7 +204,7 @@ func graphTypeCreate(graphTypeAlgo GraphTypeAlgo) uint64 {
 
 	var grahpType uint64
 
-	//TBD: 前面6个预留字节先全部填0，后期看场景扩展
+	// TBD: 前面6个预留字节先全部填0，后期看场景扩展
 	grahpType = uint64(graphTypeAlgo)
 
 	infoString := fmt.Sprintf("grahpType(%d)", grahpType)
@@ -254,7 +254,7 @@ func getDomainSpfID(domainId uint32) (int, bool) {
 	nputil.TraceInfoBegin("")
 
 	local := GetCoreLocal()
-	//Get domainSpfID in graph by domainid
+	// Get domainSpfID in graph by domainid
 	for _, v, next := local.GraphTree.Iterate()(); next != nil; _, v, next = next() {
 		graph := v.(*Graph)
 		domainGraph := graph.DomainGraphPoint
@@ -275,7 +275,7 @@ func getDomainSpfID(domainId uint32) (int, bool) {
 func (domainGraph *DomainGraph) DomainAdd(domainId uint32) (*Domain, error) {
 	nputil.TraceInfoBegin("")
 
-	//graph 中添加 domain
+	// graph 中添加 domain
 	findDomain := domainGraph.DomainFindById(domainId)
 	if findDomain != nil {
 		infoString := fmt.Sprintf("domainId(%d) has existed", domainId)
@@ -284,7 +284,7 @@ func (domainGraph *DomainGraph) DomainAdd(domainId uint32) (*Domain, error) {
 	}
 
 	addDomain := domainCreateById(domainId, domainGraph)
-	//加入树中
+	// 加入树中
 	err := domainGraph.DomainTree.Put(addDomain.Key, addDomain)
 	if err != nil {
 		rtnErr := errors.New("DomainTree put error")
@@ -293,7 +293,7 @@ func (domainGraph *DomainGraph) DomainAdd(domainId uint32) (*Domain, error) {
 	}
 	domainGraph.DomainKeyArray = []DomainKey{}
 
-	//更新DomainKeyArray
+	// 更新DomainKeyArray
 	for _, v, next := domainGraph.DomainTree.Iterate()(); next != nil; _, v, next = next() {
 		tmpDomain := v.(*Domain)
 		domainGraph.DomainKeyArray = append(domainGraph.DomainKeyArray, tmpDomain.Key)
@@ -319,17 +319,17 @@ func (domain *Domain) DomainLinkKeyArrayUpdate() error {
 func (domain *Domain) DomainLinkAddByKey(domainLinkKey DomainLinkKey) (*DomainLink, error) {
 	nputil.TraceInfoBegin("")
 
-	//先查找
+	// 先查找
 	findDomainLink := domain.DomainLinkFindByKey(domainLinkKey)
 	if findDomainLink != nil {
 		return findDomainLink, nil
 	}
 
-	//1 创建baseNodeLink控制块
+	// 1 创建baseNodeLink控制块
 	domainLink := domainLinkCreateByKey(domainLinkKey, domain)
 	infoString := fmt.Sprintf("domainLinkKey is (%+v), domainLink is (%+v)\n", domainLinkKey, domainLink)
 	nputil.TraceInfo(infoString)
-	//2 挂树，写DB
+	// 2 挂树，写DB
 	err := domain.DomainLinkTree.Put(domainLink.Key, domainLink)
 	if err != nil {
 		rtnErr := errors.New("domainLinkTree put error")
@@ -386,7 +386,7 @@ func (domain *Domain) DomainLinkDeleteByKey(domainLinkKey DomainLinkKey) error {
 func (domain *Domain) DomainlinkAllDelete() error {
 	nputil.TraceInfoBegin("")
 
-	//释放domainlink
+	// 释放domainlink
 	for _, v, next := domain.DomainLinkTree.Iterate()(); next != nil; _, v, next = next() {
 		baseDomainLink := v.(*DomainLink)
 		err := domain.DomainLinkDeleteByKey(baseDomainLink.Key)
@@ -411,10 +411,10 @@ func (graph *Graph) GraphDomainDelete(domainId uint32) error {
 		return rtnErr
 	}
 
-	//删掉domain的domainlink
+	// 删掉domain的domainlink
 	_ = findDomain.DomainlinkAllDelete()
 
-	//摘除树中
+	// 摘除树中
 	_, err := domainGraph.DomainTree.Remove(findDomain.Key)
 	if err != nil {
 		rtnErr := errors.New("BaseDomainTree remove error")
@@ -492,7 +492,7 @@ func (graph *Graph) AppConnect(domainLinkKspGraph *DomainLinkKspGraph, spfCalcMa
 func (domainGraph *DomainGraph) MapDomainKey2SpfID() error {
 	nputil.TraceInfoBegin("")
 
-	var libID = 0
+	libID := 0
 	domainGraph.SpfID2DomainKey = []DomainKey{}
 	for _, v, next := domainGraph.DomainTree.Iterate()(); next != nil; _, v, next = next() {
 		tmpDomain := v.(*Domain)
@@ -513,10 +513,10 @@ func (domainGraph *DomainGraph) SpfGraphEdgeCreateForSla() error {
 
 	domainGraph.SpfID2DomainKey = []DomainKey{}
 
-	//Map domain to spfID
+	// Map domain to spfID
 	domainGraph.MapDomainKey2SpfID()
 
-	//Build edge for domainGraph
+	// Build edge for domainGraph
 	for _, v, next := domainGraph.DomainTree.Iterate()(); next != nil; _, v, next = next() {
 		tmpDomain := v.(*Domain)
 		for i := 0; i < len(tmpDomain.DomainLinkKeyArray); i++ {
@@ -540,7 +540,7 @@ func (domainGraph *DomainGraph) SpfGraphEdgeCreateForSla() error {
 		infoString := fmt.Sprintf("DomainEdge[%d] is (%+v)", i, domainEdge)
 		nputil.TraceInfo(infoString)
 	}
-	//Build WeightedEdge of domainGraph to calc ksp
+	// Build WeightedEdge of domainGraph to calc ksp
 	for _, domainEdge := range domainGraph.DomainEdgeArry {
 		edge := simple.WeightedEdge{
 			F: simple.Node(domainEdge.SrcSpfId),
@@ -558,7 +558,6 @@ func (domainGraph *DomainGraph) SpfGraphEdgeCreateForSla() error {
 }
 
 func (domainGraph *DomainGraph) SetGraphEdge(domainLinkKey DomainLinkKey) error {
-
 	nputil.TraceInfoBegin("")
 
 	infoString := fmt.Sprintf("domainLinkKey detail is :(%+v)", domainLinkKey)
@@ -584,7 +583,7 @@ func (domainGraph *DomainGraph) SetGraphEdge(domainLinkKey DomainLinkKey) error 
 	domainEdge.Weight = float64(linkCost)
 
 	findEdge := 0
-	//两个domain之间可能会有多条domainlink,以weight最小domainlink作为两个domain之间的link
+	// 两个domain之间可能会有多条domainlink,以weight最小domainlink作为两个domain之间的link
 	for i, tmpDomainEdge := range domainGraph.DomainEdgeArry {
 		if (domainEdge.SrcSpfId == tmpDomainEdge.SrcSpfId) && (domainEdge.DstSpfId == tmpDomainEdge.DstSpfId) {
 			if domainEdge.Weight < tmpDomainEdge.Weight {
@@ -612,7 +611,7 @@ func (domainGraph *DomainGraph) CreateDomainLinkKspGraph() {
 	nputil.TraceInfoEnd("")
 }
 
-//Build DomainLinkKspGraph for all Graph
+// Build DomainLinkKspGraph for all Graph
 func BuildDomainLinkKspGraphAll() {
 	nputil.TraceInfoBegin("")
 	local := GetCoreLocal()
@@ -627,7 +626,7 @@ func BuildDomainLinkKspGraphAll() {
 func (domainGraph *DomainGraph) DomainSrPathCreateByKspPath(path PathAttr) *DomainSrPath {
 	nputil.TraceInfoBegin("")
 
-	//baseDomainGraph := GetCoreLocal().BaseGraphPoint.BaseDomainGraphPoint
+	// baseDomainGraph := GetCoreLocal().BaseGraphPoint.BaseDomainGraphPoint
 	domainSrPath := new(DomainSrPath)
 
 	if len(path.PathIds) == 0 {
@@ -646,7 +645,7 @@ func (domainGraph *DomainGraph) DomainSrPathCreateByKspPath(path PathAttr) *Doma
 		domainSrPath.DomainSidArray[j].DomainId = domainKey.DomainId
 		domainSrPath.DomainSidArray[j].DomainType = String2DomainType(domainTypeString_Field)
 
-		//get SrcNodeSN
+		// get SrcNodeSN
 		if j > 0 {
 			srcDomainID := domainSrPath.DomainSidArray[j-1].DomainId
 			destDomainID := domainSrPath.DomainSidArray[j].DomainId
@@ -664,7 +663,7 @@ func (domainGraph *DomainGraph) DomainSrPathCreateByKspPath(path PathAttr) *Doma
 			domainSrPath.DomainSidArray[j].DstNodeSN = NextDomainLink.Key.SrcNodeSN
 		}
 	}
-	//等前面for循环，赋值好以后，单独处理头节点的Hub
+	// 等前面for循环，赋值好以后，单独处理头节点的Hub
 	domainLink, _ := GetMiniDalyDomainLink(domainSrPath.DomainSidArray[0].DomainId, domainSrPath.DomainSidArray[1].DomainId, domainGraph)
 	domainSrPath.DomainSidArray[0].SrcNodeSN = domainLink.Key.SrcNodeSN
 
@@ -678,14 +677,14 @@ func (domainGraph *DomainGraph) DomainSrPathCreateByKspPath(path PathAttr) *Doma
 func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainLinkKspGraph, spfCalcMaxNum int, appLinkAttr AppLinkAttr) []DomainSrPath {
 	nputil.TraceInfoBegin("")
 
-	//如果蓝图有rt指标要求：
-	//1.计算反向的APP连接请求路径，且只验证时延是否满足要求：
+	// 如果蓝图有rt指标要求：
+	// 1.计算反向的APP连接请求路径，且只验证时延是否满足要求：
 	// (1)正向路径时延+反向路径时延<rt指标
-	//2.单条路径总时延=KSP路径的总weight+4ms*单条KSP的节点数   （各个filed节点的4ms时延）
-	//3.对于特定的appconnect,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
+	// 2.单条路径总时延=KSP路径的总weight+4ms*单条KSP的节点数   （各个filed节点的4ms时延）
+	// 3.对于特定的appconnect,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
 	var domainSrPathArray []DomainSrPath
 	domainGraph := domain.DomainGraphPoint
-	//计算APP连接请求的正向K条domainsr路径
+	// 计算APP连接请求的正向K条domainsr路径
 	srcDomainSpfID, _ := getDomainSpfID(appLinkAttr.Key.SrcDomainId)
 	dstDomainSpfID, _ := getDomainSpfID(appLinkAttr.Key.DstDomainId)
 	query := simple.Edge{F: simple.Node(srcDomainSpfID), T: simple.Node(dstDomainSpfID)}
@@ -695,7 +694,7 @@ func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainL
 		return domainSrPathArray
 	}
 
-	//计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
+	// 计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
 	reverseDelay, err := domain.CalReverseDomainPathMinDelay(domainLinkKspGraph, spfCalcMaxNum, appLinkAttr)
 	if err != nil {
 		nputil.TraceInfoEnd("No reverse shortest path!")
@@ -722,7 +721,7 @@ func GetReverseDomainPath(graph *Graph, appConnectAttr AppConnectAttr) *DomainSr
 	nputil.TraceInfoBegin("")
 
 	domainGraph := graph.DomainGraphPoint
-	//计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
+	// 计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
 	srcReverseDomainSpfID, _ := getDomainSpfID(appConnectAttr.Key.DstDomainId)
 	dstReverseDomainSpfID, _ := getDomainSpfID(appConnectAttr.Key.SrcDomainId)
 	queryReverse := simple.Edge{F: simple.Node(srcReverseDomainSpfID), T: simple.Node(dstReverseDomainSpfID)}
@@ -752,7 +751,7 @@ func (domain *Domain) CalReverseDomainPathMinDelay(domainLinkKspGraph *DomainLin
 
 	domainGraph := domain.DomainGraphPoint
 
-	//计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
+	// 计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
 	srcReverseDomainSpfID, _ := getDomainSpfID(appLinkAttr.Key.DstDomainId)
 	dstReverseDomainSpfID, _ := getDomainSpfID(appLinkAttr.Key.SrcDomainId)
 	queryReverse := simple.Edge{F: simple.Node(srcReverseDomainSpfID), T: simple.Node(dstReverseDomainSpfID)}
@@ -786,8 +785,8 @@ func (graph *Graph) GetDomainPathNameWithFaric(domainSrPath DomainSrPath) []Doma
 	infoString := fmt.Sprintf("domainSrPath is (%+v)", domainSrPath)
 	nputil.TraceInfo(infoString)
 	var domainSrNamePath []DomainInfo
-	var domaininfo = DomainInfo{}
-	//在同一个域内
+	domaininfo := DomainInfo{}
+	// 在同一个域内
 	for j := 0; j < len(domainSrPath.DomainSidArray)-1; j++ {
 		domaininfo = DomainInfo{}
 		filedName := GetDomainNameByDomainId(domainSrPath.DomainSidArray[j].DomainId)
@@ -807,7 +806,7 @@ func (graph *Graph) GetDomainPathNameWithFaric(domainSrPath DomainSrPath) []Doma
 			domainSrNamePath = append(domainSrNamePath, domaininfo)
 		}
 	}
-	//最后一个域或者同一个越
+	// 最后一个域或者同一个越
 	lastFiledName := GetDomainNameByDomainId(domainSrPath.DomainSidArray[len(domainSrPath.DomainSidArray)-1].DomainId)
 	domaininfo.DomainName = lastFiledName
 	domaininfo.DomainID = domainSrPath.DomainSidArray[len(domainSrPath.DomainSidArray)-1].DomainId
@@ -828,7 +827,7 @@ func (graph *Graph) GetDomainPathNameArrayWithFaric(domainSrPathArray []DomainSr
 	for _, domainSrPath := range domainSrPathArray {
 		infoString := fmt.Sprintf("domainSrPath.DomainSidArray is (%+v).", domainSrPath.DomainSidArray)
 		nputil.TraceInfo(infoString)
-		var domainSrNamePath = DomainSrNamePath{}
+		domainSrNamePath := DomainSrNamePath{}
 		for j := 0; j < len(domainSrPath.DomainSidArray)-1; j++ {
 			filedName := GetDomainNameByDomainId(domainSrPath.DomainSidArray[j].DomainId)
 			domainSrNamePath.DomainNameList = append(domainSrNamePath.DomainNameList, filedName)

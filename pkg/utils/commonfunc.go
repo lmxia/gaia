@@ -116,7 +116,6 @@ func SetParentClient(localKubeClient *kubernetes.Clientset, localGaiaClient *gai
 }
 
 func CalculateResource(templateSpec corev1.PodTemplateSpec) (non0CPU int64, non0Mem int64, pod *corev1.Pod) {
-
 	pod = &corev1.Pod{
 		ObjectMeta: templateSpec.ObjectMeta,
 		Spec:       templateSpec.Spec,

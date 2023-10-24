@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +30,7 @@ type Cache interface {
 	//
 	GetNetworkRequirement(description *v1alpha1.Description) (*v1alpha1.NetworkRequirement, error)
 
-	//SetSelfClusterName set self cluster name
+	// SetSelfClusterName set self cluster name
 	SetSelfClusterName(name string)
 
 	GetSelfClusterName() string

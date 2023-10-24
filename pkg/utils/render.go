@@ -71,7 +71,8 @@ func DescToHugeComponents(desc *appsv1alpha1.Description) map[string]*appsv1alph
 										0: {
 											Key:      "runtime-state",
 											Operator: metav1.LabelSelectorOpIn,
-											Values:   []string{string(com.Sandbox)}},
+											Values:   []string{string(com.Sandbox)},
+										},
 									},
 								},
 							},
@@ -125,7 +126,8 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 							0: {
 								Key:      "runtime-state",
 								Operator: metav1.LabelSelectorOpIn,
-								Values:   []string{string(com.Sandbox)}},
+								Values:   []string{string(com.Sandbox)},
+							},
 						},
 					},
 				},
@@ -289,7 +291,6 @@ func SchedulePolicyGroupReflect(condition appsv1alpha1.Condition, spLevel *metav
 
 // ParseExpectedPerformance parse desc.Spec.ExpectedPerformance
 func ParseExpectedPerformance(ep appsv1alpha1.ExpectedPerformance, components []appsv1alpha1.Component, comLocation map[string]int) {
-
 	// get boundaries map
 	boundaryMap := ParseBoundaries(ep.Boundaries, components, comLocation)
 	// parse HPA or VPA  and then get the threshold
@@ -298,7 +299,6 @@ func ParseExpectedPerformance(ep appsv1alpha1.ExpectedPerformance, components []
 
 // ParseBoundaries returns a map that the key is the boundary name and the value is the boundary itself
 func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1.Component, comLocation map[string]int) map[string]appsv1alpha1.Boundary {
-
 	// expectedPerformance.Boundaries.Inner
 	boundaryMap := make(map[string]appsv1alpha1.Boundary)
 	klog.V(6).Infof("start to parse expectedPerformance.Boundaries.Inner:")
@@ -367,7 +367,6 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 
 // ParseMaintenance reflect the boundaries and maintenance's trigger to serverless' threshold.
 func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[string]appsv1alpha1.Boundary, components []appsv1alpha1.Component, comLocation map[string]int) {
-
 	// 1. expectedPerformance.Maintenance.HPA
 	threshold := make([]map[string]int32, len(components))
 	for i := range threshold {

@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
@@ -11,7 +13,6 @@ import (
 	ncsnp "github.com/lmxia/gaia/pkg/networkfilter/model"
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
 	"github.com/timtadh/data-structures/tree/avl"
-	"time"
 	//"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -29,7 +30,7 @@ type Local struct {
 	LocalDomainType DomainType
 
 	selfId2Component map[string]string       //k:string蓝图component中的selfID,v: SCNID_C1_1
-	ComponentArray   map[string]APPComponent //k:蓝图componentName v:component attr
+	ComponentArray   map[string]APPComponent // k:蓝图componentName v:component attr
 
 	DomainLinkKspGraphPoint *DomainLinkKspGraph
 }
@@ -38,9 +39,7 @@ type Local struct {
 /*********************************************global variable*******************************************************************/
 /***********************************************************************************************************************/
 
-var (
-	local *Local
-)
+var local *Local
 
 const (
 	KspCalcMaxNum         = 5
@@ -92,16 +91,16 @@ func (local *Local) GrShutdown() {
 }
 
 func newLocal() *Local {
-	var local = new(Local)
+	local := new(Local)
 	return local
 }
 
 func (local *Local) init() {
 	nputil.TraceInfoBegin("")
 
-	//Initialize the structure of Local
+	// Initialize the structure of Local
 	local.LocalStructInit()
-	//Initialize the graph in the Local area
+	// Initialize the graph in the Local area
 	local.BaseGraphCreate()
 	local.GraphCreate()
 
@@ -124,7 +123,7 @@ func (local *Local) BaseGraphCreate() {
 func (local *Local) GraphCreate() {
 	nputil.TraceInfoBegin("")
 
-	//TBD:当前只支持一种CSPF算法的Graph，其他类型Graph带补充
+	// TBD:当前只支持一种CSPF算法的Graph，其他类型Graph带补充
 	graph := GraphCreateByKey(GraphTypeAlgo_Cspf)
 	if graph == nil {
 		nputil.TraceErrorString("graph is nil")
@@ -135,7 +134,7 @@ func (local *Local) GraphCreate() {
 	graph.DomainGraphPoint.GraphPoint = graph
 	graph.DomainGraphPoint.DomainTree = avl.AvlTree{}
 
-	//创建的graph保存
+	// 创建的graph保存
 	err := local.GraphTree.Put(graph.GraphDbV.Key, graph)
 	if err != nil {
 		rtnErr := errors.New("GraphTree put error")
@@ -221,7 +220,7 @@ func DomainLinkTopoAddFromScache(topoContents map[string][]byte) {
 		infoString := fmt.Sprintf("Domain(%s)'s domainTopoCache is:(%+v)", filedName, *domainTopoCache)
 		nputil.TraceInfoAlwaysPrint(infoString)
 
-		//Add domain in baseDomainGraph and graph tree
+		// Add domain in baseDomainGraph and graph tree
 		baseDomain := baseDomainGraph.BaseDomainFindById(domainTopoCache.LocalDomainId)
 		if baseDomain == nil {
 			domainType := String2DomainType(domainTypeString_Field)
@@ -252,7 +251,7 @@ func DomainLinkAddForScache(domainTopoCache ncsnp.DomainTopoCacheNotify) {
 	infoString := fmt.Sprintf("domainTopoCache(%+v)", domainTopoCache)
 	nputil.TraceInfo(infoString)
 
-	//Add domain in baseDomainGraph and graph tree
+	// Add domain in baseDomainGraph and graph tree
 	local := GetCoreLocal()
 	baseDomainGraph := local.BaseGraphPoint.BaseDomainGraphPoint
 	DomainAddForAllGraph(domainTopoCache.LocalDomainId, domainTopoCache.LocalDomainName, domainTypeString_Field)
@@ -283,13 +282,12 @@ func buildSpfGraphEdge() {
 }
 
 func NetworkFilter(rbs []*v1alpha1.ResourceBinding, networkReq *v1alpha1.NetworkRequirement, networkInfoMap map[string]clusterapi.Topo) []*v1alpha1.ResourceBinding {
-
 	start := time.Now()
 	logx.NewLogger()
 	Register()
 	nputil.TraceInfoBegin("------------------------------------------------------")
 
-	//1. get network TopoInfo from schedule cache
+	// 1. get network TopoInfo from schedule cache
 	var topoContents map[string][]byte
 	topoContents = make(map[string][]byte)
 	for _, topoInfo := range networkInfoMap {
@@ -300,13 +298,13 @@ func NetworkFilter(rbs []*v1alpha1.ResourceBinding, networkReq *v1alpha1.Network
 		infoString = fmt.Sprintf("Field(%s)'s topoContents byteArray is:(%+v)", topoInfo.Field, topoContents[topoInfo.Field])
 		nputil.TraceInfo(infoString)
 	}
-	//Add DomainLink topo from cache
+	// Add DomainLink topo from cache
 	DomainLinkTopoAddFromScache(topoContents)
-	//Build KSP Spf edge for KSP graph
+	// Build KSP Spf edge for KSP graph
 	buildSpfGraphEdge()
-	//Build DomainLinkKspGraph for all Graph
+	// Build DomainLinkKspGraph for all Graph
 	BuildDomainLinkKspGraphAll()
-	//Filter and select domainPath for resourceBindings
+	// Filter and select domainPath for resourceBindings
 	rbsSelected := networkFilterForRbs(rbs, networkReq)
 
 	elapsed := time.Since(start)

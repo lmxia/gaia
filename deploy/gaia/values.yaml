@@ -19,7 +19,7 @@ image:
   repository: 122.96.144.180:30080/gaia
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: v2.0.0-beta
+  tag: v2.0.1
 
 imagePullSecrets: []
 nameOverride: ""

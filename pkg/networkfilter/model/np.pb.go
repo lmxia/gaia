@@ -22,7 +22,7 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-//***************************************使用场景：1、资源管理通过sync推送控制器；2、控制器通过SBI下发设备；3、UI查询 **********************************************************
+// ***************************************使用场景：1、资源管理通过sync推送控制器；2、控制器通过SBI下发设备；3、UI查询 **********************************************************
 type VLinkSla struct {
 	Delay                uint32   `protobuf:"varint,1,opt,name=Delay,proto3" json:"Delay,omitempty"`
 	Jitter               uint32   `protobuf:"varint,2,opt,name=Jitter,proto3" json:"Jitter,omitempty"`
@@ -544,7 +544,7 @@ func (m *TopoWithFabricMap) GetContend() []byte {
 	return nil
 }
 
-//一种resourcebing的方案
+// 一种resourcebing的方案
 type BindingSelectedDomainPath struct {
 	SelectedDomainPath   []*AppConnectSelectedDomainPath `protobuf:"bytes,1,rep,name=SelectedDomainPath,proto3" json:"SelectedDomainPath,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
@@ -584,7 +584,7 @@ func (m *BindingSelectedDomainPath) GetSelectedDomainPath() []*AppConnectSelecte
 	return nil
 }
 
-//InterCommunication只选取一个副本的DomainSrPathArray
+// InterCommunication只选取一个副本的DomainSrPathArray
 type AppConnectSelectedDomainPath struct {
 	AppConnect           *AppConnectAttr `protobuf:"bytes,1,opt,name=AppConnect,proto3" json:"AppConnect,omitempty"`
 	DomainList           []*DomainInfo   `protobuf:"bytes,2,rep,name=DomainList,proto3" json:"DomainList,omitempty"`

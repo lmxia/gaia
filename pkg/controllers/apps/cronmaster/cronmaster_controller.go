@@ -59,7 +59,6 @@ type Controller struct {
 }
 
 func NewController(gaiaClient gaiaClientSet.Interface, kubeClient kubernetes.Interface, gaiaInformerFactory gaiaInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory, localKubeConfig *rest.Config) (*Controller, error) {
-
 	localDynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("newCronMasterController: failed to get dynamicClient from local kubeconfig, ERROR: %v", err)
@@ -338,7 +337,7 @@ func (c *Controller) getResourcesToBeReconciled(cron *appsV1alpha1.CronMaster, k
 		return depsToBeReconciled, nil, nil
 
 	case "Serverless":
-		var gvk = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+		gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 		restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
 			klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
@@ -433,7 +432,7 @@ func (c *Controller) manageStatus(cron *appsV1alpha1.CronMaster, kind string) er
 				return err
 			}
 		case "Serverless":
-			var gvk = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 			restMapping, errM := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if errM != nil {
 				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
@@ -555,7 +554,7 @@ func (c *Controller) handleOnlyStart(cron *appsV1alpha1.CronMaster, resource *un
 		*cron = *updatedCron
 
 	case "Serverless":
-		var gvk = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+		gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 		restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
 			klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
@@ -648,7 +647,7 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 			*cron = *updatedCron
 
 		case "Serverless":
-			var gvk = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
 				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
@@ -777,7 +776,7 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 		updated = true
 
 	case "Serverless":
-		var gvk = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+		gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 		restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
 			klog.Errorf("syncCronMaster: failed to get restMapping for Serverless==%q, error==%v", klog.KObj(cron), err)
@@ -913,7 +912,7 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 			break
 
 		case "Serverless":
-			var gvk = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
 				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
@@ -986,7 +985,7 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 			updated = true
 
 		case "Serverless":
-			var gvk = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
 				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
@@ -1049,7 +1048,6 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 }
 
 func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string, now time.Time) (*appsV1alpha1.CronMaster, *time.Duration, error) {
-
 	scheduledTime, isStart, err := getCronNextScheduleTime(cron, now)
 	if err != nil {
 		klog.V(2).InfoS("invalid schedule", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", cron.Spec.Schedule, "scheduledTime", scheduledTime.String(), "err", err)
@@ -1160,7 +1158,7 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			*cron = *updatedCron
 		case "Serverless":
 			updated := false
-			var gvk = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
 				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
@@ -1231,7 +1229,7 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			klog.Infof("deleted Deployment %q of cronmaster %q \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
 			updated = true
 		case "Serverless":
-			var gvk = schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err != nil {
 				klog.Errorf("syncCronMaster: failed to get restMapping for Serverless==%q, error==%v", klog.KObj(cron), err)

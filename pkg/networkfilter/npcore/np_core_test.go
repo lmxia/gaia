@@ -3,20 +3,20 @@ package npcore
 import (
 	"encoding/base64"
 	"fmt"
+	"reflect"
+	"testing"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/networkfilter/logx"
 	ncsnp "github.com/lmxia/gaia/pkg/networkfilter/model"
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
-	"reflect"
-	"testing"
 )
 
 func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -45,7 +45,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 		},
 	}
 	rbs = append(rbs, &rb0)
-	var rb1 = v1alpha1.ResourceBinding{
+	rb1 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -75,7 +75,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 	}
 	rbs = append(rbs, &rb1)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -243,9 +243,8 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 }
 
 func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -275,7 +274,7 @@ func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequire
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -351,9 +350,8 @@ func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequire
 }
 
 func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -383,7 +381,7 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -447,9 +445,8 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 }
 
 func SetRbsAndNetReqAccelerate() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -479,7 +476,7 @@ func SetRbsAndNetReqAccelerate() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -543,9 +540,8 @@ func SetRbsAndNetReqAccelerate() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 }
 
 func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -575,7 +571,7 @@ func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -729,9 +725,8 @@ func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 }
 
 func SetRbsAndNetReqSameDomain() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -747,7 +742,7 @@ func SetRbsAndNetReqSameDomain() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -812,9 +807,8 @@ func SetRbsAndNetReqSameDomain() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 }
 
 func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -844,7 +838,7 @@ func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -952,9 +946,8 @@ func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 }
 
 func SetRbsAndNetReqDelaySlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -984,7 +977,7 @@ func SetRbsAndNetReqDelaySlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Net
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -1090,9 +1083,8 @@ func SetRbsAndNetReqDelaySlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Net
 }
 
 func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -1115,7 +1107,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -1284,9 +1276,8 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 }
 
 func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -1309,7 +1300,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -1478,9 +1469,8 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 }
 
 func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -1510,7 +1500,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -1680,9 +1670,8 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 
 // Case 5
 func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
-
 	var rbs []*v1alpha1.ResourceBinding
-	var rb0 = v1alpha1.ResourceBinding{
+	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
 			AppID: "0",
 			RbApps: []*v1alpha1.ResourceBindingApps{
@@ -1705,7 +1694,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 	}
 	rbs = append(rbs, &rb0)
 
-	var networkReq = v1alpha1.NetworkRequirement{
+	networkReq := v1alpha1.NetworkRequirement{
 		Spec: v1alpha1.NetworkRequirementSpec{
 			WorkloadComponents: v1alpha1.WorkloadComponents{
 				Scns: []v1alpha1.Scn{
@@ -1877,8 +1866,8 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	nputil.TraceInfoBegin("------------------------------------------------------")
 
 	var domainTopoCacheArry []*ncsnp.DomainTopoCacheNotify
-	var domainTopoMsg = make(map[string]clusterapi.Topo)
-	var topoInfo = clusterapi.Topo{}
+	domainTopoMsg := make(map[string]clusterapi.Topo)
+	topoInfo := clusterapi.Topo{}
 
 	domainTopoCache1 := new(ncsnp.DomainTopoCacheNotify)
 	domainTopoCache1.LocalDomainId = 1
@@ -2075,8 +2064,8 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	nputil.TraceInfoBegin("------------BuildNetworkDomainEdgeForJointDebug-------------------")
 
 	var domainTopoCacheArry []*ncsnp.DomainTopoCacheNotify
-	var domainTopoMsg = make(map[string]clusterapi.Topo)
-	var topoInfo = clusterapi.Topo{}
+	domainTopoMsg := make(map[string]clusterapi.Topo)
+	topoInfo := clusterapi.Topo{}
 
 	domainTopoCache1 := new(ncsnp.DomainTopoCacheNotify)
 	domainTopoCache1.LocalDomainId = 1
@@ -2231,7 +2220,7 @@ func PrintKspPathBase64() {
 	nputil.TraceInfoBegin("------------TestBindingSelectedDomainPathAvailable-------------------")
 	npBase64String := "Q3YwQkNxUUJDbG9LS1M5cGJtNWxjaTF3Y21sMllYUmxMMk5sYkdWMlpXNHZZMkZ6WlRFeFkyOXRjRzl1Wlc1ME1pOHhFaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1TZ0VNQU1TQ2dnZUVHUVl2NFE5SUFvYUhRb05VRTlNU1VOWlgxTlBWVkpEUlJJTWNHOXNhV041WDJsdWMzUXhJaHNLQzFCUFRFbERXVjlFUlZOVUVneHdiMnhwWTNsZmFXNXpkRElTRWdvTVkyOXlaVFF0Wm1sbGJHUXhFQVFZQVJJc0NpWnFhV0Z1WjI1aGJpMW1ZV0p5YVdNdE1UQXpMWE5rZDJGdUxYTnliM1V0YUhsd1pYSnZjeEJuR0FJU0Vnb01ZMjl5WlRNdFptbGxiR1F4RUFNWUFRcTlBUXFtQVFwY0Npa3ZhVzV1WlhJdGNISnBkbUYwWlM5alpXeGxkbVZ1TDJOaGMyVXhNV052YlhCdmJtVnVkREl2TVJJcEwybHVibVZ5TFhCeWFYWmhkR1V2WTJWc1pYWmxiaTlqWVhObE1URmpiMjF3YjI1bGJuUXpMekVZQVNnRE1BTVNDZ2dlRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUXIrQVFxbEFRcGFDaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1SSXBMMmx1Ym1WeUxYQnlhWFpoZEdVdlkyVnNaWFpsYmk5allYTmxNVEZqYjIxd2IyNWxiblF5THpFb0F6QUVFZ3NJa0U0UVpCaS9oRDBnQ2hvZENnMVFUMHhKUTFsZlUwOVZVa05GRWd4d2IyeHBZM2xmYVc1emRERWlHd29MVUU5TVNVTlpYMFJGVTFRU0RIQnZiR2xqZVY5cGJuTjBNaElTQ2d4amIzSmxNeTFtYVdWc1pERVFBeGdCRWl3S0ptcHBZVzVuYm1GdUxXWmhZbkpwWXkweE1ETXRjMlIzWVc0dGMzSnZkUzFvZVhCbGNtOXpFR2NZQWhJU0NneGpiM0psTkMxbWFXVnNaREVRQkJnQkNvQUNDcWNCQ2x3S0tTOXBibTVsY2kxd2NtbDJZWFJsTDJObGJHVjJaVzR2WTJGelpURXhZMjl0Y0c5dVpXNTBNeTh4RWlrdmFXNXVaWEl0Y0hKcGRtRjBaUzlqWld4bGRtVnVMMk5oYzJVeE1XTnZiWEJ2Ym1WdWRESXZNUmdCS0FNd0JCSUxDSkJPRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUklzQ2lacWFXRnVaMjVoYmkxbVlXSnlhV010TVRBekxYTmtkMkZ1TFhOeWIzVXRhSGx3WlhKdmN4Qm5HQUlTRWdvTVkyOXlaVFF0Wm1sbGJHUXhFQVFZQVFyQUFRcXBBUXBlQ2lrdmFXNXVaWEl0Y0hKcGRtRjBaUzlqWld4bGRtVnVMMk5oYzJVeE1XTnZiWEJ2Ym1WdWRETXZNUklwTDJsdWJtVnlMWEJ5YVhaaGRHVXZZMlZzWlhabGJpOWpZWE5sTVRGamIyMXdiMjVsYm5ReUx6RVlBaUFCS0FNd0F4SUxDSkJPRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUT09"
 
-	//Verify the unmarshal action
+	// Verify the unmarshal action
 	npBase64Bytes, _ := base64.StdEncoding.DecodeString(npBase64String)
 	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(npBase64Bytes)))
 	n, _ := base64.StdEncoding.Decode(dbuf, []byte(npBase64Bytes))
@@ -2275,9 +2264,9 @@ func PrintKspPath() {
 	nputil.TraceInfo(infoString)
 
 	nputil.TraceInfoBegin("------------TestBindingSelectedDomainPathAvailable-------------------")
-	//npBase64String := "CogCCm4KJgoPL3BtbC9jYXNlMi9jMS8xEg8vcG1sL2Nhc2UyL2MyLzEoATADEggIZBBkGGQgZBodCg1QT0xJQ1lfU09VUkNFEgxwb2xpY3lfaW5zdDEiGwoLUE9MSUNZX0RFU1QSDHBvbGljeV9pbnN0MhISCgxjb3JlMS1maWVsZDEQARgBEiwKJmppYW5nbmFuLWZhYnJpYy0xMDEtc2R3YW4tc3JvdS1oeXBlcm9zEGUYAhISCgxjb3JlMi1maWVsZDEQAhgBEiwKJmppYW5nbmFuLWZhYnJpYy0xMDItc2R3YW4tc3JvdS1oeXBlcm\n9zEGYYAhISCgxjb3JlMy1maWVsZDEQAxgBCsYBCm4KJgoPL3BtbC9jYXNlMi9jMi8xEg8vcG1sL2Nhc2UyL2MxLzEoAzABEggIZBBkGGQgZBodCg1QT0xJQ1lfU09VUkNFEgxwb2xpY3lfaW5zdDEiGwoLUE9MSUNZX0RFU1QSDHBvbGljeV9pbnN0MhISCgxjb3JlMy1maWVsZDEQAxgBEiwKJmppYW5nbmFuLWZhYnJpYy0xMDMtc2R3YW4tc3JvdS1oeXBlcm9zEGcYAhISCgxjb3JlMS1maWVsZDEQARgB"
+	// npBase64String := "CogCCm4KJgoPL3BtbC9jYXNlMi9jMS8xEg8vcG1sL2Nhc2UyL2MyLzEoATADEggIZBBkGGQgZBodCg1QT0xJQ1lfU09VUkNFEgxwb2xpY3lfaW5zdDEiGwoLUE9MSUNZX0RFU1QSDHBvbGljeV9pbnN0MhISCgxjb3JlMS1maWVsZDEQARgBEiwKJmppYW5nbmFuLWZhYnJpYy0xMDEtc2R3YW4tc3JvdS1oeXBlcm9zEGUYAhISCgxjb3JlMi1maWVsZDEQAhgBEiwKJmppYW5nbmFuLWZhYnJpYy0xMDItc2R3YW4tc3JvdS1oeXBlcm\n9zEGYYAhISCgxjb3JlMy1maWVsZDEQAxgBCsYBCm4KJgoPL3BtbC9jYXNlMi9jMi8xEg8vcG1sL2Nhc2UyL2MxLzEoAzABEggIZBBkGGQgZBodCg1QT0xJQ1lfU09VUkNFEgxwb2xpY3lfaW5zdDEiGwoLUE9MSUNZX0RFU1QSDHBvbGljeV9pbnN0MhISCgxjb3JlMy1maWVsZDEQAxgBEiwKJmppYW5nbmFuLWZhYnJpYy0xMDMtc2R3YW4tc3JvdS1oeXBlcm9zEGcYAhISCgxjb3JlMS1maWVsZDEQARgB"
 	npBase64String := "Q3YwQkNxUUJDbG9LS1M5cGJtNWxjaTF3Y21sMllYUmxMMk5sYkdWMlpXNHZZMkZ6WlRFeFkyOXRjRzl1Wlc1ME1pOHhFaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1TZ0VNQU1TQ2dnZUVHUVl2NFE5SUFvYUhRb05VRTlNU1VOWlgxTlBWVkpEUlJJTWNHOXNhV041WDJsdWMzUXhJaHNLQzFCUFRFbERXVjlFUlZOVUVneHdiMnhwWTNsZmFXNXpkRElTRWdvTVkyOXlaVFF0Wm1sbGJHUXhFQVFZQVJJc0NpWnFhV0Z1WjI1aGJpMW1ZV0p5YVdNdE1UQXpMWE5rZDJGdUxYTnliM1V0YUhsd1pYSnZjeEJuR0FJU0Vnb01ZMjl5WlRNdFptbGxiR1F4RUFNWUFRcTlBUXFtQVFwY0Npa3ZhVzV1WlhJdGNISnBkbUYwWlM5alpXeGxkbVZ1TDJOaGMyVXhNV052YlhCdmJtVnVkREl2TVJJcEwybHVibVZ5TFhCeWFYWmhkR1V2WTJWc1pYWmxiaTlqWVhObE1URmpiMjF3YjI1bGJuUXpMekVZQVNnRE1BTVNDZ2dlRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUXErQVFxbkFRcGNDaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1SSXBMMmx1Ym1WeUxYQnlhWFpoZEdVdlkyVnNaWFpsYmk5allYTmxNVEZqYjIxd2IyNWxiblF5THpFZ0FTZ0RNQU1TQ3dpUVRoQmtHTCtFUFNBS0doMEtEVkJQVEVsRFdWOVRUMVZTUTBVU0RIQnZiR2xqZVY5cGJuTjBNU0liQ2d0UVQweEpRMWxmUkVWVFZCSU1jRzlzYVdONVgybHVjM1F5RWhJS0RHTnZjbVV6TFdacFpXeGtNUkFER0FFS3dnSUtwd0VLWEFvcEwybHVibVZ5TFhCeWFYWmhkR1V2WTJWc1pYWmxiaTlqWVhObE1URmpiMjF3YjI1bGJuUXpMekVTS1M5cGJtNWxjaTF3Y21sMllYUmxMMk5sYkdWMlpXNHZZMkZ6WlRFeFkyOXRjRzl1Wlc1ME1pOHhHQUVvQXpBRUVnc0lrRTRRWkJpL2hEMGdDaG9kQ2cxUVQweEpRMWxmVTA5VlVrTkZFZ3h3YjJ4cFkzbGZhVzV6ZERFaUd3b0xVRTlNU1VOWlgwUkZVMVFTREhCdmJHbGplVjlwYm5OME1oSVNDZ3hqYjNKbE15MW1hV1ZzWkRFUUF4Z0JFaXdLSm1wcFlXNW5ibUZ1TFdaaFluSnBZeTB4TURJdGMyUjNZVzR0YzNKdmRTMW9lWEJsY205ekVHWVlBaElTQ2d4amIzSmxNaTFtYVdWc1pERVFBaGdCRWl3S0ptcHBZVzVuYm1GdUxXWmhZbkpwWXkweE1ERXRjMlIzWVc0dGMzSnZkUzFvZVhCbGNtOXpFR1VZQWhJU0NneGpiM0psTkMxbWFXVnNaREVRQkJnQkNzSUNDcWNCQ2x3S0tTOXBibTVsY2kxd2NtbDJZWFJsTDJObGJHVjJaVzR2WTJGelpURXhZMjl0Y0c5dVpXNTBNeTh4RWlrdmFXNXVaWEl0Y0hKcGRtRjBaUzlqWld4bGRtVnVMMk5oYzJVeE1XTnZiWEJ2Ym1WdWRESXZNUmdDS0FNd0JCSUxDSkJPRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUklzQ2lacWFXRnVaMjVoYmkxbVlXSnlhV010TVRBeUxYTmtkMkZ1TFhOeWIzVXRhSGx3WlhKdmN4Qm1HQUlTRWdvTVkyOXlaVEl0Wm1sbGJHUXhFQUlZQVJJc0NpWnFhV0Z1WjI1aGJpMW1ZV0p5YVdNdE1UQXhMWE5rZDJGdUxYTnliM1V0YUhsd1pYSnZjeEJsR0FJU0Vnb01ZMjl5WlRRdFptbGxiR1F4RUFRWUFRPT0="
-	//npBase64Bytes, _ := base64.StdEncoding.DecodeString(npBase64String)
+	// npBase64Bytes, _ := base64.StdEncoding.DecodeString(npBase64String)
 	npBase64Bytes := ([]byte)(npBase64String)
 	npBytes := make([]byte, base64.StdEncoding.DecodedLen(len(npBase64Bytes)))
 	_, _ = base64.StdEncoding.Decode(npBytes, npBase64Bytes)
@@ -2298,7 +2287,6 @@ func PrintKspPath() {
 }
 
 func GetSchCacheTopoInfo() {
-
 	var topoContents map[string]string
 	topoContents = make(map[string]string)
 

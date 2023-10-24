@@ -90,7 +90,6 @@ func (mgr *Manager) Run(ctx context.Context, parentDedicatedKubeConfig *rest.Con
 }
 
 func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterID string, client gaiaclientset.Interface, backoff wait.Backoff) {
-
 	if features.DefaultMutableFeatureGate.Enabled(features.AbnormalScheduler) {
 		if isParent, errGetCluster := mgr.clusterStatusController.IsParentCluster(); errGetCluster == nil {
 			if isParent {

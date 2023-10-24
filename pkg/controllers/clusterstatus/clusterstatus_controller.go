@@ -2,11 +2,12 @@ package clusterstatus
 
 import (
 	"context"
-	"github.com/lmxia/gaia/pkg/utils"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/lmxia/gaia/pkg/utils"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"

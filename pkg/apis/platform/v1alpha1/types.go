@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -49,8 +49,7 @@ type TargetSpec struct {
 	BootstrapToken string `json:"bootstraptoken,omitempty" protobuf:"bytes,1,opt,name=bootstraptoken"`
 }
 
-type TargetStatus struct {
-}
+type TargetStatus struct{}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -316,13 +315,13 @@ type ClusterRegistrationRequestList struct {
 
 // ManagedClusterOptions holds the command-line options about managedCluster
 type ManagedClusterOptions struct {
-	//ManagedClusterSource specified where to get the managerCluster Resource.
+	// ManagedClusterSource specified where to get the managerCluster Resource.
 	ManagedClusterSource string
-	//PrometheusMonitorUrlPrefix specified the prefix of the prometheus monitor url.
+	// PrometheusMonitorUrlPrefix specified the prefix of the prometheus monitor url.
 	PrometheusMonitorUrlPrefix string
-	//TopoSyncBaseUrl is the base url of the synccontroller service.
+	// TopoSyncBaseUrl is the base url of the synccontroller service.
 	TopoSyncBaseUrl string
-	//UseHypernodeController means whether use hypernode controller, default value is false.
+	// UseHypernodeController means whether use hypernode controller, default value is false.
 	UseHypernodeController bool
 }
 

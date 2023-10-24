@@ -266,7 +266,6 @@ func buildHandlerChain(handler http.Handler, authn authenticator.Request, authz 
 func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
 	// configz.InstallHandler(pathRecorderMux)
 	pathRecorderMux.Handle("/metrics", legacyregistry.HandlerWithReset())
-
 }
 
 // newMetricsHandler builds a metrics server from the config.
@@ -742,7 +741,6 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 		}
 		cancel()
 	}, known.DefaultRetryPeriod*4, 0.3, true)
-
 }
 
 func (sched *Scheduler) GetparentDedicatedKubeConfig() *rest.Config {
@@ -751,6 +749,7 @@ func (sched *Scheduler) GetparentDedicatedKubeConfig() *rest.Config {
 	fmt.Printf("sched.parentDedicatedKubeConfig host == %s \n", sched.parentDedicatedKubeConfig.Host)
 	return sched.parentDedicatedKubeConfig
 }
+
 func (sched *Scheduler) GetDedicatedNamespace() string {
 	// complete your controller loop here
 	fmt.Printf("sched.GetDedicatedNamespace == %s \n", sched.dedicatedNamespace)
@@ -846,7 +845,6 @@ func (sched *Scheduler) addLocalAllEventHandlers() {
 			},
 		},
 	})
-
 }
 
 // addParentAllEventHandlers is a helper function used in Scheduler

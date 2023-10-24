@@ -224,371 +224,373 @@ func TestDescToComponents(t *testing.T) {
 	}{
 		0: {
 			name: "test1",
-			args: args{desc: &appsv1alpha1.Description{
-				Spec: appsv1alpha1.DescriptionSpec{
-					AppID: "case0",
-					WorkloadComponents: []appsv1alpha1.WorkloadComponent{
-						0: {
-							ComponentName: "case0-component1",
-							Namespace:     "test7",
-							Sandbox:       appsv1alpha1.Kata,
-							Module:        corev1.PodTemplateSpec{},
-							WorkloadType:  "stateless-system-service",
-						},
-						1: {
-							ComponentName: "case0-component2",
-							Namespace:     "test7",
-							Sandbox:       appsv1alpha1.Runc,
-							Module:        corev1.PodTemplateSpec{},
-							WorkloadType:  "stateless-user-service",
-						},
-						2: {
-							ComponentName: "case0-component3",
-							Namespace:     "test7",
-							Sandbox:       appsv1alpha1.Runc,
-							Module:        corev1.PodTemplateSpec{},
-							WorkloadType:  "stateless-system-service",
-						},
-						3: {
-							ComponentName: "case0-component4",
-							Namespace:     "test7",
-							Sandbox:       appsv1alpha1.Runc,
-							Module:        corev1.PodTemplateSpec{},
-							WorkloadType:  "stateless-system-service",
-						},
-						4: {
-							ComponentName: "case0-component5",
-							Namespace:     "test7",
-							Sandbox:       appsv1alpha1.Runc,
-							Module:        corev1.PodTemplateSpec{},
-							WorkloadType:  "stateless-system-service",
-						},
-						5: {
-							ComponentName: "case0-component6",
-							Namespace:     "test7",
-							Sandbox:       appsv1alpha1.Runc,
-							Module:        corev1.PodTemplateSpec{},
-							WorkloadType:  "stateless-system-service",
-						},
-						6: {
-							ComponentName: "case0-component7",
-							Namespace:     "test7",
-							Sandbox:       appsv1alpha1.Runc,
-							Module:        corev1.PodTemplateSpec{},
-							WorkloadType:  "stateless-system-service",
-							Schedule: appsv1alpha1.SchedulerConfig{
-								Monday: appsv1alpha1.ScheduleTimeSet{
-									StartSchedule: "2023-06-12T09:00:00+08:00",
-									EndSchedule:   "2023-06-12T18:00:00+08:00",
-								},
-								Tuesday: appsv1alpha1.ScheduleTimeSet{
-									StartSchedule: "2023-06-13T09:00:00+08:00",
-									EndSchedule:   "2023-06-13T18:00:00+08:00",
-								},
-								Wednesday: appsv1alpha1.ScheduleTimeSet{
-									StartSchedule: "2023-06-14T09:00:00+08:00",
-									EndSchedule:   "2023-06-15T18:00:00+08:00",
-								},
-								Thursday: appsv1alpha1.ScheduleTimeSet{
-									StartSchedule: "2023-06-15T09:00:00+08:00",
-									EndSchedule:   "2023-06-15T18:00:00+08:00",
-								},
-								Friday: appsv1alpha1.ScheduleTimeSet{
-									StartSchedule: "2023-06-16T09:00:00+08:00",
-									EndSchedule:   "2023-06-16T18:00:00+08:00",
-								},
-								Saturday: appsv1alpha1.ScheduleTimeSet{
-									StartSchedule: "2023-06-17T10:00:00+08:00",
-									EndSchedule:   "2023-06-17T16:00:00+08:00",
-								},
-								Sunday: appsv1alpha1.ScheduleTimeSet{
-									StartSchedule: "2023-06-18T10:00:00+08:00",
-									EndSchedule:   "2023-06-18T16:00:00+08:00",
-								},
-							},
-						},
-					},
-					DeploymentCondition: appsv1alpha1.DeploymentCondition{
-						Mandatory: []appsv1alpha1.Condition{
+			args: args{
+				desc: &appsv1alpha1.Description{
+					Spec: appsv1alpha1.DescriptionSpec{
+						AppID: "case0",
+						WorkloadComponents: []appsv1alpha1.WorkloadComponent{
 							0: {
-								Subject: appsv1alpha1.Xject{
-									Name: "case0-component1",
-									Type: "component",
-								},
-								Object: appsv1alpha1.Xject{
-									Name: "geo-location",
-									Type: "label",
-								},
-								Relation: "In",
-								Extent:   []byte("[\"China-Huadong-Jiangsu-City-C21-District-E21\"]"),
+								ComponentName: "case0-component1",
+								Namespace:     "test7",
+								Sandbox:       appsv1alpha1.Kata,
+								Module:        corev1.PodTemplateSpec{},
+								WorkloadType:  "stateless-system-service",
 							},
 							1: {
-								Subject: appsv1alpha1.Xject{
-									Name: "case0-component1",
-									Type: "component",
-								},
-								Object: appsv1alpha1.Xject{
-									Name: "netenvironment",
-									Type: "label",
-								},
-								Relation: "In",
-								Extent:   []byte("[\"edge\"]"),
+								ComponentName: "case0-component2",
+								Namespace:     "test7",
+								Sandbox:       appsv1alpha1.Runc,
+								Module:        corev1.PodTemplateSpec{},
+								WorkloadType:  "stateless-user-service",
 							},
 							2: {
-								Subject: appsv1alpha1.Xject{
-									Name: "case0-component5",
-									Type: "component",
-								},
-								Object: appsv1alpha1.Xject{
-									Name: "geo-location",
-									Type: "label",
-								},
-								Relation: "In",
-								Extent:   []byte("[\"China-Huadong-Jiangsu-City-C21-District-E21\",\"China-Huadong-Jiangsu-City-C21-District-E22\"]"),
+								ComponentName: "case0-component3",
+								Namespace:     "test7",
+								Sandbox:       appsv1alpha1.Runc,
+								Module:        corev1.PodTemplateSpec{},
+								WorkloadType:  "stateless-system-service",
 							},
 							3: {
-								Subject: appsv1alpha1.Xject{
-									Name: "case0-component4",
-									Type: "component",
-								},
-								Object: appsv1alpha1.Xject{
-									Name: "case0-component3",
-									Type: "component",
-								},
-								Relation: "Affinity",
-								Extent:   []byte(""),
+								ComponentName: "case0-component4",
+								Namespace:     "test7",
+								Sandbox:       appsv1alpha1.Runc,
+								Module:        corev1.PodTemplateSpec{},
+								WorkloadType:  "stateless-system-service",
 							},
 							4: {
-								Subject: appsv1alpha1.Xject{
-									Name: "case0-component2",
-									Type: "component",
-								},
-								Object: appsv1alpha1.Xject{
-									Name: "sn",
-									Type: "label",
-								},
-								Relation: "In",
-								Extent:   []byte("[\"sn1\"]"),
+								ComponentName: "case0-component5",
+								Namespace:     "test7",
+								Sandbox:       appsv1alpha1.Runc,
+								Module:        corev1.PodTemplateSpec{},
+								WorkloadType:  "stateless-system-service",
 							},
 							5: {
-								Subject: appsv1alpha1.Xject{
-									Name: "case0-component3",
-									Type: "component",
+								ComponentName: "case0-component6",
+								Namespace:     "test7",
+								Sandbox:       appsv1alpha1.Runc,
+								Module:        corev1.PodTemplateSpec{},
+								WorkloadType:  "stateless-system-service",
+							},
+							6: {
+								ComponentName: "case0-component7",
+								Namespace:     "test7",
+								Sandbox:       appsv1alpha1.Runc,
+								Module:        corev1.PodTemplateSpec{},
+								WorkloadType:  "stateless-system-service",
+								Schedule: appsv1alpha1.SchedulerConfig{
+									Monday: appsv1alpha1.ScheduleTimeSet{
+										StartSchedule: "2023-06-12T09:00:00+08:00",
+										EndSchedule:   "2023-06-12T18:00:00+08:00",
+									},
+									Tuesday: appsv1alpha1.ScheduleTimeSet{
+										StartSchedule: "2023-06-13T09:00:00+08:00",
+										EndSchedule:   "2023-06-13T18:00:00+08:00",
+									},
+									Wednesday: appsv1alpha1.ScheduleTimeSet{
+										StartSchedule: "2023-06-14T09:00:00+08:00",
+										EndSchedule:   "2023-06-15T18:00:00+08:00",
+									},
+									Thursday: appsv1alpha1.ScheduleTimeSet{
+										StartSchedule: "2023-06-15T09:00:00+08:00",
+										EndSchedule:   "2023-06-15T18:00:00+08:00",
+									},
+									Friday: appsv1alpha1.ScheduleTimeSet{
+										StartSchedule: "2023-06-16T09:00:00+08:00",
+										EndSchedule:   "2023-06-16T18:00:00+08:00",
+									},
+									Saturday: appsv1alpha1.ScheduleTimeSet{
+										StartSchedule: "2023-06-17T10:00:00+08:00",
+										EndSchedule:   "2023-06-17T16:00:00+08:00",
+									},
+									Sunday: appsv1alpha1.ScheduleTimeSet{
+										StartSchedule: "2023-06-18T10:00:00+08:00",
+										EndSchedule:   "2023-06-18T16:00:00+08:00",
+									},
 								},
-								Object: appsv1alpha1.Xject{
-									Name: "sn",
-									Type: "label",
-								},
-								Relation: "In",
-								Extent:   []byte("[\"sn1\",\"sn2\"]"),
 							},
 						},
-						BestEffort: []appsv1alpha1.Condition{
-							0: {
-								Subject: appsv1alpha1.Xject{
-									Name: "case0-component5",
-									Type: "component",
+						DeploymentCondition: appsv1alpha1.DeploymentCondition{
+							Mandatory: []appsv1alpha1.Condition{
+								0: {
+									Subject: appsv1alpha1.Xject{
+										Name: "case0-component1",
+										Type: "component",
+									},
+									Object: appsv1alpha1.Xject{
+										Name: "geo-location",
+										Type: "label",
+									},
+									Relation: "In",
+									Extent:   []byte("[\"China-Huadong-Jiangsu-City-C21-District-E21\"]"),
 								},
-								Object: appsv1alpha1.Xject{
-									Name: "netenvironment",
-									Type: "label",
+								1: {
+									Subject: appsv1alpha1.Xject{
+										Name: "case0-component1",
+										Type: "component",
+									},
+									Object: appsv1alpha1.Xject{
+										Name: "netenvironment",
+										Type: "label",
+									},
+									Relation: "In",
+									Extent:   []byte("[\"edge\"]"),
 								},
-								Relation: "In",
-								Extent:   []byte("[\"edge\"]"),
+								2: {
+									Subject: appsv1alpha1.Xject{
+										Name: "case0-component5",
+										Type: "component",
+									},
+									Object: appsv1alpha1.Xject{
+										Name: "geo-location",
+										Type: "label",
+									},
+									Relation: "In",
+									Extent:   []byte("[\"China-Huadong-Jiangsu-City-C21-District-E21\",\"China-Huadong-Jiangsu-City-C21-District-E22\"]"),
+								},
+								3: {
+									Subject: appsv1alpha1.Xject{
+										Name: "case0-component4",
+										Type: "component",
+									},
+									Object: appsv1alpha1.Xject{
+										Name: "case0-component3",
+										Type: "component",
+									},
+									Relation: "Affinity",
+									Extent:   []byte(""),
+								},
+								4: {
+									Subject: appsv1alpha1.Xject{
+										Name: "case0-component2",
+										Type: "component",
+									},
+									Object: appsv1alpha1.Xject{
+										Name: "sn",
+										Type: "label",
+									},
+									Relation: "In",
+									Extent:   []byte("[\"sn1\"]"),
+								},
+								5: {
+									Subject: appsv1alpha1.Xject{
+										Name: "case0-component3",
+										Type: "component",
+									},
+									Object: appsv1alpha1.Xject{
+										Name: "sn",
+										Type: "label",
+									},
+									Relation: "In",
+									Extent:   []byte("[\"sn1\",\"sn2\"]"),
+								},
+							},
+							BestEffort: []appsv1alpha1.Condition{
+								0: {
+									Subject: appsv1alpha1.Xject{
+										Name: "case0-component5",
+										Type: "component",
+									},
+									Object: appsv1alpha1.Xject{
+										Name: "netenvironment",
+										Type: "label",
+									},
+									Relation: "In",
+									Extent:   []byte("[\"edge\"]"),
+								},
+							},
+						},
+						ExpectedPerformance: appsv1alpha1.ExpectedPerformance{
+							Boundaries: appsv1alpha1.Boundaries{
+								Inner: []appsv1alpha1.Boundary{
+									0: {
+										Name:    "boundary5",
+										Subject: "case0-component4",
+										Type:    "maxQPS",
+										Value:   []byte("1000"),
+									},
+									1: {
+										Name:    "boundary6",
+										Subject: "case0-component5",
+										Type:    "cpu",
+										Value:   []byte("20"),
+									},
+									2: {
+										Name:    "boundary7",
+										Subject: "case0-component5",
+										Type:    "cpu",
+										Value:   []byte("80"),
+									},
+									3: {
+										Name:    "boundary8",
+										Subject: "case0-component5",
+										Type:    "mem",
+										Value:   []byte("20"),
+									},
+									4: {
+										Name:    "boundary9",
+										Subject: "case0-component5",
+										Type:    "mem",
+										Value:   []byte("70"),
+									},
+									5: {
+										Name:    "boundary10",
+										Subject: "case0-component5",
+										Type:    "QPS",
+										Value:   []byte("15"),
+									},
+									6: {
+										Name:    "boundary11",
+										Subject: "case0-component5",
+										Type:    "QPS",
+										Value:   []byte("85"),
+									},
+									7: {
+										Name:    "boundary1",
+										Subject: "case0-component3",
+										Type:    "daemonset",
+										Value:   []byte("true"),
+									},
+									8: {
+										Name:    "boundary2",
+										Subject: "case0-component6",
+										Type:    "maxReplicas",
+										Value:   []byte("100"),
+									},
+									9: {
+										Name:    "boundary3",
+										Subject: "case0-component7",
+										Type:    "replicas",
+										Value:   []byte("10"),
+									},
+									10: {
+										Name:    "boundary12",
+										Subject: "case0-component1",
+										Type:    "replicas",
+										Value:   []byte("199"),
+									},
+									11: {
+										Name:    "boundary13",
+										Subject: "case0-component4",
+										Type:    "cpu",
+										Value:   []byte("25"),
+									},
+									12: {
+										Name:    "boundary14",
+										Subject: "case0-component4",
+										Type:    "cpu",
+										Value:   []byte("75"),
+									},
+									13: {
+										Name:    "boundary15",
+										Subject: "case0-component4",
+										Type:    "mem",
+										Value:   []byte("25"),
+									},
+									14: {
+										Name:    "boundary16",
+										Subject: "case0-component4",
+										Type:    "mem",
+										Value:   []byte("85"),
+									},
+									15: {
+										Name:    "boundary17",
+										Subject: "case0-component6",
+										Type:    "QPS",
+										Value:   []byte("20"),
+									},
+									16: {
+										Name:    "boundary18",
+										Subject: "case0-component6",
+										Type:    "QPS",
+										Value:   []byte("80"),
+									},
+									17: {
+										Name:    "boundary19",
+										Subject: "case0-component5",
+										Type:    "maxReplicas",
+										Value:   []byte("50"),
+									},
+								},
+							},
+							Maintenance: appsv1alpha1.Maintenance{
+								HPA: []appsv1alpha1.XPA{
+									0: {
+										Name:    "decrease replicas1",
+										Subject: "case0-component5",
+										Trigger: "boundary6 && boundary8 && boundary10",
+										Strategy: appsv1alpha1.XPAStrategy{
+											Type:  "decrease",
+											Value: []byte("1"),
+										},
+									},
+									1: {
+										Name:    "increase replicas1",
+										Subject: "case0-component5",
+										Trigger: "boundary7 || boundary9 || boundary11",
+										Strategy: appsv1alpha1.XPAStrategy{
+											Type:  "increase",
+											Value: []byte("1"),
+										},
+									},
+									2: {
+										Name:    "decrease replicas 1",
+										Subject: "case0-component4",
+										Trigger: "boundary13",
+										Strategy: appsv1alpha1.XPAStrategy{
+											Type:  "decrease",
+											Value: []byte("10"),
+										},
+									},
+									3: {
+										Name:    "increase replicas1",
+										Subject: "case0-component4",
+										Trigger: "boundary14",
+										Strategy: appsv1alpha1.XPAStrategy{
+											Type:  "increase",
+											Value: []byte("10"),
+										},
+									},
+									4: {
+										Name:    "decrease replicas 1",
+										Subject: "case0-component4",
+										Trigger: "boundary15",
+										Strategy: appsv1alpha1.XPAStrategy{
+											Type:  "decrease",
+											Value: []byte("10"),
+										},
+									},
+									5: {
+										Name:    "increase replicas1",
+										Subject: "case0-component4",
+										Trigger: "boundary16",
+										Strategy: appsv1alpha1.XPAStrategy{
+											Type:  "increase",
+											Value: []byte("10"),
+										},
+									},
+									6: {
+										Name:    "decrease replicas 1",
+										Subject: "case0-component6",
+										Trigger: "boundary17",
+										Strategy: appsv1alpha1.XPAStrategy{
+											Type:  "decrease",
+											Value: []byte("1"),
+										},
+									},
+									7: {
+										Name:    "increase replicas1",
+										Subject: "case0-component6",
+										Trigger: "boundary18",
+										Strategy: appsv1alpha1.XPAStrategy{
+											Type:  "increase",
+											Value: []byte("1"),
+										},
+									},
+								},
 							},
 						},
 					},
-					ExpectedPerformance: appsv1alpha1.ExpectedPerformance{
-						Boundaries: appsv1alpha1.Boundaries{
-							Inner: []appsv1alpha1.Boundary{
-								0: {
-									Name:    "boundary5",
-									Subject: "case0-component4",
-									Type:    "maxQPS",
-									Value:   []byte("1000"),
-								},
-								1: {
-									Name:    "boundary6",
-									Subject: "case0-component5",
-									Type:    "cpu",
-									Value:   []byte("20"),
-								},
-								2: {
-									Name:    "boundary7",
-									Subject: "case0-component5",
-									Type:    "cpu",
-									Value:   []byte("80"),
-								},
-								3: {
-									Name:    "boundary8",
-									Subject: "case0-component5",
-									Type:    "mem",
-									Value:   []byte("20"),
-								},
-								4: {
-									Name:    "boundary9",
-									Subject: "case0-component5",
-									Type:    "mem",
-									Value:   []byte("70"),
-								},
-								5: {
-									Name:    "boundary10",
-									Subject: "case0-component5",
-									Type:    "QPS",
-									Value:   []byte("15"),
-								},
-								6: {
-									Name:    "boundary11",
-									Subject: "case0-component5",
-									Type:    "QPS",
-									Value:   []byte("85"),
-								},
-								7: {
-									Name:    "boundary1",
-									Subject: "case0-component3",
-									Type:    "daemonset",
-									Value:   []byte("true"),
-								},
-								8: {
-									Name:    "boundary2",
-									Subject: "case0-component6",
-									Type:    "maxReplicas",
-									Value:   []byte("100"),
-								},
-								9: {
-									Name:    "boundary3",
-									Subject: "case0-component7",
-									Type:    "replicas",
-									Value:   []byte("10"),
-								},
-								10: {
-									Name:    "boundary12",
-									Subject: "case0-component1",
-									Type:    "replicas",
-									Value:   []byte("199"),
-								},
-								11: {
-									Name:    "boundary13",
-									Subject: "case0-component4",
-									Type:    "cpu",
-									Value:   []byte("25"),
-								},
-								12: {
-									Name:    "boundary14",
-									Subject: "case0-component4",
-									Type:    "cpu",
-									Value:   []byte("75"),
-								},
-								13: {
-									Name:    "boundary15",
-									Subject: "case0-component4",
-									Type:    "mem",
-									Value:   []byte("25"),
-								},
-								14: {
-									Name:    "boundary16",
-									Subject: "case0-component4",
-									Type:    "mem",
-									Value:   []byte("85"),
-								},
-								15: {
-									Name:    "boundary17",
-									Subject: "case0-component6",
-									Type:    "QPS",
-									Value:   []byte("20"),
-								},
-								16: {
-									Name:    "boundary18",
-									Subject: "case0-component6",
-									Type:    "QPS",
-									Value:   []byte("80"),
-								},
-								17: {
-									Name:    "boundary19",
-									Subject: "case0-component5",
-									Type:    "maxReplicas",
-									Value:   []byte("50"),
-								},
-							},
-						},
-						Maintenance: appsv1alpha1.Maintenance{
-							HPA: []appsv1alpha1.XPA{
-								0: {
-									Name:    "decrease replicas1",
-									Subject: "case0-component5",
-									Trigger: "boundary6 && boundary8 && boundary10",
-									Strategy: appsv1alpha1.XPAStrategy{
-										Type:  "decrease",
-										Value: []byte("1"),
-									},
-								},
-								1: {
-									Name:    "increase replicas1",
-									Subject: "case0-component5",
-									Trigger: "boundary7 || boundary9 || boundary11",
-									Strategy: appsv1alpha1.XPAStrategy{
-										Type:  "increase",
-										Value: []byte("1"),
-									},
-								},
-								2: {
-									Name:    "decrease replicas 1",
-									Subject: "case0-component4",
-									Trigger: "boundary13",
-									Strategy: appsv1alpha1.XPAStrategy{
-										Type:  "decrease",
-										Value: []byte("10"),
-									},
-								},
-								3: {
-									Name:    "increase replicas1",
-									Subject: "case0-component4",
-									Trigger: "boundary14",
-									Strategy: appsv1alpha1.XPAStrategy{
-										Type:  "increase",
-										Value: []byte("10"),
-									},
-								},
-								4: {
-									Name:    "decrease replicas 1",
-									Subject: "case0-component4",
-									Trigger: "boundary15",
-									Strategy: appsv1alpha1.XPAStrategy{
-										Type:  "decrease",
-										Value: []byte("10"),
-									},
-								},
-								5: {
-									Name:    "increase replicas1",
-									Subject: "case0-component4",
-									Trigger: "boundary16",
-									Strategy: appsv1alpha1.XPAStrategy{
-										Type:  "increase",
-										Value: []byte("10"),
-									},
-								},
-								6: {
-									Name:    "decrease replicas 1",
-									Subject: "case0-component6",
-									Trigger: "boundary17",
-									Strategy: appsv1alpha1.XPAStrategy{
-										Type:  "decrease",
-										Value: []byte("1"),
-									},
-								},
-								7: {
-									Name:    "increase replicas1",
-									Subject: "case0-component6",
-									Trigger: "boundary18",
-									Strategy: appsv1alpha1.XPAStrategy{
-										Type:  "increase",
-										Value: []byte("1"),
-									},
-								},
-							},
-						},
-					},
-				}},
+				},
 			},
 			wantAffinity: []int{0, 1, 2, 2, 4, 5, 6},
 			wantComLocation: map[string]int{

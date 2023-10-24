@@ -20,11 +20,12 @@ limitations under the License.
 package resources
 
 import (
+	"net/http"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/component-base/metrics"
-	"net/http"
 )
 
 type resourceLifecycleDescriptors struct {
@@ -155,12 +156,12 @@ func (c *podResourceCollector) DescribeWithStability(ch chan<- *metrics.Desc) {
 // }
 
 func recordMetricWithUnit(
-		ch chan<- metrics.Metric,
-		desc *metrics.Desc,
-		namespace, name, nodeName, schedulerName, priority string,
-		resourceName v1.ResourceName,
-		unit string,
-		val resource.Quantity,
+	ch chan<- metrics.Metric,
+	desc *metrics.Desc,
+	namespace, name, nodeName, schedulerName, priority string,
+	resourceName v1.ResourceName,
+	unit string,
+	val resource.Quantity,
 ) {
 	if val.IsZero() {
 		return

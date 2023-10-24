@@ -47,7 +47,8 @@ type Controller struct {
 
 // NewController creates and initializes a new Controller
 func NewController(gaiaClient gaiaClientSet.Interface,
-	crrsInformer crrsInformers.ClusterRegistrationRequestInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+	crrsInformer crrsInformers.ClusterRegistrationRequestInformer, syncHandler SyncHandlerFunc,
+) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
@@ -187,7 +188,6 @@ func (c *Controller) processNextWorkItem() bool {
 		klog.Infof("successfully synced ClusterRegistrationRequest %q", key)
 		return nil
 	}(obj)
-
 	if err != nil {
 		utilruntime.HandleError(err)
 		return true

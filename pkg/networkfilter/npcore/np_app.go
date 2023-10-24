@@ -4,11 +4,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sort"
+
 	"github.com/gogo/protobuf/proto"
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	ncsnp "github.com/lmxia/gaia/pkg/networkfilter/model"
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
-	"sort"
 )
 
 type SlaAttr struct {
@@ -67,10 +68,10 @@ type KVAttribute struct {
 }
 
 type AppConnectReqKey struct {
-	SrcUrl          string        //源标识
-	DstUrl          string        //目的标识
-	SrcScnidKVList  []KVAttribute //源标识策略KV lists
-	DestScnidKVList []KVAttribute //目的标识策略KV lists
+	SrcUrl          string        // 源标识
+	DstUrl          string        // 目的标识
+	SrcScnidKVList  []KVAttribute // 源标识策略KV lists
+	DestScnidKVList []KVAttribute // 目的标识策略KV lists
 }
 
 type AppConnectAttr struct {
@@ -78,7 +79,7 @@ type AppConnectAttr struct {
 	SlaAttr         AppSlaAttr
 	SrcScnidKVList  []KVAttribute
 	DestScnidKVList []KVAttribute
-	Accelerate      bool //冷启动加速
+	Accelerate      bool // 冷启动加速
 	Rtt             int32
 }
 
@@ -87,7 +88,7 @@ type SyncAppConnectAttr struct {
 	SlaAttr         AppSlaAttr
 	SrcScnidKVList  []KVAttribute
 	DestScnidKVList []KVAttribute
-	Accelerate      bool //冷启动加速
+	Accelerate      bool // 冷启动加速
 }
 
 type AppLinkSlaAttr struct {
@@ -112,14 +113,14 @@ type AppLinkAttr struct {
 	SrcScnidKVList  []KVAttribute
 	DestScnidKVList []KVAttribute
 	Providers       AppLinkProviderAttr
-	Accelerate      bool //冷启动加速
+	Accelerate      bool // 冷启动加速
 }
 
 // component的连接请求AppConnectReq
 type AppConnectReq struct {
 	Key                  AppConnectReqKey
 	linkAttr             AppLinkAttr
-	ScnIdDomainPathGroup []ScnIdAppDomainPathGroup //数组的元素为：以特定SCN_ID为源的，且目的实例不在同一个filed的appConnect的：appConnect和其多路径
+	ScnIdDomainPathGroup []ScnIdAppDomainPathGroup // 数组的元素为：以特定SCN_ID为源的，且目的实例不在同一个filed的appConnect的：appConnect和其多路径
 }
 
 type AppConnect struct {
@@ -130,10 +131,10 @@ type APPComponent struct {
 	Name              string
 	SelfID            []string
 	ScnIdInstList     map[string]ScnIdInstanceArray //k:scn_id, v: ScnIdInstance created by app location and replicas
-	AppConnectReqList []AppConnectReq               //Component的interSCNID连接请求列表
-	AppconnectList    []AppLinkAttr                 //以本component的标识为source的APPconnect，以实例号区分
-	FiledList         map[string]uint32             //Component可以部署的filed: k: filedName, v: replicas
-	TotalReplicas     uint32                        //Component所有的副本数目
+	AppConnectReqList []AppConnectReq               // Component的interSCNID连接请求列表
+	AppconnectList    []AppLinkAttr                 // 以本component的标识为source的APPconnect，以实例号区分
+	FiledList         map[string]uint32             // Component可以部署的filed: k: filedName, v: replicas
+	TotalReplicas     uint32                        // Component所有的副本数目
 }
 
 type ScnIdInstance struct {
@@ -157,7 +158,7 @@ type DomainInfo struct {
 type AppConnectSelectedDomainPath struct {
 	AppConnectAttr SyncAppConnectAttr
 	DomainInfoPath []DomainInfo
-	DomainSrPath   DomainSrPath //预占时给控制器的DomainPath
+	DomainSrPath   DomainSrPath // 预占时给控制器的DomainPath
 }
 
 type AppConnectDomainPathForRb struct {
@@ -177,7 +178,6 @@ func getComponentReplicas(rbApp *v1alpha1.ResourceBindingApps, componentName str
 	var replicasVal int32
 	if replicas, ok := rbApp.Replicas[componentName]; ok {
 		replicasVal = replicas
-
 	} else {
 		infoString := fmt.Sprintf("The component (%s) doesn't exist!\n", componentName)
 		nputil.TraceInfo(infoString)
@@ -224,7 +224,6 @@ func SetSelfId2Component(networkReq v1alpha1.NetworkRequirement) {
 }
 
 func SetComponentByNetReq(networkReq v1alpha1.NetworkRequirement) {
-
 	nputil.TraceInfoBegin("")
 
 	for _, netCom := range networkReq.Spec.WorkloadComponents.Scns {
@@ -238,7 +237,7 @@ func SetComponentByNetReq(networkReq v1alpha1.NetworkRequirement) {
 			TotalReplicas:     0,
 		}
 	}
-	//set the connection attributes for components
+	// set the connection attributes for components
 	SetAppConnectReqList(networkReq)
 
 	for comName, Component := range local.ComponentArray {
@@ -263,7 +262,7 @@ func SetComponentByRb(rb v1alpha1.ResourceBinding) {
 			filedName := rbApp.ClusterName
 			infoString := fmt.Sprintf("filedName is [%s], local.ComponentArray[%s] is (%+v).", filedName, comName, local.ComponentArray[comName])
 			nputil.TraceInfo(infoString)
-			//component不存在
+			// component不存在
 			if _, ok := local.ComponentArray[comName]; !ok {
 				continue
 			}
@@ -392,15 +391,15 @@ func SetAppConnectReqList(networkReq v1alpha1.NetworkRequirement) {
 
 	local := GetCoreLocal()
 
-	//for _, netCom := range networkReq.Spec.NetworkCommunication {
-	//1.解析component和其对应的标识列表ScnIdList
+	// for _, netCom := range networkReq.Spec.NetworkCommunication {
+	// 1.解析component和其对应的标识列表ScnIdList
 	for _, scn := range networkReq.Spec.WorkloadComponents.Scns {
 		comName := scn.Name
 		appComponent := local.ComponentArray[comName]
 		appComponent.SelfID = scn.SelfID
 		local.ComponentArray[comName] = appComponent
 	}
-	//2. 解析标识通信links
+	// 2. 解析标识通信links
 	for _, link := range networkReq.Spec.WorkloadComponents.Links {
 		comName := getComponentBySrcScnId(link.SourceID)
 		if comName == "" {
@@ -410,13 +409,13 @@ func SetAppConnectReqList(networkReq v1alpha1.NetworkRequirement) {
 		appComponent := local.ComponentArray[comName]
 		appReq := new(AppConnectReq)
 
-		//解析源目的标识
+		// 解析源目的标识
 		srcScnID := link.SourceID
 		dstScnID := link.DestinationID
 		appReq.Key.SrcUrl = srcScnID
 		appReq.Key.DstUrl = dstScnID
 
-		//解析源目的标识的KV lists
+		// 解析源目的标识的KV lists
 		for _, kv := range link.SourceAttributes {
 			var srcKv KVAttribute
 			srcKv.Key = kv.Key
@@ -432,13 +431,13 @@ func SetAppConnectReqList(networkReq v1alpha1.NetworkRequirement) {
 			appReq.linkAttr.DestScnidKVList = append(appReq.linkAttr.DestScnidKVList, dstKv)
 		}
 
-		//解析deployconditions中的mandatory links属性：SLA, RTT, Providers, 加速启动等属性
+		// 解析deployconditions中的mandatory links属性：SLA, RTT, Providers, 加速启动等属性
 		for _, condition := range networkReq.Spec.Deployconditions.Mandatory {
 			if condition.Subject.Name == link.LinkName {
 				ParseDeployCondition(appReq, condition, true)
 			}
 		}
-		//解析deployconditions中的bestEffort links属性：SLA, RTT, Providers, 加速启动等属性
+		// 解析deployconditions中的bestEffort links属性：SLA, RTT, Providers, 加速启动等属性
 		for _, condition := range networkReq.Spec.Deployconditions.BestEffort {
 			if condition.Subject.Name == link.LinkName {
 				ParseDeployCondition(appReq, condition, false)
@@ -684,19 +683,19 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 	var combGroup [][]AppDomainPath
 	var index uint32
 
-	//把所有components的所有连接属性的所有实例的单个domainpath定义为一个矩阵，
-	//每一维度是:特定SrcUrl/DstUrl/srcId/DstId/srcField/dstField的具体实例对应的domainpath数组，且目的实例号不在同一个filed内
-	//矩阵中的每个元素为：带实例号的AppConnect的单条domainPath
+	// 把所有components的所有连接属性的所有实例的单个domainpath定义为一个矩阵，
+	// 每一维度是:特定SrcUrl/DstUrl/srcId/DstId/srcField/dstField的具体实例对应的domainpath数组，且目的实例号不在同一个filed内
+	// 矩阵中的每个元素为：带实例号的AppConnect的单条domainPath
 	for comName, component := range local.ComponentArray {
-		//指定副本下的AppConnectReqList
+		// 指定副本下的AppConnectReqList
 		for i, appConnectReqList := range component.AppConnectReqList {
-			//AppRequest下所有的副本实例的多条domainPath
-			//清空内容
+			// AppRequest下所有的副本实例的多条domainPath
+			// 清空内容
 			infoString := fmt.Sprintf("component[%s].AppConnectReqList[%d] is: (%+v)", comName, i, appConnectReqList)
 			nputil.TraceInfo(infoString)
-			//scnIdAppDomainPathGroup指定源连接属性的所有实例的domainPathGroup
+			// scnIdAppDomainPathGroup指定源连接属性的所有实例的domainPathGroup
 			for _, scnIdAppDomainPathGroup := range appConnectReqList.ScnIdDomainPathGroup {
-				//带实例号的连接属性的多条domainPath路径为一维数组
+				// 带实例号的连接属性的多条domainPath路径为一维数组
 				appConnectDomainPathArray = []AppDomainPath{}
 				for _, appDomainPathArray := range scnIdAppDomainPathGroup.AppDomainPathArray {
 					infoString := fmt.Sprintf("appDomainPathArray is: (%+v)\n\n", appDomainPathArray)
@@ -710,7 +709,7 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 						nputil.TraceInfo(infoString)
 					}
 				}
-				//带实例号的AppConnect的domainSrPath matrix
+				// 带实例号的AppConnect的domainSrPath matrix
 				appConnectDomainPathMatrix = append(appConnectDomainPathMatrix, appConnectDomainPathArray)
 			}
 		}
@@ -728,7 +727,7 @@ func CombMatrixToDomainPathGroup() [][]AppDomainPath {
 		return combGroup
 	}
 	// To keep track of next element in each of the n arrays
-	var indices = make([]int, n)
+	indices := make([]int, n)
 	// Initialize with first element's index
 	for i := 0; i < n; i++ {
 		indices[i] = 0
@@ -786,10 +785,10 @@ func CalAppConnectAttrForLink(link v1alpha1.Link) bool {
 	graph := GraphFindByGraphType(GraphTypeAlgo_Cspf)
 	domainGraph := graph.DomainGraphPoint
 
-	srcCom := local.selfId2Component[link.SourceID]                                                  //源component
-	dstCom := local.selfId2Component[link.DestinationID]                                             //目的component
-	srcScnIdInstList := local.ComponentArray[srcCom].ScnIdInstList[link.SourceID].ScnIdInstList      //源定标识scn_id的实例列表
-	dstScnIdInstList := local.ComponentArray[dstCom].ScnIdInstList[link.DestinationID].ScnIdInstList //目的标识scn_id的实例列表
+	srcCom := local.selfId2Component[link.SourceID]                                                  // 源component
+	dstCom := local.selfId2Component[link.DestinationID]                                             // 目的component
+	srcScnIdInstList := local.ComponentArray[srcCom].ScnIdInstList[link.SourceID].ScnIdInstList      // 源定标识scn_id的实例列表
+	dstScnIdInstList := local.ComponentArray[dstCom].ScnIdInstList[link.DestinationID].ScnIdInstList // 目的标识scn_id的实例列表
 
 	//var appDomainPathGroupArray [][]AppDomainPathArray
 	/*TBD:为了尽可能地在构造各个实例标识的matrix时负荷分担，目标实例不集中在某几个实例上，构建以某个源标识的appConnect时候，采用折回方式,且目标实例在同一个域看作一个：
@@ -806,12 +805,12 @@ func CalAppConnectAttrForLink(link v1alpha1.Link) bool {
 		ScnIdDomainPathGroup.ScnIdInstance = srcScnIdInstList[i]
 
 		for j := 0; j < len(dstScnIdInstList); j++ {
-			//获取标识通信的连接属性：key, kv, sla, rtt, provider，冷启动加速等
+			// 获取标识通信的连接属性：key, kv, sla, rtt, provider，冷启动加速等
 			appLinkAttr := CreateAppConnectAttrByScnInst(srcScnIdInstList[i], dstScnIdInstList[j])
 			if appLinkAttr == nil {
 				continue
 			}
-			//appConnectAttr用于网络算路后，回填给运营系统
+			// appConnectAttr用于网络算路后，回填给运营系统
 			var appConnectAttr AppConnectAttr
 			appConnectAttr.Key = appLinkAttr.Key
 			appConnectAttr.SlaAttr = appLinkAttr.LinkSlaAttr.SlaAttr
@@ -825,7 +824,7 @@ func CalAppConnectAttrForLink(link v1alpha1.Link) bool {
 			nputil.TraceInfo(infoString)
 			dstDuplicate := false
 
-			//如果同一个filed内的目的实例已经计算过，则不在计算
+			// 如果同一个filed内的目的实例已经计算过，则不在计算
 			for _, tmpAppConnect := range ScnIdDomainPathGroup.AppDomainPathArray {
 				if appLinkAttr.Key.SrcDomainId == tmpAppConnect.AppConnect.Key.SrcDomainId &&
 					appLinkAttr.Key.DstDomainId == tmpAppConnect.AppConnect.Key.DstDomainId &&
@@ -839,10 +838,10 @@ func CalAppConnectAttrForLink(link v1alpha1.Link) bool {
 			if dstDuplicate == true {
 				break
 			}
-			//源和目的在同一个filed,认为可达，返回所在filed
+			// 源和目的在同一个filed,认为可达，返回所在filed
 			if appConnectAttr.Key.SrcDomainId == appConnectAttr.Key.DstDomainId {
 				domainSrPath := []DomainSrPath{
-					0: DomainSrPath{
+					0: {
 						DomainSidArray: []DomainSid{
 							0: {DomainId: appConnectAttr.Key.SrcDomainId},
 						},
@@ -856,8 +855,8 @@ func CalAppConnectAttrForLink(link v1alpha1.Link) bool {
 				break
 			}
 
-			//源实例标识和目的实例标识不在同一个field计算domainPath
-			//只计算以时延为权重的domainPath
+			// 源实例标识和目的实例标识不在同一个field计算domainPath
+			// 只计算以时延为权重的domainPath
 			domainSrPathArray := graph.AppConnect(domainGraph.DomainLinkKspGraph, KspCalcMaxNum, *appLinkAttr)
 			domainSrNamePath := graph.GetDomainPathNameArrayWithFaric(domainSrPathArray)
 			infoString = fmt.Sprintf("domainSrNamePath is (%+v)\n", domainSrNamePath)
@@ -866,22 +865,22 @@ func CalAppConnectAttrForLink(link v1alpha1.Link) bool {
 				appDomainPath := AppDomainPathArray{}
 				appDomainPath.DomainSrPathArray = domainSrPathArray
 				appDomainPath.AppConnect = appConnectAttr
-				//附加一个具体实例AppConnect的多条路径
+				// 附加一个具体实例AppConnect的多条路径
 				ScnIdDomainPathGroup.AppDomainPathArray = append(ScnIdDomainPathGroup.AppDomainPathArray, appDomainPath)
 				infoString = fmt.Sprintf("ScnIdDomainPathGroup.AppDomainPathArray is (%+v)\n", ScnIdDomainPathGroup.AppDomainPathArray)
 				nputil.TraceInfo(infoString)
 			}
 		}
 
-		//判断该源副本实例是否存在可达路径
-		//当每个副本都的链接属性都可达时，才认为该链接属性可达，只要有一个链接属性不可达，ResourceBinding方案无效
+		// 判断该源副本实例是否存在可达路径
+		// 当每个副本都的链接属性都可达时，才认为该链接属性可达，只要有一个链接属性不可达，ResourceBinding方案无效
 		if len(ScnIdDomainPathGroup.AppDomainPathArray) == 0 {
 			infoString := fmt.Sprintf("The interCommunication (%+v) is unavailable!\n", link)
 			nputil.TraceInfo(infoString)
 			nputil.TraceInfoEnd("false")
 			return false
 		} else {
-			//该副本实例存在可达路径，将该副本实例的与不同目的实例的AppConnect的domainSrPathArray 存放在相同源标识的local.ComponentArray[srcCom].AppConnectReqList下
+			// 该副本实例存在可达路径，将该副本实例的与不同目的实例的AppConnect的domainSrPathArray 存放在相同源标识的local.ComponentArray[srcCom].AppConnectReqList下
 			for i, tmpAppReq := range local.ComponentArray[srcCom].AppConnectReqList {
 				if link.SourceID == tmpAppReq.Key.SrcUrl && link.DestinationID == tmpAppReq.Key.DstUrl {
 					ScnIdDomainPathGroupArray = append(ScnIdDomainPathGroupArray, ScnIdDomainPathGroup)
@@ -905,16 +904,16 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 
 	graph := GraphFindByGraphType(GraphTypeAlgo_Cspf)
 
-	//set component map
+	// set component map
 	SetComponentByNetReq(networkReq)
-	//Map SCN_ID to Component name
+	// Map SCN_ID to Component name
 	SetSelfId2Component(networkReq)
 	// set the filed location of component and ite replicas
 	SetComponentByRb(*rb)
 	// Set App connect instances for all components
 	SetScnIdInstances()
 
-	//Calc and check domainSrPathArray of all appConnect instances for all interCommunication
+	// Calc and check domainSrPathArray of all appConnect instances for all interCommunication
 	// and store domainSrPathArray in
 	var available bool
 	available = true
@@ -930,7 +929,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 		}
 	}
 
-	//选出DomainPathGroupMaxNum组组合方案
+	// 选出DomainPathGroupMaxNum组组合方案
 	var domainPathCluster [][]AppDomainPath
 	domainPathComb := CombMatrixToDomainPathGroup()
 	if len(domainPathComb) < DomainPathGroupMaxNum {
@@ -951,11 +950,11 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 	if len(domainPathCluster) != 0 {
 		var rbDomainPathArray []BindingSelectedDomainPath
 		for _, appPathGroup := range domainPathCluster {
-			var rbSdp = BindingSelectedDomainPath{}
+			rbSdp := BindingSelectedDomainPath{}
 			for i, appDomainPath := range appPathGroup {
 				infoString := fmt.Sprintf("appPathGroup[%d] is: (%+v).\n\n", i, appDomainPath)
 				nputil.TraceInfo(infoString)
-				var appSelectedPath = AppConnectSelectedDomainPath{}
+				appSelectedPath := AppConnectSelectedDomainPath{}
 				appSelectedPath.AppConnectAttr.Key = appDomainPath.AppConnect.Key
 				appSelectedPath.AppConnectAttr.SlaAttr = appDomainPath.AppConnect.SlaAttr
 				appSelectedPath.AppConnectAttr.SrcScnidKVList = appDomainPath.AppConnect.SrcScnidKVList
@@ -964,12 +963,12 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 				appSelectedPath.DomainSrPath = appDomainPath.DomainSrPath
 				appSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(appDomainPath.DomainSrPath)
 				rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
-				//如果有rtt要求，计算并同步最短时延的反向路径, rtt在计算正向路径时已经满足，此处不用校验，肯定会满足
+				// 如果有rtt要求，计算并同步最短时延的反向路径, rtt在计算正向路径时已经满足，此处不用校验，肯定会满足
 				if appDomainPath.AppConnect.Rtt != 0 {
 					appSelectedPath = AppConnectSelectedDomainPath{}
-					//获取反向路径的domainsr
+					// 获取反向路径的domainsr
 					reverseDomainSrPath := GetReverseDomainPath(graph, appDomainPath.AppConnect)
-					//构造反向通信请求
+					// 构造反向通信请求
 					appSelectedPath.AppConnectAttr.Key.SrcUrl = appDomainPath.AppConnect.Key.DstUrl
 					appSelectedPath.AppConnectAttr.Key.DstUrl = appDomainPath.AppConnect.Key.SrcUrl
 					appSelectedPath.AppConnectAttr.Key.SrcID = appDomainPath.AppConnect.Key.DstID
@@ -991,7 +990,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 				rbDomainPathArray = append(rbDomainPathArray, rbSdp)
 			}
 		}
-		//构造message数据
+		// 构造message数据
 		for i, bindDomainPath := range rbDomainPathArray {
 			infoString := fmt.Sprintf("---------bindDomainPath SelectedDomainPath [%d] ---------\n", i)
 			nputil.TraceInfo(infoString)
@@ -1019,7 +1018,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			infoString = fmt.Sprintf("Proto marshal content base64 encodeToString is (%+v)", encodeToString)
 			nputil.TraceInfoAlwaysPrint(infoString)
 
-			//Verify the unmarshal action
+			// Verify the unmarshal action
 			dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(NpContentBase64)))
 			n, _ := base64.StdEncoding.Decode(dbuf, []byte(NpContentBase64))
 			npConentByteConvert := dbuf[:n]
@@ -1061,7 +1060,7 @@ func networkFilterForRbs(rbs []*v1alpha1.ResourceBinding, networkReq *v1alpha1.N
 				nputil.TraceInfo(infoString)
 			}
 		}
-		//一个ResourceBing筛选完路径后，清除暂存的临时数据。
+		// 一个ResourceBing筛选完路径后，清除暂存的临时数据。
 		ClearLocalComConnectArray()
 	}
 	for i, selectedRb := range selectedRbs {

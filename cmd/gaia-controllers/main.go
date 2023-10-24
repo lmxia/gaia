@@ -3,13 +3,14 @@ package main
 import (
 	goflag "flag"
 	"fmt"
+	"math/rand"
+	"os"
+	"time"
+
 	"github.com/lmxia/gaia/cmd/gaia-controllers/app"
 	"github.com/lmxia/gaia/pkg/utils"
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
-	"math/rand"
-	"os"
-	"time"
 )
 
 func main() {

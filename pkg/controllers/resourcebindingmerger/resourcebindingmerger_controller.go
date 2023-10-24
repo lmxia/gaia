@@ -61,7 +61,8 @@ type Controller struct {
 
 // NewController creates and initializes a new ResourceBindingMergerController
 func NewController(clusternetClient gaiaClientSet.Interface,
-	rbsInformer rbsInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+	rbsInformer rbsInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc,
+) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
@@ -201,7 +202,6 @@ func (c *Controller) processNextWorkItem() bool {
 		klog.Infof("successfully synced ResourceBinding %q", key)
 		return nil
 	}(obj)
-
 	if err != nil {
 		utilruntime.HandleError(err)
 		return true
@@ -268,7 +268,6 @@ func (c *Controller) UpdateRBStatus(rb *appv1alpha1.ResourceBinding, status *app
 		}
 		return err
 	})
-
 }
 
 // enqueue takes a ResourceBinding resource and converts it into a namespace/name

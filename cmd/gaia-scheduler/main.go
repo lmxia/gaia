@@ -3,6 +3,7 @@ package main
 import (
 	goflag "flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/lmxia/gaia/pkg/utils"
 	"github.com/spf13/pflag"
 	"k8s.io/klog/v2"
-	"math/rand"
 )
 
 func main() {

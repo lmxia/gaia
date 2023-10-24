@@ -238,7 +238,6 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 						klog.Infof("failed to start metrics server: %v", err)
 					}
 				}
-
 			},
 			OnStoppedLeading: func() {
 				klog.Error("leader election got lost")
@@ -567,7 +566,6 @@ func buildHandlerChain(handler http.Handler, authn authenticator.Request, authz 
 func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
 	// configz.InstallHandler(pathRecorderMux)
 	pathRecorderMux.Handle("/metrics", legacyregistry.HandlerWithReset())
-
 }
 
 // newMetricsHandler builds a metrics server from the config.

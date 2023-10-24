@@ -61,7 +61,8 @@ type CRRApprover struct {
 
 // NewCRRApprover returns a new CRRApprover for ClusterRegistrationRequest.
 func NewCRRApprover(localkubeclient *kubernetes.Clientset, localgaiaclient *gaiaClientSet.Clientset, localKubeConfig *rest.Config,
-	gaiaInformerFactory externalInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+	gaiaInformerFactory externalInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory,
+) (*CRRApprover, error) {
 	localdynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 
 	ver, err := localkubeclient.Discovery().ServerVersion()
@@ -105,6 +106,7 @@ func (crrApprover *CRRApprover) SetParentClient() {
 	// crrApprover.descLister = parentgaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister()
 	crrApprover.parentDynamicClient = parentDynamicClient
 }
+
 func (crrApprover *CRRApprover) Run(threadiness int, stopCh <-chan struct{}) {
 	klog.Info("starting gaia crr approver ...")
 
@@ -371,7 +373,8 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 }
 
 func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterName string, clusterID types.UID,
-	clusterLabels map[string]string) (*platformv1alpha1.ManagedCluster, error) {
+	clusterLabels map[string]string,
+) (*platformv1alpha1.ManagedCluster, error) {
 	// checks for an existed ManagedCluster object
 	// the clusterName here may vary, we use clusterID as the identifier
 	mcs, err := crrApprover.mclsLister.List(labels.SelectorFromSet(labels.Set{
@@ -575,7 +578,8 @@ func (crrApprover *CRRApprover) bindingRoleIfNeeded(serviceAccountName, namespac
 }
 
 func getCredentialsForChildCluster(ctx context.Context, client *kubernetes.Clientset, backoff wait.Backoff,
-	saName, saNamespace string, saTokenAutoGen bool) (*corev1.Secret, error) {
+	saName, saNamespace string, saTokenAutoGen bool,
+) (*corev1.Secret, error) {
 	var secret *corev1.Secret
 	var sa *corev1.ServiceAccount
 	var lastError error

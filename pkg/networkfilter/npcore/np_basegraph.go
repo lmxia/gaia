@@ -3,6 +3,7 @@ package npcore
 import (
 	"errors"
 	"fmt"
+
 	ncsnp "github.com/lmxia/gaia/pkg/networkfilter/model"
 	"github.com/lmxia/gaia/pkg/networkfilter/nputil"
 	"github.com/timtadh/data-structures/tree/avl"
@@ -19,7 +20,7 @@ type BaseGraph struct {
 
 /************************** Domain **************************************/
 type BaseDomainGraph struct {
-	BaseDomainTree    avl.AvlTree //树节点结构BaseDomain
+	BaseDomainTree    avl.AvlTree // 树节点结构BaseDomain
 	BaseDomainDbArray []BaseDomainDb
 }
 
@@ -31,7 +32,7 @@ type BaseDomain struct {
 	BaseDomainDbV        BaseDomainDb
 	BaseDomainGraphPoint *BaseDomainGraph
 
-	BaseDomainLinkTree    avl.AvlTree //树节点结构BaseDomainLink
+	BaseDomainLinkTree    avl.AvlTree // 树节点结构BaseDomainLink
 	BaseDomainLinkDbArray []BaseDomainLinkDb
 }
 
@@ -50,7 +51,7 @@ type BaseDomainLink struct {
 
 type BaseDomainLinkDb struct {
 	Key               DomainLinkKey `json:"key" groups:"db"`
-	IntfName          string        `json:"intfName" groups:"db"` //link使用的物理口信息，用于计算带宽占用等
+	IntfName          string        `json:"intfName" groups:"db"` // link使用的物理口信息，用于计算带宽占用等
 	Frequency         uint32        `json:"frequency" groups:"db"`
 	Delay             uint32        `json:"delay" groups:"db"`
 	HistoryDelayArray []uint32      `json:"historyDelayArray" groups:"db"`
@@ -224,7 +225,7 @@ func (baseGraph *BaseGraph) BaseDomainAdd(domainId uint32, domainName string, do
 func (baseDomainGraph *BaseDomainGraph) BaseDomainAdd(domainId uint32, domainName string, domainType DomainType) *BaseDomain {
 	nputil.TraceInfoBegin("")
 
-	//basegraph 中添加 domain
+	// basegraph 中添加 domain
 	findDomain := baseDomainGraph.BaseDomainFindById(domainId)
 	if findDomain != nil {
 		infoString := fmt.Sprintf("domainId(%d) has existed", domainId)
@@ -233,7 +234,7 @@ func (baseDomainGraph *BaseDomainGraph) BaseDomainAdd(domainId uint32, domainNam
 	}
 
 	addDomain := baseDomainCreateById(domainId, domainName, domainType, baseDomainGraph)
-	//加入树中
+	// 加入树中
 	err := baseDomainGraph.BaseDomainTree.Put(addDomain.BaseDomainDbV.Key, addDomain)
 	if err != nil {
 		rtnErr := errors.New("BaseDomainTree put error")
@@ -241,7 +242,7 @@ func (baseDomainGraph *BaseDomainGraph) BaseDomainAdd(domainId uint32, domainNam
 		return addDomain
 	}
 
-	//更新BaseDomainDbArray
+	// 更新BaseDomainDbArray
 	baseDomainGraph.BaseDomainDbArray = []BaseDomainDb{}
 	for _, v, next := baseDomainGraph.BaseDomainTree.Iterate()(); next != nil; _, v, next = next() {
 		tmpBaseDomain := v.(*BaseDomain)
@@ -262,10 +263,10 @@ func (baseDomainGraph *BaseDomainGraph) BaseDomainDelete(domainId uint32) error 
 		return rtnErr
 	}
 
-	//删掉domain的domainlink
+	// 删掉domain的domainlink
 	_ = BaseDomain.BaseDomainlinkAllDelete()
 
-	//摘除树中
+	// 摘除树中
 	_, err := baseDomainGraph.BaseDomainTree.Remove(BaseDomain.BaseDomainDbV.Key)
 	if err != nil {
 		rtnErr := errors.New("BaseDomainTree remove error")
@@ -282,7 +283,7 @@ func DomainAddForAllGraph(domainID uint32, domainName string, domainTypeString s
 	local := GetCoreLocal()
 	baseDomainGraph := local.BaseGraphPoint.BaseDomainGraphPoint
 
-	//Add domain in baseDomainGraph and graph tree
+	// Add domain in baseDomainGraph and graph tree
 	baseDomain := baseDomainGraph.BaseDomainFindById(domainID)
 	if baseDomain == nil {
 		domainType := String2DomainType(domainTypeString)
@@ -442,18 +443,18 @@ func (baseDomainLink *BaseDomainLink) UpdateBaseDomainLinkFreeBandwidth(requireB
 		nputil.TraceErrorString(infoString)
 		return false
 	}
-	//Update basedomainlink free bandwidth
+	// Update basedomainlink free bandwidth
 	baseDomainLink.BaseDomainLinkDbV.Sla.FreeThroughputValue = baseDomainLink.BaseDomainLinkDbV.Sla.FreeThroughputValue - requireBandwidth
 
 	nputil.TraceInfoEnd("")
 	return true
 }
 
-//Add Basedomainlink and domainlink in graph
+// Add Basedomainlink and domainlink in graph
 func (baseDomain *BaseDomain) BaseDomainLinkAdd(domainLinkKey DomainLinkKey, domainVlink ncsnp.DomainVLink) error {
 	nputil.TraceInfoBegin("")
 
-	//先查找
+	// 先查找
 	findBaseDomainLink := baseDomain.BaseDomainLinkFindByKey(domainLinkKey)
 	if findBaseDomainLink != nil {
 		infoString := fmt.Sprintf("The domainlink(%+v) has existed", domainLinkKey)
@@ -485,7 +486,7 @@ func (baseDomain *BaseDomain) BaseDomainLinkAdd(domainLinkKey DomainLinkKey, dom
 func (baseDomain *BaseDomain) BaseDomainlinkAllDelete() error {
 	nputil.TraceInfoBegin("")
 
-	//释放domainlink
+	// 释放domainlink
 	for _, v, next := baseDomain.BaseDomainLinkTree.Iterate()(); next != nil; _, v, next = next() {
 		baseDomainLink := v.(*BaseDomainLink)
 		err := baseDomain.BaseDomainlinkDelete(baseDomainLink.BaseDomainLinkDbV.Key)
@@ -503,7 +504,7 @@ func (baseDomain *BaseDomain) BaseDomainlinkAllDelete() error {
 func (baseDomain *BaseDomain) BaseDomainlinkDelete(domainLinkKey DomainLinkKey) error {
 	nputil.TraceInfoBegin("")
 
-	//Find domainlink
+	// Find domainlink
 	findBaseDomainLink := baseDomain.BaseDomainLinkFindByKey(domainLinkKey)
 	if findBaseDomainLink == nil {
 		rtnErr := errors.New("baseDomainLink doesn't exist")
@@ -550,7 +551,7 @@ func BaseDomainLinkGetBySrc(domainId uint32, nodeSN string, attachId uint64) *Ba
 		return nil
 	}
 
-	//遍历BaseDomain下所有的 BaseDomainLink，找源node 和 attachid相同的 baseDomainLink
+	// 遍历BaseDomain下所有的 BaseDomainLink，找源node 和 attachid相同的 baseDomainLink
 	for _, v, next := baseDomain.BaseDomainLinkTree.Iterate()(); next != nil; _, v, next = next() {
 		tmpBaseDomainLink := v.(*BaseDomainLink)
 		if tmpBaseDomainLink.BaseDomainLinkDbV.Key.SrcNodeSN == nodeSN && tmpBaseDomainLink.BaseDomainLinkDbV.Key.AttachId == attachId {
@@ -637,7 +638,7 @@ func (baseDomain *BaseDomain) BaseDomainLinkAddFromCache(domainTopoCache ncsnp.D
 		}
 		domainLinkKey := DomainLinkKeyCreateFromCache(domainVlink)
 
-		//Add domainlink in baseDomainGraph and graph
+		// Add domainlink in baseDomainGraph and graph
 		err := baseDomain.BaseDomainLinkAdd(*domainLinkKey, *domainVlink)
 		if err != nil {
 			rtnErr := errors.New("baseDomainLinkAddFromCache failed")
@@ -645,7 +646,7 @@ func (baseDomain *BaseDomain) BaseDomainLinkAddFromCache(domainTopoCache ncsnp.D
 			return rtnErr
 		}
 
-		//Add Fabric domain of the domainlink
+		// Add Fabric domain of the domainlink
 		if domainVlink.AttachDomainName != "" {
 			infoString := fmt.Sprintf("fabric domainId(%d) is , fabricName is (%s)", domainVlink.AttachDomainId, domainVlink.AttachDomainName)
 			nputil.TraceInfoEnd(infoString)
@@ -663,12 +664,12 @@ func DomainResourceFreeForCache() {
 	local := GetCoreLocal()
 	baseDomainGraph := local.BaseGraphPoint.BaseDomainGraphPoint
 
-	//Delete domainlink and domain in baseDomainGraph tree and graph tree
+	// Delete domainlink and domain in baseDomainGraph tree and graph tree
 	for _, v, next := baseDomainGraph.BaseDomainTree.Iterate()(); next != nil; _, v, next = next() {
 		baseDomain := v.(*BaseDomain)
 		_ = baseDomainGraph.BaseDomainDelete(baseDomain.BaseDomainDbV.Key.DomainId)
 
-		//Delete domainlink and domain in DomainGraph tree and graph tree
+		// Delete domainlink and domain in DomainGraph tree and graph tree
 		for _, v, next := local.GraphTree.Iterate()(); next != nil; _, v, next = next() {
 			graph := v.(*Graph)
 			_ = graph.GraphDomainDelete(baseDomain.BaseDomainDbV.Key.DomainId)

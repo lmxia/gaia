@@ -1,12 +1,13 @@
 package corenetworkpriority
 
 import (
+	"testing"
+
 	v1alpha12 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	"github.com/stretchr/testify/suite"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 type ScoreSuite struct {

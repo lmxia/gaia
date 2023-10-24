@@ -19,9 +19,10 @@ limitations under the License.
 package runtime
 
 import (
+	"time"
+
 	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 	"github.com/lmxia/gaia/pkg/scheduler/metrics"
-	"time"
 
 	k8smetrics "k8s.io/component-base/metrics"
 )

@@ -35,7 +35,8 @@ func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster)
 
 // spawn a brank new resourcebindings on multi spread level.
 func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCluster, desc *appv1alpha1.Description,
-	components []appv1alpha1.Component, affinity []int) []*appv1alpha1.ResourceBinding {
+	components []appv1alpha1.Component, affinity []int,
+) []*appv1alpha1.ResourceBinding {
 	result := make([]*appv1alpha1.ResourceBinding, 0)
 	matResult := make([]mat.Matrix, 0)
 	rbIndex := 0
@@ -591,7 +592,8 @@ func GetClusterCombos(set []*framework.ClusterInfo, depth int) [][]*framework.Cl
 }
 
 func GetCombosHelper(set []*framework.ClusterInfo, depth int, start int, prefix []*framework.ClusterInfo,
-	accum [][]*framework.ClusterInfo) [][]*framework.ClusterInfo {
+	accum [][]*framework.ClusterInfo,
+) [][]*framework.ClusterInfo {
 	if depth == 0 {
 		return append(accum, prefix)
 	} else {
@@ -695,7 +697,6 @@ func checkMatrix(m mat.Matrix, i, j int) bool {
 	_, ac := m.Dims()
 
 	for k := 0; k < ac; k++ {
-
 		if checkSpread(mat.DenseCopyOf(m).RawRowView(j)) {
 			if m.At(i, k) != 0 && m.At(j, k) == 0 {
 				return false

@@ -51,9 +51,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var (
-	deletePropagationBackground = metav1.DeletePropagationBackground
-)
+var deletePropagationBackground = metav1.DeletePropagationBackground
 
 // controllerKind contains the schema.GroupVersionKind for this controller type.
 var controllerKind = appsV1alpha1.SchemeGroupVersion.WithKind("ResourceBinding")
@@ -127,7 +125,8 @@ func NewRBController(localKubeClient *kubernetes.Clientset, localGaiaClient *gai
 
 // NewController creates and initializes a new Controller
 func NewController(gaiaClient gaiaClientSet.Interface,
-	rbsInformer informers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+	rbsInformer informers.ResourceBindingInformer, syncHandler SyncHandlerFunc,
+) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
@@ -325,7 +324,6 @@ func (c *Controller) processNextWorkItem() bool {
 		klog.Infof("successfully synced resourcebinding %q", key)
 		return nil
 	}(obj)
-
 	if err != nil {
 		utilruntime.HandleError(err)
 		return true
@@ -738,7 +736,8 @@ func (c *RBController) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.Resourc
 	derivedRBs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
 		common.OriginDescriptionNameLabel:      rb.GetLabels()[common.OriginDescriptionNameLabel],
 		common.OriginDescriptionNamespaceLabel: rb.GetLabels()[common.OriginDescriptionNamespaceLabel],
-		common.OriginDescriptionUIDLabel:       rb.GetLabels()[common.OriginDescriptionUIDLabel]}))
+		common.OriginDescriptionUIDLabel:       rb.GetLabels()[common.OriginDescriptionUIDLabel],
+	}))
 	if err != nil {
 		return err
 	}

@@ -3,15 +3,15 @@ package utils
 import (
 	"bufio"
 	"io"
-	"k8s.io/klog/v2"
 	"os"
 	"strings"
+
+	"k8s.io/klog/v2"
 )
 
 // InitConfig returns the map and the keys list of a configMap file.
 // The file content is in yaml-like format with colons(":") between key and value.
 func InitConfig(path string) (configMap map[string]string, mapKeyList []string, err error) {
-
 	configMap = make(map[string]string)
 	f, err := os.Open(path)
 	if err != nil {

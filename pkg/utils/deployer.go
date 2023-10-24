@@ -395,26 +395,67 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 		allErrs = append(allErrs, err)
 	}
 
-	var statusScheduler string
-	var reason string
-	if len(allErrs) > 0 {
-		statusScheduler = known.ResourceBindingRed
-		reason = utilerrors.NewAggregate(allErrs).Error()
-		klog.Errorf("failed to deploy workloads", "ResourceBinding", klog.KObj(rb), "reason", reason)
-	} else {
-		statusScheduler = known.ResourceBindingGreen
-		reason = ""
-		klog.InfoS("deploy workloads successfully", "ResourceBinding", klog.KObj(rb))
-	}
+	condition := getCondition(allErrs, clusterName, klog.KObj(rb).String())
 	// update status
-	rb.Status.Status = statusScheduler
-	rb.Status.Reason = reason
-	_, err := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(), rb, metav1.UpdateOptions{})
+	var lastError error
+	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+		rb.Status.Conditions = append(rb.Status.Conditions, condition)
+		if condition.Status == metav1.ConditionFalse {
+			rb.Status.Clusters[clusterName] = appsv1alpha1.ResourceBindingRed
+		} else {
+			rb.Status.Clusters[clusterName] = appsv1alpha1.ResourceBindingGreen
+		}
+		for _, status := range rb.Status.Clusters {
+			if status == appsv1alpha1.ResourceBindingRed {
+				rb.Status.Status = appsv1alpha1.ResourceBindingRed
+				break
+			}
+			rb.Status.Status = appsv1alpha1.ResourceBindingGreen
+		}
+		_, lastError := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(), rb, metav1.UpdateOptions{})
+		// check if failed
+		if lastError == nil {
+			return true, nil
+		}
+		if apierrors.IsConflict(lastError) {
+			newRB, lastError := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Get(context.TODO(), rb.Name, metav1.GetOptions{})
+			if lastError == nil {
+				rb = newRB
+			}
+		}
+		return false, nil
+	})
+	if err != nil {
+		klog.WarningDepth(2, "failed to update status of resourcebinding %q, err: %v", klog.KRef(rb.Namespace, rb.Name), lastError)
+	}
 
 	if len(allErrs) > 0 {
 		return utilerrors.NewAggregate(allErrs)
 	}
 	return err
+}
+
+func getCondition(errs []error, clusterName, rbRef string) metav1.Condition {
+	if len(errs) > 0 {
+		reason := utilerrors.NewAggregate(errs).Error()
+		klog.Errorf("failed to apply workloads", "ResourceBinding", rbRef, "reason", reason)
+		return metav1.Condition{
+			Type:               clusterName,
+			Status:             metav1.ConditionFalse,
+			LastTransitionTime: metav1.Now(),
+			Reason:             reason,
+			Message:            fmt.Sprintf("clusterName: %q ResourceBinding: %q  failed to deploy workloads", clusterName, rbRef),
+		}
+	}
+
+	klog.InfoS("deploy workloads successfully", "ResourceBinding", rbRef)
+	return metav1.Condition{
+		Type:               clusterName,
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		Reason:             "null",
+		Message:            fmt.Sprintf("clusterName: %q ResourceBinding: %q  deployed workloads successfully", clusterName, rbRef),
+	}
 }
 
 func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,

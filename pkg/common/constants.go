@@ -62,10 +62,6 @@ const (
 	NetworkLocationCore = "core"
 	NodeResourceForm    = "pool"
 
-	ResourceBindingRed   string = "Red"
-	ResourceBindingGreen string = "Green"
-	ResourceBindingBlue  string = "Blue"
-
 	TopoSyncBaseUrl = "http://ssiexpose.synccontroller.svc:8080" // network controller address, maybe on global
 	TopoSyncUrlPath = "/v1.0/globalsync/topo"
 

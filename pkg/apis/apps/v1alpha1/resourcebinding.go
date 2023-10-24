@@ -54,11 +54,22 @@ type ResourceBindingApps struct {
 	// +optional
 	Children []*ResourceBindingApps `json:"children,omitempty"`
 }
+
+type StatusRBDeploy string
+
+const (
+	ResourceBindingRed    StatusRBDeploy = "Red"
+	ResourceBindingGreen  StatusRBDeploy = "Green"
+	ResourceBindingYellow StatusRBDeploy = "Yellow"
+)
+
 type ResourceBindingStatus struct {
-	Status string `json:"status,omitempty"`
-	// Reason indicates the reason of ResourceBinding deployment Status
 	// +optional
-	Reason string `json:"reason,omitempty"`
+	Status StatusRBDeploy `json:"status,omitempty"`
+	// +optional
+	Clusters map[string]StatusRBDeploy `json:"clusters,omitempty"`
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true

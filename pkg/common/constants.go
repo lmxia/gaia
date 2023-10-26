@@ -21,6 +21,7 @@ const (
 	GaiaReservedNamespace             = "gaia-reserved"
 	GaiaRSToBeMergedReservedNamespace = "gaia-to-be-merged"
 	GaiaRBMergedReservedNamespace     = "gaia-merged"
+	GaiaPushReservedNamespace         = "gaia-push-reserved"
 	// ClusterAPIServerURLKey denotes the apiserver address
 	ClusterAPIServerURLKey  = "apiserver-advertise-url"
 	ParentClusterSecretName = "parent-cluster"
@@ -66,7 +67,8 @@ const (
 	TopoSyncUrlPath = "/v1.0/globalsync/topo"
 
 	// env
-	ResourceBindMergePostURL = "RESOURCEBINDING_MERGER_POST_URL"
+	ResourceBindingMergerPostURL = "RESOURCEBINDING_MERGER_POST_URL"
+	GaiaPushModeClusterName      = "GAIA_PUSH_MODE_CLUSTER_NAME"
 
 	MetricConfigMapAbsFilePath             = "/etc/config/gaia-prometheus_metrics.conf"
 	ServiceMaintenanceConfigMapAbsFilePath = "/etc/config/service-maintenance-prometheus_metrics.conf"

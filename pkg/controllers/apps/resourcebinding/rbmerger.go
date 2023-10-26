@@ -85,7 +85,7 @@ type FieldsRBs struct {
 
 // NewRBMerger returns a new RBMerger for ResourceBinding.
 func NewRBMerger(kubeClient *kubernetes.Clientset, gaiaClient *gaiaClientSet.Clientset) (*RBMerger, error) {
-	postUrl := os.Getenv(common.ResourceBindMergePostURL)
+	postUrl := os.Getenv(common.ResourceBindingMergerPostURL)
 	localToGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(gaiaClient, common.DefaultResync, gaiaInformers.WithNamespace(common.GaiaRSToBeMergedReservedNamespace))
 	rbMerger := &RBMerger{
 		localKubeClient:                 kubeClient,
@@ -147,6 +147,7 @@ func (m *RBMerger) SetParentRBController() (*RBMerger, error) {
 
 	rbTOParentController, err := resourcebindingmerger.NewController(m.localGaiaClient, m.localToMergeGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), m.handleToParentResourceBinding)
 	if err != nil {
+		klog.Errorf("failed to create rbMerger to parent, err==%v", err)
 		return nil, err
 	}
 	m.rbTOParentController = rbTOParentController

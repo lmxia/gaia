@@ -9,6 +9,7 @@ import (
 	"time"
 
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
@@ -205,28 +206,37 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 
 				// 5. start local description
 				go func() {
-					controller.rbController.SetLocalDescriptionController()
+					_, err := controller.rbController.SetLocalDescriptionController()
+					if err != nil {
+						utilruntime.HandleError(err)
+					}
 					klog.Info("start 5. start local description informers...")
 					controller.rbController.RunLocalDescription(common.DefaultThreadiness, ctx.Done())
 				}()
 
-				// 6. start parent ResourceBinding and Description
+				// 6. start ResourceBinding and Description controller of parent cluster and local pushed
 				go func() {
 					// set parent config
-					controller.rbController.SetParentRBController()
-					klog.Info("start 6. start parent ResourceBinding and Description informers...")
+					_, err := controller.rbController.SetRBBindController(*controller.DedicatedNamespace)
+					if err != nil {
+						utilruntime.HandleError(err)
+					}
+					klog.Info("start 6. start ResourceBinding and Description controller of parent cluster and local pushed...")
 					controller.rbController.RunParentResourceBindingAndDescription(common.DefaultThreadiness, ctx.Done())
 				}()
 
-				// 7. start rbMerger
+				// 7. start to rbMerger
 				go func() {
-					controller.rbMerger.SetParentRBController()
-					klog.Info("start 7. start rbMerger Controller...")
+					_, err := controller.rbMerger.SetParentRBController()
+					if err != nil {
+						utilruntime.HandleError(err)
+					}
+					klog.Info("start 7. start rbMerger controller for parent cluster...")
 					controller.rbMerger.RunToParentResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
 				}()
-				// 8. start cronmaster controller
+				// 8. start local cronmaster controller
 				go func() {
-					klog.Info("start 8. start cronmaster controller...")
+					klog.Info("start 8. start local cronmaster controller...")
 					controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
 				}()
 

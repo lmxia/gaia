@@ -14,6 +14,12 @@ metadata:
   name: gaia-reserved
 
 ---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gaia-push-reserved
+
+---
 kind: ServiceAccount
 apiVersion: v1
 metadata:

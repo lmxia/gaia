@@ -385,8 +385,8 @@ type Fields struct {
 }
 
 // getHypernodeLabelsMapFromManagedCluster returns hypernode labels of the current cluster from the managedCluster
-func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers map[string]struct{}) {
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
+func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers, publicNetworkMap map[string]struct{}) {
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers, publicNetworkMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
 	var labelValueArray []string
 	clusterLabels := cluster.GetLabels()
 	for labelKey, labelValue := range clusterLabels {
@@ -418,15 +418,17 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 				geolocationMap[labelValue] = struct{}{}
 			} else if strings.HasPrefix(labelKey, ParsedProviderKey) {
 				providers[labelValue] = struct{}{}
+			} else if strings.HasPrefix(labelKey, ParsedPublicNetworkKey) {
+				publicNetworkMap[labelValue] = struct{}{}
 			}
 		}
 	}
-	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers
+	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers, publicNetworkMap
 }
 
 // GetGaiaLabels return gaia type labels.
 func (mcluster *ManagedCluster) GetGaiaLabels() map[string][]string {
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap := mcluster.GetHypernodeLabelsMapFromManagedCluster()
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap, publicNetworkMap := mcluster.GetHypernodeLabelsMapFromManagedCluster()
 	clusterLabels := make(map[string][]string, 0)
 
 	// no.1
@@ -471,6 +473,12 @@ func (mcluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 		providers = append(providers, k)
 	}
 	clusterLabels["supplier-name"] = providers
+	// no.8
+	publicNetworks := make([]string, 0, len(publicNetworkMap))
+	for k := range publicNetworkMap {
+		publicNetworks = append(publicNetworks, k)
+	}
+	clusterLabels["public-network"] = publicNetworks
 
 	return clusterLabels
 }
@@ -483,6 +491,7 @@ var (
 	RuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "RuntimeState"
 	SNKey             = common.SpecificNodeLabelsKeyPrefix + "SN"
 	NetworkEnvKey     = common.SpecificNodeLabelsKeyPrefix + "SupplierName"
+	PublicNetworkKey  = common.SpecificNodeLabelsKeyPrefix + "PublicNetwork"
 
 	HypernodeLableKeyList = []string{
 		GeoLocationKey,
@@ -492,6 +501,7 @@ var (
 		RuntimeStateKey,
 		SNKey,
 		NetworkEnvKey,
+		PublicNetworkKey,
 	}
 
 	ParsedGeoLocationKey    = common.SpecificNodeLabelsKeyPrefix + "geo-location"
@@ -501,6 +511,7 @@ var (
 	ParsedRuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "runtime-state"
 	ParsedSNKey             = common.SpecificNodeLabelsKeyPrefix + "sn"
 	ParsedProviderKey       = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
+	ParsedPublicNetworkKey  = common.SpecificNodeLabelsKeyPrefix + "public-network"
 
 	ParsedHypernodeLableKeyList = []string{
 		ParsedGeoLocationKey,
@@ -510,6 +521,7 @@ var (
 		ParsedRuntimeStateKey,
 		ParsedSNKey,
 		ParsedProviderKey,
+		ParsedPublicNetworkKey,
 	}
 
 	HypernodeLableKeyToStandardLabelKey = map[string]string{
@@ -520,5 +532,6 @@ var (
 		RuntimeStateKey:   ParsedRuntimeStateKey,
 		SNKey:             ParsedSNKey,
 		NetworkEnvKey:     ParsedProviderKey,
+		PublicNetworkKey:  ParsedPublicNetworkKey,
 	}
 )

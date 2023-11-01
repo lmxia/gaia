@@ -10,7 +10,7 @@ func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps, clusterMa
 	for _, item := range apps {
 		cluster := clusterMap[item.ClusterName]
 		if cluster != nil && cluster.GetLabels() != nil {
-			netenviroments, _, _, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
+			netenviroments, _, _, _, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
 			if _, exist := netenviroments[common.NetworkLocationCore]; exist {
 				for _, v := range item.Replicas {
 					score += int64(v)

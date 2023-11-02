@@ -287,7 +287,7 @@ func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *platformv
 
 	// 2. create ManagedCluster object
 	klog.V(5).Infof("create corresponding MangedCluster for cluster %q (%q) if needed", crr.Spec.ClusterID, crr.Spec.ClusterName)
-	mc, err := crrApprover.createManagedClusterIfNeeded(ns.Name, crr.Spec.ClusterName, crr.Spec.ClusterID, crr.Spec.ClusterLabels)
+	mc, err := crrApprover.createManagedClusterIfNeeded(ns.Name, crr.Spec.ClusterName, crr.Spec.ClusterID, crr.Spec.ClusterLabels, crr.Spec.Secondary)
 	if err != nil {
 		return err
 	}
@@ -373,8 +373,7 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 }
 
 func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterName string, clusterID types.UID,
-	clusterLabels map[string]string,
-) (*platformv1alpha1.ManagedCluster, error) {
+	clusterLabels map[string]string, secondary bool) (*platformv1alpha1.ManagedCluster, error) {
 	// checks for an existed ManagedCluster object
 	// the clusterName here may vary, we use clusterID as the identifier
 	mcs, err := crrApprover.mclsLister.List(labels.SelectorFromSet(labels.Set{
@@ -402,6 +401,7 @@ func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterN
 		},
 		Spec: platformv1alpha1.ManagedClusterSpec{
 			ClusterID: clusterID,
+			Secondary: secondary,
 		},
 	}
 

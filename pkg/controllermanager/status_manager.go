@@ -185,33 +185,14 @@ func (mgr *Manager) modifyDescStatusForAbnormalPods(ctx context.Context, namespa
 			return
 		}
 		klog.V(5).Infof("Update the status phase of the desc(%v/%v)to %v", namespace, descName, appsapi.DescriptionPhaseReSchedule)
-		var lastError error
-		err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-			if appsapi.DescriptionPhaseReSchedule == desc.Status.Phase {
-				lastError = errors.New("description's status phase is already 'ReSchedule', there is no need to update it")
-				return true, nil
-			}
 
-			desc.Status.Phase = appsapi.DescriptionPhaseReSchedule
-			// check if failed
-			_, lastError := client.AppsV1alpha1().Descriptions(namespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
-			if lastError == nil {
-				return true, nil
-			}
-			if apierrors.IsConflict(lastError) {
-				newDesc, lastError := client.AppsV1alpha1().Descriptions(namespace).Get(ctx, desc.Name, metav1.GetOptions{})
-				if lastError == nil {
-					desc = newDesc
-				}
-			}
-			return false, nil
-		})
+		desc.Status.Phase = appsapi.DescriptionPhaseReSchedule
+		err := utils.UpdateDescriptionStatus(client, desc)
 		if err != nil {
-			klog.WarningDepth(2, "Failed to update the status phase of the des(%v/%v), err is %v", desc.Namespace, desc.Name, lastError)
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
 		}
 		klog.V(5).Infof("Update the status phase of the desc(%v/%v) to %s successfully.",
 			namespace, descName, appsapi.DescriptionPhaseReSchedule)
-
 	}
 	return
 }

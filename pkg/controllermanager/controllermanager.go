@@ -198,9 +198,20 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 					// 4.1 will wait, need period report only when register successfully.
 					controller.registerSelfCluster(ctx)
 
-					// 4.2 report periodly.
+					// 4.2 report periodically.
 					go wait.UntilWithContext(ctx, func(ctx context.Context) {
 						controller.statusManager.Run(ctx, controller.parentKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
+					}, time.Duration(0))
+
+					// 6. start ResourceBinding and Description controller of parent cluster and local pushed
+					go wait.UntilWithContext(ctx, func(ctx context.Context) {
+						// set parent config
+						_, err := controller.rbController.SetRBBindController(controller.DedicatedNamespace)
+						if err != nil {
+							utilruntime.HandleError(err)
+						}
+						klog.Info("start 6. start ResourceBinding and Description controller of parent cluster and local pushed...")
+						controller.rbController.RunParentResourceBindingAndDescription(common.DefaultThreadiness, ctx.Done())
 					}, time.Duration(0))
 				}()
 
@@ -212,17 +223,6 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 					}
 					klog.Info("start 5. start local description informers...")
 					controller.rbController.RunLocalDescription(common.DefaultThreadiness, ctx.Done())
-				}()
-
-				// 6. start ResourceBinding and Description controller of parent cluster and local pushed
-				go func() {
-					// set parent config
-					_, err := controller.rbController.SetRBBindController(*controller.DedicatedNamespace)
-					if err != nil {
-						utilruntime.HandleError(err)
-					}
-					klog.Info("start 6. start ResourceBinding and Description controller of parent cluster and local pushed...")
-					controller.rbController.RunParentResourceBindingAndDescription(common.DefaultThreadiness, ctx.Done())
 				}()
 
 				// 7. start to rbMerger

@@ -632,8 +632,7 @@ func (c *RBController) handleParentAndPushResourceBinding(rb *appsV1alpha1.Resou
 	return nil
 }
 
-func (c *RBController) SetRBBindController(dedicatedNamespace string) (*RBController, error) {
-	// rbBindController
+func (c *RBController) SetRBBindController(dedicatedNamespace *string) (*RBController, error) {
 	// todo: 是否需要判断 parent nil
 	parentGaiaClient, parentDynamicClient, parentMergedGaiaInformerFactory := utils.SetParentClient(c.localKubeClient, c.localGaiaClient)
 	c.parentGaiaClient = parentGaiaClient
@@ -649,9 +648,9 @@ func (c *RBController) SetRBBindController(dedicatedNamespace string) (*RBContro
 	c.rbBindController = rbController
 
 	// descParentController
-	if len(dedicatedNamespace) > 0 {
+	if dedicatedNamespace != nil {
 		dedicatedGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient, common.DefaultResync,
-			gaiaInformers.WithNamespace(dedicatedNamespace))
+			gaiaInformers.WithNamespace(*dedicatedNamespace))
 		descController, descErr := description.NewController(parentGaiaClient, dedicatedGaiaInformerFactory.Apps().V1alpha1().Descriptions(), c.localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentDescription)
 		if descErr != nil {
 			klog.Errorf(" local handleParentDescription SetRBBindController descErr == %v", descErr)
@@ -659,6 +658,8 @@ func (c *RBController) SetRBBindController(dedicatedNamespace string) (*RBContro
 		}
 		c.descParentController = descController
 		c.parentDedicatedGaiaInformerFactory = dedicatedGaiaInformerFactory
+	} else {
+		return c, fmt.Errorf("SetRBBindController: dedicatedNamespace is nil")
 	}
 
 	return c, nil

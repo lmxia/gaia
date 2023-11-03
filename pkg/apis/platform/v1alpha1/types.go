@@ -73,6 +73,9 @@ type ManagedClusterSpec struct {
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 	ClusterID types.UID `json:"clusterId"`
+
+	// +optional
+	Secondary bool `json:"secondary"`
 	// Taints has the "effect" on any resource that does not tolerate the Taint.
 	// +optional
 	Taints []corev1.Taint `json:"taints,omitempty"`
@@ -237,6 +240,11 @@ type ClusterRegistrationRequestSpec struct {
 	// +optional
 	// +kubebuilder:validation:Type=object
 	ClusterLabels map[string]string `json:"clusterLabels,omitempty"`
+
+	// Secondary True means this rr is oriented from secondary platform.
+	//
+	// +optional
+	Secondary bool `json:"secondary"`
 }
 
 // ClusterRegistrationRequestStatus defines the observed state of ClusterRegistrationRequest

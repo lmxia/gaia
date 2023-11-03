@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,12 +12,10 @@ import (
 	"github.com/lmxia/gaia/cmd/gaia-scheduler/app/option"
 	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/scheduler/metrics"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apiserver/pkg/server/healthz"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
 
@@ -363,29 +360,10 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, nil, desc)
 	if err != nil {
 		sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
-		var lastError error
-		err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-			if appsapi.DescriptionPhaseFailure == desc.Status.Phase {
-				lastError = errors.New("description status phase is already 'Failure', there is no need to update it.")
-				return true, nil
-			}
-
-			desc.Status.Phase = appsapi.DescriptionPhaseFailure
-			// check if failed
-			_, lastError := sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
-			if lastError == nil {
-				return true, nil
-			}
-			if apierrors.IsConflict(lastError) {
-				newDesc, lastError := sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
-				if lastError == nil {
-					desc = newDesc
-				}
-			}
-			return false, nil
-		})
+		desc.Status.Phase = appsapi.DescriptionPhaseFailure
+		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 		if err != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
 		}
 		klog.Warningf("scheduler failed %v", err)
 		return
@@ -417,29 +395,10 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 				klog.InfoS("scheduler success, but desc not created success in sub child cluster.", err)
 			}
 		}
-		var lastError error
-		err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-			if appsapi.DescriptionPhaseScheduled == desc.Status.Phase {
-				lastError = errors.New("description status phase is already 'Scheduled', there is no need to update it.")
-				return true, nil
-			}
-
-			desc.Status.Phase = appsapi.DescriptionPhaseScheduled
-			_, lastError := sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
-			// check if failed
-			if lastError == nil {
-				return true, nil
-			}
-			if apierrors.IsConflict(lastError) {
-				newDesc, lastError := sched.localGaiaClient.AppsV1alpha1().Descriptions(known.GaiaReservedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
-				if lastError == nil {
-					desc = newDesc
-				}
-			}
-			return false, nil
-		})
+		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 		if err != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
 		}
 		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 		metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
@@ -448,8 +407,8 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 }
 
 func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
-	klog.Info("start to schedule one description...")
-	defer klog.Info("finish schedule a description")
+	klog.Info("start to schedule one description from parent cluster...")
+	defer klog.Info("finish schedule a description from parent cluster.")
 	key, shutdown := sched.parentSchedulingQueue.Get()
 	if shutdown {
 		klog.Error("failed to get next unscheduled description from closed queue")
@@ -487,85 +446,46 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
 	if len(mcls.Items) == 0 {
 		// there is no child clusters. no need to schedule just transfer.
-		for _, item := range rbs {
-			rb := &appsapi.ResourceBinding{}
-			rb.Name = item.Name
-			rb.Namespace = common.GaiaRSToBeMergedReservedNamespace
-			rb.Labels = item.Labels
-			rb.Spec = appsapi.ResourceBindingSpec{
-				AppID:       desc.Name,
-				ParentRB:    item.Spec.ParentRB,
-				RbApps:      item.Spec.RbApps,
-				TotalPeer:   item.Spec.TotalPeer,
-				NetworkPath: item.Spec.NetworkPath,
-			}
-			_, errCreate := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
-				Create(ctx, rb, metav1.CreateOptions{})
-			if errCreate != nil {
-				klog.Infof("create rb in local to be merged ns error", errCreate)
-			} else {
-				klog.InfoS("successfully created rb", "Description", desc.GetName(), "ResourceBinding", klog.KRef(rb.GetNamespace(), rb.GetName()))
-			}
-		}
-		klog.V(3).InfoS("scheduler success just change rb namespace.")
-		err := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
-			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-				common.GaiaDescriptionLabel: desc.Name,
-			}).String()})
-		if err != nil {
-			klog.Infof("faild to delete rbs in parent cluster", err)
-		}
+		transferRB(sched.parentGaiaClient, sched.localGaiaClient, sched.dedicatedNamespace, known.GaiaRSToBeMergedReservedNamespace, desc.Name, rbs, ctx)
+		klog.Info("scheduler success just change rb namespace.")
 	} else {
 		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
 		if err != nil {
 			sched.recordParentSchedulingFailure(desc, err, ReasonUnschedulable)
-			var lastError error
-			err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-				if appsapi.DescriptionPhaseFailure == desc.Status.Phase {
-					lastError = errors.New("description status phase is already 'Failure', there is no need to update it.")
-					return true, nil
-				}
-
-				desc.Status.Phase = appsapi.DescriptionPhaseFailure
-				// check if failed
-				_, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
-				if lastError == nil {
-					return true, nil
-				}
-				if apierrors.IsConflict(lastError) {
-					newDesc, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
-					if lastError == nil {
-						desc = newDesc
-					}
-				}
-				return false, nil
-			})
+			desc.Status.Phase = appsapi.DescriptionPhaseFailure
+			err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 			if err != nil {
-				klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+				klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
 			}
 			klog.Warningf("scheduler failed %v", err)
 			return
 		}
 
 		for _, itemCluster := range mcls.Items {
-			for rbIndex, itemRb := range scheduleResult.ResourceBindings {
-				itemRb.Namespace = itemCluster.Namespace
-				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
-				// itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
-				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
-					Create(ctx, itemRb, metav1.CreateOptions{})
-				if err != nil {
-					klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
-				} else {
-					klog.InfoS("successfully created rb", "Description", desc.GetName(), "ResourceBinding", klog.KRef(itemRb.GetNamespace(), itemRb.GetName()))
+			// secondary cluster schedule logics skip.
+			if itemCluster.Spec.Secondary {
+				transferRB(nil, sched.localGaiaClient, "", known.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
+			} else {
+				for rbIndex, itemRb := range scheduleResult.ResourceBindings {
+					itemRb.Namespace = itemCluster.Namespace
+					itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
+					// itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
+					rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
+						Create(ctx, itemRb, metav1.CreateOptions{})
+					if err != nil {
+						klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
+					} else {
+						klog.InfoS("successfully created rb", "Description", desc.GetName(), "ResourceBinding", klog.KRef(itemRb.GetNamespace(), itemRb.GetName()))
+					}
 				}
 			}
+
 			// 2. create desc in to child cluster namespace
 			newDesc := utils.ConstructDescriptionFromExistOne(desc)
 			newDesc.Namespace = itemCluster.Namespace
 			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
 			if err != nil {
-				klog.V(3).InfoS("scheduler success, but desc not created success in sub child cluster.", err)
+				klog.InfoS("scheduler success, but desc not created success in sub child cluster.", err)
 			}
 		}
 	}
@@ -574,29 +494,11 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
 			common.GaiaDescriptionLabel: desc.Name,
 		}).String()})
-	var lastError error
-	err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-		if appsapi.DescriptionPhaseScheduled == desc.Status.Phase {
-			lastError = errors.New("description status phase is already 'Scheduled', there is no need to update it.")
-			return true, nil
-		}
 
-		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
-		// check if failed
-		_, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
-		if lastError == nil {
-			return true, nil
-		}
-		if apierrors.IsConflict(lastError) {
-			newDesc, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
-			if lastError == nil {
-				desc = newDesc
-			}
-		}
-		return false, nil
-	})
+	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+	err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 	if err != nil {
-		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
 	}
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
@@ -672,29 +574,10 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 		}
 	}
 
-	var lastError error
-	err = wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-		if appsapi.DescriptionPhaseScheduled == desc.Status.Phase {
-			lastError = errors.New("description status phase is already 'Scheduled', there is no need to update it.")
-			return true, nil
-		}
-
-		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
-		// check if failed
-		_, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).UpdateStatus(ctx, desc, metav1.UpdateOptions{})
-		if lastError == nil {
-			return true, nil
-		}
-		if apierrors.IsConflict(lastError) {
-			newDesc, lastError := sched.parentGaiaClient.AppsV1alpha1().Descriptions(sched.dedicatedNamespace).Get(ctx, desc.Name, metav1.GetOptions{})
-			if lastError == nil {
-				desc = newDesc
-			}
-		}
-		return false, nil
-	})
+	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+	err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 	if err != nil {
-		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, lastError)
+		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
 	}
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
@@ -973,4 +856,38 @@ func getTotal(spec, lenResult int) int {
 		return lenResult
 	}
 	return spec
+}
+
+// transfer from src to dst
+func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, descName string,
+	rbs []*appsapi.ResourceBinding, ctx context.Context) {
+	for _, item := range rbs {
+		rb := &appsapi.ResourceBinding{}
+		rb.Name = item.Name
+		rb.Namespace = dstNS
+		rb.Labels = item.Labels
+		rb.Spec = appsapi.ResourceBindingSpec{
+			AppID:       item.Spec.AppID,
+			ParentRB:    item.Spec.ParentRB,
+			RbApps:      item.Spec.RbApps,
+			TotalPeer:   item.Spec.TotalPeer,
+			NetworkPath: item.Spec.NetworkPath,
+		}
+		_, errCreate := dstClient.AppsV1alpha1().ResourceBindings(dstNS).
+			Create(ctx, rb, metav1.CreateOptions{})
+		if errCreate != nil {
+			klog.Infof("create rb in local to be merged ns error", errCreate)
+		} else {
+			klog.InfoS("successfully created rb", "Description", descName, "ResourceBinding", klog.KRef(rb.GetNamespace(), rb.GetName()))
+		}
+	}
+	if srcClient != nil {
+		err := srcClient.AppsV1alpha1().ResourceBindings(srcNS).
+			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+				common.GaiaDescriptionLabel: descName,
+			}).String()})
+		if err != nil {
+			klog.Infof("faild to delete rbs in parent cluster", err)
+		}
+	}
 }

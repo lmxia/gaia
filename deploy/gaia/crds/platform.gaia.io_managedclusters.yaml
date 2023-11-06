@@ -62,6 +62,8 @@ spec:
                   to change on PUT operations.
                 pattern: '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
                 type: string
+              secondary:
+                type: boolean
               taints:
                 description: Taints has the "effect" on any resource that does not
                   tolerate the Taint.

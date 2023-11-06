@@ -80,6 +80,10 @@ spec:
                 maxLength: 30
                 pattern: '[a-z0-9]([-a-z0-9]*[a-z0-9])?([a-z0-9]([-a-z0-9]*[a-z0-9]))*'
                 type: string
+              secondary:
+                description: Secondary True means this rr is oriented from secondary
+                  platform.
+                type: boolean
             required:
             - clusterId
             type: object

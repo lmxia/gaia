@@ -71,6 +71,10 @@ spec:
             type: object
           status:
             properties:
+              clusters:
+                additionalProperties:
+                  type: string
+                type: object
               conditions:
                 items:
                   description: "Condition contains details for one aspect of the current

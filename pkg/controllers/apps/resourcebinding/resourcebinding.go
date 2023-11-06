@@ -42,6 +42,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/retry"
+	"k8s.io/klog/v2"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -49,7 +50,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog/v2"
 )
 
 var deletePropagationBackground = metav1.DeletePropagationBackground
@@ -131,7 +131,7 @@ func NewRBController(localKubeClient *kubernetes.Clientset, localGaiaClient *gai
 }
 
 // NewController return rb Controller
-func NewController(localGaiaClient gaiaClientSet.Interface, parentGaiaClient gaiaClientSet.Interface, parentRBsInformer informers.ResourceBindingInformer, localRBsInformer informers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
+func NewController(localGaiaClient gaiaClientSet.Interface, parentGaiaClient gaiaClientSet.Interface, pushGaiaInformerFactory gaiaInformers.SharedInformerFactory, parentRBsInformer informers.ResourceBindingInformer, localRBsInformer informers.ResourceBindingInformer, syncHandler SyncHandlerFunc) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
@@ -145,8 +145,9 @@ func NewController(localGaiaClient gaiaClientSet.Interface, parentGaiaClient gai
 		parentRBsLister:  parentRBsInformer.Lister(),
 		parentRBsSynced:  parentRBsInformer.Informer().HasSynced,
 
-		workqueue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "resource-binding-requests"),
-		SyncHandler: syncHandler,
+		workqueue:                    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "resource-binding-requests"),
+		SyncHandler:                  syncHandler,
+		localPushGaiaInformerFactory: pushGaiaInformerFactory,
 	}
 
 	// Manage the addition/update of self cluster's ResourceBinding requests in gaia-push-reserved namespace
@@ -640,7 +641,7 @@ func (c *RBController) SetRBBindController(dedicatedNamespace *string) (*RBContr
 	c.parentMergedGaiaInformerFactory = parentMergedGaiaInformerFactory
 	localPushReservedInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(c.localGaiaClient, common.DefaultResync,
 		gaiaInformers.WithNamespace(common.GaiaPushReservedNamespace))
-	rbController, rbErr := NewController(c.localGaiaClient, parentGaiaClient, localPushReservedInformerFactory.Apps().V1alpha1().ResourceBindings(), parentMergedGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentAndPushResourceBinding)
+	rbController, rbErr := NewController(c.localGaiaClient, parentGaiaClient, localPushReservedInformerFactory, localPushReservedInformerFactory.Apps().V1alpha1().ResourceBindings(), parentMergedGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentAndPushResourceBinding)
 	if rbErr != nil {
 		klog.Errorf("failed to set RBBindController, rbErr == %v", rbErr)
 		return nil, rbErr

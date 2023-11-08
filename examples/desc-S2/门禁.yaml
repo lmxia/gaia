@@ -1,0 +1,129 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: menjin
+  namespace: gaia-reserved
+  labels:
+    apps.gaia.io/user.id: user123
+spec:
+  appID: menjin
+  workloadComponents:
+    - componentName: menjinusermanage
+      namespace: menjin
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: menjinusermanage
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/accctrl/accctrlum/1
+              image: 122.96.144.180:30080/ar/access-app-user:latest
+              imagePullPolicy: Always
+              name: menjinusermanage
+              resources:
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+                requests:
+                  cpu: 1000m
+                  memory: 512Mi
+          hostNetwork: false
+    - componentName: menjin
+      namespace: menjin
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: menjin
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/accctrl/accctrlas/1
+              image: 122.96.144.180:30080/ar/access-app-service:latest
+              imagePullPolicy: Always
+              name: menjin
+              resources:
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+                requests:
+                  cpu: 500m
+                  memory: 256Mi
+          hostNetwork: false
+    - componentName: menjinidentification
+      namespace: menjin
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: menjinidentification
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/accctrl/accctrlrs/1
+              image: 122.96.144.180:30080/ar/ezxr-identification:latest
+              imagePullPolicy: Always
+              name: menjinidentification
+              resources:
+                limits:
+                  cpu: 2000m
+                  memory: 8192Mi
+                requests:
+                  cpu: 1000m
+                  memory: 512Mi
+          hostNetwork: true
+  deploymentCondition:
+    mandatory:
+      - subject:
+          name: menjinusermanage
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJUZW5jZW50Il0K # ["Tencent"]
+      - subject:
+          name: menjin
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJUZW5jZW50Il0K # ["Tencent"]
+      - subject:
+          name: menjinidentification
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJ3dXN1biJdCg== # ["wusun"]
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary1
+          subject: menjinusermanage
+          type: replicas
+          value: MQo= # 1
+        - name: boundary2
+          subject: menjin
+          type: replicas
+          value: MQo= # 1
+        - name: boundary3
+          subject: menjinidentification
+          type: replicas
+          value: MQo= # 1

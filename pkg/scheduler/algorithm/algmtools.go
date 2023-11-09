@@ -464,8 +464,6 @@ func getComponentClusterTotal(rbApps []*appv1alpha1.ResourceBindingApps, cluster
 // plan https://www.jianshu.com/p/12b89147993c
 func plan(weight []*framework.ClusterInfo, request int64) []float64 {
 	sum := int64(0)
-	percent := make([]float64, 0)
-	firstAssign := make([]float64, 0)
 	finalAssign := make([]float64, 0)
 	targetF := make([]float64, 0)
 	totalFirstAssign := float64(0)
@@ -485,8 +483,6 @@ func plan(weight []*framework.ClusterInfo, request int64) []float64 {
 		currentAssign := currentPercent * float64(request)
 		currentFinalAssign := math.Floor(currentAssign)
 		totalFirstAssign += currentFinalAssign
-		percent = append(percent, currentPercent)
-		firstAssign = append(firstAssign, float64(request)*currentPercent)
 		if currentTotal != 0 {
 			targetF = append(targetF, float64(sum)/float64(request)*(1+(currentAssign-math.Floor(currentAssign))/math.Floor(currentAssign)))
 		} else {

@@ -139,7 +139,7 @@ func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
 		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(), resource.GroupVersionKind().Version)
 		if err != nil {
-			lastError = fmt.Errorf("error===%v \n", err)
+			lastError = fmt.Errorf("error=%v", err)
 			return false, nil
 		}
 
@@ -1202,7 +1202,7 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 		}
 		_, err := dynamicClient.Resource(restNS.Resource).Create(context.TODO(), nsUnstructured, metav1.CreateOptions{})
 		if err != nil && !apierrors.IsAlreadyExists(err) {
-			nsErr := fmt.Errorf("create  ns %s error===.%v \n", namespace, err)
+			nsErr := fmt.Errorf("create  ns %s error===%v", namespace, err)
 			return nsErr
 		}
 	}
@@ -1320,10 +1320,7 @@ func CreateRBtoParentWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Cl
 		}
 		_, err := gaiaClient.AppsV1alpha1().ResourceBindings(namespace).Get(ctx, rb.GetName(), metav1.GetOptions{})
 		if err != nil {
-			lastError = err
 			return false, nil
-		} else {
-			lastError = nil
 		}
 		return true, nil
 	})

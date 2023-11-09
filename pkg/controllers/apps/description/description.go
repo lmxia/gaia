@@ -44,14 +44,12 @@ type Controller struct {
 	descLister      appListers.DescriptionLister
 	descSynced      cache.InformerSynced
 	rbSynced        cache.InformerSynced
-	mcSynced        cache.InformerSynced
 	syncHandlerFunc SyncHandlerFunc
-	cacheHandler    cache.ResourceEventHandler
 }
 
 // NewController creates and initializes a new Controller
-func NewController(gaiaClient gaiaClientSet.Interface,
-	descInformer appInformers.DescriptionInformer, rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc,
+func NewController(gaiaClient gaiaClientSet.Interface, descInformer appInformers.DescriptionInformer,
+	rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc,
 ) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
@@ -168,7 +166,8 @@ func (c *Controller) deleteRB(obj interface{}) {
 		}
 	}
 
-	desc := c.resolveOriginRef(rb.Labels[known.OriginDescriptionNameLabel], rb.Labels[known.OriginDescriptionNamespaceLabel], types.UID(rb.Labels[known.OriginDescriptionUIDLabel]))
+	desc := c.resolveOriginRef(rb.Labels[known.OriginDescriptionNameLabel],
+		rb.Labels[known.OriginDescriptionNamespaceLabel], types.UID(rb.Labels[known.OriginDescriptionUIDLabel]))
 	if desc == nil {
 		return
 	}

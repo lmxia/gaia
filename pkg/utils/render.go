@@ -223,7 +223,7 @@ func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alp
 			index := comLocation[condition.Subject.Name]
 
 			// when affinity, change the affinity index array
-			if "Affinity" == condition.Relation && "component" == condition.Object.Type {
+			if condition.Relation == "Affinity" && condition.Object.Type == "component" {
 				// component对应的索引位置的值用亲和对象的索引值表示
 				affinity[index] = comLocation[condition.Object.Name]
 			} else {
@@ -242,7 +242,7 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition, policy m
 	for _, condition := range deploymentConditions {
 		klog.V(5).Info("parse DeploymentConditions for group condition")
 
-		if "group" == condition.Subject.Type {
+		if condition.Subject.Type == "group" {
 			if _, ok := policy[condition.Subject.Name]; !ok {
 				policy[condition.Subject.Name] = &appsv1alpha1.SchedulePolicy{
 					Level: map[appsv1alpha1.SchedulePolicyLevel]*metav1.LabelSelector{
@@ -260,7 +260,7 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition, policy m
 // SchedulePolicyReflect reflect the condition to MatchExpressions according to the different schedule policy
 func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector) *metav1.LabelSelector {
 	var extentStr []string
-	if "label" == condition.Object.Type && "component" == condition.Subject.Type {
+	if condition.Object.Type == "label" && condition.Subject.Type == "component" {
 		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
 		_ = json.Unmarshal(condition.Extent, &extentStr)
 		klog.V(5).Infof("after unmarshal,extent is %v", extentStr)
@@ -276,7 +276,7 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 
 func SchedulePolicyGroupReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector) {
 	var extentStr []string
-	if "label" == condition.Object.Type && "group" == condition.Subject.Type {
+	if condition.Object.Type == "label" && condition.Subject.Type == "group" {
 		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
 		_ = json.Unmarshal(condition.Extent, &extentStr)
 		klog.V(5).Infof("after unmarshal,extent is %v", extentStr)
@@ -318,7 +318,7 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 				klog.V(5).Infof("%s:components[%d].Workload.TraitDeployment.Replicas is %v", inner.Subject, index, components[index].Workload.TraitDeployment.Replicas)
 			}
 
-		} else if "daemonset" == inner.Type {
+		} else if inner.Type == "daemonset" {
 			var data bool
 			_ = json.Unmarshal(inner.Value, &data)
 			if data {
@@ -341,7 +341,7 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 			if "maxReplicas" == inner.Type {
 				components[index].Workload.TraitServerless.MaxReplicas = data
 				klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxReplicas is %v", inner.Subject, index, components[index].Workload.TraitServerless.MaxReplicas)
-			} else if "maxQPS" == inner.Type {
+			} else if inner.Type == "maxQPS" {
 				components[index].Workload.TraitServerless.MaxQPS = data
 				klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxQPS is %v", inner.Subject, index, components[index].Workload.TraitServerless.MaxQPS)
 			} else {
@@ -385,7 +385,7 @@ func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[stri
 		} else {
 			components[index].Workload.TraitServerless.ResplicasStep = 1 // default: 1
 		}
-		if "increase" == hpa.Strategy.Type {
+		if hpa.Strategy.Type == "increase" {
 			// 扩 或 最大值
 			boundaryList := strings.Split(hpa.Trigger, "||")
 			for _, bn := range boundaryList {
@@ -401,7 +401,7 @@ func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[stri
 				}
 			}
 
-		} else if "decrease" == hpa.Strategy.Type {
+		} else if hpa.Strategy.Type == "decrease" {
 			// 缩 且 最小值
 			boundaryList := strings.Split(hpa.Trigger, "&&")
 

@@ -44,7 +44,6 @@ type CRRApprover struct {
 	crrLister  ccrListers.ClusterRegistrationRequestLister
 	mclsLister ccrListers.ManagedClusterLister
 	rbsLister  appsListers.ResourceBindingLister
-	descLister appsListers.DescriptionLister
 
 	nsLister corev1Lister.NamespaceLister
 	saLister corev1Lister.ServiceAccountLister
@@ -89,7 +88,7 @@ func NewCRRApprover(localkubeclient *kubernetes.Clientset, localgaiaclient *gaia
 
 	newCRRController, err := clusterregistrationrequest.NewController(localgaiaclient,
 		gaiaInformerFactory.Platform().V1alpha1().ClusterRegistrationRequests(),
-		crrApprover.handleClusterRegistrationRequests)
+		crrApprover.handleClusterRR)
 	if err != nil {
 		return nil, err
 	}
@@ -250,7 +249,7 @@ func (crrApprover *CRRApprover) defaultClusterRoles(clusterID types.UID) []rbacv
 	}
 }
 
-func (crrApprover *CRRApprover) handleClusterRegistrationRequests(crr *platformv1alpha1.ClusterRegistrationRequest) error {
+func (crrApprover *CRRApprover) handleClusterRR(crr *platformv1alpha1.ClusterRegistrationRequest) error {
 	// If an error occurs during handling, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
@@ -373,7 +372,8 @@ func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID
 }
 
 func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterName string, clusterID types.UID,
-	clusterLabels map[string]string, secondary bool) (*platformv1alpha1.ManagedCluster, error) {
+	clusterLabels map[string]string, secondary bool,
+) (*platformv1alpha1.ManagedCluster, error) {
 	// checks for an existed ManagedCluster object
 	// the clusterName here may vary, we use clusterID as the identifier
 	mcs, err := crrApprover.mclsLister.List(labels.SelectorFromSet(labels.Set{

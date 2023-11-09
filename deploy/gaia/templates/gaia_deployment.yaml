@@ -115,6 +115,7 @@ spec:
           configMap:
             name: gaia-config
 
+{{- if .Values.scheduler }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -161,6 +162,8 @@ spec:
       nodeSelector:
         hypernode.cluster.pml.com.cn/node-role: System
       {{- end }}
+
+{{- end }}
 
 ---
 apiVersion: v1

@@ -90,7 +90,8 @@ func (s *schedulerCache) GetSelfClusterName() string {
 }
 
 func (s *schedulerCache) GetNetworkRequirement(desc *v1alpha1.Description) (*v1alpha1.NetworkRequirement, error) {
-	nwr, err := s.localGaiaClient.AppsV1alpha1().NetworkRequirements(desc.Namespace).Get(context.TODO(), desc.Name, metav1.GetOptions{})
+	nwr, err := s.localGaiaClient.AppsV1alpha1().NetworkRequirements(desc.Namespace).Get(context.TODO(),
+		desc.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

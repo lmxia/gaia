@@ -1,6 +1,7 @@
 run:
   skip-dirs:
     - test/testdata_etc # test files
+    - pkg/networkfilter
     - internal/cache # extracted from Go code
     - internal/renameio # extracted from Go code
     - internal/robustio # extracted from Go code
@@ -28,7 +29,6 @@ linters:
     - exportloopref
     - funlen
     - gocheckcompilerdirectives
-    - gochecknoinits
     - goconst
     - gocritic
     - gocyclo

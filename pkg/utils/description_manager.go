@@ -19,7 +19,7 @@ func UpdateDescriptionStatus(gaiaClient gaiaclientset.Interface, desc *v1alpha1.
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		_, err := gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
 		if err == nil {
-			//TODO
+			// TODO
 			return nil
 		}
 

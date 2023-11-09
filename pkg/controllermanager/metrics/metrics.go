@@ -19,9 +19,11 @@ const (
 var (
 	registerAttempts = metrics.NewCounterVec(
 		&metrics.CounterOpts{
-			Subsystem:      GaiaControllerSubsystem,
-			Name:           "register_attempts_total",
-			Help:           "Number of attempts to schedule subscriptions, by the result. 'unregistered' means a subscription could not be scheduled, while 'error' means an internal gaia-controller-manager problem.",
+			Subsystem: GaiaControllerSubsystem,
+			Name:      "register_attempts_total",
+			Help: "Number of attempts to schedule subscriptions, by the result." +
+				" 'unregistered' means a subscription could not be scheduled, while 'error'" +
+				" means an internal gaia-controller-manager problem.",
 			StabilityLevel: metrics.ALPHA,
 		}, []string{"result"})
 

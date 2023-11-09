@@ -29,7 +29,9 @@ func (pl *ClusterAffinity) Name() string {
 }
 
 // Filter invoked at the filter extension point.
-func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component, cluster *clusterapi.ManagedCluster) *framework.Status {
+func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component,
+	cluster *clusterapi.ManagedCluster,
+) *framework.Status {
 	if cluster == nil {
 		return framework.AsStatus(fmt.Errorf("label invalid cluster "))
 	}
@@ -40,16 +42,22 @@ func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component, 
 	clusterLabels := cluster.GetGaiaLabels()
 	gaiaSelector, err := LabelSelectorAsSelector(com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory])
 	if err != nil {
-		return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("can't change gaia schedule policy to label selector %v, component name is %v", com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory], err))
+		return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf(
+			"can't change gaia schedule policy to label selector %v, component name is %v",
+			com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory], err))
 	}
 	if gaiaSelector.Matches(gaiaLabels.Set(clusterLabels)) {
 		return nil
 	}
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no label fit for this com. cluster name is %v, component name is %v, clusterLabels is %+v, gaiaSelector is %+v", cluster.Name, com.Name, clusterLabels, gaiaSelector))
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf(
+		"there is no label fit for this com. cluster name is %v, component name is %v,"+
+			" clusterLabels is %+v, gaiaSelector is %+v", cluster.Name, com.Name, clusterLabels, gaiaSelector))
 }
 
 // NormalizeScore invoked after scoring all clusters.
-func (pl *ClusterAffinity) NormalizeScore(ctx context.Context, scores framework.ResourceBindingScoreList) *framework.Status {
+func (pl *ClusterAffinity) NormalizeScore(ctx context.Context,
+	scores framework.ResourceBindingScoreList,
+) *framework.Status {
 	return helper.DefaultNormalizeScore(framework.MaxClusterScore, true, scores)
 }
 

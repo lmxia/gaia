@@ -108,15 +108,6 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 						componentMat = GetAffinityComPlanForServerless(GetResultWithoutRB(allResultGlobal, j, affinityDest))
 						allResultGlobal[j][i] = componentMat
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-						// TODO no entrance in the UI about HyperOS S2 version
-						// same as serverless.
-						// componentMat := makeServelessPlan(allPlan, 1)
-						// allResultGlobal[j][i] = componentMat
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
-						// TODO no entrance in the UI about HyperOS S2 version
-						// componentMat, _ := makeUserAPPPlan(allPlan)
-						// allResultGlobal[j][i] = componentMat
 					}
 				}
 			} else {
@@ -131,15 +122,6 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 							componentMat = GetAffinityComPlanForServerless(GetResultWithRB(allResultWithRB, j, k, affinityDest))
 							allResultWithRB[j][k][i] = componentMat
-						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-							// TODO no entrance in the UI about HyperOS S2 version
-							// same as serverless.
-							// componentMat := makeServelessPlan(allPlan, replicas)
-							// allResultWithRB[j][k][i] = componentMat
-						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
-							// TODO no entrance in the UI about HyperOS S2 version
-							// componentMat, _ := makeUserAPPPlan(allPlan)
-							// allResultWithRB[j][k][i] = componentMat
 						}
 					}
 				}

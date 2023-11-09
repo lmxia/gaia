@@ -23,7 +23,9 @@ func Iter(params ...[]*clusterapi.ResourceBindingApps) chan []*clusterapi.Resour
 }
 
 // private, recursive Iteration-Function
-func iterate(wg *sync.WaitGroup, channel chan []*clusterapi.ResourceBindingApps, result []*clusterapi.ResourceBindingApps, params ...[]*clusterapi.ResourceBindingApps) {
+func iterate(wg *sync.WaitGroup, channel chan []*clusterapi.ResourceBindingApps,
+	result []*clusterapi.ResourceBindingApps, params ...[]*clusterapi.ResourceBindingApps,
+) {
 	// dec WaitGroup when finished
 	defer wg.Done()
 	// no more params left?

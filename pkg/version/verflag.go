@@ -25,7 +25,8 @@ type Version struct {
 }
 
 func AddVersionFlag(fs *flag.FlagSet) {
-	versionFlag = fs.String(versionFlagName, "", "Print version with format and quit; Available options are 'yaml', 'json' and 'short'")
+	versionFlag = fs.String(versionFlagName, "", "Print version with format and quit;"+
+		" Available options are 'yaml', 'json' and 'short'")
 	fs.Lookup(versionFlagName).NoOptDefVal = "short"
 }
 

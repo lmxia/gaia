@@ -85,7 +85,7 @@ type FieldsRBs struct {
 
 // NewRBMerger returns a new RBMerger for ResourceBinding.
 func NewRBMerger(kubeClient *kubernetes.Clientset, gaiaClient *gaiaClientSet.Clientset) (*RBMerger, error) {
-	postUrl := os.Getenv(common.ResourceBindingMergerPostURL)
+	postURL := os.Getenv(common.ResourceBindingMergerPostURL)
 	localToGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(gaiaClient, common.DefaultResync, gaiaInformers.WithNamespace(common.GaiaRSToBeMergedReservedNamespace))
 	rbMerger := &RBMerger{
 		localKubeClient:                 kubeClient,
@@ -96,7 +96,7 @@ func NewRBMerger(kubeClient *kubernetes.Clientset, gaiaClient *gaiaClientSet.Cli
 		fieldsRBOfOneParentRB:           make(map[string]*FieldsRBs),
 		parentRBsOfDescUID:              make(map[UID][]string),
 		descUID:                         make(map[string]bool),
-		postURL:                         postUrl,
+		postURL:                         postURL,
 	}
 
 	rbLocalController, err := resourcebindingmerger.NewController(gaiaClient,
@@ -519,7 +519,7 @@ func (m *RBMerger) postMergedRBs(descName string) error {
 
 	request, err := http.NewRequest("POST", m.postURL, bytes.NewBuffer(postBody))
 	if err != nil {
-		return fmt.Errorf("postMergedRBs: post new request, error=%v \n", err)
+		return fmt.Errorf("postMergedRBs: post new request, error=%v", err)
 	}
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("cache-control", "no-cache")

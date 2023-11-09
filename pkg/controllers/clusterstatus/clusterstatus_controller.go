@@ -44,8 +44,8 @@ type Controller struct {
 	heartbeatFrequency     time.Duration
 	apiserverURL           string
 	managedClusterSource   string
-	promUrlPrefix          string
-	topoSyncBaseUrl        string
+	promURLPrefix          string
+	topoSyncBaseURL        string
 	appPusherEnabled       bool
 	useSocket              bool
 	useHypernodeController bool
@@ -77,8 +77,8 @@ func NewController(ctx context.Context, apiserverURL, clusterName string, manage
 		heartbeatFrequency:     heartbeatFrequency,
 		apiserverURL:           apiserverURL,
 		managedClusterSource:   managedCluster.ManagedClusterSource,
-		promUrlPrefix:          managedCluster.PrometheusMonitorUrlPrefix,
-		topoSyncBaseUrl:        managedCluster.TopoSyncBaseUrl,
+		promURLPrefix:          managedCluster.PrometheusMonitorUrlPrefix,
+		topoSyncBaseURL:        managedCluster.TopoSyncBaseUrl,
 		mclsLister:             gaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
 		nodeLister:             kubeInformerFactory.Core().V1().Nodes().Lister(),
 		hypernodeClient:        hypernodeClient,
@@ -127,7 +127,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 		if c.managedClusterSource == known.ManagedClusterSourceFromInformer {
 			capacity, allocatable, available = getNodeResource(nodes)
 		} else if c.managedClusterSource == known.ManagedClusterSourceFromPrometheus {
-			capacity, allocatable, available = getNodeResourceFromPrometheus(c.promUrlPrefix)
+			capacity, allocatable, available = getNodeResourceFromPrometheus(c.promURLPrefix)
 		}
 	} else {
 		klog.V(7).Info("collecting ManagedCluster status...")
@@ -140,7 +140,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 			klog.Warningf("failed to get self clusterName from secret: %v", errClusterName)
 			selfClusterName = c.clusterName
 		}
-		topoInfo = getTopoInfo(ctx, selfClusterName, c.topoSyncBaseUrl)
+		topoInfo = getTopoInfo(ctx, selfClusterName, c.topoSyncBaseURL)
 	}
 
 	clusterCIDR, err := c.discoverClusterCIDR()
@@ -166,7 +166,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	status.Allocatable = allocatable
 	status.Capacity = capacity
 	status.Available = available
-	status.HeartbeatFrequencySeconds = utilpointer.Int64Ptr(int64(c.heartbeatFrequency.Seconds()))
+	status.HeartbeatFrequencySeconds = utilpointer.Int64(int64(c.heartbeatFrequency.Seconds()))
 	status.Conditions = []metav1.Condition{c.getCondition(status)}
 	status.TopologyInfo = topoInfo
 	c.setClusterStatus(status)
@@ -207,11 +207,11 @@ func (c *Controller) getHealthStatus(ctx context.Context, path string) bool {
 }
 
 // getTopoInfo returns the topology information according to toposync api
-func getTopoInfo(ctx context.Context, clusterName, topoSyncBaseUrl string) (topoInfo clusterapi.Topo) {
+func getTopoInfo(ctx context.Context, clusterName, topoSyncBaseURL string) (topoInfo clusterapi.Topo) {
 	hyperTopoSync := clusterapi.Fields{
 		Field: []string{clusterName},
 	}
-	topos, _, err := toposync.NewAPIClient(toposync.NewConfiguration(topoSyncBaseUrl)).TopoSyncApi.TopoSync(ctx, hyperTopoSync)
+	topos, _, err := toposync.NewAPIClient(toposync.NewConfiguration(topoSyncBaseURL)).TopoSyncAPI.TopoSync(ctx, hyperTopoSync)
 	if err != nil {
 		klog.Warningf("failed to get network topology info: %v", err)
 		return topoInfo
@@ -397,21 +397,21 @@ func (c *Controller) discoverClusterCIDR() (string, error) {
 
 // get node capacity and allocatable resource
 func getNodeResource(nodes []*corev1.Node) (Capacity, Allocatable, Available corev1.ResourceList) {
-	var capacityCpu, capacityMem, allocatableCpu, allocatableMem resource.Quantity
+	var capacityCPU, capacityMem, allocatableCPU, allocatableMem resource.Quantity
 	Capacity, Allocatable, Available = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
 
 	for _, node := range nodes {
-		capacityCpu.Add(*node.Status.Capacity.Cpu())
+		capacityCPU.Add(*node.Status.Capacity.Cpu())
 		capacityMem.Add(*node.Status.Capacity.Memory())
-		allocatableCpu.Add(*node.Status.Allocatable.Cpu())
+		allocatableCPU.Add(*node.Status.Allocatable.Cpu())
 		allocatableMem.Add(*node.Status.Allocatable.Memory())
 	}
 
-	Capacity[corev1.ResourceCPU] = capacityCpu
+	Capacity[corev1.ResourceCPU] = capacityCPU
 	Capacity[corev1.ResourceMemory] = capacityMem
-	Allocatable[corev1.ResourceCPU] = allocatableCpu
+	Allocatable[corev1.ResourceCPU] = allocatableCPU
 	Allocatable[corev1.ResourceMemory] = allocatableMem
-	Available[corev1.ResourceCPU] = allocatableCpu
+	Available[corev1.ResourceCPU] = allocatableCPU
 	Available[corev1.ResourceMemory] = allocatableMem
 
 	return
@@ -453,9 +453,9 @@ func getNodeCondition(status *corev1.NodeStatus, conditionType corev1.NodeCondit
 }
 
 // getDataFromPrometheus returns the result from Prometheus according to the specified metric in the cluster
-func getDataFromPrometheus(promPreUrl, metric string) (model.Value, error) {
+func getDataFromPrometheus(promPreURL, metric string) (model.Value, error) {
 	client, err := api.NewClient(api.Config{
-		Address: promPreUrl,
+		Address: promPreURL,
 	})
 	if err != nil {
 		klog.Warningf("Error creating client: %v", err)
@@ -554,24 +554,24 @@ func (c *Controller) GetDescNameFromAbnormalPod() (descNameMap DescNameMap) {
 	metricMap, _, err := utils.InitConfig(known.ServiceMaintenanceConfigMapAbsFilePath)
 	if err != nil {
 		klog.Warningf("Wrong metrics, err: %v", err)
-		return
+		return descNameMap
 	}
 
 	for _, metricPsql := range metricMap {
-		pendingLatencyResult, err := getDataFromPrometheus(c.promUrlPrefix, metricPsql)
+		pendingLatencyResult, err := getDataFromPrometheus(c.promURLPrefix, metricPsql)
 		if err != nil {
 			klog.Warningf("Query failed from prometheus, err is %v. The metric is %v", err, metricPsql)
-			return
+			return descNameMap
 		}
 		resultList := pendingLatencyResult.(model.Vector)
 		if len(resultList) > 0 {
 			for _, result := range resultList {
 				podNamespace := result.Metric["destination_namespace"]
 				podName := result.Metric["destination_pod"]
-				podUid := result.Metric["destination_pod_uid"]
+				podUID := result.Metric["destination_pod_uid"]
 				podDescName := result.Metric["destination_pod_description_name"]
 				podComName := result.Metric["destination_pod_component_name"]
-				klog.V(5).InfoS("pod is abnormal according to the metric: ", "podNamespace", podNamespace, "podName", podName, "podUid", podUid, "metricPsql", metricPsql)
+				klog.V(5).InfoS("pod is abnormal according to the metric: ", "podNamespace", podNamespace, "podName", podName, "podUID", podUID, "metricPsql", metricPsql)
 				if comMap, ok := descNameMap[string(podDescName)]; ok {
 					if _, exist := comMap[string(podComName)]; !exist {
 						comMap[string(podComName)] = struct{}{}
@@ -584,7 +584,7 @@ func (c *Controller) GetDescNameFromAbnormalPod() (descNameMap DescNameMap) {
 			klog.V(5).Infof("the query result of metricPsql(%v) is a null array.", metricPsql)
 		}
 	}
-	return
+	return descNameMap
 }
 
 // IsParentCluster return whether it is a parent cluster

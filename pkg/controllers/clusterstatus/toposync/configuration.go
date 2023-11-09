@@ -59,9 +59,9 @@ type Configuration struct {
 	HTTPClient    *http.Client
 }
 
-func NewConfiguration(topoSyncBaseUrl string) *Configuration {
+func NewConfiguration(topoSyncBaseURL string) *Configuration {
 	cfg := &Configuration{
-		BasePath:      topoSyncBaseUrl,
+		BasePath:      topoSyncBaseURL,
 		DefaultHeader: make(map[string]string),
 		UserAgent:     "Swagger-Codegen/1.0.0/go",
 	}

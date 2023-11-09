@@ -490,15 +490,18 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		}
 	}
 
-	sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
+	err = sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
 			common.GaiaDescriptionLabel: desc.Name,
 		}).String()})
+	if err != nil {
+		klog.Errorf("failed to delete rbs in parent namespace %s, related to desc %s, err: %v", desc.Namespace, desc.Name, err)
+	}
 
 	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 	err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 	if err != nil {
-		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
+		klog.Errorf("failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
 	}
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
@@ -860,7 +863,8 @@ func getTotal(spec, lenResult int) int {
 
 // transfer from src to dst
 func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, descName string,
-	rbs []*appsapi.ResourceBinding, ctx context.Context) {
+	rbs []*appsapi.ResourceBinding, ctx context.Context,
+) {
 	for _, item := range rbs {
 		rb := &appsapi.ResourceBinding{}
 		rb.Name = item.Name

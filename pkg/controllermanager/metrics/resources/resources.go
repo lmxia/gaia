@@ -49,7 +49,9 @@ func (d resourceMetricsDescriptors) Describe(ch chan<- *metrics.Desc) {
 var podResourceDesc = resourceMetricsDescriptors{
 	requests: resourceLifecycleDescriptors{
 		total: metrics.NewDesc("kube_pod_resource_request",
-			"Resources requested by workloads on the cluster, broken down by pod. This shows the resource usage the scheduler and kubelet expect per pod for resources along with the unit for the resource if any.",
+			"Resources requested by workloads on the cluster, broken down by pod. "+
+				"This shows the resource usage the scheduler and kubelet expect per pod "+
+				"for resources along with the unit for the resource if any.",
 			[]string{"namespace", "pod", "node", "scheduler", "priority", "resource", "unit"},
 			nil,
 			metrics.ALPHA,
@@ -57,7 +59,9 @@ var podResourceDesc = resourceMetricsDescriptors{
 	},
 	limits: resourceLifecycleDescriptors{
 		total: metrics.NewDesc("kube_pod_resource_limit",
-			"Resources limit for workloads on the cluster, broken down by pod. This shows the resource usage the scheduler and kubelet expect per pod for resources along with the unit for the resource if any.",
+			"Resources limit for workloads on the cluster, broken down by pod. "+
+				"This shows the resource usage the scheduler and kubelet expect per pod for resources"+
+				" along with the unit for the resource if any.",
 			[]string{"namespace", "pod", "node", "scheduler", "priority", "resource", "unit"},
 			nil,
 			metrics.ALPHA,
@@ -179,7 +183,8 @@ func recordMetricWithUnit(
 // // a requests and limits list to the function, which will be cleared before use.
 // // This method is the same as v1resource.PodRequestsAndLimits but avoids allocating in several
 // // scenarios for efficiency.
-// func podRequestsAndLimitsByLifecycle(pod *v1.Pod, reuseReqs, reuseLimits v1.ResourceList) (reqs, limits v1.ResourceList, terminal bool) {
+// func podRequestsAndLimitsByLifecycle(pod *v1.Pod, reuseReqs, reuseLimits v1.ResourceList)
+//(reqs, limits v1.ResourceList, terminal bool) {
 // 	switch {
 // 	case len(pod.Spec.NodeName) == 0:
 // 		// unscheduled pods cannot be terminal

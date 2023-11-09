@@ -25,11 +25,15 @@ func (pl *CoreNetworkPriority) Name() string {
 }
 
 // NormalizeScore invoked after scoring all clusters.
-func (pl *CoreNetworkPriority) NormalizeScore(ctx context.Context, scores framework.ResourceBindingScoreList) *framework.Status {
+func (pl *CoreNetworkPriority) NormalizeScore(ctx context.Context,
+	scores framework.ResourceBindingScoreList,
+) *framework.Status {
 	return helper.DefaultNormalizeScore(framework.MaxClusterScore, true, scores)
 }
 
-func (pl *CoreNetworkPriority) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
+func (pl *CoreNetworkPriority) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding,
+	clusters []*clusterapi.ManagedCluster,
+) (int64, *framework.Status) {
 	clusterMap := make(map[string]*clusterapi.ManagedCluster, 0)
 	for _, cluster := range clusters {
 		clusterMap[cluster.Name] = cluster

@@ -61,7 +61,7 @@ type SyncHandlerFunc func(binding *appsV1alpha1.ResourceBinding) error
 
 // RBController defines configuration for ResourceBinding requests
 type RBController struct {
-	networkBindUrl string
+	networkBindURL string
 
 	rbLocalController   *Controller
 	descLocalController *description.Controller
@@ -112,7 +112,7 @@ func NewRBController(localKubeClient *kubernetes.Clientset, localGaiaClient *gai
 	localDynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 
 	rbController := &RBController{
-		networkBindUrl:           networkBindUrl,
+		networkBindURL:           networkBindUrl,
 		localKubeClient:          localKubeClient,
 		localGaiaClient:          localGaiaClient,
 		localDynamicClient:       localDynamicClient,
@@ -549,7 +549,7 @@ func (c *RBController) handleParentAndPushResourceBinding(rb *appsV1alpha1.Resou
 					klog.Infof("nwr error===%v \n", newErr)
 					nwr = nil
 				}
-				return utils.ApplyResourceBinding(context.TODO(), c.localDynamicClient, c.restMapper, rb, clusterName, descriptionName, c.networkBindUrl, nwr)
+				return utils.ApplyResourceBinding(context.TODO(), c.localDynamicClient, c.restMapper, rb, clusterName, descriptionName, c.networkBindURL, nwr)
 			} else {
 				var desc *appsV1alpha1.Description
 				if rb.Namespace == common.GaiaPushReservedNamespace {
@@ -580,9 +580,9 @@ func (c *RBController) handleParentAndPushResourceBinding(rb *appsV1alpha1.Resou
 				if err != nil {
 					return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ", rb.Name, err)
 				}
-				if len(rb.Spec.NetworkPath) > 0 && len(c.networkBindUrl) > 0 {
-					klog.V(2).Infof("networkBindUrl is %q", c.networkBindUrl)
-					utils.PostNetworkRequest(c.networkBindUrl, descriptionName, "delete", rb.Spec.NetworkPath[0])
+				if len(rb.Spec.NetworkPath) > 0 && len(c.networkBindURL) > 0 {
+					klog.V(2).Infof("networkBindURL is %q", c.networkBindURL)
+					utils.PostNetworkRequest(c.networkBindURL, descriptionName, "delete", rb.Spec.NetworkPath[0])
 				}
 			} else {
 				err := utils.OffloadRBWorkloads(context.TODO(), c.localDynamicClient, c.restMapper, rb.GetLabels())

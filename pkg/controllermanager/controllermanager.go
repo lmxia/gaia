@@ -448,7 +448,7 @@ func (controller *ControllerManager) waitingForApproval(ctx context.Context, cli
 		return err
 	}
 	controller.parentKubeConfig = parentDedicatedKubeConfig
-	controller.DedicatedNamespace = utilpointer.StringPtr(crr.Status.DedicatedNamespace)
+	controller.DedicatedNamespace = utilpointer.String(crr.Status.DedicatedNamespace)
 
 	// once the request gets approved
 	// store auto-populated credentials to Secret "parent-cluster" in "gaia-system" namespace

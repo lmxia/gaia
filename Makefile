@@ -44,3 +44,7 @@ fmt:
 PHONY: fmt-check
 fmt-check:
 	gofumpt -l -d -e .
+
+.PHONY: lint
+lint:
+	golangci-lint run -c .golangci.yaml

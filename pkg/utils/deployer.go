@@ -400,6 +400,9 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
 		rb.Status.Conditions = append(rb.Status.Conditions, condition)
+		if rb.Status.Clusters == nil {
+			rb.Status.Clusters = make(map[string]appsv1alpha1.StatusRBDeploy)
+		}
 		if condition.Status == metav1.ConditionFalse {
 			rb.Status.Clusters[clusterName] = appsv1alpha1.ResourceBindingRed
 		} else {

@@ -20,5 +20,5 @@ helm install -n gaia-system gaia hyperos/gaia --create-namespace --version=2.0.1
 ### cluster
 Run the following command in cluster cluster
 ```console
-helm install -n gaia-system gaia hyperos/gaia --create-namespace --version=2.0.1 --set scheduler=false
+helm install -n gaia-system gaia hyperos/gaia --create-namespace --version=2.0.1 --set cluster=true
 ```

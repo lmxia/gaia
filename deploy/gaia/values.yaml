@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 # install scheduler or not
-scheduler: true
+cluster: false
 
 # parameter
 common:

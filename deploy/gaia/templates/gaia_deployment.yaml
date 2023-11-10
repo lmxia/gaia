@@ -116,7 +116,7 @@ spec:
           configMap:
             name: gaia-config
 
-{{- if .Values.scheduler }}
+{{- if not .Values.cluster }}
 ---
 apiVersion: apps/v1
 kind: Deployment

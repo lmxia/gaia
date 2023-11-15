@@ -402,6 +402,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 		}
 		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 		metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
+		sched.localSchedulingQueue.Forget(key)
 		klog.Infof("scheduler success %v", scheduleResult)
 	}
 }
@@ -462,24 +463,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		}
 
 		for _, itemCluster := range mcls.Items {
-			// secondary cluster schedule logics skip.
-			if itemCluster.Spec.Secondary {
-				transferRB(nil, sched.localGaiaClient, "", known.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
-			} else {
-				for rbIndex, itemRb := range scheduleResult.ResourceBindings {
-					itemRb.Namespace = itemCluster.Namespace
-					itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
-					// itemRb.Spec.TotalPeer = len(scheduleResult.ResourceBindings)
-					rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
-						Create(ctx, itemRb, metav1.CreateOptions{})
-					if err != nil {
-						klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
-					} else {
-						klog.InfoS("successfully created rb", "Description", desc.GetName(), "ResourceBinding", klog.KRef(itemRb.GetNamespace(), itemRb.GetName()))
-					}
-				}
-			}
-
+			transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace, known.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
 			// 2. create desc in to child cluster namespace
 			newDesc := utils.ConstructDescriptionFromExistOne(desc)
 			newDesc.Namespace = itemCluster.Namespace
@@ -494,6 +478,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
 			common.GaiaDescriptionLabel: desc.Name,
 		}).String()})
+	klog.Info("i have tried to delete rbs in parent cluster")
 	if err != nil {
 		klog.Errorf("failed to delete rbs in parent namespace %s, related to desc %s, err: %v", desc.Namespace, desc.Name, err)
 	}
@@ -503,6 +488,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	if err != nil {
 		klog.Errorf("failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
 	}
+	sched.parentSchedulingQueue.Forget(key)
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 	klog.Info("scheduler success")
@@ -582,6 +568,7 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	if err != nil {
 		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
 	}
+	sched.parentSchedulingRetryQueue.Forget(key)
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 	klog.Info("scheduler success")
@@ -687,6 +674,8 @@ func (sched *Scheduler) addLocalAllEventHandlers() {
 				if desc.DeletionTimestamp != nil {
 					sched.lockLocal.Lock()
 					defer sched.lockLocal.Unlock()
+					sched.localSchedulingQueue.Done(klog.KObj(desc).String())
+					sched.localSchedulingQueue.Forget(klog.KObj(desc).String())
 					return false
 				}
 				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending || desc.Status.Phase == appsapi.DescriptionPhaseFailure {
@@ -710,10 +699,10 @@ func (sched *Scheduler) addLocalAllEventHandlers() {
 		},
 		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				sub := obj.(*appsapi.Description)
+				desc := obj.(*appsapi.Description)
 				sched.lockLocal.Lock()
 				defer sched.lockLocal.Unlock()
-				sched.localSchedulingQueue.AddRateLimited(klog.KObj(sub).String())
+				sched.localSchedulingQueue.AddRateLimited(klog.KObj(desc).String())
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldSub := oldObj.(*appsapi.Description)
@@ -744,6 +733,8 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 				if desc.DeletionTimestamp != nil {
 					sched.lockParent.Lock()
 					defer sched.lockParent.Unlock()
+					sched.parentSchedulingQueue.Done(klog.KObj(desc).String())
+					sched.parentSchedulingQueue.Forget(klog.KObj(desc).String())
 					return false
 				}
 				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending {
@@ -768,10 +759,10 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 		},
 		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				sub := obj.(*appsapi.Description)
+				desc := obj.(*appsapi.Description)
 				sched.lockParent.Lock()
 				defer sched.lockParent.Unlock()
-				sched.parentSchedulingQueue.AddRateLimited(klog.KObj(sub).String())
+				sched.parentSchedulingQueue.AddRateLimited(klog.KObj(desc).String())
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldDesc := oldObj.(*appsapi.Description)
@@ -798,6 +789,8 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 				if desc.DeletionTimestamp != nil {
 					sched.lockReschedule.Lock()
 					defer sched.lockReschedule.Unlock()
+					sched.parentSchedulingRetryQueue.Forget(klog.KObj(desc).String())
+					sched.parentSchedulingRetryQueue.Done(klog.KObj(desc).String())
 					return false
 				}
 				if desc.Status.Phase == appsapi.DescriptionPhaseReSchedule {
@@ -821,10 +814,10 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 		},
 		Handler: cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				sub := obj.(*appsapi.Description)
+				desc := obj.(*appsapi.Description)
 				sched.lockReschedule.Lock()
 				defer sched.lockReschedule.Unlock()
-				sched.parentSchedulingRetryQueue.AddRateLimited(klog.KObj(sub).String())
+				sched.parentSchedulingRetryQueue.AddRateLimited(klog.KObj(desc).String())
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldDesc := oldObj.(*appsapi.Description)
@@ -890,6 +883,7 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, des
 			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
 				common.GaiaDescriptionLabel: descName,
 			}).String()})
+		klog.Info("i have try to delete rbs in parent cluster")
 		if err != nil {
 			klog.Infof("faild to delete rbs in parent cluster", err)
 		}

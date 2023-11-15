@@ -28,6 +28,7 @@ func UpdateDescriptionStatus(gaiaClient gaiaclientset.Interface, desc *v1alpha1.
 			// make a copy, so we don't mutate the shared cache
 			desc = updated.DeepCopy()
 			desc.Status = status
+			return err
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated Description %q: %v", desc.Name, err2))
 		}

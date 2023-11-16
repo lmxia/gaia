@@ -1,0 +1,205 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: daohang
+  namespace: gaia-reserved
+  labels:
+    apps.gaia.io/user.id: user123
+spec:
+  appID: daohang
+  workloadComponents:
+    - componentName: daohangusermanage
+      namespace: daohang
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: daohangusermanage
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/arnav/arnavum/1
+              image: 122.96.144.180:30080/ar/navigation-app-user:latest
+              imagePullPolicy: Always
+              name: daohangusermanage
+              resources:
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+                requests:
+                  cpu: 1000m
+                  memory: 512Mi
+          hostNetwork: false
+    - componentName: daohangpathcalc
+      namespace: daohang
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: daohangpathcalc
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/arnav/arnavpc/1
+              image: 122.96.144.180:30080/ar/navigation-app-path:latest
+              imagePullPolicy: Always
+              name: daohangpathcalc
+              resources:
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+                requests:
+                  cpu: 500m
+                  memory: 256Mi
+          hostNetwork: false
+    - componentName: daohangfindlocate
+      namespace: daohang
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: daohangfindlocate
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/arnav/arnavlh/1
+              image: 122.96.144.180:30080/ar/navigation-app-place:latest
+              imagePullPolicy: Always
+              name: daohangfindlocate
+              resources:
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+                requests:
+                  cpu: 1000m
+                  memory: 512Mi
+          hostNetwork: false
+    - componentName: daohangflatmap
+      namespace: daohang
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: daohangflatmap
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/arnav/arnavlm/1
+              image: 122.96.144.180:30080/ar/navigation-app-map:latest
+              imagePullPolicy: Always
+              name: daohangflatmap
+              resources:
+                limits:
+                  cpu: 1000m
+                  memory: 512Mi
+                requests:
+                  cpu: 1000m
+                  memory: 512Mi
+          hostNetwork: false
+    - componentName: daohangpathcondition
+      namespace: daohang
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      module:
+        metadata:
+          labels:
+            app: daohangpathcondition
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/accctrl/accctrlrs/1
+              image: 122.96.144.180:30080/ar/empty-app:latest
+              imagePullPolicy: Always
+              name: daohangpathcondition
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+                requests:
+                  cpu: 500m
+                  memory: 512Mi
+          hostNetwork: false
+  deploymentCondition:
+    mandatory:
+      - subject:
+          name: daohangusermanage
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJUZW5jZW50Il0K # ["Tencent"]
+      - subject:
+          name: daohangpathcalc
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJ3dXN1biJdCg== # ["wusun"]
+      - subject:
+          name: daohangflatmap
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJ3dXN1biJdCg== # ["wusun"]
+      - subject:
+          name: daohangpathcondition
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJ3dXN1biJdCg== # ["wusun"]
+      - subject:
+          name: daohangfindlocate
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJ3dXN1biJdCg== # ["wusun"]
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary1
+          subject: daohangusermanage
+          type: replicas
+          value: MQo= # 1
+        - name: boundary2
+          subject: daohangfindlocate
+          type: replicas
+          value: MQo= # 1
+        - name: boundary3
+          subject: daohangpathcondition
+          type: replicas
+          value: MQo= # 1
+        - name: boundary4
+          subject: daohangpathcalc
+          type: replicas
+          value: MQo= # 1
+        - name: boundary4
+          subject: daohangflatmap
+          type: replicas
+          value: MQo= # 1

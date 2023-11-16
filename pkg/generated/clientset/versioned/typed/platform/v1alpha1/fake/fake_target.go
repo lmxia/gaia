@@ -110,7 +110,7 @@ func (c *FakeTargets) UpdateStatus(ctx context.Context, target *v1alpha1.Target,
 // Delete takes name of the target and deletes it. Returns an error if one occurs.
 func (c *FakeTargets) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(targetsResource, name), &v1alpha1.Target{})
+		Invokes(testing.NewRootDeleteActionWithOptions(targetsResource, name, opts), &v1alpha1.Target{})
 	return err
 }
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lmxia/gaia/pkg/controllers/hypernode"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
@@ -71,13 +72,16 @@ type ControllerManager struct {
 	parentKubeConfig *rest.Config
 	// dedicated namespace in parent cluster for current child cluster
 	DedicatedNamespace *string
+	// from parent-cluster secret after register self cluster
+	GaiaClusterName *string
 
 	// report cluster status
-	statusManager  *Manager
-	crrApprover    *approver.CRRApprover
-	rbController   *resourcebinding.RBController
-	rbMerger       *resourcebinding.RBMerger
-	cronController *cronmaster.Controller
+	statusManager       *Manager
+	crrApprover         *approver.CRRApprover
+	hyperNodeController *hypernode.Controller
+	rbController        *resourcebinding.RBController
+	rbMerger            *resourcebinding.RBMerger
+	cronController      *cronmaster.Controller
 
 	gaiaInformerFactory gaiainformers.SharedInformerFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
@@ -134,20 +138,22 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	if apprerr != nil {
 		klog.Error(apprerr)
 	}
-
-	rbController, rberr := resourcebinding.NewRBController(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory, localKubeConfig, networkBindUrl)
-	if rberr != nil {
-		klog.Error(rberr)
-	}
 	statusManager := NewStatusManager(ctx, localKubeConfig.Host, clusterHostName, managedCluster, localKubeClientSet, localGaiaClientSet, hypernodeClientSet)
+	hyperController := hypernode.NewController(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory)
+
 	rbMerger, err := resourcebinding.NewRBMerger(localKubeClientSet, localGaiaClientSet)
 	if err != nil {
 		klog.Error(err)
 	}
+	rbController, rbErr := resourcebinding.NewRBController(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory, localKubeConfig, networkBindUrl)
+	if rbErr != nil {
+		klog.Error(rbErr)
+	}
 	cronController, cronErr := cronmaster.NewController(localGaiaClientSet, localKubeClientSet, localGaiaInformerFactory, localKubeInformerFactory, localKubeConfig)
 	if cronErr != nil {
-		klog.Error(rberr)
+		klog.Error(cronErr)
 	}
+
 	agent := &ControllerManager{
 		ctx:                 ctx,
 		Identity:            identity,
@@ -156,11 +162,12 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		localGaiaClientSet:  localGaiaClientSet,
 		gaiaInformerFactory: localGaiaInformerFactory,
 		kubeInformerFactory: localKubeInformerFactory,
+		cronController:      cronController,
 		crrApprover:         approver,
+		hyperNodeController: hyperController,
 		rbController:        rbController,
 		rbMerger:            rbMerger,
 		statusManager:       statusManager,
-		cronController:      cronController,
 	}
 
 	metrics.Register()
@@ -195,24 +202,34 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 				// 4. wait for target to join into a parent cluster.
 				go func() {
 					klog.Info("start 4. wait for target to join into a parent cluster")
-					// 4.1 will wait, need period report only when register successfully.
+					// 4.1 register selfCluster as a child cluster.
 					controller.registerSelfCluster(ctx)
 
-					// 4.2 report periodically.
+					// 4.2 report cluster status periodically only when register successfully.
 					go wait.UntilWithContext(ctx, func(ctx context.Context) {
 						controller.statusManager.Run(ctx, controller.parentKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
 					}, time.Duration(0))
 
-					// 6. start ResourceBinding and Description controller of parent cluster and local pushed
-					go wait.UntilWithContext(ctx, func(ctx context.Context) {
+					// 4.3 Hypernode transfers node information from the parent cluster to the current cluster.
+					go func() {
+						err := controller.hyperNodeController.SetHypernodeController(controller.GaiaClusterName, controller.parentKubeConfig)
+						if err != nil {
+							utilruntime.HandleError(err)
+							return
+						}
+						controller.hyperNodeController.Run(common.DefaultThreadiness, ctx.Done())
+					}()
+
+					// 4.4 start Binder to handler parent cluster and local pushed Description and ResourceBinding.
+					go func() {
 						// set parent config
 						_, err := controller.rbController.SetRBBindController(controller.DedicatedNamespace)
 						if err != nil {
 							utilruntime.HandleError(err)
+							return
 						}
-						klog.Info("start 6. start ResourceBinding and Description controller of parent cluster and local pushed...")
 						controller.rbController.RunParentResourceBindingAndDescription(common.DefaultThreadiness, ctx.Done())
-					}, time.Duration(0))
+					}()
 				}()
 
 				// 5. start local description
@@ -449,6 +466,7 @@ func (controller *ControllerManager) waitingForApproval(ctx context.Context, cli
 	}
 	controller.parentKubeConfig = parentDedicatedKubeConfig
 	controller.DedicatedNamespace = utilpointer.String(crr.Status.DedicatedNamespace)
+	controller.GaiaClusterName = utilpointer.String(crr.Status.ManagedClusterName)
 
 	// once the request gets approved
 	// store auto-populated credentials to Secret "parent-cluster" in "gaia-system" namespace

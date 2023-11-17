@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
 
+	clusterapi "github.com/lmxia/gaia/pkg/apis/cluster"
 	platformapi "github.com/lmxia/gaia/pkg/apis/platform"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
@@ -211,12 +212,26 @@ func (crrApprover *CRRApprover) defaultRoles(namespace string) []rbacv1.Role {
 			},
 		},
 	}
+	roleForDefault := rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      metav1.NamespaceDefault + "-hypernode",
+			Namespace: metav1.NamespaceDefault,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{clusterapi.GroupName},
+				Resources: []string{"hypernodes"},
+				Verbs:     []string{"*"},
+			},
+		},
+	}
 
 	return []rbacv1.Role{
 		roleForManagedCluster,
 		roleForToBeMerged,
 		roleForMerged,
 		roleForReserved,
+		roleForDefault,
 	}
 }
 

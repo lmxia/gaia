@@ -25,6 +25,7 @@ import (
 
 	versioned "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	apps "github.com/lmxia/gaia/pkg/generated/informers/externalversions/apps"
+	cluster "github.com/lmxia/gaia/pkg/generated/informers/externalversions/cluster"
 	internalinterfaces "github.com/lmxia/gaia/pkg/generated/informers/externalversions/internalinterfaces"
 	platform "github.com/lmxia/gaia/pkg/generated/informers/externalversions/platform"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -174,11 +175,16 @@ type SharedInformerFactory interface {
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
 	Apps() apps.Interface
+	Cluster() cluster.Interface
 	Platform() platform.Interface
 }
 
 func (f *sharedInformerFactory) Apps() apps.Interface {
 	return apps.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Cluster() cluster.Interface {
+	return cluster.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Platform() platform.Interface {

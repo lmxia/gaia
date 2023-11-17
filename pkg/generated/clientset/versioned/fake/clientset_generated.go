@@ -22,6 +22,8 @@ import (
 	clientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
 	fakeappsv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1/fake"
+	clusterv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/cluster/v1alpha1"
+	fakeclusterv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/cluster/v1alpha1/fake"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1"
 	fakeplatformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -84,6 +86,11 @@ var (
 // AppsV1alpha1 retrieves the AppsV1alpha1Client
 func (c *Clientset) AppsV1alpha1() appsv1alpha1.AppsV1alpha1Interface {
 	return &fakeappsv1alpha1.FakeAppsV1alpha1{Fake: &c.Fake}
+}
+
+// ClusterV1alpha1 retrieves the ClusterV1alpha1Client
+func (c *Clientset) ClusterV1alpha1() clusterv1alpha1.ClusterV1alpha1Interface {
+	return &fakeclusterv1alpha1.FakeClusterV1alpha1{Fake: &c.Fake}
 }
 
 // PlatformV1alpha1 retrieves the PlatformV1alpha1Client

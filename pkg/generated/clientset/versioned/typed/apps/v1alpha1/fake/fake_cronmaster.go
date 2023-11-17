@@ -117,7 +117,7 @@ func (c *FakeCronMasters) UpdateStatus(ctx context.Context, cronMaster *v1alpha1
 // Delete takes name of the cronMaster and deletes it. Returns an error if one occurs.
 func (c *FakeCronMasters) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(cronmastersResource, c.ns, name), &v1alpha1.CronMaster{})
+		Invokes(testing.NewDeleteActionWithOptions(cronmastersResource, c.ns, name, opts), &v1alpha1.CronMaster{})
 
 	return err
 }

@@ -81,6 +81,8 @@ type WorkloadComponent struct {
 	Schedule SchedulerConfig `json:"schedule,omitempty"`
 	// +optional
 	Scc []SccConfig `json:"scc,omitempty"`
+	// +optional
+	FQDN string `json:"fqdn,omitempty"`
 	// +required
 	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required

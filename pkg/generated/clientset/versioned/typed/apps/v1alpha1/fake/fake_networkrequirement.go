@@ -117,7 +117,7 @@ func (c *FakeNetworkRequirements) UpdateStatus(ctx context.Context, networkRequi
 // Delete takes name of the networkRequirement and deletes it. Returns an error if one occurs.
 func (c *FakeNetworkRequirements) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(networkrequirementsResource, c.ns, name, opts), &v1alpha1.NetworkRequirement{})
+		Invokes(testing.NewDeleteAction(networkrequirementsResource, c.ns, name), &v1alpha1.NetworkRequirement{})
 
 	return err
 }

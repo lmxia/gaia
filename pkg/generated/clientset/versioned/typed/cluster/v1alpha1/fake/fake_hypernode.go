@@ -105,7 +105,7 @@ func (c *FakeHypernodes) Update(ctx context.Context, hypernode *v1alpha1.Hyperno
 // Delete takes name of the hypernode and deletes it. Returns an error if one occurs.
 func (c *FakeHypernodes) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(hypernodesResource, c.ns, name, opts), &v1alpha1.Hypernode{})
+		Invokes(testing.NewDeleteAction(hypernodesResource, c.ns, name), &v1alpha1.Hypernode{})
 
 	return err
 }

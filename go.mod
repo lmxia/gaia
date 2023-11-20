@@ -6,6 +6,7 @@ require (
 	github.com/SUMMERLm/hyperNodes v0.0.0-20220411082828-8c56025edf7c
 	github.com/SUMMERLm/serverless v0.0.0-20230519020935-4137fb4ac00d
 	github.com/antonfisher/nested-logrus-formatter v1.3.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.3
 	github.com/google/go-cmp v0.5.9
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
@@ -54,7 +55,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.1 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
-	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/go-containerregistry v0.8.1-0.20220414143355-892d7a808387 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
@@ -141,6 +141,7 @@ replace (
 	go.opentelemetry.io/proto/otlp => go.opentelemetry.io/proto/otlp v0.7.0
 	k8s.io/apimachinery => k8s.io/apimachinery v0.23.5
 	k8s.io/client-go => k8s.io/client-go v0.23.5
+	k8s.io/code-generator => k8s.io/code-generator v0.22.0-beta.1
 	k8s.io/component-base => k8s.io/component-base v0.23.5
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf
 )

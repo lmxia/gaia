@@ -4,7 +4,6 @@ import (
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	serveringv1 "knative.dev/serving/pkg/apis/serving/v1"
 )
 
 // Important: Run "make generated" to regenerate code after modifying this file
@@ -256,10 +255,6 @@ type Component struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Serverless ServerlessSpec `json:"serverless,omitempty" protobuf:"bytes,3,opt,name=serverless"`
-	// +optional
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:pruning:PreserveUnknownFields
 	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required
 	RuntimeType string `json:"runtimeType,omitempty"`
@@ -292,14 +287,6 @@ type Workload struct {
 	TraitAffinityDaemon *TraitAffinityDaemon `json:"traitaffinitydaemon,omitempty"`
 	// +optional
 	TraitUserAPP *TraitUserAPP `json:"traitUserAPP,omitempty"`
-}
-type ServerlessSpec struct {
-	// +optional
-	Revision RevisionSpec `json:"revision,omitempty"`
-	// Traffic specifies how to distribute traffic over a collection of
-	// revisions and configurations.
-	// +optional
-	Traffic []serveringv1.TrafficTarget `json:"traffic,omitempty"`
 }
 
 // RevisionSpec holds the desired state of the Revision (from the client).

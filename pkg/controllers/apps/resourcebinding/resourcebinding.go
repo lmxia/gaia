@@ -38,7 +38,9 @@ import (
 	utilErrors "k8s.io/apimachinery/pkg/util/errors"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
+	kubeInformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	corev1lister "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/util/retry"
@@ -66,12 +68,14 @@ type RBController struct {
 	rbLocalController   *Controller
 	descLocalController *description.Controller
 
+	localKubeClient          *kubernetes.Clientset
+	localNodeLister          corev1lister.NodeLister
+	localNodeSynced          cache.InformerSynced
 	localGaiaInformerFactory gaiaInformers.SharedInformerFactory
 	localDescLister          appListerV1alpha1.DescriptionLister
 	localDescSynced          cache.InformerSynced
 	localRBsLister           appListerV1alpha1.ResourceBindingLister
 	localRBsSynced           cache.InformerSynced
-	localKubeClient          *kubernetes.Clientset
 	localGaiaClient          *gaiaClientSet.Clientset
 	localDynamicClient       dynamic.Interface
 
@@ -108,12 +112,14 @@ type Controller struct {
 }
 
 // NewRBController returns a new Controller for ResourceBindings and Descriptions.
-func NewRBController(localKubeClient *kubernetes.Clientset, localGaiaClient *gaiaClientSet.Clientset, localGaiaInformerFactory gaiaInformers.SharedInformerFactory, localKubeConfig *rest.Config, networkBindUrl string) (*RBController, error) {
+func NewRBController(localKubeClient *kubernetes.Clientset, localGaiaClient *gaiaClientSet.Clientset, kubeInformerFactory kubeInformers.SharedInformerFactory, localGaiaInformerFactory gaiaInformers.SharedInformerFactory, localKubeConfig *rest.Config, networkBindUrl string) (*RBController, error) {
 	localDynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 
 	rbController := &RBController{
 		networkBindURL:           networkBindUrl,
 		localKubeClient:          localKubeClient,
+		localNodeLister:          kubeInformerFactory.Core().V1().Nodes().Lister(),
+		localNodeSynced:          kubeInformerFactory.Core().V1().Nodes().Informer().HasSynced,
 		localGaiaClient:          localGaiaClient,
 		localDynamicClient:       localDynamicClient,
 		localGaiaInformerFactory: localGaiaInformerFactory,
@@ -378,7 +384,7 @@ func (c *RBController) RunParentResourceBindingAndDescription(threadiness int, s
 	defer klog.Info("shutting parent scheduler")
 	c.parentMergedGaiaInformerFactory.Start(stopCh)
 	c.parentDedicatedGaiaInformerFactory.Start(stopCh)
-	if !cache.WaitForNamedCacheSync("parentResourceBinding-controller", stopCh, c.localDescSynced, c.localRBsSynced) {
+	if !cache.WaitForNamedCacheSync("parentResourceBinding-controller", stopCh, c.localDescSynced, c.localRBsSynced, c.localNodeSynced) {
 		return
 	}
 
@@ -544,32 +550,45 @@ func (c *RBController) handleParentAndPushResourceBinding(rb *appsV1alpha1.Resou
 
 		if rb.DeletionTimestamp == nil {
 			if createRB {
-				nwr, newErr := utils.GetNetworkRequirement(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName, common.GaiaReservedNamespace)
+				nwr, newErr := utils.GetNetworkRequirement(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName,
+					common.GaiaReservedNamespace)
 				if newErr != nil {
 					klog.Infof("nwr error===%v \n", newErr)
 					nwr = nil
 				}
-				return utils.ApplyResourceBinding(context.TODO(), c.localDynamicClient, c.restMapper, rb, clusterName, descriptionName, c.networkBindURL, nwr)
+				return utils.ApplyResourceBinding(context.TODO(), c.localDynamicClient, c.restMapper, rb, clusterName,
+					descriptionName, c.networkBindURL, nwr)
 			} else {
 				var desc *appsV1alpha1.Description
 				if rb.Namespace == common.GaiaPushReservedNamespace {
-					desc, err = c.localGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName, metav1.GetOptions{})
+					desc, err = c.localGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName,
+						metav1.GetOptions{})
 					if err != nil {
-						klog.Errorf("handleParentAndPushResourceBinding: failed get parent Description %s/%s, error == %v", descNs, descriptionName, err)
+						klog.Errorf("handleParentAndPushResourceBinding: failed get parent Description %s/%s, error == %v",
+							descNs, descriptionName, err)
 						return err
 					}
 				} else {
-					desc, err = c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName, metav1.GetOptions{})
+					desc, err = c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName,
+						metav1.GetOptions{})
 					if err != nil {
-						klog.Errorf("handleParentAndPushResourceBinding: failed get parent Description %s/%s, error == %v", descNs, descriptionName, err)
+						klog.Errorf("handleParentAndPushResourceBinding: failed get parent Description %s/%s, error==%v",
+							descNs, descriptionName, err)
 						return err
 					}
+				}
+
+				nodes, err := c.localNodeLister.List(labels.Everything())
+				if err != nil {
+					klog.Errorf("handleParentAndPushResourceBinding: failed to list nodes, Description=%s/%s, error==%v",
+						descNs, descriptionName, err)
+					return err
 				}
 				// format desc to components
 				components, _, _ := utils.DescToComponents(desc)
 				// need schedule across clusters
-				err := utils.ApplyRBWorkloads(context.TODO(), desc, components, c.parentGaiaClient, c.localDynamicClient,
-					c.restMapper, rb, clusterName)
+				err = utils.ApplyRBWorkloads(context.TODO(), c.parentGaiaClient, c.localDynamicClient, rb, nodes, desc, components,
+					c.restMapper, clusterName)
 				if err != nil {
 					return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
 				}

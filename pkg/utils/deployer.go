@@ -7,17 +7,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	known "github.com/lmxia/gaia/pkg/common"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -29,18 +32,32 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/klog/v2"
-
-	known "github.com/lmxia/gaia/pkg/common"
 )
 
-func DeleteResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+type vpcResource struct {
+	VPCName string
+	CPU     int64
+	MEM     int64
+}
+
+type vpcResourceSlice []vpcResource
+
+func (s vpcResourceSlice) Len() int           { return len(s) }
+func (s vpcResourceSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s vpcResourceSlice) Less(i, j int) bool { return s[i].CPU < s[j].CPU }
+
+func DeleteResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface,
+	restMapper meta.RESTMapper, resource *unstructured.Unstructured,
+) error {
 	deletePropagationBackground := metav1.DeletePropagationBackground
 
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(), resource.GroupVersionKind().Version)
+		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(),
+			resource.GroupVersionKind().Version)
 		if err != nil {
-			lastError = fmt.Errorf("please check whether the advertised apiserver of current child cluster is accessible. %v", err)
+			lastError = fmt.Errorf("please check whether the advertised apiserver of current child cluster is accessible. "+
+				"error==%v", err)
 			return false, nil
 		}
 
@@ -81,11 +98,11 @@ func setNestedField(u *unstructured.Unstructured, value interface{}, fields ...s
 // getStatusCause returns the named cause from the provided error if it exists and
 // the error is of the type APIStatus, Otherwise it returns false.
 func getStatusCause(err error) ([]metav1.StatusCause, bool) {
-	apierr, ok := err.(apierrors.APIStatus)
-	if !ok || apierr == nil || apierr.Status().Details == nil {
+	apiErr, ok := err.(apierrors.APIStatus)
+	if !ok || apiErr == nil || apiErr.Status().Details == nil {
 		return nil, false
 	}
-	return apierr.Status().Details.Causes, true
+	return apiErr.Status().Details.Causes, true
 }
 
 func GetDeployerCredentials(ctx context.Context, childKubeClientSet kubernetes.Interface, sa string) *corev1.Secret {
@@ -131,13 +148,16 @@ func GetDeployerCredentials(ctx context.Context, childKubeClientSet kubernetes.I
 	return secret
 }
 
-func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, resource *unstructured.Unstructured) error {
+func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper,
+	resource *unstructured.Unstructured,
+) error {
 	// set UID as empty
 	resource.SetUID("")
 
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(), resource.GroupVersionKind().Version)
+		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(),
+			resource.GroupVersionKind().Version)
 		if err != nil {
 			lastError = fmt.Errorf("error=%v", err)
 			return false, nil
@@ -204,24 +224,6 @@ func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface
 	return lastError
 }
 
-func GetDescription(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, name, desNs string) (*appsv1alpha1.Description, error) {
-	descriptionsKind := schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "Description"}
-	restMapping, err := restMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
-	if err != nil {
-		klog.Errorf("cannot get its Description, %q, err==%v", klog.KRef(desNs, name), err)
-		return nil, err
-	}
-	curObj, queryErr := dynamicClient.Resource(restMapping.Resource).Namespace(desNs).Get(ctx, name, metav1.GetOptions{})
-	if queryErr != nil && !apierrors.IsNotFound(queryErr) {
-		return nil, queryErr
-	}
-	des := &appsv1alpha1.Description{}
-	if err = UnstructuredConvertToStruct(curObj, des); err != nil {
-		return nil, err
-	}
-	return des, nil
-}
-
 func GetNetworkRequirement(ctx context.Context, dynamicClient dynamic.Interface, restMapper meta.RESTMapper, name, desNs string) (*appsv1alpha1.NetworkRequirement, error) {
 	kind := schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "NetworkRequirement"}
 	restMapping, err := restMapper.RESTMapping(kind.GroupKind(), kind.Version)
@@ -249,20 +251,21 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 		cronGVK           = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "CronMaster"}
 		userAppGVK        = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "UserAPP"}
 	)
-	gvks := []schema.GroupVersionKind{
+	gvkSli := []schema.GroupVersionKind{
 		serverlessGVK, deployGVK, affinityDaemonGVK, cronGVK, userAppGVK,
 	}
-	for _, gvk := range gvks {
+	for _, gvk := range gvkSli {
 		restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
 			klog.Warningf("failed to get restMapping for %q, error==%v", gvk.String(), err)
 			return err
 		}
-		unList, err := dynamicClient.Resource(restMapping.Resource).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-			known.OriginDescriptionNameLabel:      rbLabel[known.OriginDescriptionNameLabel],
-			known.OriginDescriptionNamespaceLabel: rbLabel[known.OriginDescriptionNamespaceLabel],
-			known.OriginDescriptionUIDLabel:       rbLabel[known.OriginDescriptionUIDLabel],
-		}).String()})
+		unList, err := dynamicClient.Resource(restMapping.Resource).List(ctx, metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
+				known.OriginDescriptionNameLabel:      rbLabel[known.OriginDescriptionNameLabel],
+				known.OriginDescriptionNamespaceLabel: rbLabel[known.OriginDescriptionNamespaceLabel],
+				known.OriginDescriptionUIDLabel:       rbLabel[known.OriginDescriptionUIDLabel],
+			}).String()})
 		if err != nil {
 			klog.Warningf("failed to list resources of %q, error==%v", gvk.String(), err)
 			return err
@@ -273,22 +276,24 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 	var allErrs []error
 	var err error
 	wg := sync.WaitGroup{}
+	wg.Add(len(resources))
 	errCh := make(chan error, len(resources))
 	descName := rbLabel[known.OriginDescriptionNameLabel]
-	for _, resource := range resources {
-		wg.Add(1)
-		go func(unStructure *unstructured.Unstructured) {
+	for _, res := range resources {
+		go func(un unstructured.Unstructured) {
 			defer wg.Done()
+			unStructure := &un
 			klog.V(5).Infof("deleting %s %s defined of Description %s", unStructure.GetKind(),
 				klog.KObj(unStructure), descName)
 			err2 := DeleteResourceWithRetry(ctx, dynamicClient, restMapper, unStructure)
 			if err2 != nil {
-				klog.Infof("offload workloads name==%q err===%v \n", klog.KRef(unStructure.GetNamespace(), unStructure.GetName()), err2)
+				klog.Infof("offload workloads name==%q err===%v \n", klog.KRef(unStructure.GetNamespace(),
+					unStructure.GetName()), err2)
 				errCh <- err2
 			}
-		}(&resource)
-		wg.Wait()
+		}(res)
 	}
+	wg.Wait()
 
 	// collect errors
 	close(errCh)
@@ -305,13 +310,23 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 	return nil
 }
 
-func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component,
-	parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
+func ApplyRBWorkloads(ctx context.Context, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
+	rb *appsv1alpha1.ResourceBinding, nodes []*corev1.Node, desc *appsv1alpha1.Description,
+	components []appsv1alpha1.Component, discoveryRESTMapper meta.RESTMapper, clusterName string,
+) error {
 	var allErrs []error
+	var vpcResourceSli vpcResourceSlice
+	group2VPC := make(map[string]string)
 	descLabels := desc.GetLabels()
 	wg := sync.WaitGroup{}
 	comToBeApply := components
+
+	// Binding hugeComponent with reference to vpc resources
+	group2HugeCom := DescToHugeComponents(desc)
+	if len(group2HugeCom) != 0 {
+		getVPCForGroup(group2HugeCom, nodes, vpcResourceSli, group2VPC)
+	}
+
 	errCh := make(chan error, len(comToBeApply))
 	for _, com := range comToBeApply {
 		switch com.Workload.Workloadtype {
@@ -319,19 +334,22 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 			var unStructure *unstructured.Unstructured
 			var errDep error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
-				unStructure, errDep = AssembledCronDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
+				unStructure, errDep = AssembledCronDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
+					group2VPC, descLabels, false)
 			} else {
-				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
+				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
+					group2VPC, descLabels, false)
 			}
 			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(unstructure *unstructured.Unstructured) {
+			go func(un *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
+				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, un)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads Deployment name==%q err===%v \n", klog.KRef(unstructure.GetNamespace(), unstructure.GetName()), retryErr)
+					klog.Infof("applyRBWorkloads Deployment name==%q err===%v \n",
+						klog.KRef(un.GetNamespace(), un.GetName()), retryErr)
 					errCh <- retryErr
 					return
 				}
@@ -340,53 +358,57 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 			var unStructure *unstructured.Unstructured
 			var errSer error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
-				unStructure, errSer = AssembledCronServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
+				unStructure, errSer = AssembledCronServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
+					group2VPC, descLabels, false)
 			} else {
-				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
+				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
+					group2VPC, descLabels, false)
 			}
 			if errSer != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(unstructure *unstructured.Unstructured) {
+			go func(un *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
+				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, un)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads Serverless name==%q err===%v \n", klog.KRef(unstructure.GetNamespace(), unstructure.GetName()), retryErr)
+					klog.Infof("applyRBWorkloads Serverless name==%q err===%v \n",
+						klog.KRef(un.GetNamespace(), un.GetName()), retryErr)
 					errCh <- retryErr
 					return
 				}
 			}(unStructure)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			unstructure, errdep := AssembledDaemonSetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
-			if errdep != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
+			unStructure, errDep := AssembledDaemonSetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
+				group2VPC, descLabels, false)
+			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(unstructure *unstructured.Unstructured) {
+			go func(un *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
+				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, un)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", unstructure.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", un.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(unstructure)
+			}(unStructure)
 		case appsv1alpha1.WorkloadTypeUserApp:
-			unstructure, errUserapp := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
-			if errUserapp != nil || unstructure == nil || unstructure.Object == nil || len(unstructure.GetName()) == 0 {
+			unStructure, errUserAPP := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
+			if errUserAPP != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
 			wg.Add(1)
-			go func(unstructure *unstructured.Unstructured) {
+			go func(unStructure *unstructured.Unstructured) {
 				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unstructure)
+				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unStructure)
 				if retryErr != nil {
-					klog.Infof("applyRBWorkloads userApp name==%s err===%v \n", unstructure.GetName(), retryErr)
+					klog.Infof("applyRBWorkloads userApp name==%s err===%v \n", unStructure.GetName(), retryErr)
 					errCh <- retryErr
 					return
 				}
-			}(unstructure)
+			}(unStructure)
 		}
 		wg.Wait()
 	}
@@ -397,8 +419,17 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 		allErrs = append(allErrs, err)
 	}
 
-	condition := getCondition(allErrs, clusterName, klog.KObj(rb).String())
-	// update status
+	condition := getDeployCondition(allErrs, clusterName, klog.KObj(rb).String())
+	// update status  with retry
+	err := updateRBStatusWithRetry(ctx, parentGaiaClient, rb, condition, clusterName)
+	if len(allErrs) > 0 {
+		return utilerrors.NewAggregate(allErrs)
+	}
+
+	return err
+}
+
+func updateRBStatusWithRetry(ctx context.Context, parentGaiaClient *gaiaClientSet.Clientset, rb *appsv1alpha1.ResourceBinding, condition metav1.Condition, clusterName string) error {
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
 		rb.Status.Conditions = append(rb.Status.Conditions, condition)
@@ -417,13 +448,15 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 			}
 			rb.Status.Status = appsv1alpha1.ResourceBindingGreen
 		}
-		_, lastError := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(), rb, metav1.UpdateOptions{})
+		_, lastError := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(),
+			rb, metav1.UpdateOptions{})
 		// check if failed
 		if lastError == nil {
 			return true, nil
 		}
 		if apierrors.IsConflict(lastError) {
-			newRB, lastError := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Get(context.TODO(), rb.Name, metav1.GetOptions{})
+			newRB, lastError := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Get(context.TODO(),
+				rb.Name, metav1.GetOptions{})
 			if lastError == nil {
 				rb = newRB
 			}
@@ -431,16 +464,63 @@ func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, compo
 		return false, nil
 	})
 	if err != nil {
-		klog.WarningDepth(2, "failed to update status of resourcebinding %q, err: %v", klog.KRef(rb.Namespace, rb.Name), lastError)
+		klog.WarningDepth(2, "failed to update status of resourcebinding %q, err: %v",
+			klog.KRef(rb.Namespace, rb.Name), lastError)
 	}
 
-	if len(allErrs) > 0 {
-		return utilerrors.NewAggregate(allErrs)
-	}
 	return err
 }
 
-func getCondition(errs []error, clusterName, rbRef string) metav1.Condition {
+func getVPCForGroup(group2HugeCom map[string]*appsv1alpha1.HugeComponent, nodes []*corev1.Node, sli vpcResourceSlice,
+	group2VPC map[string]string,
+) {
+	vpc2CPU, vpc2Mem := make(map[string]resource.Quantity), make(map[string]resource.Quantity)
+	for _, node := range nodes {
+		if node.GetLabels()[v1alpha1.ParsedNodeRoleKey] == "System" {
+			continue
+		}
+		vpcLabel := node.Labels[known.SpecificNodeLabelsKeyPrefix+known.VpcLabel]
+		if len(vpcLabel) != 0 {
+			cpu := vpc2CPU[vpcLabel]
+			cpu.Add(*node.Status.Allocatable.Cpu())
+			mem := vpc2Mem[vpcLabel]
+			mem.Add(*node.Status.Allocatable.Memory())
+
+			vpc2CPU[vpcLabel] = cpu
+			vpc2Mem[vpcLabel] = mem
+		}
+	}
+	for vpcLabel, cpu := range vpc2CPU {
+		mem := vpc2Mem[vpcLabel]
+		sli = append(sli, vpcResource{
+			VPCName: vpcLabel,
+			CPU:     cpu.MilliValue(),
+			MEM:     mem.Value(),
+		})
+	}
+	klog.V(5).Infof("groupSchedule: resource size of different VPCs. VPCName=%+v", sli)
+	// Obtain the vpc of the largest resource and insert it into the deployed resource.
+	for groupName, hugeCom := range group2HugeCom {
+		index, err := getFitVPC(hugeCom, &sli)
+		if err == nil {
+			group2VPC[groupName] = sli[index].VPCName
+		}
+	}
+}
+
+func getFitVPC(com *appsv1alpha1.HugeComponent, sli *vpcResourceSlice) (int, error) {
+	sort.Sort(sort.Reverse(sli))
+	for index, vpcResource := range *sli {
+		if com.TotalCPU <= vpcResource.CPU && com.TotalMem <= vpcResource.MEM {
+			vpcResource.CPU -= com.TotalCPU
+			vpcResource.MEM -= com.TotalMem
+			return index, nil
+		}
+	}
+	return -1, fmt.Errorf("no vpc meets the resource requirements of groupSchedule, groupSchedule==%q", com.GroupName)
+}
+
+func getDeployCondition(errs []error, clusterName, rbRef string) metav1.Condition {
 	if len(errs) > 0 {
 		reason := utilerrors.NewAggregate(errs).Error()
 		klog.Errorf("failed to apply workloads", "ResourceBinding", rbRef, "reason", reason)
@@ -449,7 +529,8 @@ func getCondition(errs []error, clusterName, rbRef string) metav1.Condition {
 			Status:             metav1.ConditionFalse,
 			LastTransitionTime: metav1.Now(),
 			Reason:             reason,
-			Message:            fmt.Sprintf("clusterName: %q ResourceBinding: %q  failed to deploy workloads", clusterName, rbRef),
+			Message: fmt.Sprintf("clusterName: %q ResourceBinding: %q  failed to deploy workloads",
+				clusterName, rbRef),
 		}
 	}
 
@@ -459,13 +540,14 @@ func getCondition(errs []error, clusterName, rbRef string) metav1.Condition {
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 		Reason:             "null",
-		Message:            fmt.Sprintf("clusterName: %q ResourceBinding: %q  deployed workloads successfully", clusterName, rbRef),
+		Message: fmt.Sprintf("clusterName: %q ResourceBinding: %q  deployed workloads successfully",
+			clusterName, rbRef),
 	}
 }
 
-func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName,
-	networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement,
+func ApplyResourceBinding(ctx context.Context, localDynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,
+	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindURL string,
+	nwr *appsv1alpha1.NetworkRequirement,
 ) error {
 	var allErrs []error
 	var err error
@@ -497,17 +579,17 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 			if len(rb.Namespace) > 0 {
 				newRB.Namespace = rb.Namespace
 			}
-			rbUnstructured, errdep := ObjectConvertToUnstructured(newRB)
-			if errdep != nil || rbUnstructured == nil {
-				msg := fmt.Sprintf("apply RB in field %s failed to unmarshal resource: %v", newRB.ClusterName, errdep)
+			rbUnstructured, errDep := ObjectConvertToUnstructured(newRB)
+			if errDep != nil || rbUnstructured == nil {
+				msg := fmt.Sprintf("apply RB in field %s failed to unmarshal resource: %v", newRB.ClusterName, errDep)
 				klog.ErrorDepth(5, msg)
-				allErrs = append(allErrs, errdep)
+				allErrs = append(allErrs, errDep)
 				continue
 			}
 			wg.Add(1)
 			go func(rbUnstructured *unstructured.Unstructured) {
 				defer wg.Done()
-				err = ApplyResourceWithRetry(ctx, localdynamicClient, discoveryRESTMapper, rbUnstructured)
+				err = ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, rbUnstructured)
 				if err != nil {
 					errCh <- err
 					return
@@ -515,10 +597,10 @@ func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interf
 			}(rbUnstructured)
 			wg.Wait()
 
-			if len(newRB.Spec.NetworkPath) > 0 && len(networkBindUrl) > 0 && nwr != nil {
-				klog.V(2).Infof("networkBindUrl is %q", networkBindUrl)
+			if len(newRB.Spec.NetworkPath) > 0 && len(networkBindURL) > 0 && nwr != nil {
+				klog.V(2).Infof("networkBindURL is %q", networkBindURL)
 				if NeedBindNetworkInCluster(rb.Spec.RbApps, clusterName, nwr) {
-					PostNetworkRequest(networkBindUrl, descriptionName, "add", newRB.Spec.NetworkPath[0])
+					PostNetworkRequest(networkBindURL, descriptionName, "add", newRB.Spec.NetworkPath[0])
 				}
 			}
 		}
@@ -585,7 +667,7 @@ func PostNetworkRequest(url, descriptionName, operate string, path []byte) {
 	klog.InfoS("successfully post network path", "operate", operate, "Description", descriptionName, "NetworkPath", string(path))
 }
 
-func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, group2VPC, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -593,7 +675,16 @@ func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
-				newLabels := addLabels(comCopy, descLabels, descName)
+				newLabels := map[string]string{
+					known.GaiaDescriptionLabel:            descName,
+					known.GaiaComponentLabel:              comCopy.Name,
+					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+				}
+				if descLabels[known.UserIDLabel] != "" {
+					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+				}
 				ds := &appsv1.DaemonSet{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "DaemonSet",
@@ -614,8 +705,9 @@ func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					ds.Spec.Template = comCopy.Module
 					nodeAffinity := AddNodeAffinity(comCopy)
 					ds.Spec.Template.Spec.Affinity = nodeAffinity
+					ds.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy, ds.Spec.Template.Spec.NodeSelector, group2VPC)
 
-					label := getTemLabel(comCopy, newLabels)
+					label := ds.GetLabels()
 					ds.Spec.Template.Labels = label
 					ds.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 					// add  env variables log needed
@@ -648,7 +740,16 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 			if replicas == 0 {
 				return nil, nil
 			}
-			newLabels := addLabels(comCopy, descLabels, descName)
+			newLabels := map[string]string{
+				known.GaiaDescriptionLabel:            descName,
+				known.GaiaComponentLabel:              comCopy.Name,
+				known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+				known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+				known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+			}
+			if descLabels[known.UserIDLabel] != "" {
+				newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+			}
 			userAPP := &appsv1alpha1.UserAPP{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "UserAPP",
@@ -662,7 +763,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 			if !delete {
 				userAPP.Spec.Module = comCopy.Module
 				userAPP.Spec.SN = comCopy.Workload.TraitUserAPP.SN
-				label := getTemLabel(comCopy, newLabels)
+				label := userAPP.GetLabels()
 				userAPP.Spec.Module.Labels = label
 				// add  env variables log needed
 				userAPP.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
@@ -735,7 +836,9 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 	return nodeAffinity
 }
 
-func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName,
+	descName string, group2VPC, descLabels map[string]string, delete bool,
+) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -745,7 +848,16 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			if replicas <= 0 {
 				return nil, fmt.Errorf("deployment name==%s, have zero replicas", comCopy.Name)
 			}
-			newLabels := addLabels(comCopy, descLabels, descName)
+			newLabels := map[string]string{
+				known.GaiaDescriptionLabel:            descName,
+				known.GaiaComponentLabel:              comCopy.Name,
+				known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+				known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+				known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+			}
+			if descLabels[known.UserIDLabel] != "" {
+				newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+			}
 			dep := &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
@@ -765,13 +877,9 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Spec.Template = comCopy.Module
 				nodeAffinity := AddNodeAffinity(comCopy)
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
-				if dep.Spec.Template.Spec.NodeSelector == nil {
-					dep.Spec.Template.Spec.NodeSelector = map[string]string{
-						v1alpha1.ParsedRuntimeStateKey: comCopy.RuntimeType,
-					}
-				}
+				dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy, dep.Spec.Template.Spec.NodeSelector, group2VPC)
 				dep.Spec.Replicas = &replicas
-				label := getTemLabel(comCopy, newLabels)
+				label := dep.GetLabels()
 				dep.Spec.Template.Labels = label
 				dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 				// add  env variables log needed
@@ -794,31 +902,27 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 	return depUnstructured, nil
 }
 
-func addLabels(com *appsv1alpha1.Component, descLabels map[string]string, descName string) map[string]string {
-	newLabels := map[string]string{
-		known.GaiaDescriptionLabel:            descName,
-		known.GaiaComponentLabel:              com.Name,
-		known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-		known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-		known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
-	}
-	if descLabels[known.UserNameLabel] != "" {
-		newLabels[known.UserNameLabel] = descLabels[known.UserNameLabel]
-	}
-
-	return newLabels
-}
-
-func getTemLabel(com *appsv1alpha1.Component, depLabels map[string]string) map[string]string {
-	newLabels := map[string]string{}
-	for k, v := range depLabels {
-		newLabels[k] = v
-	}
-	for k, v := range com.Module.Labels {
-		newLabels[k] = v
+func addNodeSelector(comCopy *appsv1alpha1.Component, src, group2VPC map[string]string) map[string]string {
+	var vpcName string
+	if src == nil {
+		if vpc, ok := group2VPC[comCopy.GroupName]; ok {
+			vpcName = vpc
+		}
+		nodeSelector := map[string]string{
+			v1alpha1.ParsedRuntimeStateKey:                     comCopy.RuntimeType,
+			known.SpecificNodeLabelsKeyPrefix + known.VpcLabel: vpcName,
+		}
+		return nodeSelector
 	}
 
-	return newLabels
+	if _, ok := src[v1alpha1.ParsedRuntimeStateKey]; !ok {
+		src[v1alpha1.ParsedRuntimeStateKey] = comCopy.RuntimeType
+	}
+	if vpc, ok := group2VPC[comCopy.GroupName]; ok {
+		src[known.SpecificNodeLabelsKeyPrefix+known.VpcLabel] = vpc
+	}
+
+	return src
 }
 
 func addEnvVars(containers []corev1.Container, scc []appsv1alpha1.SccConfig) []corev1.Container {
@@ -877,7 +981,7 @@ func makeEnvVariableName(str string) string {
 }
 
 func setMatchExpressions(matchExpressions []metav1.LabelSelectorRequirement) []corev1.NodeSelectorRequirement {
-	nsRequirements := []corev1.NodeSelectorRequirement{}
+	var nsRequirements []corev1.NodeSelectorRequirement
 	for _, expression := range matchExpressions {
 		express := corev1.NodeSelectorRequirement{
 			Key:      known.SpecificNodeLabelsKeyPrefix + expression.Key,
@@ -891,7 +995,7 @@ func setMatchExpressions(matchExpressions []metav1.LabelSelectorRequirement) []c
 
 func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement) []corev1.NodeSelectorTerm {
 	nsRequirements := setMatchExpressions(matchExpressions)
-	nodeSelectorTerms := []corev1.NodeSelectorTerm{}
+	var nodeSelectorTerms []corev1.NodeSelectorTerm
 	nodeSelectorTerm := corev1.NodeSelectorTerm{
 		MatchExpressions: nsRequirements,
 	}
@@ -902,7 +1006,8 @@ func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement) []
 }
 
 func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
-	clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool,
+) (*unstructured.Unstructured, error) {
 	cronUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -910,7 +1015,16 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
-				newLabels := addLabels(comCopy, descLabels, descName)
+				newLabels := map[string]string{
+					known.GaiaDescriptionLabel:            descName,
+					known.GaiaComponentLabel:              comCopy.Name,
+					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+				}
+				if descLabels[known.UserIDLabel] != "" {
+					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+				}
 				cron := &appsv1alpha1.CronMaster{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "CronMaster",
@@ -957,13 +1071,9 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 					dep.Spec.Template = comCopy.Module
 					nodeAffinity := AddNodeAffinity(comCopy)
 					dep.Spec.Template.Spec.Affinity = nodeAffinity
-					if dep.Spec.Template.Spec.NodeSelector == nil {
-						dep.Spec.Template.Spec.NodeSelector = map[string]string{
-							v1alpha1.ParsedRuntimeStateKey: comCopy.RuntimeType,
-						}
-					}
+					dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy, dep.Spec.Template.Spec.NodeSelector, group2VPC)
 					dep.Spec.Replicas = &replicas
-					label := getTemLabel(comCopy, newLabels)
+					label := dep.GetLabels()
 					dep.Spec.Template.Labels = label
 					dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 					// add  env variables log needed
@@ -993,7 +1103,7 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 	return cronUnstructured, nil
 }
 
-func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, group2VPC, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	cronUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -1001,7 +1111,16 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
-				newLabels := addLabels(comCopy, descLabels, descName)
+				newLabels := map[string]string{
+					known.GaiaDescriptionLabel:            descName,
+					known.GaiaComponentLabel:              comCopy.Name,
+					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+				}
+				if descLabels[known.UserIDLabel] != "" {
+					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+				}
 				cron := &appsv1alpha1.CronMaster{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "CronMaster",
@@ -1058,6 +1177,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 					}
 					nodeAffinity := AddNodeAffinity(comCopy)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
+					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy, ser.Spec.Module.Spec.NodeSelector, group2VPC)
 					// add  env variables log needed
 					ser.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
 					if ser.Spec.Module.Spec.NodeSelector == nil {
@@ -1066,7 +1186,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 							v1alpha1.ParsedRuntimeStateKey: comCopy.RuntimeType,
 						}
 					}
-					ser.Spec.Module.Labels = getTemLabel(comCopy, newLabels)
+					ser.Spec.Module.Labels = ser.GetLabels()
 
 					serJs, errSer := json.Marshal(ser)
 					if errSer != nil {
@@ -1092,7 +1212,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 	return cronUnstructured, nil
 }
 
-func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, group2VPC, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	serUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -1101,7 +1221,16 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			replicas := rbApp.Replicas[comCopy.Name]
 			comCopy.Workload.TraitServerless.Foundingmember = rbApp.ChosenOne[comCopy.Name] == 1
 			if replicas > 0 {
-				newLabels := addLabels(comCopy, descLabels, descName)
+				newLabels := map[string]string{
+					known.GaiaDescriptionLabel:            descName,
+					known.GaiaComponentLabel:              comCopy.Name,
+					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+				}
+				if descLabels[known.UserIDLabel] != "" {
+					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+				}
 				ser := &lmmserverless.Serverless{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "Serverless",
@@ -1131,6 +1260,7 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 					}
 					nodeAffinity := AddNodeAffinity(comCopy)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
+					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy, ser.Spec.Module.Spec.NodeSelector, group2VPC)
 					// add  env variables log needed
 					ser.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
 					if ser.Spec.Module.Spec.NodeSelector == nil {
@@ -1139,7 +1269,7 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 							v1alpha1.ParsedRuntimeStateKey: comCopy.RuntimeType,
 						}
 					}
-					ser.Spec.Module.Labels = getTemLabel(comCopy, newLabels)
+					ser.Spec.Module.Labels = ser.GetLabels()
 
 					serUnstructured, err = ObjectConvertToUnstructured(ser)
 				} else {
@@ -1199,8 +1329,8 @@ func CreatNSIdNeed(dynamicClient dynamic.Interface, restMapper meta.RESTMapper, 
 		}
 		nsKind := schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}
 		restNS, _ := restMapper.RESTMapping(nsKind.GroupKind(), nsKind.Version)
-		nsUnstructured, errns := ObjectConvertToUnstructured(ns)
-		if errns != nil {
+		nsUnstructured, errNS := ObjectConvertToUnstructured(ns)
+		if errNS != nil {
 			err := fmt.Errorf("convert ns %s error===.%v \n", namespace, err)
 			return err
 		}
@@ -1220,14 +1350,15 @@ func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Int
 	descriptionsKind := schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "ResourceBinding"}
 	restMapping, err := discoveryRESTMapper.RESTMapping(descriptionsKind.GroupKind(), descriptionsKind.Version)
 	if err != nil {
-		klog.Errorf("cannot get desc name=%s its descrito %v", desc.Name, err)
+		klog.Errorf("cannot get desc name=%q, error==%v", desc.Name, err)
 		return err
 	}
 
 	klog.V(5).Infof("deleting description %s  defined in deploy %s", desc.Name, klog.KObj(desc))
-	err = dynamicClient.Resource(restMapping.Resource).Namespace(desc.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-		known.GaiaDescriptionLabel: desc.Name,
-	}).String()})
+	err = dynamicClient.Resource(restMapping.Resource).Namespace(desc.Namespace).DeleteCollection(ctx,
+		metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+			known.GaiaDescriptionLabel: desc.Name,
+		}).String()})
 	if err != nil && !apierrors.IsNotFound(err) {
 		klog.Errorf("deleting description %s  defined in deploy %s", desc.Name, klog.KObj(desc))
 		return err
@@ -1235,57 +1366,10 @@ func OffloadResourceByDescription(ctx context.Context, dynamicClient dynamic.Int
 	return err
 }
 
-func OffloadDescription(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, desc *appsv1alpha1.Description,
-) error {
-	descUnstructured, _ := ObjectConvertToUnstructured(desc)
-	return DeleteResource(ctx, dynamicClient, discoveryRESTMapper, descUnstructured)
-}
-
-func DeleteResource(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured,
-) error {
-	wg := sync.WaitGroup{}
-	var err error
-	wg.Add(1)
-	go func(resource *unstructured.Unstructured) {
-		defer wg.Done()
-		klog.V(5).Infof("resource deleting %s %s defined in resource %s", resource.GetKind(),
-			resource.GetName(), klog.KObj(resource))
-		err = DeleteResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, resource)
-		if err != nil {
-			klog.Errorf("error resource deleting %s %s defined in resource %s", resource.GetKind(),
-				resource.GetName(), klog.KObj(resource))
-			return
-		}
-	}(resource)
-	wg.Wait()
-	return err
-}
-
-func ApplyResource(ctx context.Context, dynamicClient dynamic.Interface,
-	discoveryRESTMapper meta.RESTMapper, resource *unstructured.Unstructured,
-) error {
-	wg := sync.WaitGroup{}
-	var err error
-	wg.Add(1)
-	go func(resource *unstructured.Unstructured) {
-		defer wg.Done()
-		klog.V(5).Infof("resource apply %s %s defined in resource %s", resource.GetKind(),
-			resource.GetName(), klog.KObj(resource))
-		err = ApplyResourceWithRetry(ctx, dynamicClient, discoveryRESTMapper, resource)
-		if err != nil {
-			klog.Errorf("error resource apply %s %s defined in resource %s", resource.GetKind(),
-				resource.GetName(), klog.KObj(resource))
-			return
-		}
-	}(resource)
-	wg.Wait()
-	return err
-}
-
 // NeedBindNetworkInCluster check if we should bind network path.
-func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string, networkReq *appsv1alpha1.NetworkRequirement) bool {
+func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, clusterName string,
+	networkReq *appsv1alpha1.NetworkRequirement,
+) bool {
 	var compToReplicasMap map[string]int32
 	for _, rbApp := range rbApps {
 		if clusterName == rbApp.ClusterName {

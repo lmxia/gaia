@@ -44,8 +44,8 @@ type ClusterToStatusMap map[string]*Status
 
 // statusPrecedence defines a map from status to its precedence, larger value means higher precedent.
 var statusPrecedence = map[Code]int{
-	Error:                        3,
-	UnschedulableAndUnresolvable: 2,
+	Error:                        ErrorPrecedence,
+	UnschedulableAndUnresolvable: UnschedulableUnresolvablePrecedence,
 	Unschedulable:                1,
 	// Any other statuses we know today, `Skip` or `Wait`, will take precedence over `Success`.
 	Success: -1,
@@ -60,6 +60,9 @@ const (
 
 	// MaxTotalScore is the maximum total score.
 	MaxTotalScore int64 = math.MaxInt64
+
+	ErrorPrecedence                     = 3
+	UnschedulableUnresolvablePrecedence = 2
 )
 
 // PluginToStatus maps plugin name to status. Currently, used to identify which Filter plugin
@@ -158,7 +161,8 @@ type PostFilterPlugin interface {
 	// Optionally, a non-nil PostFilterResult may be returned along with a Success status. For example,
 	// a preemption plugin may choose to return nominatedClusterName, so that framework can reuse that to update the
 	// preemptor subscription's .spec.status.nominatedClusterName field.
-	PostFilter(ctx context.Context, sub *appsapi.Component, filteredClusterStatusMap ClusterToStatusMap) (*PostFilterResult, *Status)
+	PostFilter(ctx context.Context, sub *appsapi.Component,
+		filteredClusterStatusMap ClusterToStatusMap) (*PostFilterResult, *Status)
 }
 
 // PreScorePlugin is an interface for "PreScore" plugin. PreScore is an
@@ -190,7 +194,8 @@ type ScorePlugin interface {
 	// Score is called on each filtered cluster. It must return success and an integer
 	// indicating the rank of the cluster. All scoring plugins must return success or
 	// the subscription will be rejected.
-	Score(ctx context.Context, description *appsapi.Description, sub *appsapi.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *Status)
+	Score(ctx context.Context, description *appsapi.Description, sub *appsapi.ResourceBinding,
+		clusters []*clusterapi.ManagedCluster) (int64, *Status)
 
 	// ScoreExtensions returns a ScoreExtensions interface if it implements one, or nil if not.
 	ScoreExtensions() ScoreExtensions
@@ -211,7 +216,8 @@ type Framework interface {
 	// PostFilter plugins can either be informational, in which case should be configured
 	// to execute first and return Unschedulable status, or ones that try to change the
 	// cluster state to make the subscription potentially schedulable in a future scheduling cycle.
-	RunPostFilterPlugins(ctx context.Context, sub *appsapi.Component, filteredClusterStatusMap ClusterToStatusMap) (*PostFilterResult, *Status)
+	RunPostFilterPlugins(ctx context.Context, sub *appsapi.Component,
+		filteredClusterStatusMap ClusterToStatusMap) (*PostFilterResult, *Status)
 
 	// HasFilterPlugins returns true if at least one Filter plugin is defined.
 	HasFilterPlugins() bool
@@ -268,7 +274,8 @@ type PluginsRunner interface {
 	// stores for each Score plugin name the corresponding ResourceBindingScoreList(s).
 	// It also returns *Status, which is set to non-success if any of the plugins returns
 	// a non-success status.
-	RunScorePlugins(context.Context, *appsapi.Description, []*appsapi.ResourceBinding, []*clusterapi.ManagedCluster) (PluginToRBScores, *Status)
+	RunScorePlugins(context.Context, *appsapi.Description, []*appsapi.ResourceBinding,
+		[]*clusterapi.ManagedCluster) (PluginToRBScores, *Status)
 
 	// RunFilterPlugins runs the set of configured Filter plugins for subscription on
 	// the given cluster.

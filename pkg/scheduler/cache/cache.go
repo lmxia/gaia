@@ -13,7 +13,6 @@ import (
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	applisters "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	platformlisters "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 )
 
@@ -37,10 +36,9 @@ type Cache interface {
 }
 
 type schedulerCache struct {
-	clusterListers        platformlisters.ManagedClusterLister
-	resourcebindingLister applisters.ResourceBindingLister
-	localGaiaClient       *gaiaClientSet.Clientset
-	selfClusterName       string
+	clusterListers  platformlisters.ManagedClusterLister
+	localGaiaClient *gaiaClientSet.Clientset
+	selfClusterName string
 }
 
 // NumClusters returns the number of clusters in the cache.

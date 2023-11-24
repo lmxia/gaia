@@ -118,12 +118,12 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		managedCluster.ManagedClusterSource = known.ManagedClusterSourceFromInformer
 	}
 
-	if managedCluster.ManagedClusterSource == known.ManagedClusterSourceFromPrometheus && len(managedCluster.PrometheusMonitorUrlPrefix) <= 0 {
-		managedCluster.PrometheusMonitorUrlPrefix = known.PrometheusUrlPrefix
+	if managedCluster.ManagedClusterSource == known.ManagedClusterSourceFromPrometheus && len(managedCluster.PrometheusMonitorURLPrefix) <= 0 {
+		managedCluster.PrometheusMonitorURLPrefix = known.PrometheusURLPrefix
 	}
 
-	if len(managedCluster.TopoSyncBaseUrl) <= 0 {
-		managedCluster.TopoSyncBaseUrl = known.TopoSyncBaseUrl
+	if len(managedCluster.TopoSyncBaseURL) <= 0 {
+		managedCluster.TopoSyncBaseURL = known.TopoSyncBaseURL
 	}
 
 	// create clientset for child cluster

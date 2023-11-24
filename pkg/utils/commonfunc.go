@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 
-	"k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -60,7 +59,7 @@ func GetLocalClusterName(localkubeclient *kubernetes.Clientset) (string, string,
 		klog.Errorf("failed to get clustername  From secret,error==: %v", err)
 		return clusterName, "", err
 	}
-	parentNs := string(secret.Data[v1.ServiceAccountNamespaceKey])
+	parentNs := string(secret.Data[corev1.ServiceAccountNamespaceKey])
 	if len(secret.Labels) > 0 {
 		clusterName = secret.Labels[known.ClusterNameLabel]
 	}
@@ -90,7 +89,7 @@ func NewParentConfig(ctx context.Context, kubeclient *kubernetes.Clientset, gaia
 		}
 		if err == nil {
 			klog.Infof("found existing secretFromParentCluster '%s/%s' that can be used to access parent cluster", common.GaiaSystemNamespace, common.ParentClusterSecretName)
-			parentKubeConfig, err = GenerateKubeConfigFromToken(target.Spec.ParentURL, string(secret.Data[v1.ServiceAccountTokenKey]), secret.Data[v1.ServiceAccountRootCAKey], 2)
+			parentKubeConfig, err = GenerateKubeConfigFromToken(target.Spec.ParentURL, string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
 			if err != nil {
 				klog.Errorf("set parentkubeconfig failed to get sa and secretFromParentCluster: %v", err)
 				return

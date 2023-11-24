@@ -305,7 +305,9 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 	return nil
 }
 
-func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
+func ApplyRBWorkloads(ctx context.Context, desc *appsv1alpha1.Description, components []appsv1alpha1.Component,
+	parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
+	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName string) error {
 	var allErrs []error
 	descLabels := desc.GetLabels()
 	wg := sync.WaitGroup{}
@@ -461,8 +463,9 @@ func getCondition(errs []error, clusterName, rbRef string) metav1.Condition {
 	}
 }
 
-func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,
-	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement,
+func ApplyResourceBinding(ctx context.Context, localdynamicClient dynamic.Interface,
+	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName,
+	networkBindUrl string, nwr *appsv1alpha1.NetworkRequirement,
 ) error {
 	var allErrs []error
 	var err error
@@ -898,7 +901,8 @@ func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement) []
 	return nodeSelectorTerms
 }
 
-func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
+	clusterName, descName string, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	cronUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()

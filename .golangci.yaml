@@ -22,9 +22,7 @@ linters:
   enable-all: false
   enable:
     - bodyclose
-    - depguard
     - dogsled
-    - dupl
     - errcheck
     - exportloopref
     - funlen

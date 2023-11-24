@@ -6,7 +6,8 @@ import (
 	"github.com/lmxia/gaia/pkg/common"
 )
 
-func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps, clusterMap map[string]*clusterapi.ManagedCluster) int64 {
+func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps,
+	clusterMap map[string]*clusterapi.ManagedCluster) int64 {
 	if len(clusterMap) == 0 {
 		return score
 	}

@@ -23,7 +23,6 @@ import (
 	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
-	known "github.com/lmxia/gaia/pkg/common"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	listner "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
@@ -139,7 +138,7 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 	childKubeClientSet := kubernetes.NewForConfigOrDie(childKubeConfig)
 	childGaiaClientSet := gaiaClientSet.NewForConfigOrDie(childKubeConfig)
 
-	localAllGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(childGaiaClientSet, known.DefaultResync)
+	localAllGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(childGaiaClientSet, common.DefaultResync)
 	localSuperKubeConfig := NewLocalSuperKubeConfig(ctx, childKubeConfig.Host, childKubeClientSet)
 
 	// create event recorder
@@ -184,8 +183,8 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 	}
 	sched.framework = framework
 	// local scheduler always exsit
-	sched.localNamespacedInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(childGaiaClientSet, known.DefaultResync,
-		gaiainformers.WithNamespace(known.GaiaReservedNamespace))
+	sched.localNamespacedInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(childGaiaClientSet, common.DefaultResync,
+		gaiainformers.WithNamespace(common.GaiaReservedNamespace))
 	// local event handler
 	sched.addLocalAllEventHandlers()
 
@@ -312,7 +311,7 @@ func newLeaderElectionConfigWithDefaultValue(identity string, clientset kubernet
 }
 
 func NewLocalSuperKubeConfig(ctx context.Context, apiserverURL string, kubeClient kubernetes.Interface) *rest.Config {
-	retryCtx, retryCancel := context.WithTimeout(ctx, known.DefaultRetryPeriod)
+	retryCtx, retryCancel := context.WithTimeout(ctx, common.DefaultRetryPeriod)
 	defer retryCancel()
 
 	// get high priority secret.
@@ -447,7 +446,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
 	if len(mcls.Items) == 0 {
 		// there is no child clusters. no need to schedule just transfer.
-		transferRB(sched.parentGaiaClient, sched.localGaiaClient, sched.dedicatedNamespace, known.GaiaRSToBeMergedReservedNamespace, desc.Name, rbs, ctx)
+		transferRB(sched.parentGaiaClient, sched.localGaiaClient, sched.dedicatedNamespace, common.GaiaRSToBeMergedReservedNamespace, desc.Name, rbs, ctx)
 		klog.Info("scheduler success just change rb namespace.")
 	} else {
 		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
@@ -463,7 +462,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		}
 
 		for _, itemCluster := range mcls.Items {
-			transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace, known.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
+			transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace, common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
 			// 2. create desc in to child cluster namespace
 			newDesc := utils.ConstructDescriptionFromExistOne(desc)
 			newDesc.Namespace = itemCluster.Namespace
@@ -529,7 +528,7 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	requirement, _ := labels.NewRequirement(common.GaiaDescriptionLabel, selection.Equals, []string{desc.Name})
 	labelSelector = labelSelector.Add(*requirement)
 	// get rbs we need only one that is the selected one.
-	rbList, _ := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaRBMergedReservedNamespace).List(ctx, metav1.ListOptions{
+	rbList, _ := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labelSelector.String(),
 	})
 	rbs := make([]*appsapi.ResourceBinding, 0)
@@ -542,7 +541,7 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 			sched.recordParentReSchedulingFailure(desc, err, ReasonUnschedulable)
 			return
 		}
-		localRB, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaRBMergedReservedNamespace).List(ctx, metav1.ListOptions{
+		localRB, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labelSelector.String(),
 		})
 		if err != nil {
@@ -553,7 +552,7 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 			rbItemApp := rbapp.DeepCopy()
 			if rbItemApp.ClusterName == sched.selfClusterName {
 				localRB.Items[0].Spec.RbApps = rbItemApp.Children
-				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(known.GaiaRBMergedReservedNamespace).
+				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
 					Update(ctx, &localRB.Items[0], metav1.UpdateOptions{})
 				if err != nil {
 					klog.InfoS("scheduler success, but rb not update success", rb)
@@ -602,7 +601,7 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 				sched.selfClusterName = secret.Labels[common.ClusterNameLabel]
 				sched.parentGaiaClient = gaiaClientSet.NewForConfigOrDie(sched.parentDedicatedKubeConfig)
 				sched.parentInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(
-					sched.parentGaiaClient, known.DefaultResync, gaiainformers.WithNamespace(sched.dedicatedNamespace))
+					sched.parentGaiaClient, common.DefaultResync, gaiainformers.WithNamespace(sched.dedicatedNamespace))
 				sched.parentDescriptionLister = sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Lister()
 				sched.parentResourceBindingLister = sched.parentInformerFactory.Apps().V1alpha1().ResourceBindings().Lister()
 				sched.scheduleAlgorithm.SetSelfClusterName(sched.selfClusterName)
@@ -613,7 +612,7 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 			}
 		}
 		cancel()
-	}, known.DefaultRetryPeriod*4, 0.3, true)
+	}, common.DefaultRetryPeriod*4, 0.3, true)
 }
 
 func (sched *Scheduler) GetparentDedicatedKubeConfig() *rest.Config {
@@ -839,7 +838,7 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 // truncateMessage truncates a message if it hits the NoteLengthLimit.
 // copied from k8s.io/kubernetes/pkg/scheduler/scheduler.go
 func truncateMessage(message string) string {
-	max := known.NoteLengthLimit
+	max := common.NoteLengthLimit
 	if len(message) <= max {
 		return message
 	}

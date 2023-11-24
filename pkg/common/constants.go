@@ -50,7 +50,8 @@ const (
 
 	ManagedClusterSourceFromInformer   = "informer"
 	ManagedClusterSourceFromPrometheus = "prometheus"
-	PrometheusUrlPrefix                = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090" // current cluster
+	// current cluster
+	PrometheusURLPrefix = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090"
 
 	// description labels on rb
 	GaiaDescriptionLabel            = "apps.gaia.io/description"
@@ -63,8 +64,8 @@ const (
 	NetworkLocationCore = "core"
 	NodeResourceForm    = "pool"
 
-	TopoSyncBaseUrl = "http://ssiexpose.synccontroller.svc:8080" // network controller address, maybe on global
-	TopoSyncUrlPath = "/v1.0/globalsync/topo"
+	TopoSyncBaseURL = "http://ssiexpose.synccontroller.svc:8080" // network controller address, maybe on global
+	TopoSyncURLPath = "/v1.0/globalsync/topo"
 
 	// env
 	ResourceBindingMergerPostURL = "RESOURCEBINDING_MERGER_POST_URL"

@@ -20,10 +20,6 @@ limitations under the License.
 package resources
 
 import (
-	"net/http"
-
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/component-base/metrics"
 )
@@ -69,16 +65,6 @@ var podResourceDesc = resourceMetricsDescriptors{
 	},
 }
 
-// Handler creates a collector from the provided podLister and returns an http.Handler that
-// will report the requested metrics in the prometheus format. It does not include any other
-// metrics.
-func Handler(podLister corelisters.PodLister) http.Handler {
-	collector := NewPodResourcesMetricsCollector(podLister)
-	registry := metrics.NewKubeRegistry()
-	registry.CustomMustRegister(collector)
-	return metrics.HandlerWithReset(registry, metrics.HandlerOpts{})
-}
-
 // Check if resourceMetricsCollector implements necessary interface
 var _ metrics.StableCollector = &podResourceCollector{}
 
@@ -103,100 +89,3 @@ type podResourceCollector struct {
 func (c *podResourceCollector) DescribeWithStability(ch chan<- *metrics.Desc) {
 	podResourceDesc.Describe(ch)
 }
-
-//
-// func (c *podResourceCollector) CollectWithStability(ch chan<- metrics.Metric) {
-// 	pods, err := c.lister.List(labels.Everything())
-// 	if err != nil {
-// 		return
-// 	}
-// 	reuseReqs, reuseLimits := make(v1.ResourceList, 4), make(v1.ResourceList, 4)
-// 	for _, p := range pods {
-// 		reqs, limits, terminal := podRequestsAndLimitsByLifecycle(p, reuseReqs, reuseLimits)
-// 		if terminal {
-// 			// terminal pods are excluded from resource usage calculations
-// 			continue
-// 		}
-// 		for _, t := range []struct {
-// 			desc  resourceLifecycleDescriptors
-// 			total v1.ResourceList
-// 		}{
-// 			{
-// 				desc:  podResourceDesc.requests,
-// 				total: reqs,
-// 			},
-// 			{
-// 				desc:  podResourceDesc.limits,
-// 				total: limits,
-// 			},
-// 		} {
-// 			for resourceName, val := range t.total {
-// 				var unitName string
-// 				switch resourceName {
-// 				case v1.ResourceCPU:
-// 					unitName = "cores"
-// 				case v1.ResourceMemory:
-// 					unitName = "bytes"
-// 				case v1.ResourceStorage:
-// 					unitName = "bytes"
-// 				case v1.ResourceEphemeralStorage:
-// 					unitName = "bytes"
-// 				default:
-// 					switch {
-// 					case v1helper.IsHugePageResourceName(resourceName):
-// 						unitName = "bytes"
-// 					case v1helper.IsAttachableVolumeResourceName(resourceName):
-// 						unitName = "integer"
-// 					}
-// 				}
-// 				var priority string
-// 				if p.Spec.Priority != nil {
-// 					priority = strconv.FormatInt(int64(*p.Spec.Priority), 10)
-// 				}
-// 				recordMetricWithUnit(ch, t.desc.total, p.Namespace, p.Name, p.Spec.NodeName, p.Spec.SchedulerName, priority, resourceName, unitName, val)
-// 			}
-// 		}
-// 	}
-// }
-
-func recordMetricWithUnit(
-	ch chan<- metrics.Metric,
-	desc *metrics.Desc,
-	namespace, name, nodeName, schedulerName, priority string,
-	resourceName v1.ResourceName,
-	unit string,
-	val resource.Quantity,
-) {
-	if val.IsZero() {
-		return
-	}
-	ch <- metrics.NewLazyConstMetric(desc, metrics.GaugeValue,
-		val.AsApproximateFloat64(),
-		namespace, name, nodeName, schedulerName, priority, string(resourceName), unit,
-	)
-}
-
-// // podRequestsAndLimitsByLifecycle returns a dictionary of all defined resources summed up for all
-// // containers of the pod. If PodOverhead feature is enabled, pod overhead is added to the
-// // total container resource requests and to the total container limits which have a
-// // non-zero quantity. The caller may avoid allocations of resource lists by passing
-// // a requests and limits list to the function, which will be cleared before use.
-// // This method is the same as v1resource.PodRequestsAndLimits but avoids allocating in several
-// // scenarios for efficiency.
-// func podRequestsAndLimitsByLifecycle(pod *v1.Pod, reuseReqs, reuseLimits v1.ResourceList)
-//(reqs, limits v1.ResourceList, terminal bool) {
-// 	switch {
-// 	case len(pod.Spec.NodeName) == 0:
-// 		// unscheduled pods cannot be terminal
-// 	case pod.Status.Phase == v1.PodSucceeded, pod.Status.Phase == v1.PodFailed:
-// 		terminal = true
-// 		// TODO: resolve https://github.com/kubernetes/kubernetes/issues/96515 and add a condition here
-// 		// for checking that terminal state
-// 	}
-// 	if terminal {
-// 		return
-// 	}
-//
-// 	reqs, limits = v1resource.PodRequestsAndLimitsReuse(pod, reuseReqs, reuseLimits)
-// 	return
-// }

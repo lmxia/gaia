@@ -26,8 +26,10 @@ import (
 
 type AppsV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	CdnSuppliersGetter
 	CronMastersGetter
 	DescriptionsGetter
+	FrontendsGetter
 	NetworkRequirementsGetter
 	ResourceBindingsGetter
 	UserAPPsGetter
@@ -38,12 +40,20 @@ type AppsV1alpha1Client struct {
 	restClient rest.Interface
 }
 
+func (c *AppsV1alpha1Client) CdnSuppliers(namespace string) CdnSupplierInterface {
+	return newCdnSuppliers(c, namespace)
+}
+
 func (c *AppsV1alpha1Client) CronMasters(namespace string) CronMasterInterface {
 	return newCronMasters(c, namespace)
 }
 
 func (c *AppsV1alpha1Client) Descriptions(namespace string) DescriptionInterface {
 	return newDescriptions(c, namespace)
+}
+
+func (c *AppsV1alpha1Client) Frontends(namespace string) FrontendInterface {
+	return newFrontends(c, namespace)
 }
 
 func (c *AppsV1alpha1Client) NetworkRequirements(namespace string) NetworkRequirementInterface {

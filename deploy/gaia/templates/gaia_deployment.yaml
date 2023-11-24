@@ -17,6 +17,12 @@ metadata:
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: gaia-frontend
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
   name: gaia-push-reserved
 
 ---

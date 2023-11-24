@@ -21,11 +21,11 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - description: The unique id for the cluster
+    - description: Unique id for cluster
       jsonPath: .spec.clusterId
       name: CLUSTER ID
       type: string
-    - description: The status of current cluster registration request
+    - description: state of request
       jsonPath: .status.result
       name: STATUS
       type: string

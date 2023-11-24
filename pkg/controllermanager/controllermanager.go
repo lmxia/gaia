@@ -26,6 +26,7 @@ import (
 	known "github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllermanager/approver"
 	"github.com/lmxia/gaia/pkg/controllermanager/metrics"
+	"github.com/lmxia/gaia/pkg/controllers/apps/frontend"
 	"github.com/lmxia/gaia/pkg/controllers/apps/resourcebinding"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
@@ -82,6 +83,7 @@ type ControllerManager struct {
 	rbController        *resourcebinding.RBController
 	rbMerger            *resourcebinding.RBMerger
 	cronController      *cronmaster.Controller
+	frontendController  *frontend.Controller
 
 	gaiaInformerFactory gaiainformers.SharedInformerFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
@@ -153,6 +155,10 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	if cronErr != nil {
 		klog.Error(cronErr)
 	}
+	frontendController, frontendErr := frontend.NewController(localGaiaClientSet, localKubeClientSet, localGaiaInformerFactory, localKubeInformerFactory, localKubeConfig)
+	if frontendErr != nil {
+		klog.Error(frontendErr)
+	}
 
 	agent := &ControllerManager{
 		ctx:                 ctx,
@@ -168,6 +174,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		rbController:        rbController,
 		rbMerger:            rbMerger,
 		statusManager:       statusManager,
+		frontendController:  frontendController,
 	}
 
 	metrics.Register()
@@ -255,6 +262,11 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 				go func() {
 					klog.Info("start 8. start local cronmaster controller...")
 					controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
+				}()
+				// 9. start frontend cdn accelerate controller
+				go func() {
+					klog.Info("start 9. start frontend cdn accelerate controller...")
+					controller.frontendController.Run(common.DefaultThreadiness, ctx.Done())
 				}()
 
 				// metrics

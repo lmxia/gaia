@@ -21,7 +21,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - description: The unique id for the cluster
+    - description: Unique id for cluster
       jsonPath: .spec.clusterId
       name: CLUSTER ID
       type: string

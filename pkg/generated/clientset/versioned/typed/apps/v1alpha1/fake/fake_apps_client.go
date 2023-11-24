@@ -28,12 +28,20 @@ type FakeAppsV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeAppsV1alpha1) CdnSuppliers(namespace string) v1alpha1.CdnSupplierInterface {
+	return &FakeCdnSuppliers{c, namespace}
+}
+
 func (c *FakeAppsV1alpha1) CronMasters(namespace string) v1alpha1.CronMasterInterface {
 	return &FakeCronMasters{c, namespace}
 }
 
 func (c *FakeAppsV1alpha1) Descriptions(namespace string) v1alpha1.DescriptionInterface {
 	return &FakeDescriptions{c, namespace}
+}
+
+func (c *FakeAppsV1alpha1) Frontends(namespace string) v1alpha1.FrontendInterface {
+	return &FakeFrontends{c, namespace}
 }
 
 func (c *FakeAppsV1alpha1) NetworkRequirements(namespace string) v1alpha1.NetworkRequirementInterface {

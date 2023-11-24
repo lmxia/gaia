@@ -19,6 +19,7 @@ const (
 	GaiaSchedulerLeaseName            = "self-scheduler"
 	GaiaSystemNamespace               = "gaia-system"
 	GaiaReservedNamespace             = "gaia-reserved"
+	GaiaFrontendNamespace             = "gaia-frontend"
 	GaiaRSToBeMergedReservedNamespace = "gaia-to-be-merged"
 	GaiaRBMergedReservedNamespace     = "gaia-merged"
 	GaiaPushReservedNamespace         = "gaia-push-reserved"
@@ -76,6 +77,20 @@ const (
 
 	HypernodeClusterNodeRole       = "hypernode.cluster.pml.com.cn/node-role"
 	HypernodeClusterNodeRolePublic = "Public"
+
+	FrontendAliyunCdnName            = "aliyun"
+	FrontendAliyunCdnEndpoint        = "cdn.aliyuncs.com"
+	FrontendAliyunFinalizers         = "apps.gaia.io/aliyunfinalizer"
+	FrontendAliyunCdnRegionId        = "cn-hangzhou"
+	FrontendAliyunCdnExist           = true
+	FrontendAliyunCdnNoExist         = false
+	FrontendAliyunDnsCnameExist      = true
+	FrontendAliyunDnsCnameNoExist    = false
+	FrontendAliyunCdnOnlineStatus    = "online"
+	FrontendAliyunCdnConfigureStatus = "configuring"
+
+	FrontendAliyunCdnSleepWait  = 1000
+	FrontendAliyunCdnSleepError = 2000
 )
 
 // lease lock

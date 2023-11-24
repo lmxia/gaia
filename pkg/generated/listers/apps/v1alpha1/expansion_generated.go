@@ -18,6 +18,14 @@ limitations under the License.
 
 package v1alpha1
 
+// CdnSupplierListerExpansion allows custom methods to be added to
+// CdnSupplierLister.
+type CdnSupplierListerExpansion interface{}
+
+// CdnSupplierNamespaceListerExpansion allows custom methods to be added to
+// CdnSupplierNamespaceLister.
+type CdnSupplierNamespaceListerExpansion interface{}
+
 // CronMasterListerExpansion allows custom methods to be added to
 // CronMasterLister.
 type CronMasterListerExpansion interface{}
@@ -33,6 +41,14 @@ type DescriptionListerExpansion interface{}
 // DescriptionNamespaceListerExpansion allows custom methods to be added to
 // DescriptionNamespaceLister.
 type DescriptionNamespaceListerExpansion interface{}
+
+// FrontendListerExpansion allows custom methods to be added to
+// FrontendLister.
+type FrontendListerExpansion interface{}
+
+// FrontendNamespaceListerExpansion allows custom methods to be added to
+// FrontendNamespaceLister.
+type FrontendNamespaceListerExpansion interface{}
 
 // NetworkRequirementListerExpansion allows custom methods to be added to
 // NetworkRequirementLister.

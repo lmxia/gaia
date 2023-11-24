@@ -56,6 +56,10 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ResourceBindingList{},
 		&UserAPP{},
 		&UserAPPList{},
+		&CdnSupplier{},
+		&CdnSupplierList{},
+		&Frontend{},
+		&FrontendList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

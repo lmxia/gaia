@@ -18,9 +18,13 @@ limitations under the License.
 
 package v1alpha1
 
+type CdnSupplierExpansion interface{}
+
 type CronMasterExpansion interface{}
 
 type DescriptionExpansion interface{}
+
+type FrontendExpansion interface{}
 
 type NetworkRequirementExpansion interface{}
 

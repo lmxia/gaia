@@ -33,7 +33,8 @@ type Plugins struct {
 	// after a cluster is assigned to run the Description.
 	Reserve PluginSet
 
-	// Permit is a list of plugins that control binding of a Description. These plugins can prevent or delay binding of a Description.
+	// Permit is a list of plugins that control binding of a Description.
+	// These plugins can prevent or delay binding of a Description.
 	Permit PluginSet
 
 	// PreBind is a list of plugins that should be invoked before a Description is bound.

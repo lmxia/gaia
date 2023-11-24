@@ -13,6 +13,7 @@ import (
 const (
 	// SchedulerSubsystem - subsystem name used by scheduler
 	SchedulerSubsystem = "gaia_scheduler"
+	metrixStart        = 0.001
 
 	// Binding - binding operation label value
 	Binding = "binding"
@@ -22,9 +23,10 @@ const (
 var (
 	scheduleAttempts = metrics.NewCounterVec(
 		&metrics.CounterOpts{
-			Subsystem:      SchedulerSubsystem,
-			Name:           "schedule_attempts_total",
-			Help:           "Number of attempts to schedule subscriptions, by the result. 'unschedulable' means a subscription could not be scheduled, while 'error' means an internal scheduler problem.",
+			Subsystem: SchedulerSubsystem,
+			Name:      "schedule_attempts_total",
+			Help: "Number of attempts to schedule subscriptions, by the result. 'unschedulable' " +
+				"means a subscription could not be scheduled, while 'error' means an internal scheduler problem.",
 			StabilityLevel: metrics.ALPHA,
 		}, []string{"result", "profile"})
 
@@ -33,7 +35,7 @@ var (
 			Subsystem:      SchedulerSubsystem,
 			Name:           "e2e_scheduling_duration_seconds",
 			Help:           "E2e scheduling latency in seconds (scheduling algorithm + binding)",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			Buckets:        metrics.ExponentialBuckets(metrixStart, 2, 15),
 			StabilityLevel: metrics.ALPHA,
 		}, []string{"result", "profile"})
 
@@ -42,7 +44,7 @@ var (
 			Subsystem:      SchedulerSubsystem,
 			Name:           "scheduling_attempt_duration_seconds",
 			Help:           "Scheduling attempt latency in seconds (scheduling algorithm + binding)",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			Buckets:        metrics.ExponentialBuckets(metrixStart, 2, 15),
 			StabilityLevel: metrics.STABLE,
 		}, []string{"result", "profile"})
 
@@ -51,7 +53,7 @@ var (
 			Subsystem:      SchedulerSubsystem,
 			Name:           "scheduling_algorithm_duration_seconds",
 			Help:           "Scheduling algorithm latency in seconds",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			Buckets:        metrics.ExponentialBuckets(metrixStart, 2, 15),
 			StabilityLevel: metrics.ALPHA,
 		},
 	)

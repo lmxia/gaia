@@ -157,7 +157,7 @@ type ManagedClusterStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope="Namespaced",shortName=mcls,categories=gaia
-// +kubebuilder:printcolumn:name="CLUSTER ID",type=string,JSONPath=`.spec.clusterId`,description="The unique id for the cluster"
+// +kubebuilder:printcolumn:name="CLUSTER ID",type=string,JSONPath=`.spec.clusterId`,description="Unique id for cluster"
 // +kubebuilder:printcolumn:name="KUBERNETES",type=string,JSONPath=".status.k8sVersion"
 // +kubebuilder:printcolumn:name="READYZ",type=string,JSONPath=".status.readyz"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
@@ -298,8 +298,8 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope="Cluster",shortName=clsrr,categories=gaia
-// +kubebuilder:printcolumn:name="CLUSTER ID",type=string,JSONPath=`.spec.clusterId`,description="The unique id for the cluster"
-// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.result`,description="The status of current cluster registration request"
+// +kubebuilder:printcolumn:name="CLUSTER ID",type=string,JSONPath=`.spec.clusterId`,description="Unique id for cluster"
+// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.result`,description="state of request"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ClusterRegistrationRequest is the Schema for the clusterregistrationrequests API
@@ -325,10 +325,10 @@ type ClusterRegistrationRequestList struct {
 type ManagedClusterOptions struct {
 	// ManagedClusterSource specified where to get the managerCluster Resource.
 	ManagedClusterSource string
-	// PrometheusMonitorUrlPrefix specified the prefix of the prometheus monitor url.
-	PrometheusMonitorUrlPrefix string
-	// TopoSyncBaseUrl is the base url of the synccontroller service.
-	TopoSyncBaseUrl string
+	// PrometheusMonitorURLPrefix specified the prefix of the prometheus monitor url.
+	PrometheusMonitorURLPrefix string
+	// TopoSyncBaseURL is the base url of the synccontroller service.
+	TopoSyncBaseURL string
 	// UseHypernodeController means whether use hypernode controller, default value is false.
 	UseHypernodeController bool
 }
@@ -337,8 +337,8 @@ type ManagedClusterOptions struct {
 func NewManagedClusterOptions() *ManagedClusterOptions {
 	return &ManagedClusterOptions{
 		ManagedClusterSource:       common.ManagedClusterSourceFromInformer,
-		PrometheusMonitorUrlPrefix: common.PrometheusUrlPrefix,
-		TopoSyncBaseUrl:            common.TopoSyncBaseUrl,
+		PrometheusMonitorURLPrefix: common.PrometheusURLPrefix,
+		TopoSyncBaseURL:            common.TopoSyncBaseURL,
 		UseHypernodeController:     false,
 	}
 }
@@ -346,8 +346,8 @@ func NewManagedClusterOptions() *ManagedClusterOptions {
 // Complete completes all the required options.
 func (opts *ManagedClusterOptions) Complete() {
 	opts.ManagedClusterSource = strings.TrimSpace(opts.ManagedClusterSource)
-	opts.PrometheusMonitorUrlPrefix = strings.TrimSpace(opts.PrometheusMonitorUrlPrefix)
-	opts.TopoSyncBaseUrl = strings.TrimSpace(opts.TopoSyncBaseUrl)
+	opts.PrometheusMonitorURLPrefix = strings.TrimSpace(opts.PrometheusMonitorURLPrefix)
+	opts.TopoSyncBaseURL = strings.TrimSpace(opts.TopoSyncBaseURL)
 }
 
 var validateClusterNameRegex = regexp.MustCompile(common.NameFmt)
@@ -360,17 +360,21 @@ func (opts *ManagedClusterOptions) Validate() []error {
 	if len(opts.ManagedClusterSource) > 0 {
 		if !validateClusterNameRegex.MatchString(opts.ManagedClusterSource) {
 			allErrs = append(allErrs,
-				fmt.Errorf("invalid name for --%s, regex used for validation is %q", common.ClusterRegistrationName, common.NameFmt))
+				fmt.Errorf("invalid name for --%s, regex used for validation is %q",
+					common.ClusterRegistrationName, common.NameFmt))
 		}
 
-		if opts.ManagedClusterSource != common.ManagedClusterSourceFromPrometheus && opts.ManagedClusterSource != common.ManagedClusterSourceFromInformer {
-			allErrs = append(allErrs, fmt.Errorf("Invalid value for managedClusterSource --%s, please use 'prometheus' or 'informer'. ", opts.ManagedClusterSource))
+		if opts.ManagedClusterSource != common.ManagedClusterSourceFromPrometheus &&
+			opts.ManagedClusterSource != common.ManagedClusterSourceFromInformer {
+			allErrs = append(allErrs, fmt.Errorf("Invalid value for managedClusterSource --%s,"+
+				" please use 'prometheus' or 'informer'. ", opts.ManagedClusterSource))
 		}
 
-		if len(opts.PrometheusMonitorUrlPrefix) > 0 {
-			_, err := url.ParseRequestURI(opts.PrometheusMonitorUrlPrefix)
+		if len(opts.PrometheusMonitorURLPrefix) > 0 {
+			_, err := url.ParseRequestURI(opts.PrometheusMonitorURLPrefix)
 			if err != nil {
-				allErrs = append(allErrs, fmt.Errorf("invalid value for --%s: %v", opts.PrometheusMonitorUrlPrefix, err))
+				allErrs = append(allErrs, fmt.Errorf("invalid value for --%s: %v",
+					opts.PrometheusMonitorURLPrefix, err))
 			}
 		}
 	}
@@ -431,12 +435,14 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 			}
 		}
 	}
-	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers, publicNetworkMap
+	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap,
+		providers, publicNetworkMap
 }
 
 // GetGaiaLabels return gaia type labels.
-func (mcluster *ManagedCluster) GetGaiaLabels() map[string][]string {
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap, publicNetworkMap := mcluster.GetHypernodeLabelsMapFromManagedCluster()
+func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap,
+		publicNetworkMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
 	clusterLabels := make(map[string][]string, 0)
 
 	// no.1

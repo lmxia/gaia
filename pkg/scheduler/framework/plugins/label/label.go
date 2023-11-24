@@ -61,7 +61,8 @@ func (pl *ClusterAffinity) NormalizeScore(ctx context.Context,
 	return helper.DefaultNormalizeScore(framework.MaxClusterScore, true, scores)
 }
 
-func (pl *ClusterAffinity) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
+func (pl *ClusterAffinity) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding,
+	clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
 	clusterMap := make(map[string]*clusterapi.ManagedCluster, 0)
 	for _, cluster := range clusters {
 		clusterMap[cluster.Name] = cluster
@@ -75,7 +76,8 @@ func (pl *ClusterAffinity) ScoreExtensions() framework.ScoreExtensions {
 	return pl
 }
 
-func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps, clusterMap map[string]*clusterapi.ManagedCluster) int64 {
+func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps,
+	clusterMap map[string]*clusterapi.ManagedCluster) int64 {
 	for _, item := range apps {
 		cluster := clusterMap[item.ClusterName]
 		if cluster != nil && cluster.GetLabels() != nil {

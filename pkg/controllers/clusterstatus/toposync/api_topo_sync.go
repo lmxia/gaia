@@ -36,7 +36,8 @@ hyper topo sync
 
 @return Topos
 */
-func (a *TopoSyncAPIService) TopoSync(ctx context.Context, hyperTopoSync clusterapi.Fields) (clusterapi.Topos, *http.Response, error) {
+func (a *TopoSyncAPIService) TopoSync(ctx context.Context, hyperTopoSync clusterapi.Fields) (clusterapi.Topos,
+	*http.Response, error) {
 	var (
 		localVarHTTPMethod  = strings.ToUpper("Get")
 		localVarPostBody    interface{}
@@ -46,7 +47,7 @@ func (a *TopoSyncAPIService) TopoSync(ctx context.Context, hyperTopoSync cluster
 	)
 
 	// create path and map variables
-	localVarPath := a.client.cfg.BasePath + common.TopoSyncUrlPath
+	localVarPath := a.client.cfg.BasePath + common.TopoSyncURLPath
 
 	localVarHeaderParams := make(map[string]string)
 	localVarQueryParams := url.Values{}

@@ -164,23 +164,28 @@ func NewRequirement(key string, op selection.Operator, vals []string, opts ...fi
 	switch op {
 	case selection.In, selection.NotIn:
 		if len(vals) == 0 {
-			allErrs = append(allErrs, field.Invalid(valuePath, vals, "for 'in', 'notin' operators, values set can't be empty"))
+			allErrs = append(allErrs, field.Invalid(valuePath, vals, "for 'in', 'notin' operators,"+
+				" values set can't be empty"))
 		}
 	case selection.Equals, selection.DoubleEquals, selection.NotEquals:
 		if len(vals) != 1 {
-			allErrs = append(allErrs, field.Invalid(valuePath, vals, "exact-match compatibility requires one single value"))
+			allErrs = append(allErrs, field.Invalid(valuePath, vals, "exact-match compatibility"+
+				" requires one single value"))
 		}
 	case selection.Exists, selection.DoesNotExist:
 		if len(vals) != 0 {
-			allErrs = append(allErrs, field.Invalid(valuePath, vals, "values set must be empty for exists and does not exist"))
+			allErrs = append(allErrs, field.Invalid(valuePath, vals, "values set must be empty"+
+				" for exists and does not exist"))
 		}
 	case selection.GreaterThan, selection.LessThan:
 		if len(vals) != 1 {
-			allErrs = append(allErrs, field.Invalid(valuePath, vals, "for 'Gt', 'Lt' operators, exactly one value is required"))
+			allErrs = append(allErrs, field.Invalid(valuePath, vals, "for 'Gt',"+
+				" 'Lt' operators, exactly one value is required"))
 		}
 		for i := range vals {
 			if _, err := strconv.ParseInt(vals[i], 10, 64); err != nil {
-				allErrs = append(allErrs, field.Invalid(valuePath.Index(i), vals[i], "for 'Gt', 'Lt' operators, the value must be an integer"))
+				allErrs = append(allErrs, field.Invalid(valuePath.Index(i), vals[i],
+					"for 'Gt', 'Lt' operators, the value must be an integer"))
 			}
 		}
 	default:

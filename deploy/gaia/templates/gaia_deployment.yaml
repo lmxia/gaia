@@ -76,6 +76,7 @@ spec:
       containers:
         - name: gaia
           image: {{ .Values.image.repository }}/gaia:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - --clustername={{ .Values.common.clusterName }}
             - --mcSource={{ .Values.common.mcSource }}
@@ -83,7 +84,6 @@ spec:
             - --useHypernodeController={{ .Values.common.useHypernodeController }}
             - --topoSyncBaseUrl={{ .Values.common.topoSyncBaseUrl }}
             - --networkBindUrl={{ .Values.common.networkBindUrl }}
-            - --v=5
           ports:
             - name: metric
               containerPort: 12111
@@ -116,7 +116,7 @@ spec:
           configMap:
             name: gaia-config
 
-{{- if not .Values.cluster }}
+{{- if not .Values.isCluster }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -140,8 +140,7 @@ spec:
       containers:
         - name: gaia-scheduler
           image: {{ .Values.image.repository }}/gaia-scheduler:{{ .Values.image.tag }}
-          args:
-            - --v=5
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: metric
               containerPort: 12112

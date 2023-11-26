@@ -47,6 +47,8 @@ spec:
           spec:
             description: DescriptionSpec defines the spec of Description
             properties:
+              IsFrontEnd:
+                type: boolen
               appID:
                 type: string
               deploymentCondition:
@@ -194,6 +196,32 @@ spec:
                           type: object
                         type: array
                     type: object
+                type: object
+              frontEndAPP:
+                properties:
+                  cdnAccelerate:
+                    type: boolean
+                  cdnSpec:
+                    items:
+                      properties:
+                        accerlateRegion:
+                          type: string
+                        cdnType:
+                          type: string
+                        internetChargeType:
+                          type: string
+                        pkgName:
+                          type: string
+                        recordType:
+                          type: string
+                        sourceSite:
+                          type: string
+                        supplier:
+                          type: string
+                      type: object
+                    type: array
+                  domainName:
+                    type: string
                 type: object
               preoccupy:
                 type: string

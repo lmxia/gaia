@@ -32,7 +32,7 @@ type DescriptionSpec struct {
 	Preoccupy string `json:"preoccupy,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Type=boolen
+	// +kubebuilder:validation:Type=boolean
 	IsFrontEnd bool `json:"IsFrontEnd,omitempty"`
 	// +optional
 	FrontEndAPP FrontendSpec `json:"frontEndAPP,omitempty"`

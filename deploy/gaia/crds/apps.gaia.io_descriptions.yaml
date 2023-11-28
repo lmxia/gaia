@@ -48,7 +48,7 @@ spec:
             description: DescriptionSpec defines the spec of Description
             properties:
               IsFrontEnd:
-                type: boolen
+                type: boolean
               appID:
                 type: string
               deploymentCondition:

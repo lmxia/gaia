@@ -2,7 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# install scheduler or not
+# install scheduler or not; if true, not install
 isCluster: false
 
 # parameter

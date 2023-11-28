@@ -430,7 +430,7 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 				geolocationMap[labelValue] = struct{}{}
 			} else if strings.HasPrefix(labelKey, ParsedProviderKey) {
 				providers[labelValue] = struct{}{}
-			} else if strings.HasPrefix(labelKey, ParsedPublicNetworkKey) {
+			} else if strings.HasPrefix(labelKey, ParsedHasFloatingIPKey) {
 				publicNetworkMap[labelValue] = struct{}{}
 			}
 		}
@@ -505,7 +505,7 @@ var (
 	RuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "RuntimeState"
 	SNKey             = common.SpecificNodeLabelsKeyPrefix + "SN"
 	NetworkEnvKey     = common.SpecificNodeLabelsKeyPrefix + "SupplierName"
-	PublicNetworkKey  = common.SpecificNodeLabelsKeyPrefix + "PublicNetwork"
+	HasFloatingIPKey  = common.SpecificNodeLabelsKeyPrefix + "HasFloatingIP"
 
 	HypernodeLableKeyList = []string{
 		GeoLocationKey,
@@ -515,7 +515,7 @@ var (
 		RuntimeStateKey,
 		SNKey,
 		NetworkEnvKey,
-		PublicNetworkKey,
+		HasFloatingIPKey,
 	}
 
 	ParsedGeoLocationKey    = common.SpecificNodeLabelsKeyPrefix + "geo-location"
@@ -525,7 +525,7 @@ var (
 	ParsedRuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "runtime-state"
 	ParsedSNKey             = common.SpecificNodeLabelsKeyPrefix + "sn"
 	ParsedProviderKey       = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
-	ParsedPublicNetworkKey  = common.SpecificNodeLabelsKeyPrefix + "public-network"
+	ParsedHasFloatingIPKey  = common.SpecificNodeLabelsKeyPrefix + "has-floating-ip"
 
 	ParsedHypernodeLableKeyList = []string{
 		ParsedGeoLocationKey,
@@ -535,7 +535,7 @@ var (
 		ParsedRuntimeStateKey,
 		ParsedSNKey,
 		ParsedProviderKey,
-		ParsedPublicNetworkKey,
+		ParsedHasFloatingIPKey,
 	}
 
 	HypernodeLableKeyToStandardLabelKey = map[string]string{
@@ -546,6 +546,6 @@ var (
 		RuntimeStateKey:   ParsedRuntimeStateKey,
 		SNKey:             ParsedSNKey,
 		NetworkEnvKey:     ParsedProviderKey,
-		PublicNetworkKey:  ParsedPublicNetworkKey,
+		HasFloatingIPKey:  ParsedHasFloatingIPKey,
 	}
 )

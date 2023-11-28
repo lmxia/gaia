@@ -48,6 +48,7 @@ const (
 	GaiaAppSA = "gaia-resource-deployer"
 
 	SpecificNodeLabelsKeyPrefix = "hypernode.cluster.pml.com.cn/"
+	VpcLabel                    = "vpc"
 
 	ManagedClusterSourceFromInformer   = "informer"
 	ManagedClusterSourceFromPrometheus = "prometheus"

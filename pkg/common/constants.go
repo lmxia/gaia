@@ -82,13 +82,16 @@ const (
 	FrontendAliyunCdnName            = "aliyun"
 	FrontendAliyunCdnEndpoint        = "cdn.aliyuncs.com"
 	FrontendAliyunFinalizers         = "apps.gaia.io/aliyunfinalizer"
-	FrontendAliyunCdnRegionId        = "cn-hangzhou"
+	FrontendAliyunCdnRegionID        = "cn-hangzhou"
 	FrontendAliyunCdnExist           = true
 	FrontendAliyunCdnNoExist         = false
-	FrontendAliyunDnsCnameExist      = true
-	FrontendAliyunDnsCnameNoExist    = false
+	FrontendAliyunDNSCnameExist      = true
+	FrontendAliyunDNSCnameNoExist    = false
 	FrontendAliyunCdnOnlineStatus    = "online"
 	FrontendAliyunCdnConfigureStatus = "configuring"
+	FrontendAliyunCdnVhostKind       = "Vhost"
+	FrontendAliyunCdnVhostAPIVersion = "frontend.pml.com.cn/v1"
+	FrontendAliyunCdnVhostFinalizer  = "apps.gaia.io/vhostfinalizer"
 
 	FrontendAliyunCdnSleepWait  = 1000
 	FrontendAliyunCdnSleepError = 2000

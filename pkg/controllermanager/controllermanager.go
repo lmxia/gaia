@@ -8,17 +8,35 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lmxia/gaia/pkg/controllers/hypernode"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/authentication/authenticator"
+	"k8s.io/apiserver/pkg/authorization/authorizer"
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 	"k8s.io/apiserver/pkg/server/healthz"
+	"k8s.io/apiserver/pkg/server/mux"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/component-base/metrics/legacyregistry"
+	"k8s.io/klog/v2"
+	utilpointer "k8s.io/utils/pointer"
 
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
-
+	vhostclientset "github.com/SUMMERLm/vhost/pkg/generated/clientset/versioned"
+	vhostinformers "github.com/SUMMERLm/vhost/pkg/generated/informers/externalversions"
 	gaiaconfig "github.com/lmxia/gaia/cmd/gaia-controllers/app/config"
 	"github.com/lmxia/gaia/cmd/gaia-controllers/app/option"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
@@ -26,31 +44,13 @@ import (
 	known "github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllermanager/approver"
 	"github.com/lmxia/gaia/pkg/controllermanager/metrics"
+	"github.com/lmxia/gaia/pkg/controllers/apps/cronmaster"
 	"github.com/lmxia/gaia/pkg/controllers/apps/frontend"
 	"github.com/lmxia/gaia/pkg/controllers/apps/resourcebinding"
+	"github.com/lmxia/gaia/pkg/controllers/hypernode"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	"github.com/lmxia/gaia/pkg/utils"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	utilrand "k8s.io/apimachinery/pkg/util/rand"
-	"k8s.io/apimachinery/pkg/util/uuid"
-	"k8s.io/apimachinery/pkg/util/wait"
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	"k8s.io/klog/v2"
-	utilpointer "k8s.io/utils/pointer"
-
-	"github.com/lmxia/gaia/pkg/controllers/apps/cronmaster"
-	"k8s.io/apiserver/pkg/authentication/authenticator"
-	"k8s.io/apiserver/pkg/authorization/authorizer"
-	"k8s.io/apiserver/pkg/server/mux"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 type ControllerManager struct {
@@ -132,9 +132,11 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	localKubeClientSet := kubernetes.NewForConfigOrDie(localKubeConfig)
 	localGaiaClientSet := gaiaclientset.NewForConfigOrDie(localKubeConfig)
 	hypernodeClientSet := hypernodeclientset.NewForConfigOrDie(localKubeConfig)
+	vhostClientSet := vhostclientset.NewForConfigOrDie(localKubeConfig)
 
 	localKubeInformerFactory := kubeinformers.NewSharedInformerFactory(localKubeClientSet, known.DefaultResync)
 	localGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(localGaiaClientSet, known.DefaultResync)
+	vhostInformerFactory := vhostinformers.NewSharedInformerFactory(vhostClientSet, known.DefaultResync)
 
 	approver, apprerr := approver.NewCRRApprover(localKubeClientSet, localGaiaClientSet, localKubeConfig, localGaiaInformerFactory, localKubeInformerFactory)
 	if apprerr != nil {
@@ -155,7 +157,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	if cronErr != nil {
 		klog.Error(cronErr)
 	}
-	frontendController, frontendErr := frontend.NewController(localGaiaClientSet, localKubeClientSet, localGaiaInformerFactory, localKubeInformerFactory, localKubeConfig)
+	frontendController, frontendErr := frontend.NewController(localGaiaClientSet, localGaiaInformerFactory, vhostClientSet, vhostInformerFactory)
 	if frontendErr != nil {
 		klog.Error(frontendErr)
 	}

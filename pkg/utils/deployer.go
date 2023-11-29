@@ -903,15 +903,14 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 }
 
 func addNodeSelector(comCopy *appsv1alpha1.Component, src, group2VPC map[string]string) map[string]string {
-	var vpcName string
 	if src == nil {
-		if vpc, ok := group2VPC[comCopy.GroupName]; ok {
-			vpcName = vpc
-		}
 		nodeSelector := map[string]string{
-			v1alpha1.ParsedRuntimeStateKey:                     comCopy.RuntimeType,
-			known.SpecificNodeLabelsKeyPrefix + known.VpcLabel: vpcName,
+			v1alpha1.ParsedRuntimeStateKey: comCopy.RuntimeType,
 		}
+		if vpc, ok := group2VPC[comCopy.GroupName]; ok {
+			nodeSelector[known.SpecificNodeLabelsKeyPrefix+known.VpcLabel] = vpc
+		}
+
 		return nodeSelector
 	}
 

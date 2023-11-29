@@ -9,32 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lmxia/gaia/cmd/gaia-scheduler/app/option"
-	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
-	"github.com/lmxia/gaia/pkg/scheduler/metrics"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
-	"k8s.io/apiserver/pkg/server/healthz"
-	"k8s.io/component-base/metrics/legacyregistry"
-	"k8s.io/klog/v2"
-
-	schedulerserverconfig "github.com/lmxia/gaia/cmd/gaia-scheduler/app/config"
-	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	"github.com/lmxia/gaia/pkg/common"
-	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
-	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
-	listner "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
-	"github.com/lmxia/gaia/pkg/scheduler/algorithm"
-	schedulercache "github.com/lmxia/gaia/pkg/scheduler/cache"
-	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
-	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins"
-	frameworkruntime "github.com/lmxia/gaia/pkg/scheduler/framework/runtime"
-	"github.com/lmxia/gaia/pkg/scheduler/parallelize"
-	"github.com/lmxia/gaia/pkg/utils"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -43,6 +22,7 @@ import (
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
+	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/apiserver/pkg/server/mux"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -54,6 +34,26 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/component-base/metrics/legacyregistry"
+	"k8s.io/klog/v2"
+
+	schedulerserverconfig "github.com/lmxia/gaia/cmd/gaia-scheduler/app/config"
+	"github.com/lmxia/gaia/cmd/gaia-scheduler/app/option"
+	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	"github.com/lmxia/gaia/pkg/common"
+	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
+	listner "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
+	"github.com/lmxia/gaia/pkg/scheduler/algorithm"
+	schedulercache "github.com/lmxia/gaia/pkg/scheduler/cache"
+	framework "github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
+	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins"
+	frameworkruntime "github.com/lmxia/gaia/pkg/scheduler/framework/runtime"
+	"github.com/lmxia/gaia/pkg/scheduler/metrics"
+	"github.com/lmxia/gaia/pkg/scheduler/parallelize"
+	"github.com/lmxia/gaia/pkg/utils"
 )
 
 // These are reasons for a subscription's transition to a condition.
@@ -374,10 +374,18 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	} else {
 		// 1. create rbs in sub children cluster namespace.
 		for _, itemCluster := range mcls.Items {
+			skipDescCreate := true
 			for rbIndex, itemRb := range scheduleResult.ResourceBindings {
+				if has := hasReplicasInCluster(itemRb.Spec.RbApps, itemCluster.Name); has {
+					skipDescCreate = false
+				} else {
+					continue
+				}
+
 				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 				itemRb.Namespace = itemCluster.Namespace
 				itemRb.Spec.TotalPeer = getTotal(itemRb.Spec.TotalPeer, len(scheduleResult.ResourceBindings))
+				itemRb.Spec.NonZeroClusterNum = countNonZeroClusterNumforRB(itemRb)
 				_, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
@@ -387,6 +395,9 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 				}
 			}
 			// 2. create desc in to child cluster namespace
+			if skipDescCreate {
+				continue
+			}
 			newDesc := utils.ConstructDescriptionFromExistOne(desc)
 			newDesc.Namespace = itemCluster.Namespace
 			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
@@ -863,11 +874,12 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, des
 		rb.Namespace = dstNS
 		rb.Labels = item.Labels
 		rb.Spec = appsapi.ResourceBindingSpec{
-			AppID:       item.Spec.AppID,
-			ParentRB:    item.Spec.ParentRB,
-			RbApps:      item.Spec.RbApps,
-			TotalPeer:   item.Spec.TotalPeer,
-			NetworkPath: item.Spec.NetworkPath,
+			AppID:             item.Spec.AppID,
+			ParentRB:          item.Spec.ParentRB,
+			RbApps:            item.Spec.RbApps,
+			TotalPeer:         item.Spec.TotalPeer,
+			NonZeroClusterNum: item.Spec.NonZeroClusterNum,
+			NetworkPath:       item.Spec.NetworkPath,
 		}
 		_, errCreate := dstClient.AppsV1alpha1().ResourceBindings(dstNS).
 			Create(ctx, rb, metav1.CreateOptions{})
@@ -887,4 +899,50 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, des
 			klog.Infof("faild to delete rbs in parent cluster", err)
 		}
 	}
+}
+
+// hasReplicasInCluster check if there is replicas in the cluster, return true if there is.
+func hasReplicasInCluster(bindingApps []*appsapi.ResourceBindingApps, clusterName string) bool {
+	for _, rbApp := range bindingApps {
+		if rbApp.ClusterName == clusterName {
+			for _, v := range rbApp.Replicas {
+				if v > 0 {
+					return true
+				}
+			}
+			// maybe we can early stop once confirm false.
+			return false
+		}
+		if rbApp.Children != nil && len(rbApp.Children) > 0 {
+			if subContain := hasReplicasInCluster(rbApp.Children, clusterName); subContain {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func countNonZeroClusterNumforRB(binding *appsapi.ResourceBinding) int {
+	nonZeroCount := 0
+	for _, rbApp := range binding.Spec.RbApps {
+		for _, v := range rbApp.Replicas {
+			if v > 0 {
+				nonZeroCount += 1
+				break
+			}
+		}
+
+		if rbApp.Children != nil && len(rbApp.Children) > 0 {
+			nonZeroCount = 0
+			for _, child := range rbApp.Children {
+				for _, v := range child.Replicas {
+					if v > 0 {
+						nonZeroCount += 1
+						break
+					}
+				}
+			}
+		}
+	}
+	return nonZeroCount
 }

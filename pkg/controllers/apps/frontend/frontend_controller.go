@@ -9,13 +9,12 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
-	kubeInformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"k8s.io/klog/v2"
+	"k8s.io/klog"
 
+	vhostClient "github.com/SUMMERLm/vhost/pkg/generated/clientset/versioned"
+	vhostinformers "github.com/SUMMERLm/vhost/pkg/generated/informers/externalversions"
 	appsV1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
@@ -32,14 +31,16 @@ type Controller struct {
 	frontendLister     applisters.FrontendLister
 	cdnSupplierLister  applisters.CdnSupplierLister
 	frontendListSynced cache.InformerSynced
+	vhostClient        vhostClient.Interface
 }
 
-func NewController(gaiaClient gaiaClientSet.Interface, kubeClient kubernetes.Interface, gaiaInformerFactory gaiaInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory, localKubeConfig *rest.Config) (*Controller, error) {
+func NewController(gaiaClient gaiaClientSet.Interface, gaiaInformerFactory gaiaInformers.SharedInformerFactory, vhostClient vhostClient.Interface, vhostInformerFactory vhostinformers.SharedInformerFactory) (*Controller, error) {
 	frontendInformer := gaiaInformerFactory.Apps().V1alpha1().Frontends()
 	cdnSupplierInformer := gaiaInformerFactory.Apps().V1alpha1().CdnSuppliers()
 	c := &Controller{
 		workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Frontend"),
 		gaiaClient:         gaiaClient,
+		vhostClient:        vhostClient,
 		frontendLister:     frontendInformer.Lister(),
 		cdnSupplierLister:  cdnSupplierInformer.Lister(),
 		frontendListSynced: frontendInformer.Informer().HasSynced,
@@ -175,7 +176,7 @@ func (c *Controller) syncHandler(key string) error {
 		klog.Errorf("Failed to get  'Frontend state and status' %s, error == %v", frontend.Name, err)
 		return err
 	}
-	klog.V(5).InfoS("Cdn state is: %s  and cdn status is: %s ", cdnstate, cdnStatus)
+	klog.V(5).Infof("Cdn state is: %s  and cdn status is: %s ", cdnstate, cdnStatus)
 	//domain accelerate manage
 	switch cdnstate {
 	case common.FrontendAliyunCdnNoExist:

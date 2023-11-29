@@ -396,9 +396,13 @@ type Fields struct {
 	Field []string `json:"field,omitempty"`
 }
 
-// getHypernodeLabelsMapFromManagedCluster returns hypernode labels of the current cluster from the managedCluster
-func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers, publicNetworkMap map[string]struct{}) {
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers, publicNetworkMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
+// GetHypernodeLabelsMapFromManagedCluster  returns hypernode labels of the current cluster from the managedCluster
+func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap,
+	runtimeStateMap, snMap, geolocationMap, providers, floatingIPMap map[string]struct{}) {
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers,
+		floatingIPMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
+		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
+		make(map[string]struct{})
 	var labelValueArray []string
 	clusterLabels := cluster.GetLabels()
 	for labelKey, labelValue := range clusterLabels {
@@ -408,41 +412,42 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 			} else {
 				labelValueArray = []string{labelValue}
 			}
-			if strings.HasPrefix(labelKey, ParsedNetEnvironmentKey) {
+			switch {
+			case strings.HasPrefix(labelKey, ParsedNetEnvironmentKey):
 				for _, v := range labelValueArray {
 					netEnvironmentMap[v] = struct{}{}
 				}
-			} else if strings.HasPrefix(labelKey, ParsedNodeRoleKey) {
+			case strings.HasPrefix(labelKey, ParsedNodeRoleKey):
 				for _, v := range labelValueArray {
 					nodeRoleMap[v] = struct{}{}
 				}
-			} else if strings.HasPrefix(labelKey, ParsedResFormKey) {
+			case strings.HasPrefix(labelKey, ParsedResFormKey):
 				for _, v := range labelValueArray {
 					resFormMap[v] = struct{}{}
 				}
-			} else if strings.HasPrefix(labelKey, ParsedRuntimeStateKey) {
+			case strings.HasPrefix(labelKey, ParsedRuntimeStateKey):
 				for _, v := range labelValueArray {
 					runtimeStateMap[v] = struct{}{}
 				}
-			} else if strings.HasPrefix(labelKey, ParsedSNKey) {
+			case strings.HasPrefix(labelKey, ParsedSNKey):
 				snMap[labelValue] = struct{}{}
-			} else if strings.HasPrefix(labelKey, ParsedGeoLocationKey) {
+			case strings.HasPrefix(labelKey, ParsedGeoLocationKey):
 				geolocationMap[labelValue] = struct{}{}
-			} else if strings.HasPrefix(labelKey, ParsedProviderKey) {
+			case strings.HasPrefix(labelKey, ParsedProviderKey):
 				providers[labelValue] = struct{}{}
-			} else if strings.HasPrefix(labelKey, ParsedHasFloatingIPKey) {
-				publicNetworkMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedHasFloatingIPKey):
+				floatingIPMap[labelValue] = struct{}{}
 			}
 		}
 	}
 	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap,
-		providers, publicNetworkMap
+		providers, floatingIPMap
 }
 
 // GetGaiaLabels return gaia type labels.
 func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap,
-		publicNetworkMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
+		floatingIPMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
 	clusterLabels := make(map[string][]string, 0)
 
 	// no.1
@@ -488,11 +493,11 @@ func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 	}
 	clusterLabels["supplier-name"] = providers
 	// no.8
-	publicNetworks := make([]string, 0, len(publicNetworkMap))
-	for k := range publicNetworkMap {
-		publicNetworks = append(publicNetworks, k)
+	hasFloatingIPs := make([]string, 0, len(floatingIPMap))
+	for k := range floatingIPMap {
+		hasFloatingIPs = append(hasFloatingIPs, k)
 	}
-	clusterLabels["public-network"] = publicNetworks
+	clusterLabels["has-floating-ip"] = hasFloatingIPs
 
 	return clusterLabels
 }

@@ -77,9 +77,9 @@ type ClustersRBs struct {
 // FieldsRBs contains all RB from mCls in a parentRB
 type FieldsRBs struct {
 	sync.Mutex
-	countCls        int
-	NamesOfFieldRBs []string
-	rbsOfFields     []*ClustersRBs
+	nonZeroClusterNum int
+	NamesOfFieldRBs   []string
+	rbsOfFields       []*ClustersRBs
 }
 
 // NewRBMerger returns a new RBMerger for ResourceBinding.
@@ -223,11 +223,6 @@ func (m *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding)
 	}
 
 	rbLabels := rb.GetLabels()
-	clusters, err := m.localGaiaClient.PlatformV1alpha1().ManagedClusters(coreV1.NamespaceAll).List(context.TODO(),
-		metaV1.ListOptions{})
-	if err != nil {
-		klog.Warningf("handleToLocalResourceBinding: failed to list managed clusters: %v", err)
-	}
 	descUID := rbLabels[common.OriginDescriptionUIDLabel]
 	descName := rbLabels[common.OriginDescriptionNameLabel]
 	chanResult := make(chan []*appV1alpha1.ResourceBindingApps)
@@ -247,17 +242,15 @@ func (m *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding)
 			klog.V(5).Infof(fmt.Sprintf("m.fieldsRBOfOneParentRB[%s]:\n   %+v\n", indexParentRB,
 				m.fieldsRBOfOneParentRB[indexParentRB]))
 		}
-		// m.clustersRBsOfOneFieldRB[indexFieldRB].Lock()
 		for _, rbApp := range rb.Spec.RbApps {
 			m.clustersRBsOfOneFieldRB[indexFieldRB].rbsOfParentRB =
 				append(m.clustersRBsOfOneFieldRB[indexFieldRB].rbsOfParentRB, rbApp.Children[0])
 		}
-		// m.clustersRBsOfOneFieldRB[indexFieldRB].Unlock()
 
 		// process fieldsRBOfOneParentRB: map[descUID-parentRBName]*FieldsRBs
 		if m.fieldsRBOfOneParentRB[indexParentRB] == nil {
 			m.fieldsRBOfOneParentRB[indexParentRB] = &FieldsRBs{}
-			m.fieldsRBOfOneParentRB[indexParentRB].countCls = len(clusters.Items)
+			m.fieldsRBOfOneParentRB[indexParentRB].nonZeroClusterNum = rb.Spec.NonZeroClusterNum
 		}
 		m.fieldsRBOfOneParentRB[indexParentRB].Lock()
 		m.fieldsRBOfOneParentRB[indexParentRB].NamesOfFieldRBs =
@@ -292,7 +285,7 @@ func (m *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding)
 		}
 
 		m.deleteGlobalDescUID(descUID)
-		err = m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
+		err := m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
 			DeleteCollection(context.TODO(), metaV1.DeleteOptions{},
 				metaV1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
 					common.OriginDescriptionNameLabel:      descName,
@@ -312,7 +305,7 @@ func (m *RBMerger) mergeResourceBinding(parentRBName, indexParentRB string, fiel
 	chanResult chan []*appV1alpha1.ResourceBindingApps, rb *appV1alpha1.ResourceBinding) {
 	var allChildren [][]*appV1alpha1.ResourceBindingApps
 	if fieldsRbs, ok := fieldsRBsOfParentRB[indexParentRB]; ok {
-		if fieldsRbs.countCls == len(fieldsRbs.rbsOfFields) {
+		if fieldsRbs.nonZeroClusterNum == len(fieldsRbs.rbsOfFields) {
 			for _, filedRBs := range fieldsRbs.rbsOfFields {
 				allChildren = append(allChildren, filedRBs.rbsOfParentRB)
 			}
@@ -353,12 +346,12 @@ func (m *RBMerger) getMergedResourceBindings(chanResult chan []*appV1alpha1.Reso
 				},
 			},
 			Spec: appV1alpha1.ResourceBindingSpec{
-				AppID: descName,
-				// TotalPeer:       rb.Spec.TotalPeer,
-				ParentRB:        rb.Spec.ParentRB,
-				RbApps:          rbN,
-				NetworkPath:     rb.Spec.NetworkPath,
-				StatusScheduler: appV1alpha1.ResourceBindingmerged,
+				AppID:             descName,
+				NonZeroClusterNum: rb.Spec.NonZeroClusterNum,
+				ParentRB:          rb.Spec.ParentRB,
+				RbApps:            rbN,
+				NetworkPath:       rb.Spec.NetworkPath,
+				StatusScheduler:   appV1alpha1.ResourceBindingmerged,
 			},
 		}
 		newResultRB.Kind = "ResourceBinding"
@@ -433,12 +426,13 @@ func (m *RBMerger) createCollectedRBs(ctx context.Context, rb *appV1alpha1.Resou
 				Labels:    rbLabels,
 			},
 			Spec: appV1alpha1.ResourceBindingSpec{
-				AppID:           descName,
-				TotalPeer:       totalPeer,
-				ParentRB:        parenRB,
-				RbApps:          rbApps,
-				NetworkPath:     rb.Spec.NetworkPath,
-				StatusScheduler: appV1alpha1.ResourceBindingMerging,
+				AppID:             descName,
+				ParentRB:          parenRB,
+				TotalPeer:         totalPeer,
+				NonZeroClusterNum: rb.Spec.NonZeroClusterNum,
+				RbApps:            rbApps,
+				NetworkPath:       rb.Spec.NetworkPath,
+				StatusScheduler:   appV1alpha1.ResourceBindingMerging,
 			},
 		}
 		newResultRB.Kind = "ResourceBinding"
@@ -564,7 +558,7 @@ func (m *RBMerger) canDeleteDescUID(uid string, totalPeer int) bool {
 
 		for _, indexParentRB := range m.parentRBsOfDescUID[UID(uid)] {
 			if len(m.fieldsRBOfOneParentRB[indexParentRB].rbsOfFields) !=
-				m.fieldsRBOfOneParentRB[indexParentRB].countCls {
+				m.fieldsRBOfOneParentRB[indexParentRB].nonZeroClusterNum {
 				return false
 			}
 		}

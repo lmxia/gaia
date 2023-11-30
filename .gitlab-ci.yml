@@ -53,23 +53,6 @@ debug-image:
   only:
     - merge_requests
 
-compile-charts:
-  stage: build
-  image:
-    name: ${REGISTRY}/ci/helm:3.12.1
-  tags: 
-    - hyperos
-    - cloud
-  script:
-    - cd deploy
-    - helm package -u --version ${CHARTVERSION} ${APPGAIA}
-    - cp ${APPGAIA}-${CHARTVERSION}.tgz /hyperrepo/charts/hyperos
-    - helm repo index /hyperrepo/charts/hyperos
-  only:
-    # - hyperos-s2
-    - merge_requests
-
-
 compile:
   stage: build
   image:

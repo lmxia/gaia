@@ -262,11 +262,12 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						Labels: rbLabels,
 					},
 					Spec: v1alpha1.ResourceBindingSpec{
-						AppID:       desc.Name,
-						ParentRB:    rbOld.Name,
-						RbApps:      subRBApps,
-						TotalPeer:   getTotalPeer(len(rbForrb), common.DefaultResouceBindingNumber),
-						NetworkPath: rbOld.Spec.NetworkPath,
+						AppID:             desc.Name,
+						NonZeroClusterNum: rbOld.Spec.NonZeroClusterNum,
+						ParentRB:          rbOld.Name,
+						RbApps:            subRBApps,
+						TotalPeer:         getTotalPeer(len(rbForrb), common.DefaultResouceBindingNumber),
+						NetworkPath:       rbOld.Spec.NetworkPath,
 					},
 				}
 				rbNew.Kind = "ResourceBinding"

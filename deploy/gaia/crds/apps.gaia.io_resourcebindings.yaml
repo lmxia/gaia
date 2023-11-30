@@ -55,6 +55,8 @@ spec:
                   format: byte
                   type: string
                 type: array
+              nonZeroClusterNum:
+                type: integer
               parentRB:
                 type: string
               rbApps:

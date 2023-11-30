@@ -11,7 +11,6 @@ import (
 	str "github.com/alibabacloud-go/darabonba-string/client"
 	util "github.com/alibabacloud-go/tea-utils/v2/service"
 	"github.com/alibabacloud-go/tea/tea"
-
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 )
@@ -31,13 +30,7 @@ func (c *Controller) supplierClient(frontend *v1alpha1.Frontend) (result *cdn201
 		AccessKeySecret: secret,
 	}
 	config.Endpoint = tea.String(common.FrontendAliyunCdnEndpoint)
-	result = &cdn20180510.Client{}
-	result, err = cdn20180510.NewClient(config)
-	if err != nil {
-		klog.Error(err)
-		return nil, err
-	}
-	return result, err
+	return cdn20180510.NewClient(config)
 }
 
 func (c *Controller) cdnAccelerateState(frontend *v1alpha1.Frontend) (bool, *string, error) {
@@ -99,12 +92,12 @@ func (c *Controller) cdnAccelerateCreate(frontend *v1alpha1.Frontend, cdnStatus 
 			scope := frontend.Spec.Cdn[i].AccerlateRegion
 			client, err := c.supplierClient(frontend)
 			if err != nil {
-				klog.Error(err)
+				klog.Errorf("Failed to new cdn client  of 'Frontend' %q, error == %v", frontend.Name, err)
 				return err
 			}
 			err = c.processCdnAccelerateCreate(client, &domainName, &cdnType, &sources, &scope, frontend, cdnStatus)
 			if err != nil {
-				klog.Error(err)
+				klog.Errorf("Failed to add cdn accelerate of 'Frontend' %q, error == %v", frontend.Name, err)
 				return err
 			}
 		}
@@ -129,6 +122,7 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 		if *cdnStatus != common.FrontendAliyunCdnConfigureStatus {
 			response, err := client.AddCdnDomain(request)
 			if err != nil {
+				klog.Errorf("Failed to add cdn domain of 'Frontend' %q, error == %v", frontend.Name, err)
 				return err
 			}
 			klog.V(4).Infof("add domain succeed：" + tea.StringValue(response.Body.RequestId))
@@ -147,6 +141,7 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 				frontend.SetLabels(map[string]string{"domainCname": *cname})
 				frontendUpdate, err := c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(), frontend, metav1.UpdateOptions{})
 				if err != nil {
+					klog.Errorf("Failed to update  'Frontend' %q, error == %v", frontend.Name, err)
 					return err
 				}
 				frontend.SetResourceVersion(frontendUpdate.ResourceVersion)
@@ -184,6 +179,7 @@ func (c *Controller) GetDomainStatus(client *cdn20180510.Client, domain *string)
 	}
 	response, err := client.DescribeUserDomains(request)
 	if err != nil {
+		klog.Errorf("Failed to describe user domains 'Cname' %q, error == %v", cname, err)
 		return result, cname, err
 	}
 	pageData := response.Body.Domains.PageData[0]
@@ -200,12 +196,14 @@ func (c *Controller) cdnAccelerateUpdate(frontend *v1alpha1.Frontend, cdnStatus 
 		//online
 		dnsAccelerateState, err := c.dnsAccelerateState(frontend)
 		if err != nil {
+			klog.Errorf("Failed to get dns AccelerateState of 'Frontend' %q, error == %v", frontend.Name, err)
 			return err
 		}
 		if !dnsAccelerateState {
 			cname := frontend.Labels["domainCname"]
 			err := c.dnsAccelerateCreateDo(frontend, &cname)
 			if err != nil {
+				klog.Errorf("Failed to do dns accelerate create of 'Frontend' %q, error == %v", frontend.Name, err)
 				return err
 			}
 		}
@@ -213,6 +211,7 @@ func (c *Controller) cdnAccelerateUpdate(frontend *v1alpha1.Frontend, cdnStatus 
 		//configure
 		err := c.cdnAccelerateCreate(frontend, cdnStatus)
 		if err != nil {
+			klog.Errorf("Failed to do cdn Accelerate create of 'Frontend' %q, error == %v", frontend.Name, err)
 			return err
 		}
 	}
@@ -237,9 +236,9 @@ func (c *Controller) cdnAccelerateRecycle(frontend *v1alpha1.Frontend) error {
 				domainArray := str.Split(domains, tea.String(","), tea.Int(3))
 				for _, domain := range domainArray {
 					for true {
-						status, _, _err := c.GetDomainStatus(client, domain)
+						status, _, err := c.GetDomainStatus(client, domain)
 						if err != nil {
-							return _err
+							return err
 						}
 						if tea.BoolValue(util.EqualString(status, tea.String(common.FrontendAliyunCdnOnlineStatus))) {
 							if err != nil {

@@ -310,7 +310,7 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 	return nil
 }
 
-func ApplyRBWorkloads(ctx context.Context, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
+func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
 	rb *appsv1alpha1.ResourceBinding, nodes []*corev1.Node, desc *appsv1alpha1.Description,
 	components []appsv1alpha1.Component, discoveryRESTMapper meta.RESTMapper, clusterName string,
 ) error {
@@ -421,7 +421,12 @@ func ApplyRBWorkloads(ctx context.Context, parentGaiaClient *gaiaClientSet.Clien
 
 	condition := getDeployCondition(allErrs, clusterName, klog.KObj(rb).String())
 	// update status  with retry
-	err := updateRBStatusWithRetry(ctx, parentGaiaClient, rb, condition, clusterName)
+	var err error
+	if rb.Namespace == known.GaiaPushReservedNamespace {
+		err = updateRBStatusWithRetry(ctx, localGaiaClient, rb, condition, clusterName)
+	} else {
+		err = updateRBStatusWithRetry(ctx, parentGaiaClient, rb, condition, clusterName)
+	}
 	if len(allErrs) > 0 {
 		return utilerrors.NewAggregate(allErrs)
 	}
@@ -429,7 +434,9 @@ func ApplyRBWorkloads(ctx context.Context, parentGaiaClient *gaiaClientSet.Clien
 	return err
 }
 
-func updateRBStatusWithRetry(ctx context.Context, parentGaiaClient *gaiaClientSet.Clientset, rb *appsv1alpha1.ResourceBinding, condition metav1.Condition, clusterName string) error {
+func updateRBStatusWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clientset,
+	rb *appsv1alpha1.ResourceBinding, condition metav1.Condition, clusterName string,
+) error {
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
 		rb.Status.Conditions = append(rb.Status.Conditions, condition)
@@ -448,14 +455,14 @@ func updateRBStatusWithRetry(ctx context.Context, parentGaiaClient *gaiaClientSe
 			}
 			rb.Status.Status = appsv1alpha1.ResourceBindingGreen
 		}
-		_, lastError := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(),
+		_, lastError := gaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(),
 			rb, metav1.UpdateOptions{})
 		// check if failed
 		if lastError == nil {
 			return true, nil
 		}
 		if apierrors.IsConflict(lastError) {
-			newRB, lastError := parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Get(context.TODO(),
+			newRB, lastError := gaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Get(context.TODO(),
 				rb.Name, metav1.GetOptions{})
 			if lastError == nil {
 				rb = newRB

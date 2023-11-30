@@ -71,7 +71,6 @@ const (
 
 	// env
 	ResourceBindingMergerPostURL = "RESOURCEBINDING_MERGER_POST_URL"
-	GaiaPushModeClusterName      = "GAIA_PUSH_MODE_CLUSTER_NAME"
 
 	MetricConfigMapAbsFilePath             = "/etc/config/gaia-prometheus_metrics.conf"
 	ServiceMaintenanceConfigMapAbsFilePath = "/etc/config/service-maintenance-prometheus_metrics.conf"

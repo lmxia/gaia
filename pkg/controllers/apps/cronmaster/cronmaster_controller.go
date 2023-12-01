@@ -97,8 +97,8 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	klog.Infof("Starting cronmaster controller ...")
-	defer klog.Infof("Shutting down cronmaster controller")
+	klog.Infof("Starting local cronmaster controller ...")
+	defer klog.Infof("Shutting down local cronmaster controller")
 
 	if !cache.WaitForNamedCacheSync("cronmaster", stopCh, c.deployListerSynced, c.cronMasterListSynced) {
 		return

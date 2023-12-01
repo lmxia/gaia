@@ -82,8 +82,8 @@ type FieldsRBs struct {
 	rbsOfFields       []*ClustersRBs
 }
 
-// NewRBMerger returns a new RBMerger for ResourceBinding.
-func NewRBMerger(kubeClient *kubernetes.Clientset, gaiaClient *gaiaClientSet.Clientset) (*RBMerger, error) {
+// NewMerger returns a new RBMerger for ResourceBinding.
+func NewMerger(kubeClient *kubernetes.Clientset, gaiaClient *gaiaClientSet.Clientset) (*RBMerger, error) {
 	postURL := os.Getenv(common.ResourceBindingMergerPostURL)
 	localToGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(gaiaClient, common.DefaultResync,
 		gaiaInformers.WithNamespace(common.GaiaRSToBeMergedReservedNamespace))
@@ -110,27 +110,27 @@ func NewRBMerger(kubeClient *kubernetes.Clientset, gaiaClient *gaiaClientSet.Cli
 }
 
 func (m *RBMerger) RunToLocalResourceBindingMerger(workers int, stopCh <-chan struct{}) {
-	klog.Info("Starting local ResourceBinding Merger ...")
-	defer klog.Info("Shutting local ResourceBinding Merger ...")
+	klog.Info("Starting local Merger Controller in global level...")
+	defer klog.Info("Shutting local Merger Controller in global level...")
 
 	m.localToMergeGaiaInformerFactory.Start(stopCh)
 	if !cache.WaitForNamedCacheSync("to-local-resourcebinding-merger", stopCh, m.toMergeRBSynced) {
 		return
 	}
 	m.rbToLocalController.Run(workers, stopCh)
-	return
+	<-stopCh
 }
 
 func (m *RBMerger) RunToParentResourceBindingMerger(workers int, stopCh <-chan struct{}) {
-	klog.Info("Starting parent ResourceBinding Merger ...")
-	defer klog.Info("Shutting parent ResourceBinding Merger ...")
+	klog.Info("Starting to-parent-resourcebinding-merger ...")
+	defer klog.Info("Shutting to-parent-resourcebinding-merger ...")
 
 	m.localToMergeGaiaInformerFactory.Start(stopCh)
 	if !cache.WaitForNamedCacheSync("to-parent-resourcebinding-merger", stopCh, m.toMergeRBSynced) {
 		return
 	}
 	m.rbTOParentController.Run(workers, stopCh)
-	return
+	<-stopCh
 }
 
 func (m *RBMerger) SetParentRBController() (*RBMerger, error) {

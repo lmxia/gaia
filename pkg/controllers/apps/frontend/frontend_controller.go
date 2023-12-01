@@ -59,8 +59,8 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.workqueue.ShutDown()
 
-	klog.Infof("Starting frontend accelerate controller ...")
-	defer klog.Infof("Shutting down frontend  accelerate controller")
+	klog.Infof("Starting frontend cdn accelerate controller ...")
+	defer klog.Infof("Shutting down frontend cdn accelerate controller")
 
 	if !cache.WaitForNamedCacheSync("Frontend", stopCh, c.frontendListSynced) {
 		return

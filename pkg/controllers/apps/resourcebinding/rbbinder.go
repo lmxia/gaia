@@ -59,45 +59,40 @@ var controllerKind = appsV1alpha1.SchemeGroupVersion.WithKind("ResourceBinding")
 
 type SyncHandlerFunc func(binding *appsV1alpha1.ResourceBinding) error
 
-// RBController defines configuration for ResourceBinding requests
-type RBController struct {
+// Binder defines configuration for ResourceBinding requests
+type Binder struct {
 	networkBindURL string
 
-	// rbLocalController   *Controller
-	descLocalController *description.Controller
-
-	localKubeClient          *kubernetes.Clientset
-	localNodeLister          corev1lister.NodeLister
-	localNodeSynced          cache.InformerSynced
-	localGaiaInformerFactory gaiaInformers.SharedInformerFactory
-	localDescLister          appListerV1alpha1.DescriptionLister
-	localDescSynced          cache.InformerSynced
-	localRBsLister           appListerV1alpha1.ResourceBindingLister
-	localRBsSynced           cache.InformerSynced
-	localGaiaClient          *gaiaClientSet.Clientset
-	localDynamicClient       dynamic.Interface
+	localGaiaInformerFactory     gaiaInformers.SharedInformerFactory
+	localPushGaiaInformerFactory gaiaInformers.SharedInformerFactory
+	localKubeClient              *kubernetes.Clientset
+	localNodeLister              corev1lister.NodeLister
+	localNodeSynced              cache.InformerSynced
+	localDescLister              appListerV1alpha1.DescriptionLister
+	localDescSynced              cache.InformerSynced
+	localRBsLister               appListerV1alpha1.ResourceBindingLister
+	localRBsSynced               cache.InformerSynced
+	localGaiaClient              *gaiaClientSet.Clientset
+	localDynamicClient           dynamic.Interface
+	localDescController          *description.Controller
+	localRBController            *Controller
 
 	parentMergedGaiaInformerFactory    gaiaInformers.SharedInformerFactory
 	parentDedicatedGaiaInformerFactory gaiaInformers.SharedInformerFactory
 	parentDynamicClient                dynamic.Interface
 	parentGaiaClient                   *gaiaClientSet.Clientset
-	rbBindController                   *Controller
-	descParentController               *description.Controller
-	restMapper                         *restmapper.DeferredDiscoveryRESTMapper
+	parentDescController               *description.Controller
+	parentRBController                 *Controller
+
+	restMapper *restmapper.DeferredDiscoveryRESTMapper
 }
 
 // Controller is a controller that handle ResourceBinding requests
 type Controller struct {
 	// local gaia-push-reserved namespace
-	localGaiaClient              gaiaClientSet.Interface
-	localRBsLister               appListerV1alpha1.ResourceBindingLister
-	localRBsSynced               cache.InformerSynced
-	localPushGaiaInformerFactory gaiaInformers.SharedInformerFactory
-
-	// parent gaia-merged namespace
-	parentGaiaClient gaiaClientSet.Interface
-	parentRBsLister  appListerV1alpha1.ResourceBindingLister
-	parentRBsSynced  cache.InformerSynced
+	GaiaClient gaiaClientSet.Interface
+	Lister     appListerV1alpha1.ResourceBindingLister
+	Synced     cache.InformerSynced
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -109,14 +104,14 @@ type Controller struct {
 	SyncHandler SyncHandlerFunc
 }
 
-// NewRBController returns a new Controller for ResourceBindings and Descriptions.
-func NewRBController(localKubeClient *kubernetes.Clientset, localGaiaClient *gaiaClientSet.Clientset,
+// NewBinder returns a new Controller for ResourceBindings and Descriptions.
+func NewBinder(localKubeClient *kubernetes.Clientset, localGaiaClient *gaiaClientSet.Clientset,
 	kubeInformerFactory kubeInformers.SharedInformerFactory, localGaiaInformerFactory gaiaInformers.SharedInformerFactory,
 	localKubeConfig *rest.Config, networkBindURL string,
-) (*RBController, error) {
+) (*Binder, error) {
 	localDynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 
-	rbController := &RBController{
+	rbController := &Binder{
 		networkBindURL:           networkBindURL,
 		localKubeClient:          localKubeClient,
 		localNodeLister:          kubeInformerFactory.Core().V1().Nodes().Lister(),
@@ -138,38 +133,25 @@ func NewRBController(localKubeClient *kubernetes.Clientset, localGaiaClient *gai
 	return rbController, nil
 }
 
-// NewController return rb Controller
-func NewController(localGaiaClient gaiaClientSet.Interface, parentGaiaClient gaiaClientSet.Interface,
-	pushGaiaInformerFactory gaiaInformers.SharedInformerFactory, localRBsInformer informers.ResourceBindingInformer,
-	parentRBsInformer informers.ResourceBindingInformer, syncHandler SyncHandlerFunc,
+// NewController return resource-binding Controller
+func NewController(GaiaClient gaiaClientSet.Interface, informer informers.ResourceBindingInformer,
+	syncHandler SyncHandlerFunc,
 ) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
 	}
 
 	c := &Controller{
-		localGaiaClient: localGaiaClient,
-		localRBsLister:  localRBsInformer.Lister(),
-		localRBsSynced:  localRBsInformer.Informer().HasSynced,
-
-		parentGaiaClient: parentGaiaClient,
-		parentRBsLister:  parentRBsInformer.Lister(),
-		parentRBsSynced:  parentRBsInformer.Informer().HasSynced,
-
+		GaiaClient: GaiaClient,
+		Lister:     informer.Lister(),
+		Synced:     informer.Informer().HasSynced,
 		workqueue: workqueue.NewNamedRateLimitingQueue(
 			workqueue.DefaultControllerRateLimiter(), "resource-binding-requests"),
-		SyncHandler:                  syncHandler,
-		localPushGaiaInformerFactory: pushGaiaInformerFactory,
+		SyncHandler: syncHandler,
 	}
 
 	// Manage the addition/update of self cluster's ResourceBinding requests in gaia-push-reserved namespace
-	localRBsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.addRB,
-		UpdateFunc: c.updateRB,
-		DeleteFunc: c.deleteRB,
-	})
-	// Manage the addition/update of parent cluster's ResourceBinding requests in gaia-merged namespace
-	parentRBsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.addRB,
 		UpdateFunc: c.updateRB,
 		DeleteFunc: c.deleteRB,
@@ -246,14 +228,14 @@ func (c *Controller) UpdateResourceBindingStatus(rb *appsV1alpha1.ResourceBindin
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		rb.Status = *status
-		_, err := c.localGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(
+		_, err := c.GaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(
 			context.TODO(), rb, metav1.UpdateOptions{})
 		if err == nil {
 			// TODO
 			return nil
 		}
 
-		updated, err := c.localRBsLister.ResourceBindings(rb.Namespace).Get(rb.Name)
+		updated, err := c.Lister.ResourceBindings(rb.Namespace).Get(rb.Name)
 		if err == nil {
 			// make a copy, so we don't mutate the shared cache
 			rb = updated.DeepCopy()
@@ -280,7 +262,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the ResourceBinding resource with this name
-	binding, err := c.localRBsLister.ResourceBindings(namespace).Get(name)
+	binding, err := c.Lister.ResourceBindings(namespace).Get(name)
 	// The ResourceBinding resource may no longer exist, in which case we stop processing.
 	if err != nil {
 		// The Foo resource may no longer exist, in which case we stop
@@ -375,10 +357,9 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 
 	klog.Info("starting resourceBinding-requests controller...")
 	defer klog.Info("shutting down resourceBinding-requests controller")
-	c.localPushGaiaInformerFactory.Start(stopCh)
+
 	// Wait for the caches to be synced before starting workers
-	if !cache.WaitForNamedCacheSync("cluster-ResourceBinding-request-controller", stopCh,
-		c.localRBsSynced, c.parentRBsSynced) {
+	if !cache.WaitForNamedCacheSync("cluster-ResourceBinding-request-controller", stopCh, c.Synced) {
 		return
 	}
 
@@ -390,9 +371,9 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (c *RBController) RunParentResourceBindingAndDescription(threadiness int, stopCh <-chan struct{}) {
-	klog.Info("starting parent ResourceBinding  ...")
-	defer klog.Info("shutting parent scheduler")
+func (c *Binder) RunParentBinder(workers int, stopCh <-chan struct{}) {
+	klog.Info("starting parent binder...")
+	defer klog.Info("shutting parent binder...")
 	c.parentMergedGaiaInformerFactory.Start(stopCh)
 	c.parentDedicatedGaiaInformerFactory.Start(stopCh)
 	if !cache.WaitForNamedCacheSync("parentResourceBinding-controller", stopCh,
@@ -400,66 +381,74 @@ func (c *RBController) RunParentResourceBindingAndDescription(threadiness int, s
 		return
 	}
 
-	go c.rbBindController.Run(threadiness, stopCh)
-	go c.descParentController.Run(threadiness, stopCh)
+	go c.parentRBController.Run(workers, stopCh)
+	go c.parentDescController.Run(workers, stopCh)
 
 	<-stopCh
 }
 
-func (c *RBController) RunLocalDescription(threadiness int, stopCh <-chan struct{}) {
-	klog.Info("starting runDescription ... ")
-	defer klog.Info("shutting local description ...")
+func (c *Binder) RunLocalBinder(workers int, stopCh <-chan struct{}) {
+	klog.Info("starting local binder... ")
+	defer klog.Info("shutting local binder...")
 	c.localGaiaInformerFactory.Start(stopCh)
-	if !cache.WaitForNamedCacheSync("localDescription-Controller", stopCh, c.localDescSynced, c.localRBsSynced) {
+	c.localPushGaiaInformerFactory.Start(stopCh)
+	if !cache.WaitForNamedCacheSync("localDescription-Controller", stopCh,
+		c.localDescSynced, c.localRBsSynced, c.localNodeSynced) {
 		return
 	}
-	go c.descLocalController.Run(threadiness, stopCh)
+
+	go c.localDescController.Run(workers, stopCh)
+	go c.localRBController.Run(workers, stopCh)
+
 	<-stopCh
 }
 
-func (c *RBController) handleLocalDescription(desc *appsV1alpha1.Description) error {
+// handle description in gaia-reserved and gaia-push-reserved namespace
+func (c *Binder) handleLocalDescription(desc *appsV1alpha1.Description) error {
 	klog.V(5).Infof("handleLocalDescription: handle local description %q ...", klog.KObj(desc))
 	// delete gaia-reserved description
-	if desc.DeletionTimestamp != nil && desc.Namespace == common.GaiaReservedNamespace {
-		var allErrs []error
-		descName := desc.GetName()
-		descNS := desc.GetNamespace()
-		descUID := desc.GetUID()
+	if desc.DeletionTimestamp != nil {
+		if desc.Namespace == common.GaiaReservedNamespace {
+			var allErrs []error
+			descName := desc.GetName()
+			descNS := desc.GetNamespace()
+			descUID := desc.GetUID()
 
-		errCh := make(chan error, 3)
-		wg := sync.WaitGroup{}
-		wg.Add(3)
-		go func(name, namespace string, uid types.UID) {
-			defer wg.Done()
-			err := c.offloadLocalResourceBindingsByDescription(name, namespace, uid)
-			if err != nil {
-				errCh <- err
-			}
-		}(descName, descNS, descUID)
-		go func(name, namespace string) {
-			defer wg.Done()
-			err := c.offloadLocalNetworkRequirement(name, namespace)
-			if err != nil {
-				errCh <- err
-			}
-		}(descName, descNS)
-		go func(name, namespace string, uid types.UID) {
-			defer wg.Done()
-			err := c.offloadLocalDescriptions(name, namespace, string(uid))
-			if err != nil {
-				errCh <- err
-			}
-		}(descName, descNS, descUID)
+			errCh := make(chan error, 3)
+			wg := sync.WaitGroup{}
+			wg.Add(3)
+			go func(name, namespace string, uid types.UID) {
+				defer wg.Done()
+				err := c.offloadLocalResourceBindingsByDescription(name, namespace, uid)
+				if err != nil {
+					errCh <- err
+				}
+			}(descName, descNS, descUID)
+			go func(name, namespace string) {
+				defer wg.Done()
+				err := c.offloadLocalNetworkRequirement(name, namespace)
+				if err != nil {
+					errCh <- err
+				}
+			}(descName, descNS)
+			go func(name, namespace string, uid types.UID) {
+				defer wg.Done()
+				err := c.offloadLocalDescriptions(name, namespace, string(uid))
+				if err != nil {
+					errCh <- err
+				}
+			}(descName, descNS, descUID)
 
-		wg.Wait()
-		close(errCh)
+			wg.Wait()
+			close(errCh)
 
-		for err := range errCh {
-			allErrs = append(allErrs, err)
-		}
-		if len(allErrs) > 0 {
-			err := utilErrors.NewAggregate(allErrs)
-			return err
+			for err := range errCh {
+				allErrs = append(allErrs, err)
+			}
+			if len(allErrs) > 0 {
+				err := utilErrors.NewAggregate(allErrs)
+				return err
+			}
 		}
 
 		descCopy := desc.DeepCopy()
@@ -476,18 +465,16 @@ func (c *RBController) handleLocalDescription(desc *appsV1alpha1.Description) er
 	return nil
 }
 
-func (c *RBController) handleParentAndPushDescription(desc *appsV1alpha1.Description) error {
-	klog.V(5).Infof("handleParentAndPushDescription: handle Description %q ...", klog.KObj(desc))
+func (c *Binder) handleParentDescription(desc *appsV1alpha1.Description) error {
+	klog.V(5).Infof("handleParentDescription: handle Description %q ...", klog.KObj(desc))
 	if desc.DeletionTimestamp != nil {
-		if desc.Namespace != common.GaiaPushReservedNamespace {
-			descLabels := desc.GetLabels()
-			descName := descLabels[common.OriginDescriptionNameLabel]
-			descNS := descLabels[common.OriginDescriptionNamespaceLabel]
-			descUID := descLabels[common.OriginDescriptionUIDLabel]
-			// delete local descriptions
-			if err := c.offloadLocalDescriptions(descName, descNS, descUID); err != nil {
-				return err
-			}
+		descLabels := desc.GetLabels()
+		descName := descLabels[common.OriginDescriptionNameLabel]
+		descNS := descLabels[common.OriginDescriptionNamespaceLabel]
+		descUID := descLabels[common.OriginDescriptionUIDLabel]
+		// delete local descriptions
+		if err := c.offloadLocalDescriptions(descName, descNS, descUID); err != nil {
+			return err
 		}
 
 		descCopy := desc.DeepCopy()
@@ -498,7 +485,7 @@ func (c *RBController) handleParentAndPushDescription(desc *appsV1alpha1.Descrip
 			if apierrors.IsNotFound(err) {
 				return nil
 			}
-			klog.WarningDepth(4, fmt.Sprintf("handleParentAndPushDescription: failed to remove finalizer "+
+			klog.WarningDepth(4, fmt.Sprintf("handleParentDescription: failed to remove finalizer "+
 				"%s from parent Descriptions %s: %v", common.AppFinalizer, klog.KObj(desc), err))
 		}
 		return err
@@ -508,7 +495,7 @@ func (c *RBController) handleParentAndPushDescription(desc *appsV1alpha1.Descrip
 }
 
 // handles the gaia-merged and gaia-push-reserved namespace rbs
-func (c *RBController) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
+func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
 	klog.V(5).Infof("handleParentAndPushResourceBinding: handle parent resourceBinding %q ...", klog.KObj(rb))
 	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
 		if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
@@ -677,36 +664,33 @@ func (c *RBController) handleParentAndPushResourceBinding(rb *appsV1alpha1.Resou
 	return nil
 }
 
-func (c *RBController) SetRBBindController(dedicatedNamespace *string) (*RBController, error) {
+func (c *Binder) SetParentBinderController(dedicatedNamespace *string) (*Binder, error) {
 	// todo: 是否需要判断 parent nil
 	parentGaiaClient, parentDynamicClient, parentMergedGaiaInformerFactory := utils.SetParentClient(c.localKubeClient,
 		c.localGaiaClient)
 	c.parentGaiaClient = parentGaiaClient
 	c.parentDynamicClient = parentDynamicClient
 	c.parentMergedGaiaInformerFactory = parentMergedGaiaInformerFactory
-	localPushReservedInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(c.localGaiaClient,
-		common.DefaultResync, gaiaInformers.WithNamespace(common.GaiaPushReservedNamespace))
-	rbController, rbErr := NewController(c.localGaiaClient, parentGaiaClient, localPushReservedInformerFactory,
-		localPushReservedInformerFactory.Apps().V1alpha1().ResourceBindings(),
+	rbController, rbErr := NewController(parentGaiaClient,
 		parentMergedGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentAndPushResourceBinding)
 	if rbErr != nil {
 		klog.Errorf("failed to set RBBindController, rbErr == %v", rbErr)
 		return nil, rbErr
 	}
-	c.rbBindController = rbController
+	c.parentRBController = rbController
 
-	// descParentController
+	// parentDescController
 	if dedicatedNamespace != nil {
 		dedicatedGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient,
 			common.DefaultResync, gaiaInformers.WithNamespace(*dedicatedNamespace))
 		descController, descErr := description.NewController(parentGaiaClient,
 			dedicatedGaiaInformerFactory.Apps().V1alpha1().Descriptions(),
-			c.localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentAndPushDescription)
+			c.localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentDescription)
 		if descErr != nil {
-			klog.Errorf(" local handleParentAndPushDescription SetRBBindController descErr == %v", descErr)
+			klog.Errorf(" local handleParentDescription SetRBBindController descErr == %v", descErr)
 			return nil, descErr
 		}
-		c.descParentController = descController
+		c.parentDescController = descController
 		c.parentDedicatedGaiaInformerFactory = dedicatedGaiaInformerFactory
 	} else {
 		return c, fmt.Errorf("SetRBBindController: dedicatedNamespace is nil")
@@ -715,20 +699,33 @@ func (c *RBController) SetRBBindController(dedicatedNamespace *string) (*RBContr
 	return c, nil
 }
 
-func (c *RBController) SetLocalDescriptionController() (*RBController, error) {
+func (c *Binder) SetLocalBinderController() (*Binder, error) {
+	// set local resource-binding controller
+	localPushReservedInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(c.localGaiaClient,
+		common.DefaultResync, gaiaInformers.WithNamespace(common.GaiaPushReservedNamespace))
+	rbController, rbErr := NewController(c.localGaiaClient,
+		localPushReservedInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentAndPushResourceBinding)
+	if rbErr != nil {
+		klog.Errorf("failed to set RBBindController, rbErr == %v", rbErr)
+		return nil, rbErr
+	}
+	c.localPushGaiaInformerFactory = localPushReservedInformerFactory
+	c.localRBController = rbController
+
+	// set local description controller
 	descController, err := description.NewController(c.localGaiaClient,
-		c.localGaiaInformerFactory.Apps().V1alpha1().Descriptions(),
-		c.localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleLocalDescription)
+		c.localPushGaiaInformerFactory.Apps().V1alpha1().Descriptions(),
+		c.localPushGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleLocalDescription)
 	if err != nil {
-		klog.Errorf("handleLocalDescription: local SetLocalDescriptionController err == %v", err)
+		klog.Errorf("handleLocalDescription: local SetLocalBinderController err == %v", err)
 		return nil, err
 	}
-	c.descLocalController = descController
+	c.localDescController = descController
 
 	return c, nil
 }
 
-func (c *RBController) offloadLocalDescriptions(descName, descNS, uid string) error {
+func (c *Binder) offloadLocalDescriptions(descName, descNS, uid string) error {
 	klog.V(5).Infof("Start deleting local Descriptions derived by %s", klog.KRef(descNS, descName))
 	var derivedDescs []*appsV1alpha1.Description
 	var allErrs []error
@@ -767,7 +764,7 @@ func (c *RBController) offloadLocalDescriptions(descName, descNS, uid string) er
 	return nil
 }
 
-func (c *RBController) deleteDescription(ctx context.Context, namespacedKey string) error {
+func (c *Binder) deleteDescription(ctx context.Context, namespacedKey string) error {
 	// Convert the namespace/name string into a distinct namespace and name
 	ns, name, err := cache.SplitMetaNamespaceKey(namespacedKey)
 	if err != nil {
@@ -783,7 +780,7 @@ func (c *RBController) deleteDescription(ctx context.Context, namespacedKey stri
 	return err
 }
 
-func (c *RBController) offloadLocalResourceBindingsByDescription(descName, descNS string, uid types.UID) error {
+func (c *Binder) offloadLocalResourceBindingsByDescription(descName, descNS string, uid types.UID) error {
 	klog.V(5).InfoS("Start deleting local ResourceBindings ...", "Description", klog.KRef(descNS, descName))
 	// offload gaia-merged && gaia-to-be-merged  Rbs
 	derivedRBs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
@@ -814,7 +811,7 @@ func (c *RBController) offloadLocalResourceBindingsByDescription(descName, descN
 	return nil
 }
 
-func (c *RBController) deleteResourceBinding(ctx context.Context, namespacedKey string) error {
+func (c *Binder) deleteResourceBinding(ctx context.Context, namespacedKey string) error {
 	// Convert the namespace/name string into a distinct namespace and name
 	ns, name, err := cache.SplitMetaNamespaceKey(namespacedKey)
 	if err != nil {
@@ -830,7 +827,7 @@ func (c *RBController) deleteResourceBinding(ctx context.Context, namespacedKey 
 	return err
 }
 
-func (c *RBController) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.ResourceBinding) error {
+func (c *Binder) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.ResourceBinding) error {
 	// offload gaia-merged && gaia-to-be-merged  Rbs
 	derivedRBs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
 		common.OriginDescriptionNameLabel:      rb.GetLabels()[common.OriginDescriptionNameLabel],
@@ -860,7 +857,7 @@ func (c *RBController) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.Resourc
 	return nil
 }
 
-func (c *RBController) offloadLocalNetworkRequirement(descName, descNS string) error {
+func (c *Binder) offloadLocalNetworkRequirement(descName, descNS string) error {
 	klog.V(5).InfoS("Start deleting local NetworkRequirement ...", "Description", klog.KRef(descNS, descName))
 	nwr, err := c.localGaiaClient.AppsV1alpha1().NetworkRequirements(common.GaiaReservedNamespace).Get(context.TODO(),
 		descName, metav1.GetOptions{})

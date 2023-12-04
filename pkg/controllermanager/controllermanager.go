@@ -80,7 +80,7 @@ type ControllerManager struct {
 	statusManager       *Manager
 	crrApprover         *approver.CRRApprover
 	hyperNodeController *hypernode.Controller
-	rbController        *resourcebinding.RBController
+	rbBinder            *resourcebinding.Binder
 	rbMerger            *resourcebinding.RBMerger
 	cronController      *cronmaster.Controller
 	frontendController  *frontend.Controller
@@ -145,11 +145,12 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	statusManager := NewStatusManager(ctx, localKubeConfig.Host, clusterHostName, managedCluster, localKubeClientSet, localGaiaClientSet, hypernodeClientSet)
 	hyperController := hypernode.NewController(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory)
 
-	rbMerger, err := resourcebinding.NewRBMerger(localKubeClientSet, localGaiaClientSet)
+	rbMerger, err := resourcebinding.NewMerger(localKubeClientSet, localGaiaClientSet)
 	if err != nil {
 		klog.Error(err)
 	}
-	rbController, rbErr := resourcebinding.NewRBController(localKubeClientSet, localGaiaClientSet, localKubeInformerFactory, localGaiaInformerFactory, localKubeConfig, networkBindUrl)
+	binder, rbErr := resourcebinding.NewBinder(localKubeClientSet, localGaiaClientSet, localKubeInformerFactory,
+		localGaiaInformerFactory, localKubeConfig, networkBindUrl)
 	if rbErr != nil {
 		klog.Error(rbErr)
 	}
@@ -173,7 +174,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		cronController:      cronController,
 		crrApprover:         approver,
 		hyperNodeController: hyperController,
-		rbController:        rbController,
+		rbBinder:            binder,
 		rbMerger:            rbMerger,
 		statusManager:       statusManager,
 		frontendController:  frontendController,
@@ -188,8 +189,8 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 	klog.Info("starting gaia controller ...")
 
 	// start the leader election code loop
-	leaderelection.RunOrDie(controller.ctx, *newLeaderElectionConfigWithDefaultValue(controller.Identity, controller.localKubeClientSet,
-		leaderelection.LeaderCallbacks{
+	leaderelection.RunOrDie(controller.ctx, *newLeaderElectionConfigWithDefaultValue(controller.Identity,
+		controller.localKubeClientSet, leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				// 1. start generic informers
 				klog.Info("start generic informers...")
@@ -202,26 +203,22 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 					controller.crrApprover.Run(common.DefaultThreadiness, ctx.Done())
 				}()
 
-				// 3. start rbMerger
+				// 3. wait for target to join into a parent cluster.
 				go func() {
-					klog.Info("start 3. start rbMerger Controller...")
-					controller.rbMerger.RunToLocalResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
-				}()
-
-				// 4. wait for target to join into a parent cluster.
-				go func() {
-					klog.Info("start 4. wait for target to join into a parent cluster")
-					// 4.1 register selfCluster as a child cluster.
+					klog.Info("start 3. wait for target to join into a parent cluster")
+					// 3.1 register selfCluster as a child cluster.
 					controller.registerSelfCluster(ctx)
 
-					// 4.2 report cluster status periodically only when register successfully.
+					// 3.2 report cluster status periodically only when register successfully.
 					go wait.UntilWithContext(ctx, func(ctx context.Context) {
-						controller.statusManager.Run(ctx, controller.parentKubeConfig, controller.DedicatedNamespace, controller.ClusterID)
+						controller.statusManager.Run(ctx, controller.parentKubeConfig, controller.DedicatedNamespace,
+							controller.ClusterID)
 					}, time.Duration(0))
 
-					// 4.3 Hypernode transfers node information from the parent cluster to the current cluster.
+					// 3.3 Hypernode transfers node information from the parent cluster to the current cluster.
 					go func() {
-						err := controller.hyperNodeController.SetHypernodeController(controller.GaiaClusterName, controller.parentKubeConfig)
+						err := controller.hyperNodeController.SetHypernodeController(controller.GaiaClusterName,
+							controller.parentKubeConfig)
 						if err != nil {
 							utilruntime.HandleError(err)
 							return
@@ -229,47 +226,43 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 						controller.hyperNodeController.Run(common.DefaultThreadiness, ctx.Done())
 					}()
 
-					// 4.4 start Binder to handler parent cluster and local pushed Description and ResourceBinding.
+					// 3.4 start merger on field to create merging-rb to global
+					go func() {
+						_, err := controller.rbMerger.SetParentRBController()
+						if err != nil {
+							utilruntime.HandleError(err)
+						}
+						controller.rbMerger.RunToParentResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
+					}()
+
+					// 3.5 start Binder to handle parent cluster Description and ResourceBinding.
 					go func() {
 						// set parent config
-						_, err := controller.rbController.SetRBBindController(controller.DedicatedNamespace)
+						_, err := controller.rbBinder.SetParentBinderController(controller.DedicatedNamespace)
 						if err != nil {
 							utilruntime.HandleError(err)
 							return
 						}
-						controller.rbController.RunParentResourceBindingAndDescription(common.DefaultThreadiness, ctx.Done())
+						controller.rbBinder.RunParentBinder(common.DefaultThreadiness, ctx.Done())
 					}()
 				}()
 
-				// 5. start local description
+				// 4. start local Merger Controller in global level
+				go controller.rbMerger.RunToLocalResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
+
+				// 5. start Binder to handle local pushed Description and ResourceBinding
 				go func() {
-					_, err := controller.rbController.SetLocalDescriptionController()
+					_, err := controller.rbBinder.SetLocalBinderController()
 					if err != nil {
 						utilruntime.HandleError(err)
 					}
-					klog.Info("start 5. start local description informers...")
-					controller.rbController.RunLocalDescription(common.DefaultThreadiness, ctx.Done())
+					controller.rbBinder.RunLocalBinder(common.DefaultThreadiness, ctx.Done())
 				}()
 
-				// 7. start to rbMerger
-				go func() {
-					_, err := controller.rbMerger.SetParentRBController()
-					if err != nil {
-						utilruntime.HandleError(err)
-					}
-					klog.Info("start 7. start rbMerger controller for parent cluster...")
-					controller.rbMerger.RunToParentResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
-				}()
-				// 8. start local cronmaster controller
-				go func() {
-					klog.Info("start 8. start local cronmaster controller...")
-					controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
-				}()
-				// 9. start frontend cdn accelerate controller
-				go func() {
-					klog.Info("start 9. start frontend cdn accelerate controller...")
-					controller.frontendController.Run(common.DefaultThreadiness, ctx.Done())
-				}()
+				// 6. start local cronmaster controller
+				go controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
+				// 7. start frontend cdn accelerate controller
+				go controller.frontendController.Run(common.DefaultThreadiness, ctx.Done())
 
 				// metrics
 				if cc.SecureServing != nil {

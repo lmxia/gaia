@@ -91,7 +91,7 @@ type ControllerManager struct {
 }
 
 // NewAgent returns a new Agent.
-func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, networkBindUrl string, managedCluster *platformv1alpha1.ManagedClusterOptions, opts *option.Options) (*gaiaconfig.CompletedConfig, *ControllerManager, error) {
+func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, networkBindUrl, aliyunSourceSite string, managedCluster *platformv1alpha1.ManagedClusterOptions, opts *option.Options) (*gaiaconfig.CompletedConfig, *ControllerManager, error) {
 	if errs := opts.Validate(); len(errs) > 0 {
 		return nil, nil, utilerrors.NewAggregate(errs)
 	}
@@ -158,7 +158,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	if cronErr != nil {
 		klog.Error(cronErr)
 	}
-	frontendController, frontendErr := frontend.NewController(localGaiaClientSet, localGaiaInformerFactory, vhostClientSet, vhostInformerFactory)
+	frontendController, frontendErr := frontend.NewController(localGaiaClientSet, localGaiaInformerFactory, vhostClientSet, aliyunSourceSite, vhostInformerFactory)
 	if frontendErr != nil {
 		klog.Error(frontendErr)
 	}

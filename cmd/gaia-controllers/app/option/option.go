@@ -24,6 +24,7 @@ type Options struct {
 	Kubeconfig          string
 	ClusterHostName     string
 	NetworkBindURL      string
+	AliyunSourceSite    string
 	ClusterRegistration *ClusterRegistrationOptions
 	ManagedCluster      *clusterapi.ManagedClusterOptions
 
@@ -48,6 +49,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ManagedCluster.PrometheusMonitorURLPrefix, "promUrlPrefix",
 		o.ManagedCluster.PrometheusMonitorURLPrefix,
 		"The prefix of the prometheus monitor url.")
+	fs.StringVar(&o.AliyunSourceSite, "aliyunSourceSite", o.AliyunSourceSite, "aliyun source site for cdn")
 	fs.StringVar(&o.ManagedCluster.TopoSyncBaseURL, "topoSyncBaseUrl", o.ManagedCluster.TopoSyncBaseURL,
 		"The base url of the synccontroller service.")
 	fs.BoolVar(&o.ManagedCluster.UseHypernodeController, "useHypernodeController",

@@ -35,7 +35,7 @@ func NewGaiaControllerCmd(ctx context.Context) *cobra.Command {
 			// TODO: add logic
 			agentCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
-			cc, agent, err := controllermanager.NewControllerManager(agentCtx, opts.Kubeconfig, opts.ClusterHostName, opts.NetworkBindURL, opts.ManagedCluster, opts)
+			cc, agent, err := controllermanager.NewControllerManager(agentCtx, opts.Kubeconfig, opts.ClusterHostName, opts.NetworkBindURL, opts.AliyunSourceSite, opts.ManagedCluster, opts)
 			if err != nil {
 				klog.Exit(err)
 			}

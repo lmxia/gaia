@@ -40,7 +40,7 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 	result := make([]*appv1alpha1.ResourceBinding, 0)
 	matResult := make([]mat.Matrix, 0)
 	rbIndex := 0
-	rbLabels := fillRBLabels(desc)
+	rbLabels := FillRBLabels(desc)
 	rbLabels[common.GaiaDescriptionLabel] = desc.Name
 	for _, items := range ins {
 		indexMatrix, err := makeResourceBindingMatrix(items)
@@ -86,7 +86,7 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 	return result
 }
 
-func fillRBLabels(desc *appv1alpha1.Description) map[string]string {
+func FillRBLabels(desc *appv1alpha1.Description) map[string]string {
 	newLabels := make(map[string]string)
 	oldLabels := desc.GetLabels()
 	if len(oldLabels) != 0 {

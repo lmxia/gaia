@@ -10,6 +10,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -328,6 +329,7 @@ func NewLocalSuperKubeConfig(ctx context.Context, apiserverURL string, kubeClien
 }
 
 func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
+	var err error
 	key, shutdown := sched.localSchedulingQueue.Get()
 	if shutdown {
 		klog.Error("failed to get next unscheduled description from closed queue")
@@ -356,19 +358,48 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	schedulingCycleCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	if desc.Spec.IsFrontEnd {
+		errFront := sched.handleFrontEndAPP(ctx, desc)
+		if errFront != nil {
+			klog.Errorf("failed to schedule frontend app, error==%v", errFront)
+			sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
+			desc.Status.Phase = appsapi.DescriptionPhaseFailure
+			err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
+			if err != nil {
+				klog.WarningDepth(2, "failed to update status of description's status phase: Description==%q, error==%v",
+					klog.KObj(desc), err)
+			}
+			return
+		}
+
+		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
+		if err != nil {
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
+				desc.Namespace, desc.Name, err)
+		}
+
+		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
+		sched.localSchedulingQueue.Forget(key)
+		klog.InfoS("schedule frontendAPP successful", "Description", klog.KObj(desc))
+		return
+	}
+
 	scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, nil, desc)
 	if err != nil {
 		sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
 		desc.Status.Phase = appsapi.DescriptionPhaseFailure
 		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 		if err != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
+				desc.Namespace, desc.Name, err)
 		}
 		klog.Warningf("scheduler failed %v", err)
 		return
 	}
 
-	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx,
+		metav1.ListOptions{})
 	if len(mcls.Items) == 0 {
 		klog.Warningf("scheduler success but do nothing because there is no child clusters.")
 	} else {
@@ -391,7 +422,8 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 				if err != nil {
 					klog.Infof("scheduler success, but some rb not created success %v", err)
 				} else {
-					klog.InfoS("successfully created rb", "Description", desc.GetName(), "ResourceBinding", klog.KRef(itemRb.GetNamespace(), itemRb.GetName()))
+					klog.InfoS("successfully created rb", "Description", desc.GetName(),
+						"ResourceBinding", klog.KRef(itemRb.GetNamespace(), itemRb.GetName()))
 				}
 			}
 			// 2. create desc in to child cluster namespace
@@ -400,7 +432,8 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 			}
 			newDesc := utils.ConstructDescriptionFromExistOne(desc)
 			newDesc.Namespace = itemCluster.Namespace
-			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
+			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc,
+				metav1.CreateOptions{})
 			if err != nil {
 				klog.InfoS("scheduler success, but desc not created success in sub child cluster.", err)
 			}
@@ -408,7 +441,8 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 		if err != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
+				desc.Namespace, desc.Name, err)
 		}
 		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 		metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
@@ -844,6 +878,42 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 			},
 		},
 	})
+}
+
+func (sched *Scheduler) handleFrontEndAPP(ctx context.Context, desc *appsapi.Description) error {
+	if len(desc.Spec.FrontEndAPP.Cdn) == 0 {
+		return fmt.Errorf("FrontEndAPP.cdn is nil, Description==%q", klog.KObj(desc))
+	}
+
+	label := algorithm.FillRBLabels(desc)
+	label[common.GaiaDescriptionLabel] = desc.Name
+	for _, cdn := range desc.Spec.FrontEndAPP.Cdn {
+		frontEnd := &appsapi.Frontend{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "apps.gaia.io/v1alpha1",
+				Kind:       "Frontend",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      desc.Name + "-" + cdn.Supplier,
+				Namespace: common.GaiaFrontendNamespace,
+				Labels:    label,
+				Finalizers: []string{
+					common.FrontendAliyunFinalizers,
+				},
+			},
+			Spec: desc.Spec.FrontEndAPP,
+		}
+
+		_, err := sched.localGaiaClient.AppsV1alpha1().Frontends(frontEnd.Namespace).Create(ctx, frontEnd,
+			metav1.CreateOptions{})
+		if err != nil && errors.IsNotFound(err) {
+			klog.V(2).ErrorS(err, "failed to create Frontend", "Frontend", klog.KObj(frontEnd))
+		} else {
+			klog.V(5).InfoS("successfully created Frontend", "Frontend", klog.KObj(frontEnd))
+		}
+	}
+
+	return nil
 }
 
 // truncateMessage truncates a message if it hits the NoteLengthLimit.

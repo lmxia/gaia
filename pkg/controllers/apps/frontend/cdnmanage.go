@@ -88,6 +88,7 @@ func (c *Controller) cdnAccelerateCreate(frontend *v1alpha1.Frontend, cdnStatus 
 	for i, supplierName := range frontend.Spec.Cdn {
 		if supplierName.Supplier == common.FrontendAliyunCdnName {
 			cdnType := frontend.Spec.Cdn[i].CdnType
+			frontend.Spec.Cdn[i].SourceSite = c.aliyunSourceSite
 			sources := frontend.Spec.Cdn[i].SourceSite
 			scope := frontend.Spec.Cdn[i].AccerlateRegion
 			client, err := c.supplierClient(frontend)

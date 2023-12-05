@@ -30,7 +30,7 @@ type FrontendSpec struct {
 }
 
 type CdnSpec struct {
-	// +required
+	// +optional
 	SourceSite string `json:"sourceSite,omitempty"`
 	// +required
 	Supplier string `json:"supplier,omitempty"`

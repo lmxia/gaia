@@ -32,9 +32,10 @@ type Controller struct {
 	cdnSupplierLister  applisters.CdnSupplierLister
 	frontendListSynced cache.InformerSynced
 	vhostClient        vhostClient.Interface
+	aliyunSourceSite   string
 }
 
-func NewController(gaiaClient gaiaClientSet.Interface, gaiaInformerFactory gaiaInformers.SharedInformerFactory, vhostClient vhostClient.Interface, vhostInformerFactory vhostinformers.SharedInformerFactory) (*Controller, error) {
+func NewController(gaiaClient gaiaClientSet.Interface, gaiaInformerFactory gaiaInformers.SharedInformerFactory, vhostClient vhostClient.Interface, aliyunSourceSite string, vhostInformerFactory vhostinformers.SharedInformerFactory) (*Controller, error) {
 	frontendInformer := gaiaInformerFactory.Apps().V1alpha1().Frontends()
 	cdnSupplierInformer := gaiaInformerFactory.Apps().V1alpha1().CdnSuppliers()
 	c := &Controller{
@@ -44,6 +45,7 @@ func NewController(gaiaClient gaiaClientSet.Interface, gaiaInformerFactory gaiaI
 		frontendLister:     frontendInformer.Lister(),
 		cdnSupplierLister:  cdnSupplierInformer.Lister(),
 		frontendListSynced: frontendInformer.Informer().HasSynced,
+		aliyunSourceSite:   aliyunSourceSite,
 	}
 	// frontend events handler
 	frontendInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{

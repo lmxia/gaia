@@ -8,13 +8,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 
 	vhostClient "github.com/SUMMERLm/vhost/pkg/generated/clientset/versioned"
-	vhostinformers "github.com/SUMMERLm/vhost/pkg/generated/informers/externalversions"
 	appsV1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
@@ -26,7 +24,6 @@ import (
 // It is local cluster controller
 type Controller struct {
 	workqueue          workqueue.RateLimitingInterface
-	dynamicClient      dynamic.Interface
 	gaiaClient         gaiaClientSet.Interface
 	frontendLister     applisters.FrontendLister
 	cdnSupplierLister  applisters.CdnSupplierLister
@@ -35,11 +32,13 @@ type Controller struct {
 	aliyunSourceSite   string
 }
 
-func NewController(gaiaClient gaiaClientSet.Interface, gaiaInformerFactory gaiaInformers.SharedInformerFactory, vhostClient vhostClient.Interface, aliyunSourceSite string, vhostInformerFactory vhostinformers.SharedInformerFactory) (*Controller, error) {
+func NewController(gaiaClient gaiaClientSet.Interface, gaiaInformerFactory gaiaInformers.SharedInformerFactory,
+	vhostClient vhostClient.Interface, aliyunSourceSite string) (*Controller, error) {
 	frontendInformer := gaiaInformerFactory.Apps().V1alpha1().Frontends()
 	cdnSupplierInformer := gaiaInformerFactory.Apps().V1alpha1().CdnSuppliers()
 	c := &Controller{
-		workqueue:          workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Frontend"),
+		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
+			"Frontend"),
 		gaiaClient:         gaiaClient,
 		vhostClient:        vhostClient,
 		frontendLister:     frontendInformer.Lister(),
@@ -217,7 +216,8 @@ func (c *Controller) updateFrontend(old, cur interface{}) {
 	newFrontend := cur.(*appsV1alpha1.Frontend)
 
 	// Decide whether discovery has reported a spec change.
-	if reflect.DeepEqual(oldFrontend.DeletionTimestamp, newFrontend.DeletionTimestamp) && reflect.DeepEqual(oldFrontend.Spec, newFrontend.Spec) {
+	if reflect.DeepEqual(oldFrontend.DeletionTimestamp, newFrontend.DeletionTimestamp) &&
+		reflect.DeepEqual(oldFrontend.Spec, newFrontend.Spec) {
 		klog.V(4).Infof("no updates on the spec of Frontend %q, skipping syncing", oldFrontend.Name)
 		return
 	}

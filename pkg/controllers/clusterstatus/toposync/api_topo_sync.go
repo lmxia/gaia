@@ -26,16 +26,20 @@ var (
 	_ context.Context
 )
 
+const (
+	GoodCode   = 200
+	NoGoodCode = 300
+)
+
 type TopoSyncAPIService service
 
-/*
-TopoSyncAPIService hyper topo sync
-hyper topo sync
-  - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
-  - @param hyperTopoSync hyper topo sync
-
-@return Topos
-*/
+// TopoSync hyper topo sync
+// hyper topo sync
+//   - @param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc.
+//     Passed from http.Request or context.Background().
+//   - @param hyperTopoSync hyper topo sync
+//
+// @return Topos
 func (a *TopoSyncAPIService) TopoSync(ctx context.Context, hyperTopoSync clusterapi.Fields) (clusterapi.Topos,
 	*http.Response, error) {
 	var (
@@ -72,7 +76,8 @@ func (a *TopoSyncAPIService) TopoSync(ctx context.Context, hyperTopoSync cluster
 	}
 	// body params
 	localVarPostBody = &hyperTopoSync
-	r, err := a.client.prepareRequest(ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams, localVarQueryParams, localVarFormParams, localVarFileName, localVarFileBytes)
+	r, err := a.client.prepareRequest(ctx, localVarPath, localVarHTTPMethod, localVarPostBody, localVarHeaderParams,
+		localVarQueryParams, localVarFormParams, localVarFileName, localVarFileBytes)
 	if err != nil {
 		return localVarReturnValue, nil, err
 	}
@@ -88,19 +93,19 @@ func (a *TopoSyncAPIService) TopoSync(ctx context.Context, hyperTopoSync cluster
 		return localVarReturnValue, localVarHTTPResponse, err
 	}
 
-	if localVarHTTPResponse.StatusCode < 300 {
+	if localVarHTTPResponse.StatusCode < NoGoodCode {
 		// If we succeed, return the data, otherwise pass on to decode error.
 		err = a.client.decode(&localVarReturnValue, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 		return localVarReturnValue, localVarHTTPResponse, err
 	}
 
-	if localVarHTTPResponse.StatusCode >= 300 {
+	if localVarHTTPResponse.StatusCode >= NoGoodCode {
 		newErr := GenericSwaggerError{
 			body:  localVarBody,
 			error: localVarHTTPResponse.Status,
 		}
 
-		if localVarHTTPResponse.StatusCode == 200 {
+		if localVarHTTPResponse.StatusCode == GoodCode {
 			var v clusterapi.Topos
 			err = a.client.decode(&v, localVarBody, localVarHTTPResponse.Header.Get("Content-Type"))
 			if err != nil {

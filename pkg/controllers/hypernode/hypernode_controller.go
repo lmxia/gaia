@@ -64,7 +64,7 @@ func NewController(
 	localGaiaInformerFactory gaiaInformers.SharedInformerFactory) *Controller {
 
 	// Create event broadcaster
-	klog.V(4).Info("Creating event broadcaster")
+	klog.Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartStructuredLogging(0)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().Events("")})
@@ -75,8 +75,9 @@ func NewController(
 		localGaiaClient:      localGaiaClient,
 		localHypernodeLister: localGaiaInformerFactory.Cluster().V1alpha1().Hypernodes().Lister(),
 		localHypernodeSynced: localGaiaInformerFactory.Cluster().V1alpha1().Hypernodes().Informer().HasSynced,
-		workqueue:            workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "parent-hyper-node"),
-		recorder:             recorder,
+		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
+			"parent-hyper-node"),
+		recorder: recorder,
 	}
 
 	return c
@@ -100,7 +101,6 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 		return
 	}
 
-	klog.V(2).Infof("starting %d worker threads", workers)
 	// Launch workers to process Hypernode resources
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
@@ -111,7 +111,7 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 
 func (c *Controller) addHypernode(obj interface{}) {
 	hyperNode := obj.(*clusterv1alpha1.Hypernode)
-	klog.V(4).Infof("adding Hypernode %q", klog.KObj(hyperNode))
+	klog.Infof("adding Hypernode %q", klog.KObj(hyperNode))
 	c.enqueue(hyperNode)
 }
 
@@ -121,11 +121,11 @@ func (c *Controller) updateHypernode(old, cur interface{}) {
 
 	// Decide whether discovery has reported a spec change.
 	if reflect.DeepEqual(oldHypernode.Spec, newHypernode.Spec) {
-		klog.V(4).Infof("no updates on the spec of Hypernode %q, skipping syncing", oldHypernode.Name)
+		klog.Infof("no updates on the spec of Hypernode %q, skipping syncing", oldHypernode.Name)
 		return
 	}
 
-	klog.V(4).Infof("updating Hypernode %q", klog.KObj(oldHypernode))
+	klog.Infof("updating Hypernode %q", klog.KObj(oldHypernode))
 	c.enqueue(newHypernode)
 }
 
@@ -143,7 +143,7 @@ func (c *Controller) deleteHypernode(obj interface{}) {
 			return
 		}
 	}
-	klog.V(4).Infof("deleting Hypernode %q", klog.KObj(hyperNode))
+	klog.Infof("deleting Hypernode %q", klog.KObj(hyperNode))
 	c.enqueue(hyperNode)
 }
 
@@ -249,7 +249,9 @@ func (c *Controller) syncHypernode(hyperNode *clusterv1alpha1.Hypernode) error {
 	switch {
 	case err == nil:
 		// update local hyper-node
-		klog.V(1).InfoS("update existed hyperNode", "Hypernode", klog.KRef(hyperNode.Namespace, hyperNode.Name), "MyAreaName", hyperNode.Spec.MyAreaName, "SupervisorName", hyperNode.Spec.SupervisorName, "LocalClusterName", c.gaiaClusterName)
+		klog.V(1).InfoS("update existed hyperNode", "Hypernode", klog.KRef(hyperNode.Namespace,
+			hyperNode.Name), "MyAreaName", hyperNode.Spec.MyAreaName, "SupervisorName", hyperNode.Spec.SupervisorName,
+			"LocalClusterName", c.gaiaClusterName)
 
 		hyperNodeLocalCopy := hyperNodeLocal.DeepCopy()
 		update := 0
@@ -276,26 +278,30 @@ func (c *Controller) syncHypernode(hyperNode *clusterv1alpha1.Hypernode) error {
 
 			hyperNodeLocalCopy.Labels = hyperNodeParentCopy.Labels
 
-			node, err := c.localGaiaClient.ClusterV1alpha1().Hypernodes(hyperNodeLocal.Namespace).Update(context.TODO(), hyperNodeLocalCopy, metav1.UpdateOptions{})
+			node, err := c.localGaiaClient.ClusterV1alpha1().Hypernodes(hyperNodeLocal.Namespace).Update(context.TODO(),
+				hyperNodeLocalCopy, metav1.UpdateOptions{})
 			if err != nil {
-				fmt.Printf(err.Error())
+				klog.Errorf(err.Error())
 			}
-			fmt.Printf(node.Name)
+			klog.Infof(node.Name)
 		}
 		return nil
 	case apierrors.IsNotFound(err):
 		// create new hyper-node to local
-		klog.V(1).InfoS("create new hyperNode", "Hypernode", klog.KRef(hyperNode.Namespace, hyperNode.Name), "MyAreaName", hyperNode.Spec.MyAreaName, "SupervisorName", hyperNode.Spec.SupervisorName, "LocalClusterName", c.gaiaClusterName)
+		klog.V(1).InfoS("create new hyperNode", "Hypernode", klog.KRef(hyperNode.Namespace,
+			hyperNode.Name), "MyAreaName", hyperNode.Spec.MyAreaName, "SupervisorName", hyperNode.Spec.SupervisorName,
+			"LocalClusterName", c.gaiaClusterName)
 		if hyperNode.Spec.MyAreaName == c.gaiaClusterName || hyperNode.Spec.SupervisorName == c.gaiaClusterName {
 			hyperNodeParentCopy.Kind = ""
 			hyperNodeParentCopy.APIVersion = ""
 			hyperNodeParentCopy.UID = ""
 			hyperNodeParentCopy.ResourceVersion = ""
-			node, errCreate := c.localGaiaClient.ClusterV1alpha1().Hypernodes(hyperNode.Namespace).Create(context.TODO(), hyperNodeParentCopy, metav1.CreateOptions{})
+			node, errCreate := c.localGaiaClient.ClusterV1alpha1().Hypernodes(hyperNode.Namespace).
+				Create(context.TODO(), hyperNodeParentCopy, metav1.CreateOptions{})
 			if errCreate != nil {
-				fmt.Printf(errCreate.Error())
+				klog.Error(errCreate.Error())
 			}
-			fmt.Printf(node.Name)
+			klog.Infof(node.Name)
 			c.recorder.Event(hyperNode, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 			return errCreate
 		}
@@ -341,11 +347,12 @@ func (c *Controller) SetHypernodeController(selfClusterName *string, parentKubeC
 	return fmt.Errorf("failed to set Hypernode Controller for parent cluster")
 }
 
-func (c *Controller) SetParentClient(parentKubeConfig *rest.Config) (*gaiaClientSet.Clientset, gaiaInformers.SharedInformerFactory) {
+func (c *Controller) SetParentClient(parentKubeConfig *rest.Config) (*gaiaClientSet.Clientset,
+	gaiaInformers.SharedInformerFactory) {
 	if parentKubeConfig != nil {
 		parentGaiaClient := gaiaClientSet.NewForConfigOrDie(parentKubeConfig)
-		parentDefaultGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient, known.DefaultResync,
-			gaiaInformers.WithNamespace(metav1.NamespaceDefault))
+		parentDefaultGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient,
+			known.DefaultResync, gaiaInformers.WithNamespace(metav1.NamespaceDefault))
 
 		return parentGaiaClient, parentDefaultGaiaInformerFactory
 	}

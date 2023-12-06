@@ -608,12 +608,6 @@ func TestDescToComponents(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotComponents, gotComLocation, gotAffinity := DescToComponents(tt.args.desc)
-			//for i, comn := range gotComponents {
-			//	if !reflect.DeepEqual(comn, oldDescComponents[i]) {
-			//		t.Errorf("   desc:com:%v = %+v", comn.Name, comn)
-			//		t.Errorf("olddesc:com:%v = %+v", oldDescComponents[i].Name, oldDescComponents[i])
-			//	}
-			//}
 			if !reflect.DeepEqual(gotComponents, tt.wantComponents) {
 				t.Errorf("DescToComponents() gotComponents = %v, want %v", gotComponents, tt.wantComponents)
 			}

@@ -134,7 +134,7 @@ func NewBinder(localKubeClient *kubernetes.Clientset, localGaiaClient *gaiaClien
 }
 
 // NewController return resource-binding Controller
-func NewController(GaiaClient gaiaClientSet.Interface, informer informers.ResourceBindingInformer,
+func NewController(gaiaClient gaiaClientSet.Interface, informer informers.ResourceBindingInformer,
 	syncHandler SyncHandlerFunc,
 ) (*Controller, error) {
 	if syncHandler == nil {
@@ -142,7 +142,7 @@ func NewController(GaiaClient gaiaClientSet.Interface, informer informers.Resour
 	}
 
 	c := &Controller{
-		GaiaClient: GaiaClient,
+		GaiaClient: gaiaClient,
 		Lister:     informer.Lister(),
 		Synced:     informer.Informer().HasSynced,
 		workqueue: workqueue.NewNamedRateLimitingQueue(
@@ -596,7 +596,8 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 				// format desc to components
 				components, _, _ := utils.DescToComponents(desc)
 				// need schedule across clusters
-				err = utils.ApplyRBWorkloads(context.TODO(), c.localGaiaClient, c.parentGaiaClient, c.localDynamicClient, rb, nodes, desc, components,
+				err = utils.ApplyRBWorkloads(context.TODO(), c.localGaiaClient, c.parentGaiaClient,
+					c.localDynamicClient, rb, nodes, desc, components,
 					c.restMapper, clusterName)
 				if err != nil {
 					return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
@@ -606,7 +607,8 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 			if createRB {
 				err := c.offloadLocalResourceBindingsByRB(rb)
 				if err != nil {
-					return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ", rb.Name, err)
+					return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ",
+						rb.Name, err)
 				}
 				if len(rb.Spec.NetworkPath) > 0 && len(c.networkBindURL) > 0 {
 					klog.V(2).Infof("networkBindURL is %q", c.networkBindURL)
@@ -615,7 +617,8 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 			} else {
 				err := utils.OffloadRBWorkloads(context.TODO(), c.localDynamicClient, c.restMapper, rb.GetLabels())
 				if err != nil {
-					return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ", rb.Name, err)
+					return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ",
+						rb.Name, err)
 				}
 			}
 
@@ -640,7 +643,8 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 					if apierrors.IsNotFound(err) {
 						return nil
 					}
-					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from ResourceBinding %s: %v",
+					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s "+
+						"from ResourceBinding %s: %v",
 						common.AppFinalizer, klog.KObj(rb), err))
 					return err
 				}
@@ -653,7 +657,8 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 					if apierrors.IsNotFound(err) {
 						return nil
 					}
-					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s from ResourceBinding %s: %v",
+					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s"+
+						" from ResourceBinding %s: %v",
 						common.AppFinalizer, klog.KObj(rb), err))
 					return err
 				}
@@ -781,7 +786,8 @@ func (c *Binder) deleteDescription(ctx context.Context, namespacedKey string) er
 }
 
 func (c *Binder) offloadLocalResourceBindingsByDescription(descName, descNS string, uid types.UID) error {
-	klog.V(5).InfoS("Start deleting local ResourceBindings ...", "Description", klog.KRef(descNS, descName))
+	klog.V(5).InfoS("Start deleting local ResourceBindings ...", "Description",
+		klog.KRef(descNS, descName))
 	// offload gaia-merged && gaia-to-be-merged  Rbs
 	derivedRBs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
 		common.OriginDescriptionNameLabel:      descName,
@@ -805,7 +811,8 @@ func (c *Binder) offloadLocalResourceBindingsByDescription(descName, descNS stri
 	}
 	// Wait for deletion to end
 	if derivedRBs != nil || len(allErrs) > 0 {
-		return fmt.Errorf("waiting for local ResourceBings of Description %q getting deleted", klog.KRef(descNS, descName))
+		return fmt.Errorf("waiting for local ResourceBings of Description %q getting deleted",
+			klog.KRef(descNS, descName))
 	}
 
 	return nil
@@ -838,7 +845,8 @@ func (c *Binder) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.ResourceBindi
 		return err
 	}
 	var allErrs []error
-	klog.Infof("Start deleting local ResourceBindings derived by parent ResourceBinding %s", klog.KObj(rb).String())
+	klog.Infof("Start deleting local ResourceBindings derived by parent ResourceBinding %s",
+		klog.KObj(rb).String())
 	for _, deleteRB := range derivedRBs {
 		if deleteRB.DeletionTimestamp != nil {
 			continue
@@ -858,14 +866,16 @@ func (c *Binder) offloadLocalResourceBindingsByRB(rb *appsV1alpha1.ResourceBindi
 }
 
 func (c *Binder) offloadLocalNetworkRequirement(descName, descNS string) error {
-	klog.V(5).InfoS("Start deleting local NetworkRequirement ...", "Description", klog.KRef(descNS, descName))
+	klog.V(5).InfoS("Start deleting local NetworkRequirement ...", "Description",
+		klog.KRef(descNS, descName))
 	nwr, err := c.localGaiaClient.AppsV1alpha1().NetworkRequirements(common.GaiaReservedNamespace).Get(context.TODO(),
 		descName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		klog.InfoS("failed to get network requirement of Description", "NetworkRequirement", klog.KRef(descNS, descName))
+		klog.InfoS("failed to get network requirement of Description", "NetworkRequirement",
+			klog.KRef(descNS, descName))
 		return err
 	}
 
@@ -874,7 +884,8 @@ func (c *Binder) offloadLocalNetworkRequirement(descName, descNS string) error {
 			PropagationPolicy: &deletePropagationBackground,
 		})
 	if errDel != nil {
-		klog.Warningf("failed to delete NetworkRequirements of Description %q, error: %v", klog.KRef(descNS, descName), err)
+		klog.Warningf("failed to delete NetworkRequirements of Description %q, error: %v",
+			klog.KRef(descNS, descName), err)
 		return errDel
 	}
 	return nil

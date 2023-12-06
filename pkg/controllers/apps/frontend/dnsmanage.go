@@ -25,7 +25,8 @@ func (c *Controller) Init(accessKeyId *string, accessKeySecret *string, regionId
 	return dns.NewClient(config)
 }
 
-func (c *Controller) DescribeDomainRecords(client *dns.Client, domainName *string, frontend *v1alpha1.Frontend) (bool, error) {
+func (c *Controller) DescribeDomainRecords(client *dns.Client, domainName *string,
+	frontend *v1alpha1.Frontend) (bool, error) {
 	exit := common.FrontendAliyunDNSCnameNoExist
 	req := &dns.DescribeDomainRecordsRequest{}
 	req.DomainName = domainName
@@ -63,10 +64,10 @@ func (c *Controller) DescribeDomainRecords(client *dns.Client, domainName *strin
 	return exit, tryErr
 }
 
-func (c *Controller) AddDomainRecord(client *dns.Client, domainName *string, RR *string, recordType *string, Value *string, frontend *v1alpha1.Frontend) error {
+func (c *Controller) AddDomainRecord(client *dns.Client, domainName *string, rr *string, recordType *string, Value *string, frontend *v1alpha1.Frontend) error {
 	req := &dns.AddDomainRecordRequest{}
 	req.DomainName = domainName
-	req.RR = RR
+	req.RR = rr
 	req.Type = recordType
 	req.Value = Value
 	tryErr := func() (e error) {
@@ -80,9 +81,11 @@ func (c *Controller) AddDomainRecord(client *dns.Client, domainName *string, RR 
 			return err
 		}
 
-		frontend.SetLabels(map[string]string{"domainRecordId": *resp.Body.RecordId, "domainCname": frontend.Labels["domainCname"]})
+		frontend.SetLabels(map[string]string{"domainRecordId": *resp.Body.RecordId,
+			"domainCname": frontend.Labels["domainCname"]})
 
-		_, err = c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(), frontend, metav1.UpdateOptions{})
+		_, err = c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(),
+			frontend, metav1.UpdateOptions{})
 		if err != nil {
 			klog.Errorf("Failed to update 'Frontend' %q, error == %v", frontend.Name, err)
 			return err
@@ -182,12 +185,14 @@ func (c *Controller) dnsAccelerateRecycle(frontend *v1alpha1.Frontend) error {
 	}
 	frontendCopy := frontend.DeepCopy()
 	frontendCopy.Finalizers = utils.RemoveString(frontendCopy.Finalizers, common.FrontendAliyunFinalizers)
-	_, err := c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(), frontendCopy, metav1.UpdateOptions{})
+	_, err := c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(), frontendCopy,
+		metav1.UpdateOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return nil
 		}
-		klog.WarningDepth(4, fmt.Sprintf("handleFrontend: failed to remove finalizer %s from frontend Descriptions %s: %v", common.FrontendAliyunFinalizers, frontend, err))
+		klog.WarningDepth(4, fmt.Sprintf("handleFrontend: failed to remove finalizer %s "+
+			"from frontend Descriptions %s: %v", common.FrontendAliyunFinalizers, frontend, err))
 	}
 	return nil
 }

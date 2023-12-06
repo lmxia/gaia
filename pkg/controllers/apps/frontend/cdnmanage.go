@@ -17,7 +17,7 @@ import (
 
 func (c *Controller) cdnConfig(frontend *v1alpha1.Frontend) (*string, *string) {
 	cdnSupplierMsg, _ := c.cdnSupplierLister.CdnSuppliers(common.GaiaFrontendNamespace).Get(frontend.Spec.Cdn[0].Supplier)
-	//RSA
+	// RSA
 	secertKey := cdnSupplierMsg.Spec.CloudAccessKeyid
 	secertId := cdnSupplierMsg.Spec.CloudAccessKeysecret
 	return &secertKey, &secertId
@@ -106,7 +106,8 @@ func (c *Controller) cdnAccelerateCreate(frontend *v1alpha1.Frontend, cdnStatus 
 	return nil
 }
 
-func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, domain *string, cdnType *string, sources *string, scope *string, frontend *v1alpha1.Frontend, cdnStatus *string) error {
+func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, domain *string, cdnType *string,
+	sources *string, scope *string, frontend *v1alpha1.Frontend, cdnStatus *string) error {
 	request := &cdn20180510.AddCdnDomainRequest{
 		DomainName: domain,
 		CdnType:    cdnType,
@@ -140,7 +141,8 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 					return err
 				}
 				frontend.SetLabels(map[string]string{"domainCname": *cname})
-				frontendUpdate, err := c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(), frontend, metav1.UpdateOptions{})
+				frontendUpdate, err := c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(),
+					frontend, metav1.UpdateOptions{})
 				if err != nil {
 					klog.Errorf("Failed to update  'Frontend' %q, error == %v", frontend.Name, err)
 					return err
@@ -174,7 +176,8 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 	return nil
 }
 
-func (c *Controller) GetDomainStatus(client *cdn20180510.Client, domain *string) (result *string, cname *string, err error) {
+func (c *Controller) GetDomainStatus(client *cdn20180510.Client, domain *string) (result *string,
+	cname *string, err error) {
 	request := &cdn20180510.DescribeUserDomainsRequest{
 		DomainName: domain,
 	}
@@ -184,17 +187,18 @@ func (c *Controller) GetDomainStatus(client *cdn20180510.Client, domain *string)
 		return result, cname, err
 	}
 	pageData := response.Body.Domains.PageData[0]
-	klog.V(4).Infof("get the name of domain  is " + tea.StringValue(domain) + "and the status of domain is " + tea.StringValue(pageData.DomainStatus))
+	klog.V(4).Infof("get the name of domain  is " + tea.StringValue(domain) + "and the status of domain is " +
+		tea.StringValue(pageData.DomainStatus))
 	result = pageData.DomainStatus
 	cname = pageData.Cname
 	return result, cname, err
 }
 
 func (c *Controller) cdnAccelerateUpdate(frontend *v1alpha1.Frontend, cdnStatus *string) error {
-	//configure dns by current cdn state
+	// configure dns by current cdn state
 	switch *cdnStatus {
 	case common.FrontendAliyunCdnOnlineStatus:
-		//online
+		// online
 		dnsAccelerateState, err := c.dnsAccelerateState(frontend)
 		if err != nil {
 			klog.Errorf("Failed to get dns AccelerateState of 'Frontend' %q, error == %v", frontend.Name, err)

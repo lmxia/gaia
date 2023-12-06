@@ -139,7 +139,8 @@ func (c *APIClient) prepareRequest(
 	}
 
 	// add form parameters and file if available.
-	if strings.HasPrefix(headerParams["Content-Type"], "multipart/form-data") && len(formParams) > 0 || (len(fileBytes) > 0 && fileName != "") {
+	if strings.HasPrefix(headerParams["Content-Type"], "multipart/form-data") && len(formParams) > 0 ||
+		(len(fileBytes) > 0 && fileName != "") {
 		if body != nil {
 			return nil, errors.New("cannot specify postBody and multipart form at the same time")
 		}
@@ -163,8 +164,9 @@ func (c *APIClient) prepareRequest(
 		}
 		if len(fileBytes) > 0 && fileName != "" {
 			w.Boundary()
-			//_, fileNm := filepath.Split(fileName)
-			part, err := w.CreateFormFile("file", filepath.Base(fileName))
+			// _, fileNm := filepath.Split(fileName)
+			var part io.Writer
+			part, err = w.CreateFormFile("file", filepath.Base(fileName))
 			if err != nil {
 				return nil, err
 			}
@@ -301,11 +303,6 @@ func addFile(w *multipart.Writer, fieldName, path string) error {
 
 	return err
 }
-
-//// Prevent trying to import "fmt"
-//func reportError(format string, a ...interface{}) error {
-//	return fmt.Errorf(format, a...)
-//}
 
 // Set request body from an interface{}
 func setBody(body interface{}, contentType string) (bodyBuf *bytes.Buffer, err error) {

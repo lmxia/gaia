@@ -262,11 +262,11 @@ func (c *Controller) UpdateRBStatus(rb *appv1alpha1.ResourceBinding, status *app
 			return nil
 		}
 
-		if updated, err := c.rbsLister.ResourceBindings(rb.Namespace).Get(rb.Name); err == nil {
+		if updated, err2 := c.rbsLister.ResourceBindings(rb.Namespace).Get(rb.Name); err2 == nil {
 			// make a copy so we don't mutate the shared cache
 			rb = updated.DeepCopy()
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated ResourceBinding %q from lister: %v", rb.Name, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated ResourceBinding %q from lister: %v", rb.Name, err2))
 		}
 		return err
 	})

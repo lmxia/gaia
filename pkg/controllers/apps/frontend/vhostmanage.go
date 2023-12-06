@@ -12,7 +12,8 @@ import (
 )
 
 func (c *Controller) frontendManage(frontend *v1alpha1.Frontend) error {
-	vhost, err := c.vhostClient.FrontendsV1().Vhosts(frontend.Namespace).Get(context.TODO(), frontend.Name, v1.GetOptions{})
+	vhost, err := c.vhostClient.FrontendsV1().Vhosts(frontend.Namespace).Get(context.TODO(),
+		frontend.Name, v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			klog.Errorf("Failed to get vhost  record of 'Frontend' %q, error == %v", frontend.Name, err)

@@ -389,6 +389,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	if err != nil {
 		sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
 		desc.Status.Phase = appsapi.DescriptionPhaseFailure
+		desc.Status.Reason = truncateMessage(err.Error())
 		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 		if err != nil {
 			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
@@ -498,6 +499,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		if err != nil {
 			sched.recordParentSchedulingFailure(desc, err, ReasonUnschedulable)
 			desc.Status.Phase = appsapi.DescriptionPhaseFailure
+			desc.Status.Reason = truncateMessage(err.Error())
 			err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 			if err != nil {
 				klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)

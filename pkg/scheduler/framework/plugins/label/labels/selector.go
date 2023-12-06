@@ -877,7 +877,7 @@ func parse(selector string, path *field.Path) (internalSelector, error) {
 		return nil, err
 	}
 	sort.Sort(ByKey(items)) // sort to grant determistic parsing
-	return internalSelector(items), err
+	return items, err
 }
 
 func validateLabelKey(k string, path *field.Path) *field.Error {
@@ -906,7 +906,7 @@ func SelectorFromSet(ls Set) Selector {
 // nil and empty Sets are considered equivalent to Everything().
 // The Set is validated client-side, which allows to catch errors early.
 func ValidatedSelectorFromSet(ls Set) (Selector, error) {
-	if ls == nil || len(ls) == 0 {
+	if len(ls) == 0 {
 		return internalSelector{}, nil
 	}
 	requirements := make([]Requirement, 0, len(ls))
@@ -926,7 +926,7 @@ func ValidatedSelectorFromSet(ls Set) (Selector, error) {
 // A nil and empty Sets are considered equivalent to Everything().
 // It assumes that Set is already validated and doesn't do any validation.
 func SelectorFromValidatedSet(ls Set) Selector {
-	if ls == nil || len(ls) == 0 {
+	if len(ls) == 0 {
 		return internalSelector{}
 	}
 	requirements := make([]Requirement, 0, len(ls))

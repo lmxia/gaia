@@ -36,7 +36,6 @@ import (
 
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
 	vhostclientset "github.com/SUMMERLm/vhost/pkg/generated/clientset/versioned"
-	vhostinformers "github.com/SUMMERLm/vhost/pkg/generated/informers/externalversions"
 	gaiaconfig "github.com/lmxia/gaia/cmd/gaia-controllers/app/config"
 	"github.com/lmxia/gaia/cmd/gaia-controllers/app/option"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
@@ -136,7 +135,6 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 
 	localKubeInformerFactory := kubeinformers.NewSharedInformerFactory(localKubeClientSet, known.DefaultResync)
 	localGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(localGaiaClientSet, known.DefaultResync)
-	vhostInformerFactory := vhostinformers.NewSharedInformerFactory(vhostClientSet, known.DefaultResync)
 
 	approver, apprerr := approver.NewCRRApprover(localKubeClientSet, localGaiaClientSet, localKubeConfig, localGaiaInformerFactory, localKubeInformerFactory)
 	if apprerr != nil {
@@ -158,7 +156,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	if cronErr != nil {
 		klog.Error(cronErr)
 	}
-	frontendController, frontendErr := frontend.NewController(localGaiaClientSet, localGaiaInformerFactory, vhostClientSet, aliyunSourceSite, vhostInformerFactory)
+	frontendController, frontendErr := frontend.NewController(localGaiaClientSet, localGaiaInformerFactory, vhostClientSet, aliyunSourceSite)
 	if frontendErr != nil {
 		klog.Error(frontendErr)
 	}

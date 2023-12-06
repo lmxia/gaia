@@ -820,23 +820,30 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
 			}
 			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = make([]corev1.NodeSelectorTerm, 0)
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+					make([]corev1.NodeSelectorTerm, 0)
 			}
-			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTermSNs)
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+					nodeSelectorTermSNs)
 			return nodeAffinity
 		}
 	}
 
 	if len(com.SchedulePolicy.Level) > 0 {
-		nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions)
+		nodeSelectorTerms := setNodeSelectorTerms(com.SchedulePolicy.
+			Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions)
 		if len(nodeSelectorTerms) > 0 {
 			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution == nil {
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution = &corev1.NodeSelector{}
 			}
 			if nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms == nil {
-				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = []corev1.NodeSelectorTerm{}
+				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+					[]corev1.NodeSelectorTerm{}
 			}
-			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms = append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms, nodeSelectorTerms...)
+			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+					nodeSelectorTerms...)
 		}
 	}
 
@@ -884,7 +891,8 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 				dep.Spec.Template = comCopy.Module
 				nodeAffinity := AddNodeAffinity(comCopy)
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
-				dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy, dep.Spec.Template.Spec.NodeSelector, group2VPC)
+				dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
+					dep.Spec.Template.Spec.NodeSelector, group2VPC)
 				dep.Spec.Replicas = &replicas
 				label := dep.GetLabels()
 				dep.Spec.Template.Labels = label
@@ -1077,7 +1085,8 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 					dep.Spec.Template = comCopy.Module
 					nodeAffinity := AddNodeAffinity(comCopy)
 					dep.Spec.Template.Spec.Affinity = nodeAffinity
-					dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy, dep.Spec.Template.Spec.NodeSelector, group2VPC)
+					dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
+						dep.Spec.Template.Spec.NodeSelector, group2VPC)
 					dep.Spec.Replicas = &replicas
 					label := dep.GetLabels()
 					dep.Spec.Template.Labels = label
@@ -1087,7 +1096,8 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 
 					depJs, errDep := json.Marshal(dep)
 					if errDep != nil {
-						msg := fmt.Sprintf("deployment %q failed to marshal resource: %v", klog.KRef(dep.GetNamespace(), dep.GetName()), errDep)
+						msg := fmt.Sprintf("deployment %q failed to marshal resource: %v",
+							klog.KRef(dep.GetNamespace(), dep.GetName()), errDep)
 						klog.ErrorDepth(5, msg)
 						return nil, errDep
 					}
@@ -1109,7 +1119,9 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 	return cronUnstructured, nil
 }
 
-func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, group2VPC, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
+	clusterName, descName string, group2VPC, descLabels map[string]string,
+	delete bool) (*unstructured.Unstructured, error) {
 	cronUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -1183,7 +1195,8 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 					}
 					nodeAffinity := AddNodeAffinity(comCopy)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
-					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy, ser.Spec.Module.Spec.NodeSelector, group2VPC)
+					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy,
+						ser.Spec.Module.Spec.NodeSelector, group2VPC)
 					// add  env variables log needed
 					ser.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
 					if ser.Spec.Module.Spec.NodeSelector == nil {
@@ -1196,7 +1209,8 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 
 					serJs, errSer := json.Marshal(ser)
 					if errSer != nil {
-						msg := fmt.Sprintf("serverless %q failed to marshal resource: %v", klog.KRef(ser.GetNamespace(), ser.GetName()), errSer)
+						msg := fmt.Sprintf("serverless %q failed to marshal resource: %v",
+							klog.KRef(ser.GetNamespace(), ser.GetName()), errSer)
 						klog.ErrorDepth(5, msg)
 						return nil, errSer
 					}
@@ -1218,7 +1232,8 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 	return cronUnstructured, nil
 }
 
-func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName, descName string, group2VPC, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName,
+	descName string, group2VPC, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
 	serUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -1266,7 +1281,8 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 					}
 					nodeAffinity := AddNodeAffinity(comCopy)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
-					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy, ser.Spec.Module.Spec.NodeSelector, group2VPC)
+					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy, ser.Spec.Module.Spec.NodeSelector,
+						group2VPC)
 					// add  env variables log needed
 					ser.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
 					if ser.Spec.Module.Spec.NodeSelector == nil {
@@ -1402,10 +1418,12 @@ func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, cluste
 	return false
 }
 
-func CreateRBtoParentWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clientset, namespace string, rb *appsv1alpha1.ResourceBinding) {
+func CreateRBtoParentWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clientset, namespace string,
+	rb *appsv1alpha1.ResourceBinding) {
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
-		_, lastError := gaiaClient.AppsV1alpha1().ResourceBindings(namespace).Create(context.TODO(), rb, metav1.CreateOptions{})
+		_, lastError := gaiaClient.AppsV1alpha1().ResourceBindings(namespace).Create(context.TODO(), rb,
+			metav1.CreateOptions{})
 		if lastError == nil {
 			return true, nil
 		}
@@ -1419,7 +1437,8 @@ func CreateRBtoParentWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Cl
 		return true, nil
 	})
 	if err != nil {
-		klog.WarningDepth(2, "failed to create ResourceBinding %q to parent cluster, ERROR: %v, err is ", klog.KObj(rb), lastError)
+		klog.WarningDepth(2, "failed to create ResourceBinding %q to parent cluster, ERROR: %v, err is ",
+			klog.KObj(rb), lastError)
 	} else {
 		klog.Infof("successfully created ResourceBinding %q to parent cluster", klog.KObj(rb))
 	}

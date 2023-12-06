@@ -20,7 +20,6 @@ limitations under the License.
 package resources
 
 import (
-	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/component-base/metrics"
 )
 
@@ -69,7 +68,6 @@ var _ metrics.StableCollector = &podResourceCollector{}
 
 type podResourceCollector struct {
 	metrics.BaseStableCollector
-	lister corelisters.PodLister
 }
 
 func (c *podResourceCollector) DescribeWithStability(ch chan<- *metrics.Desc) {

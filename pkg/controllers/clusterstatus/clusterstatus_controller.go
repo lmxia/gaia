@@ -59,7 +59,10 @@ type Controller struct {
 	clusterName            string
 }
 
-func NewController(ctx context.Context, apiserverURL, clusterName string, managedCluster *clusterapi.ManagedClusterOptions, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset, collectingPeriod time.Duration, heartbeatFrequency time.Duration) *Controller {
+func NewController(ctx context.Context, apiserverURL, clusterName string,
+	managedCluster *clusterapi.ManagedClusterOptions, kubeClient kubernetes.Interface,
+	gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset, collectingPeriod time.Duration,
+	heartbeatFrequency time.Duration) *Controller {
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, known.DefaultResync)
 	// add informers
 	kubeInformerFactory.Core().V1().Nodes().Informer()
@@ -211,7 +214,8 @@ func getTopoInfo(ctx context.Context, clusterName, topoSyncBaseURL string) (topo
 	hyperTopoSync := clusterapi.Fields{
 		Field: []string{clusterName},
 	}
-	topos, _, err := toposync.NewAPIClient(toposync.NewConfiguration(topoSyncBaseURL)).TopoSyncAPI.TopoSync(ctx, hyperTopoSync)
+	topos, _, err := toposync.NewAPIClient(toposync.NewConfiguration(topoSyncBaseURL)).
+		TopoSyncAPI.TopoSync(ctx, hyperTopoSync)
 	if err != nil {
 		klog.Warningf("failed to get network topology info: %v", err)
 		return topoInfo
@@ -313,13 +317,16 @@ func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) ma
 func parseHypernodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
-			if labelKey == clusterapi.SNKey || labelKey == clusterapi.GeoLocationKey || labelKey == clusterapi.NetworkEnvKey {
+			if labelKey == clusterapi.SNKey || labelKey == clusterapi.GeoLocationKey ||
+				labelKey == clusterapi.NetworkEnvKey {
 				nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]+"__"+nodeName] = labelValue
 			} else if utils.ContainsString(clusterapi.HypernodeLableKeyList, labelKey) {
 				if _, ok := nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]]; ok {
-					existedLabelValueArray := strings.Split(nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]], "__")
+					existedLabelValueArray := strings.Split(
+						nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]], "__")
 					if !utils.ContainsString(existedLabelValueArray, labelValue) {
-						nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] = nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] + "__" + labelValue
+						nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] =
+							nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] + "__" + labelValue
 					}
 				} else {
 					nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] = labelValue
@@ -336,7 +343,8 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 	for _, cluster := range clusters {
 		for labelKey, labelValue := range cluster.GetLabels() {
 			if len(labelValue) > 0 {
-				if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) || strings.HasPrefix(labelKey, clusterapi.ParsedGeoLocationKey) || strings.HasPrefix(labelKey, clusterapi.ParsedProviderKey) {
+				if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) || strings.HasPrefix(labelKey,
+					clusterapi.ParsedGeoLocationKey) || strings.HasPrefix(labelKey, clusterapi.ParsedProviderKey) {
 					nodeLabels[labelKey] = labelValue
 				} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
 					if _, ok := nodeLabels[labelKey]; ok {
@@ -358,7 +366,8 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 	nodeLabels = make(map[string]string)
 	if c.useHypernodeController {
-		hypernodeList, err := c.hypernodeClient.ClusterV1alpha1().Hypernodes(metav1.NamespaceDefault).List(context.TODO(), metav1.ListOptions{})
+		hypernodeList, err := c.hypernodeClient.ClusterV1alpha1().Hypernodes(metav1.NamespaceDefault).
+			List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			klog.Warningf("failed to list hypernodes: %v", err)
 		}
@@ -404,9 +413,10 @@ func (c *Controller) discoverClusterCIDR() (string, error) {
 }
 
 // get node capacity and allocatable resource
-func getNodeResource(nodes []*corev1.Node) (Capacity, Allocatable, Available corev1.ResourceList) {
+func getNodeResource(nodes []*corev1.Node) (capacity, allocatable, available corev1.ResourceList) {
 	var capacityCPU, capacityMem, allocatableCPU, allocatableMem resource.Quantity
-	Capacity, Allocatable, Available = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
+	capacity, allocatable, available = make(map[corev1.ResourceName]resource.Quantity),
+		make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
 
 	for _, node := range nodes {
 		capacityCPU.Add(*node.Status.Capacity.Cpu())
@@ -415,19 +425,21 @@ func getNodeResource(nodes []*corev1.Node) (Capacity, Allocatable, Available cor
 		allocatableMem.Add(*node.Status.Allocatable.Memory())
 	}
 
-	Capacity[corev1.ResourceCPU] = capacityCPU
-	Capacity[corev1.ResourceMemory] = capacityMem
-	Allocatable[corev1.ResourceCPU] = allocatableCPU
-	Allocatable[corev1.ResourceMemory] = allocatableMem
-	Available[corev1.ResourceCPU] = allocatableCPU
-	Available[corev1.ResourceMemory] = allocatableMem
+	capacity[corev1.ResourceCPU] = capacityCPU
+	capacity[corev1.ResourceMemory] = capacityMem
+	allocatable[corev1.ResourceCPU] = allocatableCPU
+	allocatable[corev1.ResourceMemory] = allocatableMem
+	available[corev1.ResourceCPU] = allocatableCPU
+	available[corev1.ResourceMemory] = allocatableMem
 
 	return
 }
 
 // getManagedClusterResource gets the node capacity of all managedClusters and their allocatable resources
-func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (Capacity, Allocatable, Available corev1.ResourceList) {
-	Capacity, Allocatable, Available = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
+func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (capacity, allocatable,
+	available corev1.ResourceList) {
+	capacity, allocatable, available = make(map[corev1.ResourceName]resource.Quantity),
+		make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
 	var capacityCPU, capacityMem, allocatableCPU, allocatableMem, availableCPU, availableMem resource.Quantity
 	for _, cluster := range clusters {
 		capacityCPU.Add(cluster.Status.Capacity[corev1.ResourceCPU])
@@ -437,12 +449,12 @@ func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (Capacity,
 		availableCPU.Add(cluster.Status.Available[corev1.ResourceCPU])
 		availableMem.Add(cluster.Status.Available[corev1.ResourceMemory])
 	}
-	Capacity[corev1.ResourceCPU] = capacityCPU
-	Capacity[corev1.ResourceMemory] = capacityMem
-	Allocatable[corev1.ResourceCPU] = allocatableCPU
-	Allocatable[corev1.ResourceMemory] = allocatableMem
-	Available[corev1.ResourceCPU] = availableCPU
-	Available[corev1.ResourceMemory] = availableMem
+	capacity[corev1.ResourceCPU] = capacityCPU
+	capacity[corev1.ResourceMemory] = capacityMem
+	allocatable[corev1.ResourceCPU] = allocatableCPU
+	allocatable[corev1.ResourceMemory] = allocatableMem
+	available[corev1.ResourceCPU] = availableCPU
+	available[corev1.ResourceMemory] = availableMem
 	return
 }
 
@@ -487,9 +499,10 @@ func getDataFromPrometheus(promPreURL, metric string) (model.Value, error) {
 }
 
 // getNodeResourceFromPrometheus returns the cpu and memory resources from Prometheus in the cluster
-func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable, Available corev1.ResourceList) {
+func getNodeResourceFromPrometheus(promPreUrl string) (capacity, allocatable, available corev1.ResourceList) {
 	var capacityCPU, capacityMem, allocatableCPU, allocatableMem, availableCPU, availableMem resource.Quantity
-	Capacity, Allocatable, Available = make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
+	capacity, allocatable, available = make(map[corev1.ResourceName]resource.Quantity),
+		make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
 	var valueList [6]string
 
 	QueryMetricSet, ClusterMetricList, err := utils.InitConfig(known.MetricConfigMapAbsFilePath)
@@ -497,7 +510,7 @@ func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable, Av
 		for index, metric := range ClusterMetricList[:6] {
 			result, err := getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
 			if err == nil {
-				if len(result.(model.Vector)) <= 0 {
+				if len(result.(model.Vector)) == 0 {
 					klog.Warningf("Query from prometheus successfully, but the result is a null array.")
 					valueList[index] = "0"
 				} else {
@@ -511,7 +524,8 @@ func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable, Av
 		if err != nil {
 			klog.Warningf("Wrong metrics, err: %v", err)
 		} else {
-			klog.Warningf("The length of ClusterMetricList is %v, it is less then 6. Wrong metrics %v", len(ClusterMetricList), QueryMetricSet)
+			klog.Warningf("The length of ClusterMetricList is %v, it is less then 6. Wrong metrics %v",
+				len(ClusterMetricList), QueryMetricSet)
 		}
 		valueList = [6]string{"0", "0", "0", "0", "0", "0"}
 	}
@@ -523,12 +537,12 @@ func getNodeResourceFromPrometheus(promPreUrl string) (Capacity, Allocatable, Av
 	availableCPU.Add(resource.MustParse(getSubStringWithSpecifiedDecimalPlace(valueList[4], 3)))
 	availableMem.Add(resource.MustParse(valueList[5] + "Ki"))
 
-	Capacity[corev1.ResourceCPU] = capacityCPU
-	Capacity[corev1.ResourceMemory] = capacityMem
-	Allocatable[corev1.ResourceCPU] = allocatableCPU
-	Allocatable[corev1.ResourceMemory] = allocatableMem
-	Available[corev1.ResourceCPU] = availableCPU
-	Available[corev1.ResourceMemory] = availableMem
+	capacity[corev1.ResourceCPU] = capacityCPU
+	capacity[corev1.ResourceMemory] = capacityMem
+	allocatable[corev1.ResourceCPU] = allocatableCPU
+	allocatable[corev1.ResourceMemory] = allocatableMem
+	available[corev1.ResourceCPU] = availableCPU
+	available[corev1.ResourceMemory] = availableMem
 
 	return
 }
@@ -579,7 +593,8 @@ func (c *Controller) GetDescNameFromAbnormalPod() (descNameMap DescNameMap) {
 				podUID := result.Metric["destination_pod_uid"]
 				podDescName := result.Metric["destination_pod_description_name"]
 				podComName := result.Metric["destination_pod_component_name"]
-				klog.V(5).InfoS("pod is abnormal according to the metric: ", "podNamespace", podNamespace, "podName", podName, "podUID", podUID, "metricPsql", metricPsql)
+				klog.V(5).InfoS("pod is abnormal according to the metric: ", "podNamespace",
+					podNamespace, "podName", podName, "podUID", podUID, "metricPsql", metricPsql)
 				if comMap, ok := descNameMap[string(podDescName)]; ok {
 					if _, exist := comMap[string(podComName)]; !exist {
 						comMap[string(podComName)] = struct{}{}
@@ -599,7 +614,8 @@ func (c *Controller) GetDescNameFromAbnormalPod() (descNameMap DescNameMap) {
 func (c *Controller) IsParentCluster() (bool, error) {
 	clusters, err := c.mclsLister.List(labels.Everything())
 	if err != nil {
-		klog.Warningf("Failed to list clusters: %v, therefore, the cluster cannot confirm whether it is a parent cluster.", err)
+		klog.Warningf("Failed to list clusters: %v, "+
+			"therefore, the cluster cannot confirm whether it is a parent cluster.", err)
 		return false, err
 	}
 	if len(clusters) > 0 {

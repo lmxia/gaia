@@ -59,10 +59,9 @@ type Controller struct {
 	recorder record.EventRecorder
 }
 
-func NewController(
-	kubeClient kubernetes.Interface, localGaiaClient gaiaClientSet.Interface,
-	localGaiaInformerFactory gaiaInformers.SharedInformerFactory) *Controller {
-
+func NewController(kubeClient kubernetes.Interface, localGaiaClient gaiaClientSet.Interface,
+	localGaiaInformerFactory gaiaInformers.SharedInformerFactory,
+) *Controller {
 	// Create event broadcaster
 	klog.Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
@@ -118,11 +117,9 @@ func (c *Controller) addHypernode(obj interface{}) {
 func (c *Controller) updateHypernode(old, cur interface{}) {
 	oldHypernode := old.(*clusterv1alpha1.Hypernode)
 	newHypernode := cur.(*clusterv1alpha1.Hypernode)
-
 	// Decide whether discovery has reported a spec change.
 	if reflect.DeepEqual(oldHypernode.Spec, newHypernode.Spec) {
 		klog.Infof("no updates on the spec of Hypernode %q, skipping syncing", oldHypernode.Name)
-		return
 	}
 
 	klog.Infof("updating Hypernode %q", klog.KObj(oldHypernode))
@@ -233,6 +230,7 @@ func (c *Controller) sync(key string) error {
 		klog.V(2).Infof("Hypernode %q not found, may be it is deleted", key)
 		return nil
 	case err != nil:
+		klog.Errorf("failed to get Hypernode from parent cluster", "Hypernode", klog.KObj(hyperNode), "error", err)
 		return err
 	}
 
@@ -244,72 +242,77 @@ func (c *Controller) sync(key string) error {
 // with the current status of the resource.
 func (c *Controller) syncHypernode(hyperNode *clusterv1alpha1.Hypernode) error {
 	// create new or update
-	hyperNodeParentCopy := hyperNode.DeepCopy()
-	hyperNodeLocal, err := c.localHypernodeLister.Hypernodes(hyperNode.Namespace).Get(hyperNode.Name)
+	parentHyperNodeCopy := hyperNode.DeepCopy()
+	localHyperNode, err := c.localHypernodeLister.Hypernodes(hyperNode.Namespace).Get(hyperNode.Name)
 	switch {
 	case err == nil:
 		// update local hyper-node
-		klog.V(1).InfoS("update existed hyperNode", "Hypernode", klog.KRef(hyperNode.Namespace,
-			hyperNode.Name), "MyAreaName", hyperNode.Spec.MyAreaName, "SupervisorName", hyperNode.Spec.SupervisorName,
-			"LocalClusterName", c.gaiaClusterName)
-
-		hyperNodeLocalCopy := hyperNodeLocal.DeepCopy()
+		localHyperNodeCopy := localHyperNode.DeepCopy()
 		update := 0
-		if len(hyperNodeParentCopy.Labels) != len(hyperNodeLocalCopy.Labels) {
+		if len(parentHyperNodeCopy.Labels) != len(localHyperNodeCopy.Labels) {
 			update = 1
 		}
 		if update == 0 {
-			for key, value := range hyperNodeParentCopy.Labels {
-				klog.Info(key)
-				klog.Infof(value)
-				if hyperNodeParentCopy.Labels[key] != hyperNodeLocalCopy.Labels[key] {
+			for key := range parentHyperNodeCopy.Labels {
+				if parentHyperNodeCopy.Labels[key] != localHyperNodeCopy.Labels[key] {
+					klog.InfoS("update hypernode label", "Hypernode", klog.KObj(localHyperNodeCopy),
+						"key", key, "value", localHyperNodeCopy.Labels[key])
 					update = 1
 				}
 			}
 		}
-		if hyperNodeParentCopy.Name != hyperNodeLocalCopy.Name ||
-			hyperNodeParentCopy.Spec.MyAreaName != hyperNodeLocalCopy.Spec.MyAreaName ||
-			hyperNodeParentCopy.Spec.NodeAreaType != hyperNodeLocalCopy.Spec.NodeAreaType ||
-			hyperNodeParentCopy.Spec.SupervisorName != hyperNodeLocalCopy.Spec.SupervisorName || update == 1 {
-			hyperNodeLocalCopy.Name = hyperNodeParentCopy.Name
-			hyperNodeLocalCopy.Spec.MyAreaName = hyperNodeParentCopy.Spec.MyAreaName
-			hyperNodeLocalCopy.Spec.NodeAreaType = hyperNodeParentCopy.Spec.NodeAreaType
-			hyperNodeLocalCopy.Spec.SupervisorName = hyperNodeParentCopy.Spec.SupervisorName
+		if parentHyperNodeCopy.Name != localHyperNodeCopy.Name ||
+			parentHyperNodeCopy.Spec.MyAreaName != localHyperNodeCopy.Spec.MyAreaName ||
+			parentHyperNodeCopy.Spec.NodeAreaType != localHyperNodeCopy.Spec.NodeAreaType ||
+			parentHyperNodeCopy.Spec.SupervisorName != localHyperNodeCopy.Spec.SupervisorName || update == 1 {
+			localHyperNodeCopy.Name = parentHyperNodeCopy.Name
+			localHyperNodeCopy.Spec.MyAreaName = parentHyperNodeCopy.Spec.MyAreaName
+			localHyperNodeCopy.Spec.NodeAreaType = parentHyperNodeCopy.Spec.NodeAreaType
+			localHyperNodeCopy.Spec.SupervisorName = parentHyperNodeCopy.Spec.SupervisorName
 
-			hyperNodeLocalCopy.Labels = hyperNodeParentCopy.Labels
+			localHyperNodeCopy.Labels = parentHyperNodeCopy.Labels
 
-			node, err := c.localGaiaClient.ClusterV1alpha1().Hypernodes(hyperNodeLocal.Namespace).Update(context.TODO(),
-				hyperNodeLocalCopy, metav1.UpdateOptions{})
-			if err != nil {
-				klog.Errorf(err.Error())
+			node, errUpdate := c.localGaiaClient.ClusterV1alpha1().Hypernodes(localHyperNode.Namespace).Update(
+				context.TODO(), localHyperNodeCopy, metav1.UpdateOptions{})
+			if errUpdate != nil {
+				klog.Errorf("failed to update Hypernode", "Hypernode", klog.KObj(parentHyperNodeCopy), "error", err)
 			}
-			klog.Infof(node.Name)
+			klog.InfoS("successfully update existed hyperNode", "Hypernode", klog.KObj(node),
+				"MyAreaName", node.Spec.MyAreaName, "SupervisorName", node.Spec.SupervisorName,
+				"LocalClusterName", c.gaiaClusterName)
+			return errUpdate
 		}
 		return nil
 	case apierrors.IsNotFound(err):
 		// create new hyper-node to local
-		klog.V(1).InfoS("create new hyperNode", "Hypernode", klog.KRef(hyperNode.Namespace,
-			hyperNode.Name), "MyAreaName", hyperNode.Spec.MyAreaName, "SupervisorName", hyperNode.Spec.SupervisorName,
-			"LocalClusterName", c.gaiaClusterName)
-		if hyperNode.Spec.MyAreaName == c.gaiaClusterName || hyperNode.Spec.SupervisorName == c.gaiaClusterName {
-			hyperNodeParentCopy.Kind = ""
-			hyperNodeParentCopy.APIVersion = ""
-			hyperNodeParentCopy.UID = ""
-			hyperNodeParentCopy.ResourceVersion = ""
-			node, errCreate := c.localGaiaClient.ClusterV1alpha1().Hypernodes(hyperNode.Namespace).
-				Create(context.TODO(), hyperNodeParentCopy, metav1.CreateOptions{})
+		if parentHyperNodeCopy.Spec.MyAreaName == c.gaiaClusterName ||
+			parentHyperNodeCopy.Spec.SupervisorName == c.gaiaClusterName {
+			parentHyperNodeCopy.Kind = ""
+			parentHyperNodeCopy.APIVersion = ""
+			parentHyperNodeCopy.UID = ""
+			parentHyperNodeCopy.ResourceVersion = ""
+			node, errCreate := c.localGaiaClient.ClusterV1alpha1().Hypernodes(parentHyperNodeCopy.Namespace).
+				Create(context.TODO(), parentHyperNodeCopy, metav1.CreateOptions{})
 			if errCreate != nil {
-				klog.Error(errCreate.Error())
+				klog.Errorf("failed to create Hypernode", "Hypernode", klog.KObj(parentHyperNodeCopy), "error", err)
 			}
-			klog.Infof(node.Name)
+			klog.InfoS("successfully created new hyperNode", "Hypernode", klog.KObj(node),
+				"MyAreaName", node.Spec.MyAreaName, "SupervisorName", node.Spec.SupervisorName,
+				"LocalClusterName", c.gaiaClusterName)
 			c.recorder.Event(hyperNode, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 			return errCreate
+		} else {
+			klog.InfoS("this Hypernode not belong to this cluster", "Hypernode", klog.KObj(parentHyperNodeCopy),
+				"MyAreaName", parentHyperNodeCopy.Spec.MyAreaName, "SupervisorName", parentHyperNodeCopy.Spec.SupervisorName,
+				"LocalClusterName", c.gaiaClusterName)
 		}
+		return nil
 	case err != nil:
+		klog.Errorf("failed to get Hypernode", "Hypernode", klog.KObj(parentHyperNodeCopy), "error", err)
 		return err
 	}
 
-	return err
+	return nil
 }
 
 // enqueue takes a Hypernode resource and converts it into a namespace/name

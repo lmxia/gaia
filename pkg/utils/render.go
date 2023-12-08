@@ -101,7 +101,8 @@ func DescToHugeComponents(desc *appsv1alpha1.Description) map[string]*appsv1alph
 }
 
 // DescToComponents reflect a description to Components
-func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1.Component, comLocation map[string]int, affinity []int) {
+func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1.Component, comLocation map[string]int,
+	affinity []int) {
 	comLocation = make(map[string]int)
 	components = make([]appsv1alpha1.Component, len(desc.Spec.WorkloadComponents))
 
@@ -167,13 +168,16 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 					break
 				}
 			}
-			klog.V(5).Infof("%s's Workload.TraitAffinityDaemon is %+v", comn.Name, comn.Workload.TraitAffinityDaemon)
+			klog.V(5).Infof("%s's Workload.TraitAffinityDaemon is %+v",
+				comn.Name, comn.Workload.TraitAffinityDaemon)
 		} else {
 			// for log view
 			if comn.Workload.TraitServerless != nil {
-				klog.V(5).Infof("%s's 'Workload.TraitServerless is %+v", comn.Name, comn.Workload.TraitServerless)
+				klog.V(5).Infof("%s's 'Workload.TraitServerless is %+v",
+					comn.Name, comn.Workload.TraitServerless)
 			} else if comn.Workload.TraitDeployment != nil {
-				klog.V(5).Infof("%s's Workload.TraitDeployment is %+v", comn.Name, comn.Workload.TraitDeployment)
+				klog.V(5).Infof("%s's Workload.TraitDeployment is %+v",
+					comn.Name, comn.Workload.TraitDeployment)
 			}
 		}
 	}
@@ -207,38 +211,46 @@ func GetWorkloadType(workloadType string) (workload appsv1alpha1.Workload) {
 }
 
 // ParseDeploymentCondition parse desc.Spec.DeploymentCondition
-func ParseDeploymentCondition(deploymentCondition appsv1alpha1.DeploymentCondition, components []appsv1alpha1.Component, comLocation map[string]int, affinity []int) {
+func ParseDeploymentCondition(deploymentCondition appsv1alpha1.DeploymentCondition, components []appsv1alpha1.Component,
+	comLocation map[string]int, affinity []int) {
 	// mandatory
-	ParseCondition(deploymentCondition.Mandatory, appsv1alpha1.SchedulePolicyMandatory, components, comLocation, affinity)
+	ParseCondition(deploymentCondition.Mandatory, appsv1alpha1.SchedulePolicyMandatory,
+		components, comLocation, affinity)
 	// bestEffort
-	ParseCondition(deploymentCondition.BestEffort, appsv1alpha1.SchedulePolicyBestEffort, components, comLocation, affinity)
+	ParseCondition(deploymentCondition.BestEffort, appsv1alpha1.SchedulePolicyBestEffort,
+		components, comLocation, affinity)
 }
 
 // ParseCondition parse desc.Spec.DeploymentCondition.Mandatory or desc.Spec.DeploymentCondition.BestEffort
-func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alpha1.SchedulePolicyLevel, components []appsv1alpha1.Component, comLocation map[string]int, affinity []int) {
+func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alpha1.SchedulePolicyLevel,
+	components []appsv1alpha1.Component, comLocation map[string]int, affinity []int) {
 	for _, condition := range deploymentConditions {
 		klog.V(5).Info("parse DeploymentConditions")
 
-		if "component" == condition.Subject.Type {
-			index := comLocation[condition.Subject.Name]
-
-			// when affinity, change the affinity index array
-			if condition.Relation == "Affinity" && condition.Object.Type == "component" {
-				// component对应的索引位置的值用亲和对象的索引值表示
-				affinity[index] = comLocation[condition.Object.Name]
-			} else {
-				if _, ok := components[index].SchedulePolicy.Level[spl]; !ok {
-					components[index].SchedulePolicy.Level[spl] = &metav1.LabelSelector{
-						MatchExpressions: nil,
+		if condition.Subject.Type == "component" {
+			if index, okCom := comLocation[condition.Subject.Name]; okCom {
+				// when affinity, change the affinity index array
+				if condition.Relation == "Affinity" && condition.Object.Type == "component" {
+					// component对应的索引位置的值用亲和对象的索引值表示
+					if affinityIndex, ok := comLocation[condition.Object.Name]; ok {
+						affinity[index] = affinityIndex
 					}
+				} else {
+					if _, ok := components[index].SchedulePolicy.Level[spl]; !ok {
+						components[index].SchedulePolicy.Level[spl] = &metav1.LabelSelector{
+							MatchExpressions: nil,
+						}
+					}
+					components[index].SchedulePolicy.Level[spl] = SchedulePolicyReflect(condition,
+						components[index].SchedulePolicy.Level[spl])
 				}
-				components[index].SchedulePolicy.Level[spl] = SchedulePolicyReflect(condition, components[index].SchedulePolicy.Level[spl])
 			}
 		}
 	}
 }
 
-func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition, policy map[string]*appsv1alpha1.SchedulePolicy) {
+func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition,
+	policy map[string]*appsv1alpha1.SchedulePolicy) {
 	for _, condition := range deploymentConditions {
 		klog.V(5).Info("parse DeploymentConditions for group condition")
 
@@ -252,7 +264,8 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition, policy m
 					},
 				}
 			}
-			SchedulePolicyGroupReflect(condition, policy[condition.Subject.Name].Level[appsv1alpha1.SchedulePolicyMandatory])
+			SchedulePolicyGroupReflect(condition,
+				policy[condition.Subject.Name].Level[appsv1alpha1.SchedulePolicyMandatory])
 		}
 	}
 }
@@ -290,7 +303,8 @@ func SchedulePolicyGroupReflect(condition appsv1alpha1.Condition, spLevel *metav
 }
 
 // ParseExpectedPerformance parse desc.Spec.ExpectedPerformance
-func ParseExpectedPerformance(ep appsv1alpha1.ExpectedPerformance, components []appsv1alpha1.Component, comLocation map[string]int) {
+func ParseExpectedPerformance(ep appsv1alpha1.ExpectedPerformance, components []appsv1alpha1.Component,
+	comLocation map[string]int) {
 	// get boundaries map
 	boundaryMap := ParseBoundaries(ep.Boundaries, components, comLocation)
 	// parse HPA or VPA  and then get the threshold
@@ -298,55 +312,59 @@ func ParseExpectedPerformance(ep appsv1alpha1.ExpectedPerformance, components []
 }
 
 // ParseBoundaries returns a map that the key is the boundary name and the value is the boundary itself
-func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1.Component, comLocation map[string]int) map[string]appsv1alpha1.Boundary {
+func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1.Component,
+	comLocation map[string]int) map[string]appsv1alpha1.Boundary {
 	// expectedPerformance.Boundaries.Inner
 	boundaryMap := make(map[string]appsv1alpha1.Boundary)
 	klog.V(6).Infof("start to parse expectedPerformance.Boundaries.Inner:")
 	for _, inner := range boundary.Inner {
 		klog.V(5).Infof("inner is %+v", inner)
-		index := comLocation[inner.Subject]
-		if "replicas" == inner.Type {
-			var data int32
-			_ = json.Unmarshal(inner.Value, &data)
-			klog.V(5).Infof("%v's replicas is %v", inner.Subject, data)
-			if components[index].Workload.TraitDeployment == nil {
-				// TraitDeployment init
-				components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeDeployment
-				components[index].Workload.TraitDeployment = &appsv1alpha1.TraitDeployment{
-					Replicas: data,
+		if index, ok := comLocation[inner.Subject]; ok {
+			if "replicas" == inner.Type {
+				var data int32
+				_ = json.Unmarshal(inner.Value, &data)
+				klog.V(5).Infof("%v's replicas is %v", inner.Subject, data)
+				if components[index].Workload.TraitDeployment == nil {
+					// TraitDeployment init
+					components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeDeployment
+					components[index].Workload.TraitDeployment = &appsv1alpha1.TraitDeployment{
+						Replicas: data,
+					}
+					klog.V(5).Infof("%s:components[%d].Workload.TraitDeployment.Replicas is %v",
+						inner.Subject, index, components[index].Workload.TraitDeployment.Replicas)
 				}
-				klog.V(5).Infof("%s:components[%d].Workload.TraitDeployment.Replicas is %v", inner.Subject, index, components[index].Workload.TraitDeployment.Replicas)
-			}
-
-		} else if inner.Type == "daemonset" {
-			var data bool
-			_ = json.Unmarshal(inner.Value, &data)
-			if data {
-				// TraitAffinityDaemon init
-				components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeAffinityDaemon
-				components[index].Workload.TraitAffinityDaemon = &appsv1alpha1.TraitAffinityDaemon{}
+			} else if inner.Type == "daemonset" {
+				var data bool
+				_ = json.Unmarshal(inner.Value, &data)
+				if data {
+					// TraitAffinityDaemon init
+					components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeAffinityDaemon
+					components[index].Workload.TraitAffinityDaemon = &appsv1alpha1.TraitAffinityDaemon{}
+				} else {
+					continue
+				}
 			} else {
-				continue
-			}
-		} else {
-			// serverless
-			var data int32
-			_ = json.Unmarshal(inner.Value, &data)
+				// serverless
+				var data int32
+				_ = json.Unmarshal(inner.Value, &data)
 
-			if components[index].Workload.TraitServerless == nil {
-				// TraitServerless init
-				components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeServerless
-				components[index].Workload.TraitServerless = &lmmserverless.TraitServerless{}
-			}
-			if "maxReplicas" == inner.Type {
-				components[index].Workload.TraitServerless.MaxReplicas = data
-				klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxReplicas is %v", inner.Subject, index, components[index].Workload.TraitServerless.MaxReplicas)
-			} else if inner.Type == "maxQPS" {
-				components[index].Workload.TraitServerless.MaxQPS = data
-				klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxQPS is %v", inner.Subject, index, components[index].Workload.TraitServerless.MaxQPS)
-			} else {
-				// serverless threshold fields: cpuMax, cpuMin, memMax, memMin, qpsMax, qpsMin
-				boundaryMap[inner.Name] = inner
+				if components[index].Workload.TraitServerless == nil {
+					// TraitServerless init
+					components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeServerless
+					components[index].Workload.TraitServerless = &lmmserverless.TraitServerless{}
+				}
+				if "maxReplicas" == inner.Type {
+					components[index].Workload.TraitServerless.MaxReplicas = data
+					klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxReplicas is %v",
+						inner.Subject, index, components[index].Workload.TraitServerless.MaxReplicas)
+				} else if inner.Type == "maxQPS" {
+					components[index].Workload.TraitServerless.MaxQPS = data
+					klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxQPS is %v",
+						inner.Subject, index, components[index].Workload.TraitServerless.MaxQPS)
+				} else {
+					// serverless threshold fields: cpuMax, cpuMin, memMax, memMin, qpsMax, qpsMin
+					boundaryMap[inner.Name] = inner
+				}
 			}
 		}
 	}
@@ -366,7 +384,8 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 }
 
 // ParseMaintenance reflect the boundaries and maintenance's trigger to serverless' threshold.
-func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[string]appsv1alpha1.Boundary, components []appsv1alpha1.Component, comLocation map[string]int) {
+func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[string]appsv1alpha1.Boundary,
+	components []appsv1alpha1.Component, comLocation map[string]int) {
 	// 1. expectedPerformance.Maintenance.HPA
 	threshold := make([]map[string]int32, len(components))
 	for i := range threshold {
@@ -374,47 +393,45 @@ func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[stri
 	}
 	klog.V(5).Info("start to parse expectedPerformance.Maintenance.HPA:")
 	for _, hpa := range maintenance.HPA {
-		index := comLocation[hpa.Subject]
-
-		var value, step int32
-		_ = json.Unmarshal(hpa.Strategy.Value, &step)
-		if components[index].Workload.TraitServerless.MaxQPS != 0 {
-			components[index].Workload.TraitServerless.QpsStep = step
-		} else if components[index].Workload.TraitServerless.MaxReplicas != 0 {
-			components[index].Workload.TraitServerless.ResplicasStep = step
-		} else {
-			components[index].Workload.TraitServerless.ResplicasStep = 1 // default: 1
-		}
-		if hpa.Strategy.Type == "increase" {
-			// 扩 或 最大值
-			boundaryList := strings.Split(hpa.Trigger, "||")
-			for _, bn := range boundaryList {
-				bn = strings.TrimSpace(bn)
-				_ = json.Unmarshal(boundaryMap[bn].Value, &value)
-				switch boundaryMap[bn].Type {
-				case "cpu":
-					threshold[index]["cpuMax"] = value
-				case "mem":
-					threshold[index]["memMax"] = value
-				case "QPS":
-					threshold[index]["qpsMax"] = value
-				}
+		if index, ok := comLocation[hpa.Subject]; ok {
+			var value, step int32
+			_ = json.Unmarshal(hpa.Strategy.Value, &step)
+			if components[index].Workload.TraitServerless.MaxQPS != 0 {
+				components[index].Workload.TraitServerless.QpsStep = step
+			} else if components[index].Workload.TraitServerless.MaxReplicas != 0 {
+				components[index].Workload.TraitServerless.ResplicasStep = step
+			} else {
+				components[index].Workload.TraitServerless.ResplicasStep = 1 // default: 1
 			}
-
-		} else if hpa.Strategy.Type == "decrease" {
-			// 缩 且 最小值
-			boundaryList := strings.Split(hpa.Trigger, "&&")
-
-			for _, bn := range boundaryList {
-				bn = strings.TrimSpace(bn)
-				_ = json.Unmarshal(boundaryMap[bn].Value, &value)
-				switch boundaryMap[bn].Type {
-				case "cpu":
-					threshold[index]["cpuMin"] = value
-				case "mem":
-					threshold[index]["memMin"] = value
-				case "QPS":
-					threshold[index]["qpsMin"] = value
+			if hpa.Strategy.Type == "increase" {
+				// 扩 或 最大值
+				boundaryList := strings.Split(hpa.Trigger, "||")
+				for _, bn := range boundaryList {
+					bn = strings.TrimSpace(bn)
+					_ = json.Unmarshal(boundaryMap[bn].Value, &value)
+					switch boundaryMap[bn].Type {
+					case "cpu":
+						threshold[index]["cpuMax"] = value
+					case "mem":
+						threshold[index]["memMax"] = value
+					case "QPS":
+						threshold[index]["qpsMax"] = value
+					}
+				}
+			} else if hpa.Strategy.Type == "decrease" {
+				// 缩 且 最小值
+				boundaryList := strings.Split(hpa.Trigger, "&&")
+				for _, bn := range boundaryList {
+					bn = strings.TrimSpace(bn)
+					_ = json.Unmarshal(boundaryMap[bn].Value, &value)
+					switch boundaryMap[bn].Type {
+					case "cpu":
+						threshold[index]["cpuMin"] = value
+					case "mem":
+						threshold[index]["memMin"] = value
+					case "QPS":
+						threshold[index]["qpsMin"] = value
+					}
 				}
 			}
 		}
@@ -426,15 +443,17 @@ func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[stri
 			tdByte, _ := json.Marshal(td)
 			klog.V(5).Infof("string(tdByte) %s:td is %s", components[i].Name, string(tdByte))
 			components[i].Workload.TraitServerless.Threshold = string(tdByte)
-			klog.V(5).Infof("%s:component[%d] TraitServerless is %+v", components[i].Name, i, components[i].Workload.TraitServerless)
+			klog.V(5).Infof("%s:component[%d] TraitServerless is %+v",
+				components[i].Name, i, components[i].Workload.TraitServerless)
 		}
 	}
 
 	// 2. expectedPerformance.Maintenance.VPA
 	klog.V(6).Info("start to parse expectedPerformance.Maintenance.VPA:")
 	for _, vpa := range maintenance.VPA {
-		index := comLocation[vpa.Subject]
-		components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeServerless
-		// TODO
+		if index, ok := comLocation[vpa.Subject]; ok {
+			components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeServerless
+			// TODO
+		}
 	}
 }

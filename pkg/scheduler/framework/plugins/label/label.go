@@ -50,8 +50,8 @@ func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component,
 		return nil
 	}
 	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf(
-		"there is no label fit for this com. cluster name is %v, component name is %v,"+
-			" clusterLabels is %+v, gaiaSelector is %+v", cluster.Name, com.Name, clusterLabels, gaiaSelector))
+		"there is no label fit for this com. cluster name is %v, component name is %v gaiaSelector is %+v",
+		cluster.Name, com.Name, gaiaSelector))
 }
 
 // NormalizeScore invoked after scoring all clusters.

@@ -121,7 +121,9 @@ func SetOldDescComponents() []appsv1alpha1.Component {
 					appsv1alpha1.SchedulePolicyMandatory: {
 						MatchExpressions: []metav1.LabelSelectorRequirement{
 							0: {Key: "runtime-state", Operator: "In", Values: []string{string(appsv1alpha1.Runc)}},
-							1: {Key: "geo-location", Operator: "In", Values: []string{"China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-E22"}},
+							1: {Key: "geo-location", Operator: "In",
+								Values: []string{"China-Huadong-Jiangsu-City-C21-District-E21",
+									"China-Huadong-Jiangsu-City-C21-District-E22"}},
 						},
 					},
 					appsv1alpha1.SchedulePolicyBestEffort: {
@@ -345,7 +347,8 @@ func TestDescToComponents(t *testing.T) {
 										Type: "label",
 									},
 									Relation: "In",
-									Extent:   []byte("[\"China-Huadong-Jiangsu-City-C21-District-E21\",\"China-Huadong-Jiangsu-City-C21-District-E22\"]"),
+									Extent: []byte("[\"China-Huadong-Jiangsu-City-C21-District-E21\"," +
+										"\"China-Huadong-Jiangsu-City-C21-District-E22\"]"),
 								},
 								3: {
 									Subject: appsv1alpha1.Xject{
@@ -679,7 +682,8 @@ func TestUnmarshalExtent(t *testing.T) {
 		},
 		1: {
 			name: "geolocation1",
-			args: args{[]byte("[\"China-Huadong-Jiangsu-City-C21-District-E21\", \"China-Huadong-Jiangsu-City-C21-District-E22\"]")},
+			args: args{[]byte("[\"China-Huadong-Jiangsu-City-C21-District-E21\", " +
+				"\"China-Huadong-Jiangsu-City-C21-District-E22\"]")},
 			want: []string{"China-Huadong-Jiangsu-City-C21-District-E21", "China-Huadong-Jiangsu-City-C21-District-E22"},
 		},
 		2: {

@@ -62,6 +62,7 @@ const (
 	OriginDescriptionNamespaceLabel = "apps.gaia.io/ori.desc.namespace"
 	OriginDescriptionUIDLabel       = "apps.gaia.io/ori.desc.uid"
 	UserIDLabel                     = "apps.gaia.io/user.id"
+	ParentRBLabel                   = "apps.gaia.io/ori.parent-rb"
 
 	NetworkLocationCore = "core"
 	NodeResourceForm    = "pool"

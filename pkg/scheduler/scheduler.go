@@ -77,7 +77,8 @@ type Scheduler struct {
 	localDescLister                listner.DescriptionLister
 	selfClusterName                string // this cluster name
 
-	// dedicated kubeconfig for accessing parent cluster, which is auto populated by the parent cluster when cluster registration request gets approved
+	// dedicated kubeconfig for accessing parent cluster, which is auto populated by the parent
+	// cluster when cluster registration request gets approved
 	parentDedicatedKubeConfig   *rest.Config
 	parentInformerFactory       gaiainformers.SharedInformerFactory // namespaced
 	parentDescriptionLister     listner.DescriptionLister
@@ -100,7 +101,7 @@ type Scheduler struct {
 	// parentSchedulingQueue holds description in parent cluster namespace to be scheduled
 	parentSchedulingQueue workqueue.RateLimitingInterface
 
-	// parentSchedulingRetryQueue holds description in parent cluster namespace to be re scheduled
+	// parentSchedulingRetryQueue holds description in parent cluster namespace to be rescheduled
 	parentSchedulingRetryQueue workqueue.RateLimitingInterface
 
 	framework framework.Framework
@@ -111,7 +112,8 @@ type Scheduler struct {
 }
 
 // NewSchedule returns a new Scheduler.
-func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.Options) (*schedulerserverconfig.CompletedConfig, *Scheduler, error) {
+func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.Options) (
+	*schedulerserverconfig.CompletedConfig, *Scheduler, error) {
 	if errs := opts.Validate(); len(errs) > 0 {
 		return nil, nil, utilerrors.NewAggregate(errs)
 	}
@@ -151,7 +153,8 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 	utilruntime.Must(platformapi.AddToScheme(scheme.Scheme))
 	recorder := broadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "gaia-scheduler"})
 
-	schedulerCache := schedulercache.New(localAllGaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(), childGaiaClientSet)
+	schedulerCache := schedulercache.New(localAllGaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
+		childGaiaClientSet)
 	dynamicClient, err := dynamic.NewForConfig(localSuperKubeConfig)
 	if err != nil {
 		return nil, nil, err
@@ -184,8 +187,8 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 	}
 	sched.framework = framework
 	// local scheduler always exsit
-	sched.localNamespacedInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(childGaiaClientSet, common.DefaultResync,
-		gaiainformers.WithNamespace(common.GaiaReservedNamespace))
+	sched.localNamespacedInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(childGaiaClientSet,
+		common.DefaultResync, gaiainformers.WithNamespace(common.GaiaReservedNamespace))
 	// local event handler
 	sched.addLocalAllEventHandlers()
 
@@ -199,49 +202,51 @@ func (scheduler *Scheduler) Run(cxt context.Context, cc *schedulerserverconfig.C
 	defer scheduler.localSchedulingQueue.ShutDown()
 
 	// start the leader election code loop
-	leaderelection.RunOrDie(context.TODO(), *newLeaderElectionConfigWithDefaultValue(scheduler.Identity, scheduler.childKubeClientSet, leaderelection.LeaderCallbacks{
-		OnStartedLeading: func(ctx context.Context) {
-			// 1. start local gaia generic informers
-			scheduler.localGaiaAllFactory.Start(ctx.Done())
-			scheduler.localGaiaAllFactory.WaitForCacheSync(ctx.Done())
+	leaderelection.RunOrDie(context.TODO(), *newLeaderElectionConfigWithDefaultValue(scheduler.Identity,
+		scheduler.childKubeClientSet, leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {
+				// 1. start local gaia generic informers
+				scheduler.localGaiaAllFactory.Start(ctx.Done())
+				scheduler.localGaiaAllFactory.WaitForCacheSync(ctx.Done())
 
-			// 2. start local scheduler.
-			go func() {
-				scheduler.localNamespacedInformerFactory.Start(ctx.Done())
-				scheduler.localNamespacedInformerFactory.WaitForCacheSync(ctx.Done())
-				wait.UntilWithContext(ctx, scheduler.RunLocalScheduler, 0)
-			}()
+				// 2. start local scheduler.
+				go func() {
+					scheduler.localNamespacedInformerFactory.Start(ctx.Done())
+					scheduler.localNamespacedInformerFactory.WaitForCacheSync(ctx.Done())
+					wait.UntilWithContext(ctx, scheduler.RunLocalScheduler, 0)
+				}()
 
-			// metrics
-			if cc.SecureServing != nil {
-				handler := buildHandlerChain(newMetricsHandler(), cc.Authentication.Authenticator, cc.Authorization.Authorizer)
-				klog.Info("Starting gaia-scheduler metrics server...")
-				if _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
-					klog.Infof("failed to start metrics server: %v", err)
+				// metrics
+				if cc.SecureServing != nil {
+					handler := buildHandlerChain(newMetricsHandler(), cc.Authentication.Authenticator,
+						cc.Authorization.Authorizer)
+					klog.Info("Starting gaia-scheduler metrics server...")
+					if _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
+						klog.Infof("failed to start metrics server: %v", err)
+					}
 				}
-			}
 
-			// 3. when we get add parentDedicatedKubeConfig add parent desc scheduler and start it.
-			scheduler.SetparentDedicatedConfig(ctx)
-			scheduler.parentInformerFactory.Start(ctx.Done())
-			scheduler.parentInformerFactory.WaitForCacheSync(ctx.Done())
-			go func() {
-				wait.UntilWithContext(ctx, scheduler.RunParentReScheduler, 0)
-			}()
-			wait.UntilWithContext(ctx, scheduler.RunParentScheduler, 0)
+				// 3. when we get add parentDedicatedKubeConfig add parent desc scheduler and start it.
+				scheduler.SetparentDedicatedConfig(ctx)
+				scheduler.parentInformerFactory.Start(ctx.Done())
+				scheduler.parentInformerFactory.WaitForCacheSync(ctx.Done())
+				go func() {
+					wait.UntilWithContext(ctx, scheduler.RunParentReScheduler, 0)
+				}()
+				wait.UntilWithContext(ctx, scheduler.RunParentScheduler, 0)
+			},
+			OnStoppedLeading: func() {
+				klog.Error("leader election got lost")
+			},
+			OnNewLeader: func(identity string) {
+				// we're notified when new leader elected
+				if identity == scheduler.Identity {
+					// I just got the lock
+					return
+				}
+				klog.Infof("new leader elected: %s", identity)
+			},
 		},
-		OnStoppedLeading: func() {
-			klog.Error("leader election got lost")
-		},
-		OnNewLeader: func(identity string) {
-			// we're notified when new leader elected
-			if identity == scheduler.Identity {
-				// I just got the lock
-				return
-			}
-			klog.Infof("new leader elected: %s", identity)
-		},
-	},
 	))
 }
 
@@ -285,7 +290,8 @@ func newHealthzHandler(separateMetrics bool, checks ...healthz.HealthChecker) ht
 	return pathRecorderMux
 }
 
-func newLeaderElectionConfigWithDefaultValue(identity string, clientset kubernetes.Interface, callbacks leaderelection.LeaderCallbacks) *leaderelection.LeaderElectionConfig {
+func newLeaderElectionConfigWithDefaultValue(identity string, clientset kubernetes.Interface,
+	callbacks leaderelection.LeaderCallbacks) *leaderelection.LeaderElectionConfig {
 	return &leaderelection.LeaderElectionConfig{
 		Lock: &resourcelock.LeaseLock{
 			LeaseMeta: metav1.ObjectMeta{
@@ -320,7 +326,8 @@ func NewLocalSuperKubeConfig(ctx context.Context, apiserverURL string, kubeClien
 	var clusterStatusKubeConfig *rest.Config
 	if secret != nil {
 		var err error
-		clusterStatusKubeConfig, err = utils.GenerateKubeConfigFromToken(apiserverURL, string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
+		clusterStatusKubeConfig, err = utils.GenerateKubeConfigFromToken(apiserverURL,
+			string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
 		if err == nil {
 			kubeClient = kubernetes.NewForConfigOrDie(clusterStatusKubeConfig)
 		}
@@ -366,8 +373,8 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 			desc.Status.Phase = appsapi.DescriptionPhaseFailure
 			err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 			if err != nil {
-				klog.WarningDepth(2, "failed to update status of description's status phase: Description==%q, error==%v",
-					klog.KObj(desc), err)
+				klog.WarningDepth(2, "failed to update status of description's "+
+					"status phase: Description==%q, error==%v", klog.KObj(desc), err)
 			}
 			return
 		}
@@ -489,10 +496,12 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	// get rbs
 	rbs, _ := sched.parentResourceBindingLister.List(labelSelector)
 	// get mcls
-	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx,
+		metav1.ListOptions{})
 	if len(mcls.Items) == 0 {
 		// there is no child clusters. no need to schedule just transfer.
-		transferRB(sched.parentGaiaClient, sched.localGaiaClient, sched.dedicatedNamespace, common.GaiaRSToBeMergedReservedNamespace, desc.Name, rbs, ctx)
+		transferRB(sched.parentGaiaClient, sched.localGaiaClient, sched.dedicatedNamespace,
+			common.GaiaRSToBeMergedReservedNamespace, desc.Name, rbs, "", ctx)
 		klog.Info("scheduler success just change rb namespace.")
 	} else {
 		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
@@ -502,18 +511,24 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 			desc.Status.Reason = truncateMessage(err.Error())
 			err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 			if err != nil {
-				klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
+				klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, "+
+					"err is ", desc.Namespace, desc.Name, err)
 			}
 			klog.Warningf("scheduler failed %v", err)
 			return
 		}
 
 		for _, itemCluster := range mcls.Items {
-			transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace, common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
+			if transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
+				common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings,
+				itemCluster.Name, ctx) {
+				continue
+			}
 			// 2. create desc in to child cluster namespace
 			newDesc := utils.ConstructDescriptionFromExistOne(desc)
 			newDesc.Namespace = itemCluster.Namespace
-			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
+			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx,
+				newDesc, metav1.CreateOptions{})
 			if err != nil {
 				klog.InfoS("scheduler success, but desc not created success in sub child cluster.", err)
 			}
@@ -521,18 +536,21 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	}
 
 	err = sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(sched.dedicatedNamespace).
-		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-			common.GaiaDescriptionLabel: desc.Name,
-		}).String()})
+		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
+				common.GaiaDescriptionLabel: desc.Name,
+			}).String()})
 	klog.Info("i have tried to delete rbs in parent cluster")
 	if err != nil {
-		klog.Errorf("failed to delete rbs in parent namespace %s, related to desc %s, err: %v", desc.Namespace, desc.Name, err)
+		klog.Errorf("failed to delete rbs in parent namespace %s, related to desc %s, err: %v", desc.Namespace,
+			desc.Name, err)
 	}
 
 	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 	err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 	if err != nil {
-		klog.Errorf("failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
+		klog.Errorf("failed to update status of description's status phase: %v/%v, err is ", desc.Namespace,
+			desc.Name, err)
 	}
 	sched.parentSchedulingQueue.Forget(key)
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
@@ -575,22 +593,25 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	requirement, _ := labels.NewRequirement(common.GaiaDescriptionLabel, selection.Equals, []string{desc.Name})
 	labelSelector = labelSelector.Add(*requirement)
 	// get rbs we need only one that is the selected one.
-	rbList, _ := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).List(ctx, metav1.ListOptions{
-		LabelSelector: labelSelector.String(),
-	})
+	rbList, _ := sched.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).List(ctx,
+		metav1.ListOptions{
+			LabelSelector: labelSelector.String(),
+		})
 	rbs := make([]*appsapi.ResourceBinding, 0)
 	rbs = append(rbs, &rbList.Items[0])
 
-	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx, metav1.ListOptions{})
+	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx,
+		metav1.ListOptions{})
 	if len(mcls.Items) > 0 {
 		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
 		if err != nil {
 			sched.recordParentReSchedulingFailure(desc, err, ReasonUnschedulable)
 			return
 		}
-		localRB, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).List(ctx, metav1.ListOptions{
-			LabelSelector: labelSelector.String(),
-		})
+		localRB, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
+			List(ctx, metav1.ListOptions{
+				LabelSelector: labelSelector.String(),
+			})
 		if err != nil {
 			sched.recordParentReSchedulingFailure(desc, err, ReasonUnschedulable)
 			return
@@ -612,7 +633,8 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 	err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 	if err != nil {
-		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
+		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
+			desc.Namespace, desc.Name, err)
 	}
 	sched.parentSchedulingRetryQueue.Forget(key)
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
@@ -628,20 +650,25 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 	defer cancel()
 
 	wait.JitterUntilWithContext(waitingCtx, func(ctx context.Context) {
-		target, err := sched.localGaiaClient.PlatformV1alpha1().Targets().Get(ctx, common.ParentClusterTargetName, metav1.GetOptions{})
+		target, err := sched.localGaiaClient.PlatformV1alpha1().Targets().Get(ctx, common.ParentClusterTargetName,
+			metav1.GetOptions{})
 		if err != nil {
 			// klog.Errorf("set parentDedicatedKubeConfig failed to get targets: %v wait for next loop", err)
 			return
 		}
-		secret, err := sched.childKubeClientSet.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx, common.ParentClusterSecretName, metav1.GetOptions{})
+		secret, err := sched.childKubeClientSet.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx,
+			common.ParentClusterSecretName, metav1.GetOptions{})
 		if err != nil {
 			// klog.Errorf("set parentDedicatedKubeConfig failed to get secretFromParentCluster: %v", err)
 			return
 		}
 		if err == nil {
-			klog.Infof("found existing secretFromParentCluster '%s/%s' that can be used to access parent cluster", common.GaiaSystemNamespace, common.ParentClusterSecretName)
+			klog.Infof("found existing secretFromParentCluster '%s/%s' that can be used to access parent "+
+				"cluster", common.GaiaSystemNamespace, common.ParentClusterSecretName)
 
-			parentDedicatedKubeConfig, err := utils.GenerateKubeConfigFromToken(target.Spec.ParentURL, string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey], 2)
+			parentDedicatedKubeConfig, err := utils.GenerateKubeConfigFromToken(target.Spec.ParentURL,
+				string(secret.Data[corev1.ServiceAccountTokenKey]), secret.Data[corev1.ServiceAccountRootCAKey],
+				2)
 			if err == nil {
 				sched.parentDedicatedKubeConfig = parentDedicatedKubeConfig
 				sched.dedicatedNamespace = string(secret.Data[corev1.ServiceAccountNamespaceKey])
@@ -650,7 +677,8 @@ func (sched *Scheduler) SetparentDedicatedConfig(ctx context.Context) {
 				sched.parentInformerFactory = gaiainformers.NewSharedInformerFactoryWithOptions(
 					sched.parentGaiaClient, common.DefaultResync, gaiainformers.WithNamespace(sched.dedicatedNamespace))
 				sched.parentDescriptionLister = sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Lister()
-				sched.parentResourceBindingLister = sched.parentInformerFactory.Apps().V1alpha1().ResourceBindings().Lister()
+				sched.parentResourceBindingLister = sched.parentInformerFactory.Apps().V1alpha1().
+					ResourceBindings().Lister()
 				sched.scheduleAlgorithm.SetSelfClusterName(sched.selfClusterName)
 				sched.addParentAllEventHandlers()
 			} else {
@@ -678,7 +706,8 @@ func (sched *Scheduler) GetDedicatedNamespace() string {
 // recordSchedulingFailure records an event for the subscription that indicates the
 // subscription has failed to schedule. Also, update the subscription condition.
 func (sched *Scheduler) recordSchedulingFailure(sub *appsapi.Description, err error, _ string) {
-	klog.V(2).InfoS("Unable to schedule subscription; waiting", "subscription", klog.KObj(sub), "err", err)
+	klog.V(2).InfoS("Unable to schedule subscription; waiting", "subscription",
+		klog.KObj(sub), "err", err)
 
 	msg := truncateMessage(err.Error())
 	sched.framework.EventRecorder().Event(sub, corev1.EventTypeWarning, "FailedScheduling", msg)
@@ -690,7 +719,8 @@ func (sched *Scheduler) recordSchedulingFailure(sub *appsapi.Description, err er
 // recordSchedulingFailure records an event for the subscription that indicates the
 // Description has failed to schedule. Also, update the subscription condition.
 func (sched *Scheduler) recordParentSchedulingFailure(sub *appsapi.Description, err error, _ string) {
-	klog.V(2).InfoS("Unable to schedule Description; waiting", "Description", klog.KObj(sub), "err", err)
+	klog.V(2).InfoS("Unable to schedule Description; waiting", "Description", klog.KObj(sub),
+		"err", err)
 
 	msg := truncateMessage(err.Error())
 	sched.framework.EventRecorder().Event(sub, corev1.EventTypeWarning, "FailedScheduling", msg)
@@ -701,7 +731,8 @@ func (sched *Scheduler) recordParentSchedulingFailure(sub *appsapi.Description, 
 // recordParentReSchedulingFailure records an event for the description that indicates the
 // Description has failed to re schedule. Also, update the description condition.
 func (sched *Scheduler) recordParentReSchedulingFailure(sub *appsapi.Description, err error, reason string) {
-	klog.V(2).InfoS("Unable to re schedule Description; waiting", "Description", klog.KObj(sub), "err", err)
+	klog.V(2).InfoS("Unable to re schedule Description; waiting", "Description",
+		klog.KObj(sub), "err", err)
 
 	msg := truncateMessage(err.Error())
 	sched.framework.EventRecorder().Event(sub, corev1.EventTypeWarning, reason, msg)
@@ -712,174 +743,184 @@ func (sched *Scheduler) recordParentReSchedulingFailure(sub *appsapi.Description
 // addLocalAllEventHandlers is a helper function used in Scheduler
 // to add event handlers for various local informers.
 func (sched *Scheduler) addLocalAllEventHandlers() {
-	sched.localNamespacedInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: func(obj interface{}) bool {
-			switch t := obj.(type) {
-			case *appsapi.Description:
-				desc := obj.(*appsapi.Description)
-				if desc.DeletionTimestamp != nil {
+	sched.localNamespacedInformerFactory.Apps().V1alpha1().Descriptions().Informer().
+		AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				switch t := obj.(type) {
+				case *appsapi.Description:
+					desc := obj.(*appsapi.Description)
+					if desc.DeletionTimestamp != nil {
+						sched.lockLocal.Lock()
+						defer sched.lockLocal.Unlock()
+						sched.localSchedulingQueue.Done(klog.KObj(desc).String())
+						sched.localSchedulingQueue.Forget(klog.KObj(desc).String())
+						return false
+					}
+					if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending ||
+						desc.Status.Phase == appsapi.DescriptionPhaseFailure {
+						// TODO: filter scheduler name
+						return true
+					} else {
+						sched.lockParent.Lock()
+						defer sched.lockParent.Unlock()
+						return false
+					}
+				case cache.DeletedFinalStateUnknown:
+					if _, ok := t.Obj.(*appsapi.Description); ok {
+						return true
+					}
+					utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *Description in %T",
+						obj, sched))
+					return false
+				default:
+					utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
+					return false
+				}
+			},
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					desc := obj.(*appsapi.Description)
 					sched.lockLocal.Lock()
 					defer sched.lockLocal.Unlock()
-					sched.localSchedulingQueue.Done(klog.KObj(desc).String())
-					sched.localSchedulingQueue.Forget(klog.KObj(desc).String())
-					return false
-				}
-				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending || desc.Status.Phase == appsapi.DescriptionPhaseFailure {
-					// TODO: filter scheduler name
-					return true
-				} else {
-					sched.lockParent.Lock()
-					defer sched.lockParent.Unlock()
-					return false
-				}
-			case cache.DeletedFinalStateUnknown:
-				if _, ok := t.Obj.(*appsapi.Description); ok {
-					return true
-				}
-				utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *Description in %T", obj, sched))
-				return false
-			default:
-				utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
-				return false
-			}
-		},
-		Handler: cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				desc := obj.(*appsapi.Description)
-				sched.lockLocal.Lock()
-				defer sched.lockLocal.Unlock()
-				sched.localSchedulingQueue.AddRateLimited(klog.KObj(desc).String())
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldSub := oldObj.(*appsapi.Description)
-				newSub := newObj.(*appsapi.Description)
+					sched.localSchedulingQueue.AddRateLimited(klog.KObj(desc).String())
+				},
+				UpdateFunc: func(oldObj, newObj interface{}) {
+					oldSub := oldObj.(*appsapi.Description)
+					newSub := newObj.(*appsapi.Description)
 
-				// Decide whether discovery has reported a spec change.
-				if reflect.DeepEqual(oldSub.Spec, newSub.Spec) {
-					klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing", klog.KObj(oldSub))
-					return
-				}
+					// Decide whether discovery has reported a spec change.
+					if reflect.DeepEqual(oldSub.Spec, newSub.Spec) {
+						klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing",
+							klog.KObj(oldSub))
+						return
+					}
 
-				sched.lockLocal.Lock()
-				defer sched.lockLocal.Unlock()
-				sched.localSchedulingQueue.AddRateLimited(klog.KObj(newSub).String())
+					sched.lockLocal.Lock()
+					defer sched.lockLocal.Unlock()
+					sched.localSchedulingQueue.AddRateLimited(klog.KObj(newSub).String())
+				},
 			},
-		},
-	})
+		})
 }
 
 // addParentAllEventHandlers is a helper function used in Scheduler
 // to add event handlers for various parent informers.
 func (sched *Scheduler) addParentAllEventHandlers() {
-	sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: func(obj interface{}) bool {
-			switch t := obj.(type) {
-			case *appsapi.Description:
-				desc := obj.(*appsapi.Description)
-				if desc.DeletionTimestamp != nil {
-					sched.lockParent.Lock()
-					defer sched.lockParent.Unlock()
-					sched.parentSchedulingQueue.Done(klog.KObj(desc).String())
-					sched.parentSchedulingQueue.Forget(klog.KObj(desc).String())
+	sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(
+		cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				switch t := obj.(type) {
+				case *appsapi.Description:
+					desc := obj.(*appsapi.Description)
+					if desc.DeletionTimestamp != nil {
+						sched.lockParent.Lock()
+						defer sched.lockParent.Unlock()
+						sched.parentSchedulingQueue.Done(klog.KObj(desc).String())
+						sched.parentSchedulingQueue.Forget(klog.KObj(desc).String())
+						return false
+					}
+					if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending {
+						// TODO: filter scheduler name
+						return true
+					} else {
+						sched.lockParent.Lock()
+						defer sched.lockParent.Unlock()
+						return false
+					}
+
+				case cache.DeletedFinalStateUnknown:
+					if _, ok := t.Obj.(*appsapi.Description); ok {
+						return true
+					}
+					utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *Description in %T",
+						obj, sched))
+					return false
+				default:
+					utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
 					return false
 				}
-				if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending {
-					// TODO: filter scheduler name
-					return true
-				} else {
+			},
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					desc := obj.(*appsapi.Description)
 					sched.lockParent.Lock()
 					defer sched.lockParent.Unlock()
-					return false
-				}
+					sched.parentSchedulingQueue.AddRateLimited(klog.KObj(desc).String())
+				},
+				UpdateFunc: func(oldObj, newObj interface{}) {
+					oldDesc := oldObj.(*appsapi.Description)
+					newDesc := newObj.(*appsapi.Description)
 
-			case cache.DeletedFinalStateUnknown:
-				if _, ok := t.Obj.(*appsapi.Description); ok {
-					return true
-				}
-				utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *Description in %T", obj, sched))
-				return false
-			default:
-				utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
-				return false
-			}
-		},
-		Handler: cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				desc := obj.(*appsapi.Description)
-				sched.lockParent.Lock()
-				defer sched.lockParent.Unlock()
-				sched.parentSchedulingQueue.AddRateLimited(klog.KObj(desc).String())
+					// Decide whether discovery has reported a spec change.
+					if reflect.DeepEqual(oldDesc.Spec, newDesc.Spec) {
+						klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing",
+							klog.KObj(oldDesc))
+						return
+					}
+					sched.lockParent.Lock()
+					defer sched.lockParent.Unlock()
+					sched.parentSchedulingQueue.AddRateLimited(klog.KObj(newDesc).String())
+				},
 			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldDesc := oldObj.(*appsapi.Description)
-				newDesc := newObj.(*appsapi.Description)
-
-				// Decide whether discovery has reported a spec change.
-				if reflect.DeepEqual(oldDesc.Spec, newDesc.Spec) {
-					klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing", klog.KObj(oldDesc))
-					return
-				}
-				sched.lockParent.Lock()
-				defer sched.lockParent.Unlock()
-				sched.parentSchedulingQueue.AddRateLimited(klog.KObj(newDesc).String())
-			},
-		},
-	})
+		})
 
 	// config reschedule handlers.
-	sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-		FilterFunc: func(obj interface{}) bool {
-			switch t := obj.(type) {
-			case *appsapi.Description:
-				desc := obj.(*appsapi.Description)
-				if desc.DeletionTimestamp != nil {
-					sched.lockReschedule.Lock()
-					defer sched.lockReschedule.Unlock()
-					sched.parentSchedulingRetryQueue.Forget(klog.KObj(desc).String())
-					sched.parentSchedulingRetryQueue.Done(klog.KObj(desc).String())
+	sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(
+		cache.FilteringResourceEventHandler{
+			FilterFunc: func(obj interface{}) bool {
+				switch t := obj.(type) {
+				case *appsapi.Description:
+					desc := obj.(*appsapi.Description)
+					if desc.DeletionTimestamp != nil {
+						sched.lockReschedule.Lock()
+						defer sched.lockReschedule.Unlock()
+						sched.parentSchedulingRetryQueue.Forget(klog.KObj(desc).String())
+						sched.parentSchedulingRetryQueue.Done(klog.KObj(desc).String())
+						return false
+					}
+					if desc.Status.Phase == appsapi.DescriptionPhaseReSchedule {
+						return true
+					} else {
+						sched.lockReschedule.Lock()
+						defer sched.lockReschedule.Unlock()
+						return false
+					}
+
+				case cache.DeletedFinalStateUnknown:
+					if _, ok := t.Obj.(*appsapi.Description); ok {
+						return true
+					}
+					utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *Description in %T",
+						obj, sched))
+					return false
+				default:
+					utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
 					return false
 				}
-				if desc.Status.Phase == appsapi.DescriptionPhaseReSchedule {
-					return true
-				} else {
+			},
+			Handler: cache.ResourceEventHandlerFuncs{
+				AddFunc: func(obj interface{}) {
+					desc := obj.(*appsapi.Description)
 					sched.lockReschedule.Lock()
 					defer sched.lockReschedule.Unlock()
-					return false
-				}
+					sched.parentSchedulingRetryQueue.AddRateLimited(klog.KObj(desc).String())
+				},
+				UpdateFunc: func(oldObj, newObj interface{}) {
+					oldDesc := oldObj.(*appsapi.Description)
+					newDesc := newObj.(*appsapi.Description)
 
-			case cache.DeletedFinalStateUnknown:
-				if _, ok := t.Obj.(*appsapi.Description); ok {
-					return true
-				}
-				utilruntime.HandleError(fmt.Errorf("unable to convert object %T to *Description in %T", obj, sched))
-				return false
-			default:
-				utilruntime.HandleError(fmt.Errorf("unable to handle object in %T: %T", sched, obj))
-				return false
-			}
-		},
-		Handler: cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				desc := obj.(*appsapi.Description)
-				sched.lockReschedule.Lock()
-				defer sched.lockReschedule.Unlock()
-				sched.parentSchedulingRetryQueue.AddRateLimited(klog.KObj(desc).String())
+					// Decide whether discovery has reported a spec change.
+					if reflect.DeepEqual(oldDesc.Spec, newDesc.Spec) {
+						klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing",
+							klog.KObj(oldDesc))
+						return
+					}
+					sched.lockReschedule.Lock()
+					defer sched.lockReschedule.Unlock()
+					sched.parentSchedulingRetryQueue.AddRateLimited(klog.KObj(newDesc).String())
+				},
 			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldDesc := oldObj.(*appsapi.Description)
-				newDesc := newObj.(*appsapi.Description)
-
-				// Decide whether discovery has reported a spec change.
-				if reflect.DeepEqual(oldDesc.Spec, newDesc.Spec) {
-					klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing", klog.KObj(oldDesc))
-					return
-				}
-				sched.lockReschedule.Lock()
-				defer sched.lockReschedule.Unlock()
-				sched.parentSchedulingRetryQueue.AddRateLimited(klog.KObj(newDesc).String())
-			},
-		},
-	})
+		})
 }
 
 func (sched *Scheduler) handleFrontEndAPP(ctx context.Context, desc *appsapi.Description) error {
@@ -938,9 +979,14 @@ func getTotal(spec, lenResult int) int {
 
 // transfer from src to dst
 func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, descName string,
-	rbs []*appsapi.ResourceBinding, ctx context.Context,
-) {
+	rbs []*appsapi.ResourceBinding, clusterName string, ctx context.Context) bool {
+	skipDescCreate := true
 	for _, item := range rbs {
+		if skipDescCreate {
+			if has := hasReplicasInCluster(item.Spec.RbApps, clusterName); has {
+				skipDescCreate = false
+			}
+		}
 		rb := &appsapi.ResourceBinding{}
 		rb.Name = item.Name
 		rb.Namespace = dstNS
@@ -958,19 +1004,22 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, des
 		if errCreate != nil {
 			klog.Infof("create rb in local to be merged ns error", errCreate)
 		} else {
-			klog.InfoS("successfully created rb", "Description", descName, "ResourceBinding", klog.KRef(rb.GetNamespace(), rb.GetName()))
+			klog.InfoS("successfully created rb", "Description", descName, "ResourceBinding",
+				klog.KRef(rb.GetNamespace(), rb.GetName()))
 		}
 	}
 	if srcClient != nil {
 		err := srcClient.AppsV1alpha1().ResourceBindings(srcNS).
-			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
-				common.GaiaDescriptionLabel: descName,
-			}).String()})
+			DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(
+				labels.Set{
+					common.GaiaDescriptionLabel: descName,
+				}).String()})
 		klog.Info("i have try to delete rbs in parent cluster")
 		if err != nil {
 			klog.Infof("faild to delete rbs in parent cluster", err)
 		}
 	}
+	return skipDescCreate
 }
 
 // hasReplicasInCluster check if there is replicas in the cluster, return true if there is.

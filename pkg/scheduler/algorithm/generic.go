@@ -46,7 +46,8 @@ func (g *genericScheduler) SetSelfClusterName(name string) {
 
 // Schedule
 func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework, rbs []*v1alpha1.ResourceBinding, desc *v1alpha1.Description) (result ScheduleResult, err error) {
-	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: desc.Namespace}, utiltrace.Field{Key: "name", Value: desc.Name})
+	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: desc.Namespace},
+		utiltrace.Field{Key: "name", Value: desc.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
 
 	// 1. get backup clusters.
@@ -103,7 +104,8 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						// componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
 						// affinity logic
 						// components[i] is affinity with component[affinityDest]
-						componentMat = GetAffinityComPlanForDeployment(GetResultWithoutRB(allResultGlobal, j, affinityDest), int64(comm.Workload.TraitDeployment.Replicas), false)
+						componentMat = GetAffinityComPlanForDeployment(GetResultWithoutRB(allResultGlobal, j, affinityDest),
+							int64(comm.Workload.TraitDeployment.Replicas), false)
 						allResultGlobal[j][i] = componentMat
 					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 						componentMat = GetAffinityComPlanForServerless(GetResultWithoutRB(allResultGlobal, j, affinityDest))
@@ -117,7 +119,8 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
 							// affinity logic
 							// components[i] is affinity with component[affinityDest]
-							componentMat = GetAffinityComPlanForDeployment(GetResultWithRB(allResultWithRB, j, k, affinityDest), replicas, false)
+							componentMat = GetAffinityComPlanForDeployment(GetResultWithRB(allResultWithRB, j, k, affinityDest),
+								replicas, false)
 							allResultWithRB[j][k][i] = componentMat
 						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 							componentMat = GetAffinityComPlanForServerless(GetResultWithRB(allResultWithRB, j, k, affinityDest))
@@ -256,6 +259,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				}
 				rbLabels := rbForrb[j].GetLabels()
 				rbLabels[common.TotalPeerOfParentRB] = fmt.Sprintf("%d", rbOld.Spec.TotalPeer)
+				rbLabels[common.ParentRBLabel] = rbOld.Name
 				rbNew := &v1alpha1.ResourceBinding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   fmt.Sprintf("%s-%d", rbOld.Name, rbIndex),
@@ -333,7 +337,8 @@ func prioritizeResourcebindings(ctx context.Context, fwk framework.Framework, de
 	return result, nil
 }
 
-func nomalizeClusters(feasibleClusters []*framework2.ClusterInfo, allClusters []*clusterapi.ManagedCluster) []*framework2.ClusterInfo {
+func nomalizeClusters(feasibleClusters []*framework2.ClusterInfo, allClusters []*clusterapi.ManagedCluster,
+) []*framework2.ClusterInfo {
 	indexCluster := make(map[string]*framework2.ClusterInfo)
 	result := make([]*framework2.ClusterInfo, len(allClusters))
 	for _, feasibleCluster := range feasibleClusters {

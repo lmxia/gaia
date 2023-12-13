@@ -34,11 +34,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
-var (
-	cronKind       = appsV1alpha1.SchemeGroupVersion.WithKind("CronMaster")
-	serverlessKind = "Serverless"
-	deploymentKind = "Deployment"
-)
+var cronKind = appsV1alpha1.SchemeGroupVersion.WithKind("CronMaster")
 
 // Controller is a controller for cronMaster.
 // It is local cluster controller
@@ -62,19 +58,15 @@ type Controller struct {
 	now func() time.Time
 }
 
-func NewController(gaiaClient gaiaClientSet.Interface, kubeClient kubernetes.Interface,
-	gaiaInformerFactory gaiaInformers.SharedInformerFactory,
-	kubeInformerFactory kubeInformers.SharedInformerFactory, localKubeConfig *rest.Config,
-) (*Controller, error) {
+func NewController(gaiaClient gaiaClientSet.Interface, kubeClient kubernetes.Interface, gaiaInformerFactory gaiaInformers.SharedInformerFactory, kubeInformerFactory kubeInformers.SharedInformerFactory, localKubeConfig *rest.Config) (*Controller, error) {
 	localDynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("newCronMasterController: failed to get dynamicClient from local kubeconfig, ERROR: %v", err)
 	}
 	cronInformer := gaiaInformerFactory.Apps().V1alpha1().CronMasters()
 	c := &Controller{
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cronmaster"),
-		restMapper: restmapper.NewDeferredDiscoveryRESTMapper(cacheddiscovery.NewMemCacheClient(
-			kubeClient.Discovery())),
+		queue:                workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cronmaster"),
+		restMapper:           restmapper.NewDeferredDiscoveryRESTMapper(cacheddiscovery.NewMemCacheClient(kubeClient.Discovery())),
 		dynamicClient:        localDynamicClient,
 		gaiaClient:           gaiaClient,
 		kubeClient:           kubeClient,
@@ -153,7 +145,7 @@ func (c *Controller) sync(cronKey string) (*time.Duration, error) {
 	switch {
 	case apierrors.IsNotFound(err):
 		// may be cronmaster is deleted, do not need to requeue this key
-		klog.V(4).InfoS("cronmaster not found, may be it is deleted", "cronmaster", klog.KRef(ns, name), "error", err)
+		klog.V(4).InfoS("cronmaster not found, may be it is deleted", "cronmaster", klog.KRef(ns, name), "err", err)
 		return nil, nil
 	case err != nil:
 		// for other transient apiserver error requeue with exponential backoff
@@ -167,14 +159,12 @@ func (c *Controller) sync(cronKey string) (*time.Duration, error) {
 
 	_, requeueAfter, err := c.syncCronMaster(cron, resourceRaw)
 	if err != nil {
-		klog.V(2).InfoS("error reconciling cronmaster", "cronmaster",
-			klog.KRef(cron.GetNamespace(), cron.GetName()), "ERROR:", err)
+		klog.V(2).InfoS("error reconciling cronmaster", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "ERROR:", err)
 		return nil, err
 	}
 
 	if requeueAfter != nil {
-		klog.V(4).InfoS("re-queuing cronmaster", "cronmaster",
-			klog.KRef(cron.GetNamespace(), cron.GetName()), "requeueAfter", requeueAfter)
+		klog.V(4).InfoS("re-queuing cronmaster", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "requeueAfter", requeueAfter)
 		return requeueAfter, nil
 	}
 	// this marks the key done, currently only happens when the cronmaster is suspended or spec has invalid schedule format
@@ -200,9 +190,7 @@ func (c *Controller) updateCronMaster(old interface{}, curr interface{}) {
 		now := c.now()
 		nextTime, isStart1 := getNextScheduledTimeAfterNow(newCron.Spec.Schedule, now)
 		td := nextScheduledTimeDuration(nextTime, now)
-		klog.InfoS("next schedule", "cronmaster",
-			klog.KRef(newCron.GetNamespace(), newCron.GetName()), "DateTime", nextTime.String(),
-			"isStart", isStart1, "requeueAfter", td)
+		klog.InfoS("next schedule", "cronmaster", klog.KRef(newCron.GetNamespace(), newCron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
 
 		if isStart1 {
 			newCron.Status.NextScheduleAction = appsV1alpha1.Start
@@ -210,12 +198,9 @@ func (c *Controller) updateCronMaster(old interface{}, curr interface{}) {
 			newCron.Status.NextScheduleAction = appsV1alpha1.Stop
 		}
 		newCron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(newCron.GetNamespace()).UpdateStatus(
-			context.TODO(), newCron, metav1.UpdateOptions{})
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(newCron.GetNamespace()).UpdateStatus(context.TODO(), newCron, metav1.UpdateOptions{})
 		if err != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(newCron.GetNamespace(), newCron.GetName()),
-				"resourceVersion", newCron.ResourceVersion, "error", err)
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(newCron.GetNamespace(), newCron.GetName()), "resourceVersion", newCron.ResourceVersion, "err", err)
 			c.enqueueControllerAfter(curr, *td)
 			return
 		}
@@ -230,6 +215,24 @@ func (c *Controller) updateCronMaster(old interface{}, curr interface{}) {
 	// TODO: need to handle the change of spec.JobTemplate.metadata.labels explicitly
 	//   to cleanup jobs with old labels
 	c.enqueueController(curr)
+}
+
+func (c *Controller) deleteCronMaster(obj interface{}) {
+	cron, ok := obj.(*appsV1alpha1.CronMaster)
+	if !ok {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+			return
+		}
+		cron, ok = tombstone.Obj.(*appsV1alpha1.CronMaster)
+		if !ok {
+			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a CronMaster %#v", obj))
+			return
+		}
+	}
+	klog.V(4).Infof("deleting CronMaster %q", klog.KObj(cron))
+	c.enqueueController(cron)
 }
 
 func (c *Controller) enqueueController(obj interface{}) {
@@ -265,15 +268,14 @@ func (c *Controller) getResourceRaw(cron *appsV1alpha1.CronMaster) (*unstructure
 	return resource, nil
 }
 
-func (c *Controller) syncCronMaster(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured,
-) (*appsV1alpha1.CronMaster, *time.Duration, error) {
+func (c *Controller) syncCronMaster(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured) (*appsV1alpha1.CronMaster, *time.Duration, error) {
 	cron = cron.DeepCopy()
 	now := c.now()
 	var err error
 
 	// update status
 	kind := cron.GetResourceKind()
-	if kind == "" || (kind != serverlessKind && kind != deploymentKind) {
+	if kind == "" || (kind != "Serverless" && kind != "Deployment") {
 		klog.WarningfDepth(2, "kind of cronmaster resource %q error", cron.GetResourceKind())
 		return cron, nil, fmt.Errorf("kind of cronmaster resource %q error", cron.GetResourceKind())
 	}
@@ -281,12 +283,9 @@ func (c *Controller) syncCronMaster(cron *appsV1alpha1.CronMaster, resource *uns
 	if err != nil {
 		return cron, nil, err
 	}
-	updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(
-		context.TODO(), cron, metav1.UpdateOptions{})
+	updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
 	if err != nil {
-		klog.InfoS("Unable to update status for CronMaster",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"resourceVersion", cron.ResourceVersion, "error", err)
+		klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
 		return cron, nil, err
 	}
 	*cron = *updatedCron
@@ -320,45 +319,38 @@ func (c *Controller) syncCronMaster(cron *appsV1alpha1.CronMaster, resource *uns
 	return cron, nil, nil
 }
 
-func (c *Controller) getResourcesToBeReconciled(cron *appsV1alpha1.CronMaster, kind string,
-) ([]*appsv1.Deployment, []*unstructured.Unstructured, error) {
+func (c *Controller) getResourcesToBeReconciled(cron *appsV1alpha1.CronMaster, kind string) ([]*appsv1.Deployment, []*unstructured.Unstructured, error) {
 	switch kind {
-	case deploymentKind:
+	case "Deployment":
 		depList, err := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return nil, nil, err
 		}
-		var depsToBeReconciled []*appsv1.Deployment
-		for i := range depList.Items {
+		depsToBeReconciled := []*appsv1.Deployment{}
+		for _, dep := range depList.Items {
 			// If it has a ControllerRef, that's all that matters.
-			controllerRef := metav1.GetControllerOf(&depList.Items[i])
-			if controllerRef != nil && controllerRef.Name == cron.Name {
+			if controllerRef := metav1.GetControllerOf(&dep); controllerRef != nil && controllerRef.Name == cron.Name {
 				// this dep is needs to be reconciled
-				depsToBeReconciled = append(depsToBeReconciled, &depList.Items[i])
+				depsToBeReconciled = append(depsToBeReconciled, &dep)
 			}
 		}
 		return depsToBeReconciled, nil, nil
 
-	case serverlessKind:
-		gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
+	case "Serverless":
+		gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 		restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
-			klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error==%v", klog.KObj(cron), err)
+			klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
 			return nil, nil, err
 		}
-		serList, errList := c.dynamicClient.Resource(restMapping.Resource).Namespace(cron.GetNamespace()).
-			List(context.TODO(), metav1.ListOptions{})
-		if errList != nil {
-			return nil, nil, errList
-		}
+		serList, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(cron.GetNamespace()).List(context.TODO(), metav1.ListOptions{})
 
-		var sersToBeReconciled []*unstructured.Unstructured
-		for i := range serList.Items {
+		sersToBeReconciled := []*unstructured.Unstructured{}
+		for _, ser := range serList.Items {
 			// If it has a ControllerRef, that's all that matters.
-			controllerRef := metav1.GetControllerOf(&serList.Items[i])
-			if controllerRef != nil && controllerRef.Name == cron.Name {
+			if controllerRef := metav1.GetControllerOf(&ser); controllerRef != nil && controllerRef.Name == cron.Name {
 				// this ser is needs to be reconciled
-				sersToBeReconciled = append(sersToBeReconciled, &serList.Items[i])
+				sersToBeReconciled = append(sersToBeReconciled, &ser)
 			}
 		}
 		return nil, sersToBeReconciled, nil
@@ -374,14 +366,14 @@ func (c *Controller) manageStatus(cron *appsV1alpha1.CronMaster, kind string) er
 		return err
 	}
 
-	if kind == deploymentKind {
+	if kind == "Deployment" {
 		for _, d := range depList {
 			childrenResources[d.ObjectMeta.UID] = true
 			found := inActiveList(*cron, d.ObjectMeta.UID)
 			if !found {
-				cronCopy, errGet := c.cronMasterList.CronMasters(cron.GetNamespace()).Get(cron.GetName())
-				if errGet != nil {
-					return errGet
+				cronCopy, err := c.cronMasterList.CronMasters(cron.GetNamespace()).Get(cron.GetName())
+				if err != nil {
+					return err
 				}
 				if inActiveList(*cronCopy, d.ObjectMeta.UID) {
 					cron = cronCopy
@@ -390,21 +382,19 @@ func (c *Controller) manageStatus(cron *appsV1alpha1.CronMaster, kind string) er
 			} else {
 				_, status := getFinishedStatus(d)
 				// deleteFromActiveList(cron, d.ObjectMeta.UID)
-				klog.V(5).InfoS("manage Status",
-					"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-					"Saw existed deployment", klog.KRef(d.GetNamespace(), d.GetName()), "status", status)
+				klog.V(5).InfoS("manage Status", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "Saw existed deployment", klog.KRef(d.GetNamespace(), d.GetName()), "status", status)
 				// todo  update cron.Status.LastSuccessfulTime
 			}
 		}
 	}
-	if kind == serverlessKind {
+	if kind == "Serverless" {
 		for _, s := range serList {
 			childrenResources[s.GetUID()] = true
 			found := inActiveList(*cron, s.GetUID())
 			if !found {
-				cronCopy, errGet := c.cronMasterList.CronMasters(cron.GetNamespace()).Get(cron.GetName())
-				if errGet != nil {
-					return errGet
+				cronCopy, err := c.cronMasterList.CronMasters(cron.GetNamespace()).Get(cron.GetName())
+				if err != nil {
+					return err
 				}
 				if inActiveList(*cronCopy, s.GetUID()) {
 					cron = cronCopy
@@ -413,9 +403,7 @@ func (c *Controller) manageStatus(cron *appsV1alpha1.CronMaster, kind string) er
 			} else {
 				// _, status := getFinishedStatus(s)
 				// deleteFromActiveList(cron, s.ObjectMeta.UID)
-				klog.V(5).InfoS("manage Status",
-					"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-					"Saw existed serverless", klog.KRef(s.GetNamespace(), s.GetName()))
+				klog.V(5).InfoS("manage Status", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "Saw existed serverless", klog.KRef(s.GetNamespace(), s.GetName()))
 				// todo  update cron.Status.LastSuccessfulTime
 			}
 		}
@@ -432,36 +420,30 @@ func (c *Controller) manageStatus(cron *appsV1alpha1.CronMaster, kind string) er
 		// Explicitly try to get the resource from api-server to avoid a slow watch not able to update
 		// the job lister on time, giving an unwanted miss
 		switch j.Kind {
-		case deploymentKind:
-			_, errDep := c.gaiaClient.AppsV1alpha1().CronMasters(j.Namespace).
-				Get(context.TODO(), j.Name, metav1.GetOptions{})
-			switch {
-			case apierrors.IsNotFound(errDep):
-				// The resource is actually missing, delete from active list and schedule a new one if within
-				// deadline
-				klog.V(5).InfoS("deployment is missing, deleting",
-					deploymentKind, klog.KRef(j.Namespace, j.Name),
-					"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
-				deleteFromActiveList(cron, j.UID)
-			case errDep != nil:
-				return errDep
-			}
-		case serverlessKind:
-			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
-			restMapping, errM := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-			if errM != nil {
-				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error==%v", klog.KObj(cron), err)
-				return errM
-			}
-			_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(j.Namespace).
-				Get(context.TODO(), j.Name, metav1.GetOptions{})
+		case "Deployment":
+			_, err := c.gaiaClient.AppsV1alpha1().CronMasters(j.Namespace).Get(context.TODO(), j.Name, metav1.GetOptions{})
 			switch {
 			case apierrors.IsNotFound(err):
 				// The resource is actually missing, delete from active list and schedule a new one if within
 				// deadline
-				klog.V(5).InfoS("serverless is missing, deleting",
-					serverlessKind, klog.KRef(j.Namespace, j.Name),
-					"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
+				klog.V(5).InfoS("deployment is missing, deleting", "Deployment", klog.KRef(j.Namespace, j.Name), "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
+				deleteFromActiveList(cron, j.UID)
+			case err != nil:
+				return err
+			}
+		case "Serverless":
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			restMapping, errM := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if errM != nil {
+				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
+				return errM
+			}
+			_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(j.Namespace).Get(context.TODO(), j.Name, metav1.GetOptions{})
+			switch {
+			case apierrors.IsNotFound(err):
+				// The resource is actually missing, delete from active list and schedule a new one if within
+				// deadline
+				klog.V(5).InfoS("serverless is missing, deleting", "Serverless", klog.KRef(j.Namespace, j.Name), "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
 				deleteFromActiveList(cron, j.UID)
 			case err != nil:
 				return err
@@ -474,57 +456,38 @@ func (c *Controller) manageStatus(cron *appsV1alpha1.CronMaster, kind string) er
 }
 
 // handleOnlyStart means only start not cron
-func (c *Controller) handleOnlyStart(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured,
-	kind string, now time.Time,
-) (*appsV1alpha1.CronMaster, *time.Duration, error) {
+func (c *Controller) handleOnlyStart(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string, now time.Time) (*appsV1alpha1.CronMaster, *time.Duration, error) {
 	depList, serList, err := c.getResourcesToBeReconciled(cron, kind)
-	if err != nil {
-		klog.Errorf("failed to get resource to reconcile")
-		return nil, nil, err
-	}
-	if (len(cron.Status.Active) > 0 && (len(depList) > 0 || len(serList) > 0)) ||
-		cron.Status.NextScheduleAction == appsV1alpha1.Processed {
-		klog.InfoS("handleOnlyStart: already handled", "CronMaster",
-			klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion)
+	if (len(cron.Status.Active) > 0 && (len(depList) > 0 || len(serList) > 0)) || cron.Status.NextScheduleAction == appsV1alpha1.Processed {
+		klog.InfoS("handleOnlyStart: already handled", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion)
 		return cron, nil, nil
 	}
 
 	scheduledTime, isStart, err := getCronNextScheduleTime(cron, now)
 	if err != nil || !isStart {
-		klog.V(2).InfoS("invalid schedule or not start", "CronMaster",
-			klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", cron.Spec.Schedule,
-			"scheduledTime", scheduledTime.String(), "error", err)
+		klog.V(2).InfoS("invalid schedule or not start", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", cron.Spec.Schedule, "scheduledTime", scheduledTime.String(), "err", err)
 		return cron, nil, err
 	}
 
 	if scheduledTime == nil {
-		klog.V(4).InfoS("No unmet start times", "CronMaster",
-			klog.KRef(cron.GetNamespace(), cron.GetName()))
+		klog.V(4).InfoS("No unmet start times", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
 		nextTime, isStart1 := getNextScheduledTimeAfterNow(cron.Spec.Schedule, now)
 		if nextTime.Equal(now) {
-			return cron, nil, fmt.Errorf("failed to get next start datetime, next ScheduleTime==now %q",
-				nextTime.String())
+			return cron, nil, fmt.Errorf("failed to get next start datetime, next ScheduleTime==now %q", nextTime.String())
 		}
 		t := nextScheduledTimeDuration(nextTime, now)
-		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
+		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
 
 		if isStart1 {
 			cron.Status.NextScheduleAction = appsV1alpha1.Start
 		} else {
-			klog.InfoS("invalid schedule lead to no start",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"next ScheduleTime", nextTime.String())
-			return cron, nil, fmt.Errorf("invalid schedule lead to no start, CronMaster==%q next ScheduleTime==%q",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), nextTime.String())
+			klog.InfoS("invalid schedule lead to no start", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "next ScheduleTime", nextTime.String())
+			return cron, nil, fmt.Errorf("invalid schedule lead to no start, CronMaster==%q next ScheduleTime==%q", klog.KRef(cron.GetNamespace(), cron.GetName()), nextTime.String())
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-			UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
 		if err != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"resourceVersion", cron.ResourceVersion, "error", err)
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
 			return cron, nil, err
 		}
 		*cron = *updatedCron
@@ -532,35 +495,25 @@ func (c *Controller) handleOnlyStart(cron *appsV1alpha1.CronMaster, resource *un
 	}
 
 	if len(cron.Status.Active) > 0 && cron.Status.LastScheduleTime.Equal(&metav1.Time{Time: *scheduledTime}) {
-		klog.V(4).InfoS("Not handle cronmaster because the scheduled time is already processed",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", scheduledTime)
+		klog.V(4).InfoS("Not handle cronmaster because the scheduled time is already processed", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", scheduledTime)
 		nextTime, isStart1 := getNextScheduledTimeAfterNow(cron.Spec.Schedule, now)
 		if nextTime.Equal(now) {
-			return cron, nil, fmt.Errorf("failed to get next start datetime, next ScheduleTime==now %q",
-				nextTime.String())
+			return cron, nil, fmt.Errorf("failed to get next start datetime, next ScheduleTime==now %q", nextTime.String())
 		}
 		t := nextScheduledTimeDuration(nextTime, now)
-		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
+		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
 
 		if isStart1 {
 			cron.Status.NextScheduleAction = appsV1alpha1.Start
 		} else {
-			klog.InfoS("invalid schedule lead to not start",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"next ScheduleTime", nextTime.String())
-			return cron, nil, fmt.Errorf("invalid schedule lead to no start, CronMaster==%q  next ScheduleTime==%q",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), nextTime.String())
+			klog.InfoS("invalid schedule lead to not start", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "next ScheduleTime", nextTime.String())
+			return cron, nil, fmt.Errorf("invalid schedule lead to no start, CronMaster==%q  next ScheduleTime==%q", klog.KRef(cron.GetNamespace(), cron.GetName()), nextTime.String())
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-			UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
 		if err != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"resourceVersion", cron.ResourceVersion, "error", err)
-			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 		}
 		*cron = *updatedCron
 		return cron, t, nil
@@ -568,23 +521,18 @@ func (c *Controller) handleOnlyStart(cron *appsV1alpha1.CronMaster, resource *un
 
 	// create or update resources for a cronmaster
 	switch kind {
-	case deploymentKind:
+	case "Deployment":
 		resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 		retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 		if retryErr != nil {
-			klog.InfoS("failed apply Deployment",
-				deploymentKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-				"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
+			klog.InfoS("failed apply Deployment", "Deployment", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
 			return cron, nil, retryErr
 		}
-		klog.InfoS("apply deployment successfully",
-			deploymentKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-			"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
+		klog.InfoS("apply deployment successfully", "Deployment", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 
-		dep2, err := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).
-			Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
+		dep2, err := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), err)
+			klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error == %v", klog.KObj(cron), err)
 			return cron, nil, err
 		}
 		deleteFromActiveList(cron, dep2.GetUID())
@@ -598,39 +546,30 @@ func (c *Controller) handleOnlyStart(cron *appsV1alpha1.CronMaster, resource *un
 		})
 		cron.Status.LastScheduleTime = &metav1.Time{Time: *scheduledTime}
 		cron.Status.NextScheduleAction = appsV1alpha1.Processed
-		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-			UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
 		if err != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"resourceVersion", cron.ResourceVersion, "error", err)
-			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 		}
 		*cron = *updatedCron
 
-	case serverlessKind:
-		gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
+	case "Serverless":
+		gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 		restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
-			klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error==%v", klog.KObj(cron), err)
+			klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
 			return cron, nil, err
 		}
-		_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
-			Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
+		_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 				retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 				if retryErr != nil {
-					klog.InfoS("failed apply Serverless",
-						serverlessKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-						"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
+					klog.InfoS("failed apply Serverless", "Serverless", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
 					return cron, nil, retryErr
 				}
-				klog.InfoS("apply serverless successfully",
-					serverlessKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-					"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
+				klog.InfoS("apply serverless successfully", "Serverless", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 			} else {
 				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), err)
 				return cron, nil, err
@@ -640,11 +579,9 @@ func (c *Controller) handleOnlyStart(cron *appsV1alpha1.CronMaster, resource *un
 		}
 
 		// update status
-		serU, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
-			Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
+		serU, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 		if err != nil {
-			klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v",
-				klog.KObj(cron), err)
+			klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error == %v", klog.KObj(cron), err)
 			return cron, nil, err
 		}
 		deleteFromActiveList(cron, serU.GetUID())
@@ -658,14 +595,10 @@ func (c *Controller) handleOnlyStart(cron *appsV1alpha1.CronMaster, resource *un
 		})
 		cron.Status.LastScheduleTime = &metav1.Time{Time: *scheduledTime}
 		cron.Status.NextScheduleAction = appsV1alpha1.Processed
-		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-			UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
 		if err != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"resourceVersion", cron.ResourceVersion, "error", err)
-			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 		}
 		*cron = *updatedCron
 	}
@@ -673,41 +606,28 @@ func (c *Controller) handleOnlyStart(cron *appsV1alpha1.CronMaster, resource *un
 	return cron, nil, nil
 }
 
-func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured,
-	kind string, now time.Time,
-) (*appsV1alpha1.CronMaster, *time.Duration, error) {
+func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string, now time.Time) (*appsV1alpha1.CronMaster, *time.Duration, error) {
 	if cron.Status.NextScheduleAction == appsV1alpha1.Processed {
-		klog.InfoS("handleOnlyEnd: already handled",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"resourceVersion", cron.ResourceVersion)
+		klog.InfoS("handleOnlyEnd: already handled", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion)
 		return cron, nil, nil
 	}
 	depList, serList, err := c.getResourcesToBeReconciled(cron, kind)
-	if err != nil {
-		klog.Errorf("failed to get resource to reconcile")
-		return nil, nil, err
-	}
 	if len(cron.Status.Active) == 0 && (len(depList) == 0 && len(serList) == 0) {
 		// create or update resources for a cronmaster
 		switch kind {
-		case deploymentKind:
+		case "Deployment":
 			resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 			retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 			if retryErr != nil {
-				klog.InfoS("failed apply deployment",
-					deploymentKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-					"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
+				klog.InfoS("failed apply deployment", "Deployment", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
 				return cron, nil, retryErr
 			}
-			klog.InfoS("apply deployment successfully",
-				deploymentKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-				"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
+			klog.InfoS("apply deployment successfully", "Deployment", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 
-			dep2, errGet := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).
-				Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
-			if errGet != nil {
-				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), errGet)
-				return cron, nil, errGet
+			dep2, err := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
+			if err != nil {
+				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error == %v", klog.KObj(cron), err)
+				return cron, nil, err
 			}
 			deleteFromActiveList(cron, dep2.GetUID())
 			cron.Status.Active = append(cron.Status.Active, v1.ObjectReference{
@@ -719,55 +639,43 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 				ResourceVersion: dep2.ResourceVersion,
 			})
 			cron.Status.LastScheduleTime = &metav1.Time{Time: now}
-			updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-				UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
-			if errUS != nil {
-				klog.InfoS("Unable to update status for CronMaster",
-					"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-					"resourceVersion", cron.ResourceVersion, "error", errUS)
-				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-					klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, errUS)
+			updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+			if err != nil {
+				klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 			}
 			*cron = *updatedCron
 
-		case serverlessKind:
-			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
-			restMapping, errM := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-			if errM != nil {
-				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error==%v", klog.KObj(cron), errM)
-				return cron, nil, errM
+		case "Serverless":
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
+				return cron, nil, err
 			}
-			_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
-				Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
+			_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 					retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 					if retryErr != nil {
-						klog.InfoS("failed apply serverless",
-							serverlessKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-							"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
+						klog.InfoS("failed apply serverless", "Serverless", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
 						return cron, nil, retryErr
 					}
-					klog.InfoS("apply serverless successfully",
-						serverlessKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-						"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
+					klog.InfoS("apply serverless successfully", "Serverless", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 				} else {
 					klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), err)
 					return cron, nil, err
 				}
 			} else {
-				klog.InfoS("handleOnlyEnd: serverless already exists does not need to create",
-					serverlessKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-					"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
+				klog.InfoS("handleOnlyEnd: serverless already exists does not need to create", "Serverless", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 				break
 			}
 
 			// update status
-			serU, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
-				Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
+			serU, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 			if err != nil {
-				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), err)
+				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error == %v", klog.KObj(cron), err)
 				return cron, nil, err
 			}
 			deleteFromActiveList(cron, serU.GetUID())
@@ -780,13 +688,10 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 				ResourceVersion: serU.GetResourceVersion(),
 			})
 			cron.Status.LastScheduleTime = &metav1.Time{Time: now}
-			updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-				UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+			updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
 			if err != nil {
-				klog.InfoS("Unable to update status for CronMaster", "CronMaster",
-					klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "error", err)
-				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-					klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
+				klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 			}
 			*cron = *updatedCron
 		}
@@ -794,71 +699,55 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 
 	scheduledTime, isStart, err := getCronNextScheduleTime(cron, now)
 	if err != nil || isStart {
-		klog.V(2).InfoS("invalid schedule or not stop",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"schedule", cron.Spec.Schedule, "scheduledTime", scheduledTime.String(), "error", err)
+		klog.V(2).InfoS("invalid schedule or not stop", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", cron.Spec.Schedule, "scheduledTime", scheduledTime.String(), "err", err)
 		return cron, nil, err
 	}
 
 	if scheduledTime == nil {
-		klog.V(4).InfoS("No unmet stop times", "CronMaster",
-			klog.KRef(cron.GetNamespace(), cron.GetName()))
+		klog.V(4).InfoS("No unmet stop times", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
 		nextTime, isStart1 := getNextScheduledTimeAfterNow(cron.Spec.Schedule, now)
 		if nextTime.Equal(now) {
 			return cron, nil, fmt.Errorf("failed to get next stop datetime, next ScheduleTime==now %q", nextTime.String())
 		}
 		t := nextScheduledTimeDuration(nextTime, now)
-		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
+		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
 
 		if !isStart1 {
 			cron.Status.NextScheduleAction = appsV1alpha1.Stop
 		} else {
-			klog.InfoS("invalid schedule lead to not stop",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"next ScheduleTime", nextTime.String(), "error", err)
+			klog.InfoS("invalid schedule lead to not stop", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "next ScheduleTime", nextTime.String(), "err", err)
 			return cron, nil, fmt.Errorf("failed to get next stop datetime, next ScheduleTime==now %q", nextTime.String())
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-		updatedCron, err2 := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-			UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
-		if err2 != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"resourceVersion", cron.ResourceVersion, "error", err2)
-			return cron, nil, err2
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		if err != nil {
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, err
 		}
 		*cron = *updatedCron
 		return cron, t, nil
 	}
 
 	if len(cron.Status.Active) > 0 && cron.Status.LastScheduleTime.Equal(&metav1.Time{Time: *scheduledTime}) {
-		klog.V(4).InfoS("not handle cronmaster because the scheduled time is already processed",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", scheduledTime)
+		klog.V(4).InfoS("not handle cronmaster because the scheduled time is already processed", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", scheduledTime)
 		nextTime, isStart1 := getNextScheduledTimeAfterNow(cron.Spec.Schedule, now)
 		if nextTime.Equal(now) {
 			return cron, nil, fmt.Errorf("failed to get next stop datetime, next ScheduleTime==now %q", nextTime.String())
 		}
 		t := nextScheduledTimeDuration(nextTime, now)
-		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
+		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
 
 		if isStart1 {
 			cron.Status.NextScheduleAction = appsV1alpha1.Stop
 		} else {
-			klog.InfoS("invalid schedule lead to no stop",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"next ScheduleTime", nextTime.String(), "error", err)
+			klog.InfoS("invalid schedule lead to no stop", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "next ScheduleTime", nextTime.String(), "err", err)
 			return cron, nil, nil
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-		updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-			UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
-		if errUS != nil {
-			klog.InfoS("Unable to update status for CronMaster", "CronMaster",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "error", errUS)
-			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, errUS)
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		if err != nil {
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 		}
 		*cron = *updatedCron
 		return cron, t, nil
@@ -867,13 +756,11 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 	// delete resources
 	updated := false
 	switch kind {
-	case deploymentKind:
-		dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).
-			Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
+	case "Deployment":
+		dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
 		if err2 != nil {
 			if apierrors.IsNotFound(err2) {
-				klog.InfoS("handleOnlyEnd: stop deployment, but not exists",
-					deploymentKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "error", err2)
+				klog.InfoS("handleOnlyEnd: stop deployment, but not exists", "Deployment", klog.KObj(cron), "CronMaster", klog.KObj(cron), "err", err2)
 				break
 			}
 			klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster==%q, error==%v", klog.KObj(cron), err)
@@ -881,42 +768,36 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 		}
 		retryErr := utils.DeleteResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 		if retryErr != nil {
-			klog.Infof("delete Deployment %q of cronmaster %q error==%v \n",
-				klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
+			klog.Infof("delete Deployment %q of cronmaster %q err==%v \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
 			return cron, nil, retryErr
 		}
 		deleteFromActiveList(cron, dep2.GetUID())
-		klog.Infof("deleted deployment %q of cronmaster %q \n",
-			klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
+		klog.Infof("deleted deployment %q of cronmaster %q \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
 		updated = true
 
-	case serverlessKind:
-		gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
+	case "Serverless":
+		gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
 		restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 		if err != nil {
 			klog.Errorf("syncCronMaster: failed to get restMapping for Serverless==%q, error==%v", klog.KObj(cron), err)
 			return cron, nil, err
 		}
-		serU, err2 := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
-			Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
+		serU, err2 := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 		if err2 != nil {
 			if apierrors.IsNotFound(err2) {
-				klog.InfoS("syncCronMaster: stop serverless, but not exists",
-					serverlessKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "error", err2)
+				klog.InfoS("syncCronMaster: stop serverless, but not exists", "Serverless", klog.KObj(cron), "CronMaster", klog.KObj(cron), "err", err2)
 				break
 			}
-			klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), err2)
+			klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error == %v", klog.KObj(cron), err2)
 			return cron, nil, err2
 		}
 		retryErr := utils.DeleteResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 		if retryErr != nil {
-			klog.Infof("delete Serverless %q of cronmaster %q err2==%v \n",
-				klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
+			klog.Infof("delete Serverless %q of cronmaster %q err2==%v \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
 			return cron, nil, retryErr
 		}
 		deleteFromActiveList(cron, serU.GetUID())
-		klog.Infof("deleted serverless %q of cronmaster %q \n",
-			klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
+		klog.Infof("deleted serverless %q of cronmaster %q \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
 		updated = true
 	}
 
@@ -924,13 +805,10 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 	if updated {
 		cron.Status.LastScheduleTime = &metav1.Time{Time: *scheduledTime}
 		cron.Status.NextScheduleAction = appsV1alpha1.Processed
-		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-			UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
 		if err != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "error", err)
-			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 		}
 		*cron = *updatedCron
 	}
@@ -940,17 +818,13 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 
 func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string, now time.Time) (*appsV1alpha1.CronMaster, *time.Duration, error) {
 	if cron.Status.NextScheduleAction == appsV1alpha1.Processed {
-		klog.InfoS("handleStartAndStop: already handled",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"resourceVersion", cron.ResourceVersion)
+		klog.InfoS("handleStartAndStop: already handled", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion)
 		return cron, nil, nil
 	}
 
 	scheduledTime, isStart, err := getCronNextScheduleTime(cron, now)
 	if err != nil {
-		klog.V(2).InfoS("invalid schedule",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"schedule", cron.Spec.Schedule, "scheduledTime", scheduledTime.String(), "error", err)
+		klog.V(2).InfoS("invalid schedule", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", cron.Spec.Schedule, "scheduledTime", scheduledTime.String(), "err", err)
 		return cron, nil, err
 	}
 	if scheduledTime == nil {
@@ -960,8 +834,7 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 			return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q", nextTime.String())
 		}
 		t := nextScheduledTimeDuration(nextTime, now)
-		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
+		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
 
 		if isStart1 {
 			cron.Status.NextScheduleAction = appsV1alpha1.Start
@@ -969,27 +842,22 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 			cron.Status.NextScheduleAction = appsV1alpha1.Stop
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-		updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-			UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
-		if errUS != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"resourceVersion", cron.ResourceVersion, "error", errUS)
-			return cron, nil, errUS
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		if err != nil {
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, err
 		}
 		return updatedCron, t, nil
 	}
 
 	if cron.Status.LastScheduleTime.Equal(&metav1.Time{Time: *scheduledTime}) {
-		klog.V(4).InfoS("Not handle cronmaster because the scheduled time is already processed",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", scheduledTime)
+		klog.V(4).InfoS("Not handle cronmaster because the scheduled time is already processed", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", scheduledTime)
 		nextTime, isStart1 := getNextScheduledTimeAfterNow(cron.Spec.Schedule, now)
 		if nextTime.Equal(now) {
 			return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q", nextTime.String())
 		}
 		t := nextScheduledTimeDuration(nextTime, now)
-		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
+		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
 
 		if isStart1 {
 			cron.Status.NextScheduleAction = appsV1alpha1.Start
@@ -997,14 +865,10 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 			cron.Status.NextScheduleAction = appsV1alpha1.Stop
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-		updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-			UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
-		if errUS != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"resourceVersion", cron.ResourceVersion, "error", errUS)
-			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, errUS)
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		if err != nil {
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 		}
 		*cron = *updatedCron
 		return cron, t, nil
@@ -1014,28 +878,22 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 	if isStart {
 		updated := false
 		switch kind {
-		case deploymentKind:
-			_, errGet := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).
-				Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
-			if errGet != nil {
-				if apierrors.IsNotFound(errGet) {
+		case "Deployment":
+			_, err := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
 					resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 					retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 					if retryErr != nil {
-						klog.InfoS("failed apply Deployment",
-							deploymentKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-							"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
+						klog.InfoS("failed apply Deployment", "Deployment", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
 						return cron, nil, retryErr
 					}
-					klog.InfoS("apply deployment successfully",
-						deploymentKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-						"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
+					klog.InfoS("apply deployment successfully", "Deployment", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 
-					dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).
-						Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
-					if err2 != nil {
-						klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), err2)
-						return cron, nil, err2
+					dep2, err := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
+					if err != nil {
+						klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), err)
+						return cron, nil, err
 					}
 					deleteFromActiveList(cron, dep2.GetUID())
 					cron.Status.Active = append(cron.Status.Active, v1.ObjectReference{
@@ -1048,35 +906,31 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 					})
 					updated = true
 				} else {
-					klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), errGet)
+					klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error == %v", klog.KObj(cron), err)
 				}
 			}
-		case serverlessKind:
-			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
-			restMapping, errM := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-			if errM != nil {
-				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error==%v", klog.KObj(cron), errM)
-				return cron, nil, errM
+			break
+
+		case "Serverless":
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
+				return cron, nil, err
 			}
-			_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
-				Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
+			_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 					retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 					if retryErr != nil {
-						klog.InfoS("failed apply Serverless",
-							serverlessKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-							"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
+						klog.InfoS("failed apply Serverless", "Serverless", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
 						return cron, nil, retryErr
 					}
-					klog.InfoS("apply serverless successfully",
-						serverlessKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-						"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
+					klog.InfoS("apply serverless successfully", "Serverless", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 
 					// update status
-					serU, err2 := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).
-						Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
+					serU, err2 := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 					if err2 != nil {
 						klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster==%q, error==%v", klog.KObj(cron), err2)
 						return cron, nil, err2
@@ -1095,18 +949,15 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 					klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), err)
 				}
 			}
+			break // already exists
 		}
 
 		if updated {
 			cron.Status.LastScheduleTime = &metav1.Time{Time: *scheduledTime}
-			updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).
-				UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
-			if errUS != nil {
-				klog.InfoS("Unable to update status for CronMaster",
-					"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-					"resourceVersion", cron.ResourceVersion, "error", errUS)
-				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-					klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, errUS)
+			updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+			if err != nil {
+				klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 			}
 			*cron = *updatedCron
 		}
@@ -1114,70 +965,58 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 		// stop delete resource and update status
 		updated := false
 		switch kind {
-		case deploymentKind:
-			dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(
-				context.TODO(), cron.GetName(), metav1.GetOptions{})
+		case "Deployment":
+			dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
 			if err2 != nil {
 				if apierrors.IsNotFound(err2) {
-					klog.InfoS("handleStarStop: stop deployment, but not exists",
-						deploymentKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "error", err2)
+					klog.InfoS("handleStarStop: stop deployment, but not exists", "Deployment", klog.KObj(cron), "CronMaster", klog.KObj(cron), "err", err2)
 					break
 				}
-				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), err2)
+				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error == %v", klog.KObj(cron), err2)
 				return cron, nil, err2
 			}
 			retryErr := utils.DeleteResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 			if retryErr != nil {
-				klog.Infof("delete Deployment %q of cronmaster %q err2==%v \n",
-					klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
+				klog.Infof("delete Deployment %q of cronmaster %q err2==%v \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
 				return cron, nil, retryErr
 			}
 			deleteFromActiveList(cron, dep2.GetUID())
-			klog.Infof("deleted deployment %q of cronmaster %q \n",
-				klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
+			klog.Infof("deleted deployment %q of cronmaster %q \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
 			updated = true
 
-		case serverlessKind:
-			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
-			restMapping, errM := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-			if errM != nil {
-				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error==%v", klog.KObj(cron), errM)
-				return cron, nil, errM
+		case "Serverless":
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
+				return cron, nil, err
 			}
-			serU, err2 := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(
-				context.TODO(), resource.GetName(), metav1.GetOptions{})
+			serU, err2 := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 			if err2 != nil {
 				if apierrors.IsNotFound(err2) {
-					klog.InfoS("handleStarStop: stop serverless, but not exists",
-						serverlessKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "error", err2)
+					klog.InfoS("handleStarStop: stop serverless, but not exists", "Serverless", klog.KObj(cron), "CronMaster", klog.KObj(cron), "err", err2)
 					break
 				}
-				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), err2)
+				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error == %v", klog.KObj(cron), err2)
 				return cron, nil, err2
 			}
 			retryErr := utils.DeleteResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 			if retryErr != nil {
-				klog.Infof("delete Serverless %q of cronmaster %q error==%v \n",
-					klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
+				klog.Infof("delete Serverless %q of cronmaster %q err==%v \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
 				return cron, nil, retryErr
 			}
 			deleteFromActiveList(cron, serU.GetUID())
-			klog.Infof("deleted serverless %q of cronmaster %q \n",
-				klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
+			klog.Infof("deleted serverless %q of cronmaster %q \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
 			updated = true
 		}
 
 		if updated {
 			cron.Status.LastScheduleTime = &metav1.Time{Time: *scheduledTime}
 			cron.Status.NextScheduleAction = appsV1alpha1.Processed
-			updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(
-				context.TODO(), cron, metav1.UpdateOptions{})
-			if errUS != nil {
-				klog.InfoS("Unable to update status for CronMaster",
-					"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-					"resourceVersion", cron.ResourceVersion, "error", errUS)
-				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-					klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, errUS)
+			updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+			if err != nil {
+				klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 			}
 			*cron = *updatedCron
 			return cron, nil, nil
@@ -1189,27 +1028,20 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 		return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q", nextTime.String())
 	}
 	td := nextScheduledTimeDuration(nextTime, now)
-	klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-		"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
+	klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
 
-	switch {
-	case isStart1 && cron.Status.NextScheduleAction == "":
+	if isStart1 && cron.Status.NextScheduleAction == "" {
 		cron.Status.NextScheduleAction = appsV1alpha1.Start
-	case !isStart1 && cron.Status.NextScheduleAction == "start":
+	} else if !isStart1 && cron.Status.NextScheduleAction == "start" {
 		cron.Status.NextScheduleAction = appsV1alpha1.Stop
-	default:
-		klog.InfoS("timing start before timing stop: failed to get correct nextScheduledTimeDuration",
-			"cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion)
-		return cron, nil, fmt.Errorf("timing start before timing stop: failed to get correct nextScheduledTimeDuration,"+
-			" cronmaster: %q(rv = %s)", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion)
+	} else {
+		klog.InfoS("timing start before timing stop: failed to get correct nextScheduledTimeDuration", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion)
+		return cron, nil, fmt.Errorf("timing start before timing stop: failed to get correct nextScheduledTimeDuration, cronmaster: %q(rv = %s)", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion)
 	}
 	cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-	updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(
-		context.TODO(), cron, metav1.UpdateOptions{})
+	updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
 	if err != nil {
-		klog.InfoS("Unable to update status for CronMaster",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"resourceVersion", cron.ResourceVersion, "error", err)
+		klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
 		return cron, nil, err
 	}
 	return updatedCron, td, nil
@@ -1218,8 +1050,7 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string, now time.Time) (*appsV1alpha1.CronMaster, *time.Duration, error) {
 	scheduledTime, isStart, err := getCronNextScheduleTime(cron, now)
 	if err != nil {
-		klog.V(2).InfoS("invalid schedule", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"schedule", cron.Spec.Schedule, "scheduledTime", scheduledTime.String(), "error", err)
+		klog.V(2).InfoS("invalid schedule", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", cron.Spec.Schedule, "scheduledTime", scheduledTime.String(), "err", err)
 		return cron, nil, err
 	}
 	if scheduledTime == nil {
@@ -1229,8 +1060,7 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q", nextTime.String())
 		}
 		td := nextScheduledTimeDuration(nextTime, now)
-		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
+		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
 
 		if isStart1 {
 			cron.Status.NextScheduleAction = appsV1alpha1.Start
@@ -1238,27 +1068,22 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			cron.Status.NextScheduleAction = appsV1alpha1.Stop
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-		updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(
-			context.TODO(), cron, metav1.UpdateOptions{})
-		if errUS != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"resourceVersion", cron.ResourceVersion, "error", errUS)
-			return cron, nil, errUS
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		if err != nil {
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, err
 		}
 		return updatedCron, td, nil
 	}
 
 	if cron.Status.LastScheduleTime.Equal(&metav1.Time{Time: *scheduledTime}) {
-		klog.V(4).InfoS("Not handle cronmaster because the scheduled time is already processed",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", scheduledTime)
+		klog.V(4).InfoS("Not handle cronmaster because the scheduled time is already processed", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", scheduledTime)
 		nextTime, isStart1 := getNextScheduledTimeAfterNow(cron.Spec.Schedule, now)
 		if nextTime.Equal(now) {
 			return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q", nextTime.String())
 		}
 		td := nextScheduledTimeDuration(nextTime, now)
-		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
+		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
 
 		if isStart1 {
 			cron.Status.NextScheduleAction = appsV1alpha1.Start
@@ -1266,14 +1091,10 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			cron.Status.NextScheduleAction = appsV1alpha1.Stop
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-		updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(
-			context.TODO(), cron, metav1.UpdateOptions{})
-		if errUS != nil {
-			klog.InfoS("Unable to update status for CronMaster",
-				"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-				"resourceVersion", cron.ResourceVersion, "error", errUS)
-			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-				klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, errUS)
+		updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+		if err != nil {
+			klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+			return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 		}
 		*cron = *updatedCron
 		return cron, td, nil
@@ -1282,25 +1103,20 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 	// create or update resources for a cronmaster
 	if isStart {
 		switch kind {
-		case deploymentKind:
-			depExist, errGet := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(
-				context.TODO(), cron.GetName(), metav1.GetOptions{})
-			if errGet != nil {
-				if apierrors.IsNotFound(errGet) {
+		case "Deployment":
+			depExist, err := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
+			if err != nil {
+				if apierrors.IsNotFound(err) {
 					resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 					retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 					if retryErr != nil {
-						klog.InfoS("failed apply Deployment",
-							deploymentKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-							"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
+						klog.InfoS("failed apply Deployment", "Deployment", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
 						return cron, nil, retryErr
 					}
-					klog.InfoS("apply Deployment successful",
-						deploymentKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-						"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
+					klog.InfoS("apply Deployment successful", "Deployment", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 				} else {
-					klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), errGet)
-					return cron, nil, errGet
+					klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error == %v", klog.KObj(cron), err)
+					return cron, nil, err
 				}
 			} else {
 				deployResource := &appsv1.Deployment{}
@@ -1310,23 +1126,18 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 				replicas := *deployResource.Spec.Replicas + *depExist.Spec.Replicas
 				depCopy := depExist.DeepCopy()
 				depCopy.Spec.Replicas = &(replicas)
-				_, err = c.kubeClient.AppsV1().Deployments(depCopy.GetNamespace()).Update(
-					context.TODO(), depCopy, metav1.UpdateOptions{})
+				_, err = c.kubeClient.AppsV1().Deployments(depCopy.GetNamespace()).Update(context.TODO(), depCopy, metav1.UpdateOptions{})
 				if err != nil {
-					klog.WarningDepth(2, fmt.Sprintf("syncCronMaster: failed to update replicas of "+
-						"existing Deployment %q, error==%v", klog.KObj(cron), err))
+					klog.WarningDepth(2,
+						fmt.Sprintf("syncCronMaster: failed to update replicas of existing Deployment %q, error==%v", klog.KObj(cron), err))
 					return cron, nil, err
 				}
-				klog.InfoS("cron start updated replicas of deployment",
-					"from replicas", *depExist.Spec.Replicas, "to replicas", replicas,
-					deploymentKind, klog.KRef(cron.GetNamespace(), cron.GetName()),
-					"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
+				klog.InfoS("cron start updated replicas of deployment", "from replicas", *depExist.Spec.Replicas, "to replicas", replicas, "Deployment", klog.KRef(cron.GetNamespace(), cron.GetName()), "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
 			}
 
-			dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(
-				context.TODO(), cron.GetName(), metav1.GetOptions{})
+			dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
 			if err2 != nil {
-				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), err2)
+				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error == %v", klog.KObj(cron), err2)
 				return cron, nil, err2
 			}
 			deleteFromActiveList(cron, dep2.GetUID())
@@ -1339,39 +1150,30 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 				ResourceVersion: dep2.ResourceVersion,
 			})
 			cron.Status.LastScheduleTime = &metav1.Time{Time: *scheduledTime}
-			updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(
-				context.TODO(), cron, metav1.UpdateOptions{})
-			if errUS != nil {
-				klog.InfoS("Unable to update status for CronMaster",
-					"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-					"resourceVersion", cron.ResourceVersion, "error", errUS)
-				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-					klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, errUS)
+			updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+			if err != nil {
+				klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 			}
 			*cron = *updatedCron
-		case serverlessKind:
+		case "Serverless":
 			updated := false
-			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
-			restMapping, errM := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-			if errM != nil {
-				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error==%v", klog.KObj(cron), errM)
-				return cron, nil, errM
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error == %v", klog.KObj(cron), err)
+				return cron, nil, err
 			}
-			_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(
-				context.TODO(), resource.GetName(), metav1.GetOptions{})
+			_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 			if err != nil {
 				if apierrors.IsNotFound(err) {
 					resource.SetOwnerReferences([]metav1.OwnerReference{*metav1.NewControllerRef(cron, cronKind)})
 					retryErr := utils.ApplyResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 					if retryErr != nil {
-						klog.InfoS("failed apply Serverless",
-							serverlessKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-							"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
+						klog.InfoS("failed apply Serverless", "Serverless", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()), "error", retryErr)
 						return cron, nil, retryErr
 					}
-					klog.InfoS("apply serverless successful",
-						serverlessKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
-						"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
+					klog.InfoS("apply serverless successful", "Serverless", klog.KRef(resource.GetNamespace(), resource.GetName()), "CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 					updated = true
 				} else {
 					klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), err)
@@ -1381,11 +1183,10 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 
 			// update status
 			if updated {
-				serU, errGet := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(
-					context.TODO(), resource.GetName(), metav1.GetOptions{})
-				if errGet != nil {
-					klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), errGet)
-					return cron, nil, errGet
+				serU, err := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
+				if err != nil {
+					klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error == %v", klog.KObj(cron), err)
+					return cron, nil, err
 				}
 				deleteFromActiveList(cron, serU.GetUID())
 				cron.Status.Active = append(cron.Status.Active, v1.ObjectReference{
@@ -1397,13 +1198,10 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 					ResourceVersion: serU.GetResourceVersion(),
 				})
 				cron.Status.LastScheduleTime = &metav1.Time{Time: *scheduledTime}
-				updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(
-					context.TODO(), cron, metav1.UpdateOptions{})
-				if errUS != nil {
-					klog.InfoS("Unable to update status for CronMaster", "CronMaster",
-						klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "error", errUS)
-					return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-						klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, errUS)
+				updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+				if err != nil {
+					klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+					return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 				}
 				*cron = *updatedCron
 			}
@@ -1412,41 +1210,35 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 		updated := false
 		// stop delete resource and update status
 		switch kind {
-		case deploymentKind:
-			dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(
-				context.TODO(), cron.GetName(), metav1.GetOptions{})
+		case "Deployment":
+			dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(context.TODO(), cron.GetName(), metav1.GetOptions{})
 			if err2 != nil {
 				if apierrors.IsNotFound(err2) {
-					klog.InfoS("syncCronMaster: stop deployment, but not exists",
-						deploymentKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "err3", err2)
+					klog.InfoS("syncCronMaster: stop deployment, but not exists", "Deployment", klog.KObj(cron), "CronMaster", klog.KObj(cron), "err", err2)
 					break
 				}
-				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), err2)
+				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error == %v", klog.KObj(cron), err2)
 				return cron, nil, err2
 			}
 			retryErr := utils.DeleteResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 			if retryErr != nil {
-				klog.Infof("delete Deployment %q of cronmaster %q err3==%v \n",
-					klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
+				klog.Infof("delete Deployment %q of cronmaster %q err==%v \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
 				return cron, nil, retryErr
 			}
 			deleteFromActiveList(cron, dep2.GetUID())
-			klog.Infof("deleted Deployment %q of cronmaster %q \n",
-				klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
+			klog.Infof("deleted Deployment %q of cronmaster %q \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
 			updated = true
-		case serverlessKind:
-			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
-			restMapping, err3 := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-			if err3 != nil {
-				klog.Errorf("syncCronMaster: failed to get restMapping for Serverless==%q, error==%v", klog.KObj(cron), err3)
-				return cron, nil, err3
+		case "Serverless":
+			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: "Serverless"}
+			restMapping, err := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
+			if err != nil {
+				klog.Errorf("syncCronMaster: failed to get restMapping for Serverless==%q, error==%v", klog.KObj(cron), err)
+				return cron, nil, err
 			}
-			serU, err2 := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(
-				context.TODO(), resource.GetName(), metav1.GetOptions{})
+			serU, err2 := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(context.TODO(), resource.GetName(), metav1.GetOptions{})
 			if err2 != nil {
 				if apierrors.IsNotFound(err2) {
-					klog.InfoS("syncCronMaster: stop serverless, but not exists",
-						serverlessKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "err3", err2)
+					klog.InfoS("syncCronMaster: stop serverless, but not exists", "Serverless", klog.KObj(cron), "CronMaster", klog.KObj(cron), "err", err2)
 					break
 				}
 				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster==%q, error==%v", klog.KObj(cron), err2)
@@ -1454,24 +1246,19 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			}
 			retryErr := utils.DeleteResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
 			if retryErr != nil {
-				klog.Infof("delete Serverless %q of cronmaster %q err2==%v \n",
-					klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
+				klog.Infof("delete Serverless %q of cronmaster %q err2==%v \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron), retryErr)
 				return cron, nil, retryErr
 			}
 			deleteFromActiveList(cron, serU.GetUID())
-			klog.Infof("deleted Serverless %q of cronmaster %q \n",
-				klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
+			klog.Infof("deleted Serverless %q of cronmaster %q \n", klog.KRef(resource.GetNamespace(), resource.GetName()), klog.KObj(cron))
 			updated = true
 		}
 		if updated {
 			cron.Status.LastScheduleTime = &metav1.Time{Time: *scheduledTime}
-			updatedCron, errUS := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(
-				context.TODO(), cron, metav1.UpdateOptions{})
-			if errUS != nil {
-				klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(),
-					cron.GetName()), "resourceVersion", cron.ResourceVersion, "error", errUS)
-				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v",
-					klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, errUS)
+			updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
+			if err != nil {
+				klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
+				return cron, nil, fmt.Errorf("unable to update status for %s (rv = %s): %v", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion, err)
 			}
 			*cron = *updatedCron
 		}
@@ -1483,8 +1270,7 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 		return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q", nextTime.String())
 	}
 	td := nextScheduledTimeDuration(nextTime, now)
-	klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-		"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
+	klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
 
 	if isStart1 {
 		cron.Status.NextScheduleAction = appsV1alpha1.Start
@@ -1492,12 +1278,9 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 		cron.Status.NextScheduleAction = appsV1alpha1.Stop
 	}
 	cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime.Local()}
-	updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(
-		context.TODO(), cron, metav1.UpdateOptions{})
+	updatedCron, err := c.gaiaClient.AppsV1alpha1().CronMasters(cron.GetNamespace()).UpdateStatus(context.TODO(), cron, metav1.UpdateOptions{})
 	if err != nil {
-		klog.InfoS("Unable to update status for CronMaster",
-			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
-			"resourceVersion", cron.ResourceVersion, "error", err)
+		klog.InfoS("Unable to update status for CronMaster", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion, "err", err)
 		return cron, nil, err
 	}
 	*cron = *updatedCron

@@ -12,7 +12,10 @@ import (
 	"k8s.io/klog/v2"
 )
 
-var nextScheduleDelta = 100 * time.Millisecond
+var (
+	nextScheduleDelta = 100 * time.Millisecond
+	LocalZone         = time.FixedZone("CST", 8*3600)
+)
 
 // nextScheduledTimeDuration returns
 func nextScheduledTimeDuration(t, now time.Time) *time.Duration {
@@ -67,7 +70,7 @@ func getMostRecentScheduleTime(config appsV1alpha1.SchedulerConfig, earliestTime
 	}
 	timeElapsed := int64(now.Sub(t1).Seconds())
 	numberOfMissedSchedules := (timeElapsed / timeBetweenTwoSchedules) + 1
-	t := time.Unix(t1.Unix()+((numberOfMissedSchedules-1)*timeBetweenTwoSchedules), 0).Local()
+	t := time.Unix(t1.Unix()+((numberOfMissedSchedules-1)*timeBetweenTwoSchedules), 0).In(LocalZone)
 
 	return &t, isStart1, numberOfMissedSchedules, nil
 }
@@ -130,7 +133,7 @@ func getRecentStartTime(now time.Time, scheduleOfWeekday map[time.Weekday]appsV1
 				utilruntime.HandleError(err)
 				return nil
 			}
-			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(), tOnly.Second(), 0, now.Location())
+			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(), tOnly.Second(), 0, LocalZone)
 			tSchedule = tSchedule.AddDate(0, 0, j)
 			if tSchedule.After(now) {
 				klog.V(5).InfoS("next start schedule", "DateTime", tSchedule, "weekday ", nowWeekday, "after the datetime", now)
@@ -156,7 +159,7 @@ func getRecentEndTime(now time.Time, scheduleOfWeekday map[time.Weekday]appsV1al
 				utilruntime.HandleError(err)
 				return nil
 			}
-			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(), tOnly.Second(), 0, now.Location())
+			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(), tOnly.Second(), 0, LocalZone)
 			tSchedule = tSchedule.AddDate(0, 0, j)
 			if tSchedule.After(now) {
 				klog.V(5).InfoS("next stop schedule", "DateTime", tSchedule, "weekday", nowWeekday, "after the datetime", now)
@@ -193,7 +196,7 @@ func deleteFromActiveList(cron *appsV1alpha1.CronMaster, uid types.UID) {
 	}
 	// TODO: @alpatel the memory footprint can may be reduced here by
 	//  cj.Status.Active = append(cj.Status.Active[:indexToRemove], cj.Status.Active[indexToRemove:]...)
-	newActive := []corev1.ObjectReference{}
+	var newActive []corev1.ObjectReference
 	for _, d := range cron.Status.Active {
 		if d.UID != uid {
 			newActive = append(newActive, d)

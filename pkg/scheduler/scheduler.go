@@ -982,7 +982,7 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, des
 	rbs []*appsapi.ResourceBinding, clusterName string, ctx context.Context) bool {
 	skipDescCreate := true
 	for _, item := range rbs {
-		if skipDescCreate {
+		if len(clusterName) != 0 && skipDescCreate {
 			if has := hasReplicasInCluster(item.Spec.RbApps, clusterName); has {
 				skipDescCreate = false
 			}

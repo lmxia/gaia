@@ -501,7 +501,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	if len(mcls.Items) == 0 {
 		// there is no child clusters. no need to schedule just transfer.
 		transferRB(sched.parentGaiaClient, sched.localGaiaClient, sched.dedicatedNamespace,
-			common.GaiaRSToBeMergedReservedNamespace, desc.Name, rbs, "", ctx)
+			common.GaiaRSToBeMergedReservedNamespace, desc.Name, rbs, ctx)
 		klog.Info("scheduler success just change rb namespace.")
 	} else {
 		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
@@ -518,10 +518,18 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 			return
 		}
 
+		// only one time.
+		transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
+			common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
 		for _, itemCluster := range mcls.Items {
-			if transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
-				common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings,
-				itemCluster.Name, ctx) {
+			skipDescCreate := true
+			for _, itemRb := range scheduleResult.ResourceBindings {
+				if has := hasReplicasInCluster(itemRb.Spec.RbApps, itemCluster.Name); has {
+					skipDescCreate = false
+					break
+				}
+			}
+			if skipDescCreate {
 				continue
 			}
 			// 2. create desc in to child cluster namespace
@@ -979,14 +987,8 @@ func getTotal(spec, lenResult int) int {
 
 // transfer from src to dst
 func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, descName string,
-	rbs []*appsapi.ResourceBinding, clusterName string, ctx context.Context) bool {
-	skipDescCreate := true
+	rbs []*appsapi.ResourceBinding, ctx context.Context) {
 	for _, item := range rbs {
-		if len(clusterName) != 0 && skipDescCreate {
-			if has := hasReplicasInCluster(item.Spec.RbApps, clusterName); has {
-				skipDescCreate = false
-			}
-		}
 		rb := &appsapi.ResourceBinding{}
 		rb.Name = item.Name
 		rb.Namespace = dstNS
@@ -1019,7 +1021,6 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, des
 			klog.Infof("faild to delete rbs in parent cluster", err)
 		}
 	}
-	return skipDescCreate
 }
 
 // hasReplicasInCluster check if there is replicas in the cluster, return true if there is.

@@ -552,9 +552,9 @@ func getDeployCondition(errs []error, clusterName, rbRef string) metav1.Conditio
 	}
 }
 
-func ApplyResourceBinding(ctx context.Context, localDynamicClient dynamic.Interface, discoveryRESTMapper meta.RESTMapper,
-	rb *appsv1alpha1.ResourceBinding, clusterName, descriptionName, networkBindURL string,
-	nwr *appsv1alpha1.NetworkRequirement,
+func ApplyResourceBinding(ctx context.Context, localDynamicClient dynamic.Interface,
+	discoveryRESTMapper meta.RESTMapper, rb *appsv1alpha1.ResourceBinding,
+	clusterName, descriptionName, networkBindURL string, nwr *appsv1alpha1.NetworkRequirement,
 ) error {
 	var allErrs []error
 	var err error
@@ -562,6 +562,7 @@ func ApplyResourceBinding(ctx context.Context, localDynamicClient dynamic.Interf
 	wg := sync.WaitGroup{}
 	for _, rbApp := range rb.Spec.RbApps {
 		if rbApp.ClusterName == clusterName {
+			newChildren := cutZeroChildren(rbApp.Children)
 			newRB := &appsv1alpha1.ResourceBinding{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ResourceBinding",
@@ -579,7 +580,7 @@ func ApplyResourceBinding(ctx context.Context, localDynamicClient dynamic.Interf
 					StatusScheduler: rb.Spec.StatusScheduler,
 					TotalPeer:       rb.Spec.TotalPeer,
 					ParentRB:        rb.Name,
-					RbApps:          rbApp.Children,
+					RbApps:          newChildren,
 					NetworkPath:     rb.Spec.NetworkPath,
 				},
 			}
@@ -626,6 +627,20 @@ func ApplyResourceBinding(ctx context.Context, localDynamicClient dynamic.Interf
 
 	klog.InfoS("apply resourcebinding successfully", "ResourceBinding", klog.KObj(rb))
 	return nil
+}
+
+func cutZeroChildren(children []*appsv1alpha1.ResourceBindingApps) []*appsv1alpha1.ResourceBindingApps {
+	var newChildren []*appsv1alpha1.ResourceBindingApps
+	for _, rbApp := range children {
+		for _, v := range rbApp.Replicas {
+			if v > 0 {
+				newChildren = append(newChildren, rbApp)
+				break
+			}
+		}
+	}
+
+	return newChildren
 }
 
 type NetworkScheme struct {

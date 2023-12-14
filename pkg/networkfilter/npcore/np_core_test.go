@@ -195,7 +195,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"delayValue\":10000,\"lostValue\":100,\"jitterValue\":100,\"throughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lostValue\":100,\"jitterValue\":100,\"throughputValue\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -221,7 +221,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"delayValue\":10000,\"lostValue\":100,\"jitterValue\":100,\"throughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -436,6 +436,101 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 						},
 						Relation: "In",
 						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
+					},
+				},
+			},
+		},
+	}
+	return rbs, &networkReq
+}
+
+func SetRbsAndNetReqProvidersNULL() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+	var rbs []*v1alpha1.ResourceBinding
+	rb0 := v1alpha1.ResourceBinding{
+		Spec: v1alpha1.ResourceBindingSpec{
+			AppID: "0",
+			RbApps: []*v1alpha1.ResourceBindingApps{
+				0: {
+					ClusterName: "Domain1",
+					Replicas: map[string]int32{
+						"a": 2,
+						"b": 0,
+					},
+				},
+				1: {
+					ClusterName: "Domain4",
+					Replicas: map[string]int32{
+						"a": 0,
+						"b": 1,
+					},
+				},
+				2: {
+					ClusterName: "Domain3",
+					Replicas: map[string]int32{
+						"a": 0,
+						"c": 2,
+					},
+				},
+			},
+		},
+	}
+	rbs = append(rbs, &rb0)
+
+	networkReq := v1alpha1.NetworkRequirement{
+		Spec: v1alpha1.NetworkRequirementSpec{
+			WorkloadComponents: v1alpha1.WorkloadComponents{
+				Scns: []v1alpha1.Scn{
+					0: {
+						Name:   "a",
+						SelfID: []string{"sca1", "sca2"},
+					},
+					1: {
+						Name:   "b",
+						SelfID: []string{"scb1"},
+					},
+				},
+
+				Links: []v1alpha1.Link{
+					0: {
+						LinkName:      "link-a-b",
+						SourceID:      "sca1",
+						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
+							},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+				},
+			},
+			Deployconditions: v1alpha1.DeploymentCondition{
+				Mandatory: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-b",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "provider",
+							Type: "label",
+						},
+						Relation: "In",
+						Extent:   []byte("[]"),
 					},
 				},
 			},
@@ -691,7 +786,7 @@ func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":1,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":1,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -796,7 +891,7 @@ func SetRbsAndNetReqSameDomain() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 				},
 			},
@@ -921,7 +1016,7 @@ func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 				},
 				BestEffort: []v1alpha1.Condition{
@@ -935,7 +1030,7 @@ func SetRbsAndNetReqTopoFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 				},
 			},
@@ -1060,7 +1155,7 @@ func SetRbsAndNetReqDelaySlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Net
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":2,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":2,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -1227,7 +1322,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -1253,7 +1348,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1420,7 +1515,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -1446,7 +1541,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1620,7 +1715,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -1646,7 +1741,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1814,7 +1909,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -1840,7 +1935,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"DelayValue\":10000,\"LostValue\":100,\"JitterValue\":100,\"ThroughputValue\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{

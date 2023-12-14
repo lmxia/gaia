@@ -112,11 +112,13 @@ func (domainSrPath *DomainSrPath) IsSatisfiedRtt(reverseDelay uint32, rttAttr Ap
 
 	infoString := fmt.Sprintf("reverseDelay is: (%+v), rttAttr is: (%+v)", reverseDelay, rttAttr)
 	nputil.TraceInfo(infoString)
-	_, tmpDelay := domainSrPath.GetDomainSrPathDelay()
-	// 标识通信有rt指标要求
-	if rttAttr.Rtt != 0 && (tmpDelay+reverseDelay) > (uint32)(rttAttr.Rtt) {
-		nputil.TraceInfoEnd("False: Rtt is not satisfied")
-		return false
+	if rttAttr.Rtt != 0 {
+		_, tmpDelay := domainSrPath.GetDomainSrPathDelay()
+		// 标识通信有rt指标要求
+		if (tmpDelay + reverseDelay) > (uint32)(rttAttr.Rtt) {
+			nputil.TraceInfoEnd("False: Rtt is not satisfied")
+			return false
+		}
 	}
 	nputil.TraceInfoEnd("RTT is satisfied, True")
 	return true
@@ -127,6 +129,10 @@ func (domainSrPath *DomainSrPath) IsSatisfiedProvider(provider AppLinkProviderAt
 
 	infoString := fmt.Sprintf("Providerlist is: (%+v)", provider)
 	nputil.TraceInfo(infoString)
+	if 0 == len(provider.Providers) {
+		nputil.TraceInfoEnd("ProviderList is null, True")
+		return true
+	}
 	graph := GraphFindByGraphType(GraphTypeAlgo_Cspf)
 	domainInfoPath := graph.GetDomainPathNameWithFaric(*domainSrPath)
 	var domainNameList []string

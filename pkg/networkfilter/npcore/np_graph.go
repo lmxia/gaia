@@ -629,7 +629,7 @@ func (domainGraph *DomainGraph) DomainSrPathCreateByKspPath(path PathAttr) *Doma
 	// baseDomainGraph := GetCoreLocal().BaseGraphPoint.BaseDomainGraphPoint
 	domainSrPath := new(DomainSrPath)
 
-	if len(path.PathIds) == 0 {
+	if len(path.PathIds) == 0 || len(path.PathIds) == 1 {
 		nputil.TraceInfoEnd("No shortest path!")
 		return nil
 	}

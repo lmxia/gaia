@@ -183,7 +183,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -253,6 +253,7 @@ func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequire
 					Replicas: map[string]int32{
 						"a": 2,
 						"b": 0,
+						"c": 2,
 					},
 				},
 				1: {
@@ -266,7 +267,7 @@ func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequire
 					ClusterName: "Domain3",
 					Replicas: map[string]int32{
 						"a": 0,
-						"c": 2,
+						"c": 0,
 					},
 				},
 			},
@@ -286,6 +287,10 @@ func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequire
 						Name:   "b",
 						SelfID: []string{"scb1"},
 					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
 				},
 
 				Links: []v1alpha1.Link{
@@ -293,6 +298,31 @@ func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequire
 						LinkName:      "link-a-b",
 						SourceID:      "sca1",
 						DestinationID: "scb1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
+							},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scb1-dk1",
+								Value: "scb1-dv1",
+							},
+							1: {
+								Key:   "scb1-dk2",
+								Value: "scb1-dv2",
+							},
+						},
+					},
+					1: {
+						LinkName:      "link-a-c",
+						SourceID:      "sca1",
+						DestinationID: "scc1",
 						SourceAttributes: []v1alpha1.Attributes{
 							0: {
 								Key:   "sca1-sk1",
@@ -341,6 +371,18 @@ func SetRbsAndNetReqRtt() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequire
 						},
 						Relation: "Is",
 						Extent:   []byte("{\"Accelerate\": true}"),
+					},
+					2: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "rtt",
+							Type: "rtt",
+						},
+						Relation: "Is",
+						Extent:   []byte("{\"Rtt\":40}"),
 					},
 				},
 			},
@@ -774,7 +816,7 @@ func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1195,6 +1237,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 					Replicas: map[string]int32{
 						"a": 0,
 						"b": 1,
+						"c": 1,
 					},
 				},
 			},
@@ -1310,7 +1353,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric14\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1503,7 +1546,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1584,7 +1627,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 					},
 				},
 				2: {
-					ClusterName: "Domain5",
+					ClusterName: "Domain3",
 					Replicas: map[string]int32{
 						"a": 0,
 						"c": 2,
@@ -1703,7 +1746,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1775,13 +1818,14 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 					Replicas: map[string]int32{
 						"a": 2,
 						"b": 0,
+						"c": 2,
 					},
 				},
 				1: {
 					ClusterName: "Domain4",
 					Replicas: map[string]int32{
 						"a": 0,
-						"b": 1,
+						"b": 2,
 					},
 				},
 			},
@@ -1897,7 +1941,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -2259,7 +2303,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainTopoCache4.LocalDomainName = "Domain4"
 	domainTopoCache4.LocalNodeSN = "4-1"
 	domainVLink41 := new(ncsnp.DomainVLink)
-	domainVLink41.LocalDomainName = "Domain3"
+	domainVLink41.LocalDomainName = "Domain4"
 	domainVLink41.LocalDomainId = 4
 	domainVLink41.RemoteDomainName = "Domain1"
 	domainVLink41.RemoteDomainId = 1

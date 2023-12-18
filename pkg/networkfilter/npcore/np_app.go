@@ -977,26 +977,42 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 				appSelectedPath.AppConnectAttr.Accelerate = appDomainPath.AppConnect.Accelerate
 				appSelectedPath.DomainSrPath = appDomainPath.DomainSrPath
 				appSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(appDomainPath.DomainSrPath)
-				rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
+
 				// 如果有rtt要求，计算并同步最短时延的反向路径, rtt在计算正向路径时已经满足，此处不用校验，肯定会满足
+				rvrAppSelectedPath := AppConnectSelectedDomainPath{}
 				if appDomainPath.AppConnect.Rtt != 0 {
-					appSelectedPath = AppConnectSelectedDomainPath{}
+					reverseDomainSrPath := new(DomainSrPath)
 					// 获取反向路径的domainsr
-					reverseDomainSrPath := GetReverseDomainPath(graph, appDomainPath.AppConnect)
+					// 源和目的在同一个filed,认为可达，返回所在filed
+					if appDomainPath.AppConnect.Key.SrcDomainId == appDomainPath.AppConnect.Key.DstDomainId {
+						*reverseDomainSrPath = DomainSrPath{
+							DomainSidArray: []DomainSid{
+								0: DomainSid{DomainId: appDomainPath.AppConnect.Key.SrcDomainId},
+							},
+						}
+					} else {
+						reverseDomainSrPath = GetReverseDomainPath(graph, appDomainPath.AppConnect)
+						if nil == reverseDomainSrPath {
+							break
+						}
+					}
 					// 构造反向通信请求
-					appSelectedPath.AppConnectAttr.Key.SrcUrl = appDomainPath.AppConnect.Key.DstUrl
-					appSelectedPath.AppConnectAttr.Key.DstUrl = appDomainPath.AppConnect.Key.SrcUrl
-					appSelectedPath.AppConnectAttr.Key.SrcID = appDomainPath.AppConnect.Key.DstID
-					appSelectedPath.AppConnectAttr.Key.DstID = appDomainPath.AppConnect.Key.SrcID
-					appSelectedPath.AppConnectAttr.Key.SrcDomainId = appDomainPath.AppConnect.Key.DstDomainId
-					appSelectedPath.AppConnectAttr.Key.DstDomainId = appDomainPath.AppConnect.Key.SrcDomainId
-					appSelectedPath.AppConnectAttr.SlaAttr = appDomainPath.AppConnect.SlaAttr
-					appSelectedPath.AppConnectAttr.SrcScnidKVList = appDomainPath.AppConnect.SrcScnidKVList
-					appSelectedPath.AppConnectAttr.DestScnidKVList = appDomainPath.AppConnect.DestScnidKVList
-					appSelectedPath.AppConnectAttr.Accelerate = appDomainPath.AppConnect.Accelerate
-					appSelectedPath.DomainSrPath = *reverseDomainSrPath
-					appSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(appSelectedPath.DomainSrPath)
-					rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
+					rvrAppSelectedPath.AppConnectAttr.Key.SrcUrl = appDomainPath.AppConnect.Key.DstUrl
+					rvrAppSelectedPath.AppConnectAttr.Key.DstUrl = appDomainPath.AppConnect.Key.SrcUrl
+					rvrAppSelectedPath.AppConnectAttr.Key.SrcID = appDomainPath.AppConnect.Key.DstID
+					rvrAppSelectedPath.AppConnectAttr.Key.DstID = appDomainPath.AppConnect.Key.SrcID
+					rvrAppSelectedPath.AppConnectAttr.Key.SrcDomainId = appDomainPath.AppConnect.Key.DstDomainId
+					rvrAppSelectedPath.AppConnectAttr.Key.DstDomainId = appDomainPath.AppConnect.Key.SrcDomainId
+					rvrAppSelectedPath.AppConnectAttr.SlaAttr = appDomainPath.AppConnect.SlaAttr
+					rvrAppSelectedPath.AppConnectAttr.SrcScnidKVList = appDomainPath.AppConnect.SrcScnidKVList
+					rvrAppSelectedPath.AppConnectAttr.DestScnidKVList = appDomainPath.AppConnect.DestScnidKVList
+					rvrAppSelectedPath.AppConnectAttr.Accelerate = appDomainPath.AppConnect.Accelerate
+					rvrAppSelectedPath.DomainSrPath = *reverseDomainSrPath
+					rvrAppSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(rvrAppSelectedPath.DomainSrPath)
+				}
+				rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
+				if appDomainPath.AppConnect.Rtt != 0 {
+					rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, rvrAppSelectedPath)
 				}
 			}
 			infoString := fmt.Sprintf("rbSdp : (%+v).\n\n", rbSdp)
@@ -1048,10 +1064,6 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			}
 			infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath[%d] is: [%+v]", i, TmpRbDomainPaths)
 			nputil.TraceInfoAlwaysPrint(infoString)
-			for _, appDomainPath := range TmpRbDomainPaths.SelectedDomainPath {
-				infoString = fmt.Sprintf("appDomainPath.AppConnect.Accelerate is: [%+v]", appDomainPath.AppConnect.Accelerate)
-				nputil.TraceInfoAlwaysPrint(infoString)
-			}
 			rb.Spec.NetworkPath = append(rb.Spec.NetworkPath, NpContentBase64)
 		}
 	}

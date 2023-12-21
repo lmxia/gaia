@@ -548,6 +548,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		}
 
 		for _, itemCluster := range mcls.Items {
+			klog.InfoS("we got filed scheduler result..%v", scheduleResult.ResourceBindings)
 			for rbIndex, itemRb := range scheduleResult.ResourceBindings {
 				itemRb.Namespace = itemCluster.Namespace
 				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
@@ -555,7 +556,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 				rb, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err != nil {
-					klog.V(3).InfoS("scheduler success, but some rb not created success", rb)
+					klog.InfoS("scheduler success, but some rb not created success", rb)
 				} else {
 					klog.InfoS("successfully created rb", "Description", desc.GetName(), "ResourceBinding", klog.KRef(itemRb.GetNamespace(), itemRb.GetName()))
 				}
@@ -565,7 +566,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 			newDesc.Namespace = itemCluster.Namespace
 			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc, metav1.CreateOptions{})
 			if err != nil {
-				klog.V(3).InfoS("scheduler success, but desc not created success in sub child cluster.", err)
+				klog.InfoS("scheduler success, but desc not created success in sub child cluster.", err)
 			}
 		}
 	}

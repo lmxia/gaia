@@ -58,6 +58,7 @@ type Domain struct {
 	DomainLinkTree     avl.AvlTree // 树节点结构DomainLink
 	DomainLinkKeyArray []DomainLinkKey
 	// DomainLinkKeyRevision int64  //配置恢复外层需要使用，所以放在外层
+
 }
 
 type DomainLink struct {
@@ -628,7 +629,7 @@ func (domainGraph *DomainGraph) DomainSrPathCreateByKspPath(path PathAttr) *Doma
 	// baseDomainGraph := GetCoreLocal().BaseGraphPoint.BaseDomainGraphPoint
 	domainSrPath := new(DomainSrPath)
 
-	if len(path.PathIds) == 0 {
+	if len(path.PathIds) == 0 || len(path.PathIds) == 1 {
 		nputil.TraceInfoEnd("No shortest path!")
 		return nil
 	}

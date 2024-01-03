@@ -66,17 +66,17 @@ type DomainSrNamePath struct {
 /**********************************************************************************************/
 /******************************************* API ********************************************/
 /**********************************************************************************************/
-func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr, reverseDelay uint32, allMandatory bool) bool {
+func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr, reverseDelay uint32) bool {
 	nputil.TraceInfoBegin("")
 
 	var bCheckSla bool
 	var bRttCheck bool
 	var bProviderCheck bool
 
-	infoString := fmt.Sprintf("appLinkAttr is: (%+v), allMandatory is:(%+v)", appLinkAttr, allMandatory)
+	infoString := fmt.Sprintf("appLinkAttr is: (%+v).", appLinkAttr)
 	nputil.TraceInfo(infoString)
 	// Check Sla
-	if appLinkAttr.LinkSlaAttr.Mandatory == true || allMandatory == true {
+	if appLinkAttr.LinkSlaAttr.Mandatory == true {
 		bCheckSla = domainSrPath.IsSatisfiedSla(appLinkAttr.LinkSlaAttr.SlaAttr)
 		// 如果设置的Mandatory属性
 		if bCheckSla == false {
@@ -85,7 +85,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 		}
 	}
 	// Check RTT
-	if appLinkAttr.LinkRttAttr.Rtt != 0 && (appLinkAttr.LinkRttAttr.Mandatory == true || allMandatory == true) {
+	if appLinkAttr.LinkRttAttr.Mandatory == true {
 		bRttCheck = domainSrPath.IsSatisfiedRtt(reverseDelay, appLinkAttr.LinkRttAttr)
 		// 如果设置的Mandatory属性
 		if bRttCheck == false {
@@ -94,7 +94,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 		}
 	}
 	// Check Providers
-	if (len(appLinkAttr.Providers.Providers) != 0) && (appLinkAttr.Providers.Mandatory == true || allMandatory == true) {
+	if appLinkAttr.Providers.Mandatory == true {
 		bProviderCheck = domainSrPath.IsSatisfiedProvider(appLinkAttr.Providers)
 		// 如果设置的Mandatory属性
 		if bProviderCheck == false {
@@ -113,12 +113,12 @@ func (domainSrPath *DomainSrPath) IsSatisfiedRtt(reverseDelay uint32, rttAttr Ap
 	infoString := fmt.Sprintf("reverseDelay is: (%+v), rttAttr is: (%+v)", reverseDelay, rttAttr)
 	nputil.TraceInfo(infoString)
 	if rttAttr.Rtt != 0 {
-		_, tmpDelay := domainSrPath.GetDomainSrPathDelay()
-		// 标识通信有rt指标要求
+	_, tmpDelay := domainSrPath.GetDomainSrPathDelay()
+	// 标识通信有rt指标要求
 		if (tmpDelay + reverseDelay) > (uint32)(rttAttr.Rtt) {
-			nputil.TraceInfoEnd("False: Rtt is not satisfied")
-			return false
-		}
+		nputil.TraceInfoEnd("False: Rtt is not satisfied")
+		return false
+	}
 	}
 	nputil.TraceInfoEnd("RTT is satisfied, True")
 	return true
@@ -133,27 +133,23 @@ func (domainSrPath *DomainSrPath) IsSatisfiedProvider(provider AppLinkProviderAt
 		nputil.TraceInfoEnd("ProviderList is null, True")
 		return true
 	}
-
 	graph := GraphFindByGraphType(GraphTypeAlgo_Cspf)
 	domainInfoPath := graph.GetDomainPathNameWithFaric(*domainSrPath)
-	var IspNameList []string
+	var domainNameList []string
 	for _, domainInfo := range domainInfoPath {
 		if domainInfo.DomainType == uint32(String2DomainType(domainTypeString_Fabric_Internet)) {
-			IspName := GetIspNameByDomainId(domainInfo.DomainID)
-			if IspName != "" {
-				IspNameList = append(IspNameList, IspName)
+			domainNameList = append(domainNameList, domainInfo.DomainName)
 		}
 	}
-	}
-	info := fmt.Sprintf("Providerlist is (%+v): IspNameList is: (%+v)", provider.Providers, IspNameList)
+	info := fmt.Sprintf("Providerlist is (%+v): domainNameList is: (%+v)", provider.Providers, domainNameList)
 	nputil.TraceInfo(info)
 	providerLits := provider.Providers
-	for _, Isp := range IspNameList {
+	for _, domainName := range domainNameList {
 		sort.Strings(providerLits)
-		info := fmt.Sprintf("IspName is (%+v).", Isp)
+		info := fmt.Sprintf("domainName is (%+v).", domainName)
 		nputil.TraceInfo(info)
-		index := sort.SearchStrings(providerLits, Isp)
-		if !(index < len(providerLits) && providerLits[index] == Isp) {
+		index := sort.SearchStrings(providerLits, domainName)
+		if !(index < len(providerLits) && providerLits[index] == domainName) {
 			nputil.TraceInfoEnd("False: Provider is not satisfied")
 			return false
 		}
@@ -188,7 +184,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedSla(appSlaAttr AppSlaAttr) bool {
 
 	// 丢包率是否满足SLA,100认为是最大值，不需要关注丢包率
 	if appSlaAttr.LostValue != 0 &&
-		appSlaAttr.LostValue <= 100 {
+		appSlaAttr.LostValue < 100 {
 		bCheck := domainSrPath.isSatisfiedLost(appSlaAttr)
 		if bCheck == false {
 			nputil.TraceInfoEnd("False: lostrate is not satisfied")

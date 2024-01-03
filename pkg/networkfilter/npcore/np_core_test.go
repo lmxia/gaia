@@ -183,7 +183,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -435,10 +435,6 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 						Name:   "b",
 						SelfID: []string{"scb1"},
 					},
-					2: {
-						Name:   "c",
-						SelfID: []string{"scc1"},
-					},
 				},
 
 				Links: []v1alpha1.Link{
@@ -467,31 +463,6 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							},
 						},
 					},
-					1: {
-						LinkName:      "link-a-c",
-						SourceID:      "sca1",
-						DestinationID: "scc1",
-						SourceAttributes: []v1alpha1.Attributes{
-							0: {
-								Key:   "sca1-sk1",
-								Value: "sca1-sv1",
-							},
-							1: {
-								Key:   "sca1-sk2",
-								Value: "sca1-sv2",
-							},
-						},
-						DestinationAttributes: []v1alpha1.Attributes{
-							0: {
-								Key:   "scc1-dk1",
-								Value: "scc1-dv1",
-							},
-							1: {
-								Key:   "scc1-dk2",
-								Value: "scc1-dv2",
-							},
-						},
-					},
 				},
 			},
 			Deployconditions: v1alpha1.DeploymentCondition{
@@ -506,21 +477,7 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaUnicom\",\"ChinaMobile\",\"ChinaTelecom\",\"CNOS\"]"),
-					},
-				},
-				BestEffort: []v1alpha1.Condition{
-					0: {
-						Subject: v1alpha1.Xject{
-							Name: "link-a-c",
-							Type: "link",
-						},
-						Object: v1alpha1.Xject{
-							Name: "provider",
-							Type: "label",
-						},
-						Relation: "In",
-						Extent:   []byte("[]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 				},
 			},
@@ -529,7 +486,7 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 	return rbs, &networkReq
 }
 
-func SetRbsAndNetReqProvidersFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+func SetRbsAndNetReqProvidersNULL() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
 	var rbs []*v1alpha1.ResourceBinding
 	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
@@ -615,7 +572,7 @@ func SetRbsAndNetReqProvidersFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Ne
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaUnicom\",\"CNOS\",\"CENI\"]"),
+						Extent:   []byte("[]"),
 					},
 				},
 			},
@@ -859,7 +816,7 @@ func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"CNOS\",\"CENI\",\"ChinaUnicom\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1396,7 +1353,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CNOS\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric14\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1408,7 +1365,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"delay\":40,\"lost\":20,\"jitter\":30,\"bandwidth\":100}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -1434,7 +1391,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"delay\":41,\"lost\":11,\"jitter\":21,\"bandwidth\":101}"),
+						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1589,7 +1546,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CNOS\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1789,7 +1746,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CNOS\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1984,7 +1941,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CENI\"]"),
+						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -2064,7 +2021,6 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink12.RemoteNodeSN = "Node21"
 	domainVLink12.AttachDomainId = 1012
 	domainVLink12.AttachDomainName = "Fabric12"
-	domainVLink12.Isp = "ChinaMobile"
 	vLinkSlaAttr12 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr12.Delay = 1
 	vLinkSlaAttr12.Bandwidth = 15000
@@ -2080,7 +2036,6 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink13.RemoteNodeSN = "Node31"
 	domainVLink13.AttachDomainId = 1013
 	domainVLink13.AttachDomainName = "Fabric13"
-	domainVLink13.Isp = "ChinaTelecom"
 	vLinkSlaAttr13 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr13.Delay = 1
 	vLinkSlaAttr13.Bandwidth = 10000
@@ -2112,7 +2067,6 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink23.RemoteNodeSN = "Node32"
 	domainVLink23.AttachDomainId = 1023
 	domainVLink23.AttachDomainName = "Fabric23"
-	domainVLink23.Isp = "ChinaUnicom"
 	vLinkSlaAttr23 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr23.Delay = 2
 	vLinkSlaAttr23.Bandwidth = 15000
@@ -2129,7 +2083,6 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink21.RemoteNodeSN = "Node12"
 	domainVLink21.AttachDomainId = 1012
 	domainVLink21.AttachDomainName = "Fabric12"
-	domainVLink21.Isp = "ChinaMobile"
 	vLinkSlaAttr21 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr21.Delay = 1
 	vLinkSlaAttr21.Bandwidth = 15000
@@ -2160,7 +2113,6 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink34.RemoteNodeSN = "Node43"
 	domainVLink34.AttachDomainId = 1034
 	domainVLink34.AttachDomainName = "Fabric34"
-	domainVLink34.Isp = "ChinaMobile"
 	vLinkSlaAttr34 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr34.Delay = 3
 	vLinkSlaAttr34.Bandwidth = 15000
@@ -2176,7 +2128,6 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink32.RemoteNodeSN = "Node23"
 	domainVLink32.AttachDomainId = 1023
 	domainVLink32.AttachDomainName = "Fabric23"
-	domainVLink32.Isp = "ChinaUnicom"
 	vLinkSlaAttr32 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr32.Delay = 2
 	vLinkSlaAttr32.Bandwidth = 15000
@@ -2207,7 +2158,6 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink43.RemoteNodeSN = "Node34"
 	domainVLink43.AttachDomainId = 1034
 	domainVLink43.AttachDomainName = "Fabric34"
-	domainVLink43.Isp = "ChinaMobile"
 	vLinkSlaAttr43 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr43.Delay = 3
 	vLinkSlaAttr43.Bandwidth = 15000
@@ -2224,7 +2174,6 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink42.RemoteNodeSN = "Node24"
 	domainVLink42.AttachDomainId = 1024
 	domainVLink42.AttachDomainName = "Fabric24"
-	domainVLink42.Isp = "ChinaTelecom"
 	vLinkSlaAttr42 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr42.Delay = 2
 	vLinkSlaAttr42.Bandwidth = 15000
@@ -2270,7 +2219,6 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink12.RemoteNodeSN = "Node21"
 	domainVLink12.AttachDomainId = 1012
 	domainVLink12.AttachDomainName = "Fabric12"
-	domainVLink12.Isp = "ChinaMobile"
 	vLinkSlaAttr12 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr12.Delay = 8
 	vLinkSlaAttr12.Bandwidth = 20000
@@ -2286,7 +2234,6 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink14.RemoteNodeSN = "Node41"
 	domainVLink14.AttachDomainId = 1014
 	domainVLink14.AttachDomainName = "Fabric14"
-	domainVLink14.Isp = "ChinaUnicom"
 	vLinkSlaAttr14 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr14.Delay = 15
 	vLinkSlaAttr14.Bandwidth = 20000
@@ -2318,7 +2265,6 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink24.RemoteNodeSN = "Node42"
 	domainVLink24.AttachDomainId = 1024
 	domainVLink24.AttachDomainName = "Fabric24"
-	domainVLink24.Isp = "ChinaTelecom"
 	vLinkSlaAttr24 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr24.Delay = 2
 	vLinkSlaAttr24.Bandwidth = 20000
@@ -2335,7 +2281,6 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink21.RemoteNodeSN = "Node12"
 	domainVLink21.AttachDomainId = 1012
 	domainVLink21.AttachDomainName = "Fabric12"
-	domainVLink21.Isp = "ChinaMobile"
 	vLinkSlaAttr21 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr21.Delay = 2
 	vLinkSlaAttr21.Bandwidth = 20000
@@ -2366,7 +2311,6 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink41.RemoteNodeSN = "Node14"
 	domainVLink41.AttachDomainId = 1014
 	domainVLink41.AttachDomainName = "Fabric14"
-	domainVLink41.Isp = "ChinaUnicom"
 	vLinkSlaAttr41 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr41.Delay = 4
 	vLinkSlaAttr41.Bandwidth = 20000
@@ -2382,7 +2326,6 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink42.RemoteNodeSN = "Node24"
 	domainVLink42.AttachDomainId = 1024
 	domainVLink42.AttachDomainName = "Fabric24"
-	domainVLink42.Isp = "ChinaTelecom"
 	vLinkSlaAttr42 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr42.Delay = 1
 	vLinkSlaAttr42.Bandwidth = 20000
@@ -2408,13 +2351,13 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	return domainTopoMsg
 }
 
-func TestPrintKspPathBase64(t *testing.T) {
+func PrintKspPathBase64() {
 	logx.NewLogger()
 	infoString := fmt.Sprintf("=== RUN   PrintKspPathBase64  BEGIN ===")
 	nputil.TraceInfo(infoString)
 
 	nputil.TraceInfoBegin("------------TestBindingSelectedDomainPathAvailable-------------------")
-	npBase64String := "Q3QwQkNvWUJDandLR1M5cGJtNWxjaTF3Y21sMllYUmxMM0Z6WVM5eGMyRXhMekVTR1M5cGJtNWxjaTF3Y21sMllYUmxMM0Z6WVM5eGMyRXlMeklnQVNnRU1BVVNDQWhrRUFFWUJTQUJHaDBLRFZCUFRFbERXVjlUVDFWU1EwVVNESEJ2YkdsamVWOXBibk4wTVNJYkNndFFUMHhKUTFsZlJFVlRWQklNY0c5c2FXTjVYMmx1YzNReUtBRVNFZ29NWTI5eVpUUXRabWxsYkdReEVBUVlBUklxQ2lSamFHRnVaM05oYm1wcFlXOHRabUZpY21sakxURXdNQzFqWlc1cExXaDVjR1Z5YjNNUVpCZ0NFaElLREdOdmNtVTFMV1pwWld4a01SQUZHQUVLa0FJS2hnRUtQQW9aTDJsdWJtVnlMWEJ5YVhaaGRHVXZjWE5oTDNGellURXZNUklaTDJsdWJtVnlMWEJ5YVhaaGRHVXZjWE5oTDNGellUSXZNaGdCS0FRd0J4SUlDR1FRQVJnRklBRWFIUW9OVUU5TVNVTlpYMU5QVlZKRFJSSU1jRzlzYVdONVgybHVjM1F4SWhzS0MxQlBURWxEV1Y5RVJWTlVFZ3h3YjJ4cFkzbGZhVzV6ZERJb0FSSVNDZ3hqYjNKbE5DMW1hV1ZzWkRFUUJCZ0JFaW9LSkdOb1lXNW5jMkZ1YW1saGJ5MW1ZV0p5YVdNdE1UQXdMV05sYm1rdGFIbHdaWEp2Y3hCa0dBSVNFZ29NWTI5eVpUWXRabWxsYkdReEVBWVlBUklkQ2hkbVlXSnlhV010TVRBeExXTmxibWt0YUhsd1pYSnZjeEJsR0FJU0Vnb01ZMjl5WlRjdFptbGxiR1F4RUFjWUFRcU9BZ3FFQVFvOENoa3ZhVzV1WlhJdGNISnBkbUYwWlM5eGMyRXZjWE5oTVM4eEVoa3ZhVzV1WlhJdGNISnBkbUYwWlM5eGMyRXZjWE5oTkM4MElBRW9CREFIRWdnSVpCQUJHQVVnQVJvZENnMVFUMHhKUTFsZlUwOVZVa05GRWd4d2IyeHBZM2xmYVc1emRERWlHd29MVUU5TVNVTlpYMFJGVTFRU0RIQnZiR2xqZVY5cGJuTjBNaElTQ2d4amIzSmxOQzFtYVdWc1pERVFCQmdCRWlvS0pHTm9ZVzVuYzJGdWFtbGhieTFtWVdKeWFXTXRNVEF3TFdObGJta3RhSGx3WlhKdmN4QmtHQUlTRWdvTVkyOXlaVFl0Wm1sbGJHUXhFQVlZQVJJZENoZG1ZV0p5YVdNdE1UQXhMV05sYm1rdGFIbHdaWEp2Y3hCbEdBSVNFZ29NWTI5eVpUY3RabWxsYkdReEVBY1lBUXFRQWdxR0FRbytDaGt2YVc1dVpYSXRjSEpwZG1GMFpTOXhjMkV2Y1hOaE1TOHhFaGt2YVc1dVpYSXRjSEpwZG1GMFpTOXhjMkV2Y1hOaE5DODBHQUVnQVNnRU1BY1NDQWhrRUFFWUJTQUJHaDBLRFZCUFRFbERXVjlUVDFWU1EwVVNESEJ2YkdsamVWOXBibk4wTVNJYkNndFFUMHhKUTFsZlJFVlRWQklNY0c5c2FXTjVYMmx1YzNReUVoSUtER052Y21VMExXWnBaV3hrTVJBRUdBRVNLZ29rWTJoaGJtZHpZVzVxYVdGdkxXWmhZbkpwWXkweE1EQXRZMlZ1YVMxb2VYQmxjbTl6RUdRWUFoSVNDZ3hqYjNKbE5pMW1hV1ZzWkRFUUJoZ0JFaDBLRjJaaFluSnBZeTB4TURFdFkyVnVhUzFvZVhCbGNtOXpFR1VZQWhJU0NneGpiM0psTnkxbWFXVnNaREVRQnhnQg=="
+	npBase64String := "Q3YwQkNxUUJDbG9LS1M5cGJtNWxjaTF3Y21sMllYUmxMMk5sYkdWMlpXNHZZMkZ6WlRFeFkyOXRjRzl1Wlc1ME1pOHhFaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1TZ0VNQU1TQ2dnZUVHUVl2NFE5SUFvYUhRb05VRTlNU1VOWlgxTlBWVkpEUlJJTWNHOXNhV041WDJsdWMzUXhJaHNLQzFCUFRFbERXVjlFUlZOVUVneHdiMnhwWTNsZmFXNXpkRElTRWdvTVkyOXlaVFF0Wm1sbGJHUXhFQVFZQVJJc0NpWnFhV0Z1WjI1aGJpMW1ZV0p5YVdNdE1UQXpMWE5rZDJGdUxYTnliM1V0YUhsd1pYSnZjeEJuR0FJU0Vnb01ZMjl5WlRNdFptbGxiR1F4RUFNWUFRcTlBUXFtQVFwY0Npa3ZhVzV1WlhJdGNISnBkbUYwWlM5alpXeGxkbVZ1TDJOaGMyVXhNV052YlhCdmJtVnVkREl2TVJJcEwybHVibVZ5TFhCeWFYWmhkR1V2WTJWc1pYWmxiaTlqWVhObE1URmpiMjF3YjI1bGJuUXpMekVZQVNnRE1BTVNDZ2dlRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUXIrQVFxbEFRcGFDaWt2YVc1dVpYSXRjSEpwZG1GMFpTOWpaV3hsZG1WdUwyTmhjMlV4TVdOdmJYQnZibVZ1ZERNdk1SSXBMMmx1Ym1WeUxYQnlhWFpoZEdVdlkyVnNaWFpsYmk5allYTmxNVEZqYjIxd2IyNWxiblF5THpFb0F6QUVFZ3NJa0U0UVpCaS9oRDBnQ2hvZENnMVFUMHhKUTFsZlUwOVZVa05GRWd4d2IyeHBZM2xmYVc1emRERWlHd29MVUU5TVNVTlpYMFJGVTFRU0RIQnZiR2xqZVY5cGJuTjBNaElTQ2d4amIzSmxNeTFtYVdWc1pERVFBeGdCRWl3S0ptcHBZVzVuYm1GdUxXWmhZbkpwWXkweE1ETXRjMlIzWVc0dGMzSnZkUzFvZVhCbGNtOXpFR2NZQWhJU0NneGpiM0psTkMxbWFXVnNaREVRQkJnQkNvQUNDcWNCQ2x3S0tTOXBibTVsY2kxd2NtbDJZWFJsTDJObGJHVjJaVzR2WTJGelpURXhZMjl0Y0c5dVpXNTBNeTh4RWlrdmFXNXVaWEl0Y0hKcGRtRjBaUzlqWld4bGRtVnVMMk5oYzJVeE1XTnZiWEJ2Ym1WdWRESXZNUmdCS0FNd0JCSUxDSkJPRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUklzQ2lacWFXRnVaMjVoYmkxbVlXSnlhV010TVRBekxYTmtkMkZ1TFhOeWIzVXRhSGx3WlhKdmN4Qm5HQUlTRWdvTVkyOXlaVFF0Wm1sbGJHUXhFQVFZQVFyQUFRcXBBUXBlQ2lrdmFXNXVaWEl0Y0hKcGRtRjBaUzlqWld4bGRtVnVMMk5oYzJVeE1XTnZiWEJ2Ym1WdWRETXZNUklwTDJsdWJtVnlMWEJ5YVhaaGRHVXZZMlZzWlhabGJpOWpZWE5sTVRGamIyMXdiMjVsYm5ReUx6RVlBaUFCS0FNd0F4SUxDSkJPRUdRWXY0UTlJQW9hSFFvTlVFOU1TVU5aWDFOUFZWSkRSUklNY0c5c2FXTjVYMmx1YzNReEloc0tDMUJQVEVsRFdWOUVSVk5VRWd4d2IyeHBZM2xmYVc1emRESVNFZ29NWTI5eVpUTXRabWxsYkdReEVBTVlBUT09"
 
 	// Verify the unmarshal action
 	npBase64Bytes, _ := base64.StdEncoding.DecodeString(npBase64String)
@@ -2431,7 +2374,6 @@ func TestPrintKspPathBase64(t *testing.T) {
 	}
 	infoString = fmt.Sprintf("The Umarshal BindingSelectedDomainPath is: [%+v]", TmpRbDomainPaths)
 	nputil.TraceInfoAlwaysPrint(infoString)
-	fmt.Println(infoString)
 
 	/*
 		npBase64Bytes, _ := base64.StdEncoding.DecodeString(npBase64String)
@@ -2579,24 +2521,6 @@ func TestNetworkFilterProviders(t *testing.T) {
 	}
 
 	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterProviders  END ===")
-	nputil.TraceInfo(infoString)
-}
-
-func TestNetworkFilterProvidersFailed(t *testing.T) {
-	logx.NewLogger()
-	infoString := fmt.Sprintf("=== RUN   TestNetworkFilterProvidersFailed  BEGIN ===")
-	nputil.TraceInfo(infoString)
-
-	rbs, networkRequirement := SetRbsAndNetReqProvidersFailed()
-	networkInfoMap := BuildNetworkDomainEdge()
-	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
-	if !reflect.DeepEqual(0, len(rbsRet)) {
-		infoString := fmt.Sprintf("The rbs should be unavailable!")
-		nputil.TraceErrorString(infoString)
-		t.Errorf("The rbs should be unavailable!")
-	}
-
-	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterProvidersFailed  END ===")
 	nputil.TraceInfo(infoString)
 }
 

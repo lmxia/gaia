@@ -326,16 +326,16 @@ func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, m
 			sla := new(AppSlaAttr)
 			userSla := new(UserSla)
 			slaByte := fmt.Sprintf("slaStr is: (%s)", condition.Extent)
-			nputil.TraceInfo(slaByte)
+			nputil.TraceInfoAlwaysPrint(slaByte)
 			err := json.Unmarshal(condition.Extent, userSla)
 			if err != nil {
 				info := fmt.Sprintf("slaStr unmarshal is failed!")
-				nputil.TraceInfo(info)
+				nputil.TraceInfoAlwaysPrint(info)
 				nputil.TraceInfoEnd("")
 				return
 			} else {
 				info := fmt.Sprintf("userSla is: (%+v)", userSla)
-				nputil.TraceInfo(info)
+				nputil.TraceInfoAlwaysPrint(info)
 				sla.DelayValue = userSla.Delay
 				sla.LostValue = userSla.Lost
 				sla.JitterValue = userSla.Jitter
@@ -348,11 +348,11 @@ func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, m
 		} else if condition.Object.Type == "rtt" {
 			rtt := new(RttAttr)
 			rttByte := fmt.Sprintf("rttStr is: (%s)", condition.Extent)
-			nputil.TraceInfo(rttByte)
+			nputil.TraceInfoAlwaysPrint(rttByte)
 			err := json.Unmarshal(condition.Extent, rtt)
 			if err != nil {
 				info := fmt.Sprintf("rttStr unmarshal is failed!")
-				nputil.TraceInfo(info)
+				nputil.TraceInfoAlwaysPrint(info)
 				nputil.TraceInfoEnd("")
 				return
 			} else {
@@ -364,11 +364,11 @@ func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, m
 		} else if condition.Object.Type == "label" {
 			providers := new([]string)
 			providerByte := fmt.Sprintf("providerStr is: (%s)", condition.Extent)
-			nputil.TraceInfo(providerByte)
+			nputil.TraceInfoAlwaysPrint(providerByte)
 			err := json.Unmarshal(condition.Extent, providers)
 			if err != nil {
 				info := fmt.Sprintf("providerStr unmarshal is failed!")
-				nputil.TraceInfo(info)
+				nputil.TraceInfoAlwaysPrint(info)
 				nputil.TraceInfoEnd("")
 				return
 			} else {
@@ -380,11 +380,11 @@ func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, m
 		} else if condition.Object.Type == "accelerate" {
 			accelerate := new(AccelerateAttr)
 			accelerateByte := fmt.Sprintf("accelerateStr is: (%s)", condition.Extent)
-			nputil.TraceInfo(accelerateByte)
+			nputil.TraceInfoAlwaysPrint(accelerateByte)
 			err := json.Unmarshal(condition.Extent, accelerate)
 			if err != nil {
 				info := fmt.Sprintf("accelerateStr unmarshal is failed!")
-				nputil.TraceInfo(info)
+				nputil.TraceInfoAlwaysPrint(info)
 				nputil.TraceInfoEnd("")
 				return
 			} else {
@@ -626,7 +626,6 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 		slaAttr.DelayValue = uint32(appConnectDomainPath.AppConnectAttr.SlaAttr.DelayValue)
 		slaAttr.JitterValue = uint32(appConnectDomainPath.AppConnectAttr.SlaAttr.JitterValue)
 		slaAttr.ThroughputValue = uint64(appConnectDomainPath.AppConnectAttr.SlaAttr.ThroughputValue)
-		slaAttr.LostValue = uint32(appConnectDomainPath.AppConnectAttr.SlaAttr.LostValue)
 		pbAppConnectAttr.SlaAttr = slaAttr
 
 		for _, srcKv := range appConnectDomainPath.AppConnectAttr.SrcScnidKVList {
@@ -664,8 +663,10 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 		pbRbDomainPaths.SelectedDomainPath = append(pbRbDomainPaths.SelectedDomainPath, pbAppConnectDomainPath)
 	}
 
-	for i, rbDomainPath := range pbRbDomainPaths.SelectedDomainPath {
-		infoString := fmt.Sprintf("pbRbDomainPaths[%d] is: (%+v).", i, rbDomainPath)
+	for i, rbDomainPaths := range pbRbDomainPaths.SelectedDomainPath {
+		infoString := fmt.Sprintf("pbRbDomainPaths[%d] is: (%+v).", i, rbDomainPaths)
+		infoString1 := fmt.Sprintf("pbRbDomainPaths.AppConnect.Accelerate is (%+v)!", rbDomainPaths.AppConnect.Accelerate)
+		nputil.TraceInfo(infoString1)
 		nputil.TraceInfo(infoString)
 	}
 
@@ -1009,7 +1010,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 					rvrAppSelectedPath.DomainSrPath = *reverseDomainSrPath
 					rvrAppSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(rvrAppSelectedPath.DomainSrPath)
 				}
-				rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
+					rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
 				if appDomainPath.AppConnect.Rtt != 0 {
 					rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, rvrAppSelectedPath)
 				}
@@ -1046,7 +1047,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			nputil.TraceInfo(infoString)
 			encodeToString := base64.StdEncoding.EncodeToString(NpContentBase64)
 			infoString = fmt.Sprintf("Proto marshal content base64 encodeToString is (%+v)", encodeToString)
-			nputil.TraceInfo(infoString)
+			nputil.TraceInfoAlwaysPrint(infoString)
 
 			// Verify the unmarshal action
 			dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(NpContentBase64)))

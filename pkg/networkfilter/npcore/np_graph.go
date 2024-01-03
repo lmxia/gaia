@@ -701,10 +701,20 @@ func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainL
 		return domainSrPathArray
 	}
 
+	var domainSrPathLeftArray []*DomainSrPath
+	//问了满足BestEffort要求，尽可能把sla/rtt/provider都满足的路径排在前面
+	//1. 查找sla/rtt/provider都满足的路径;  2: 不全部满足，再查看是否满足网络请求设置的mandatory或bestEffort
 	for _, bestPath := range bestPathGroups {
 		domainSrPath := domainGraph.DomainSrPathCreateByKspPath(bestPath)
-		if domainSrPath.IsSatisfiedNetworkReq(appLinkAttr, reverseDelay) == true {
+		if domainSrPath.IsSatisfiedNetworkReq(appLinkAttr, reverseDelay, true) == true {
 			domainSrPathArray = append(domainSrPathArray, *domainSrPath)
+		} else {
+			domainSrPathLeftArray = append(domainSrPathLeftArray, domainSrPath)
+		}
+	}
+	for _, tmpDomainSrPath := range domainSrPathLeftArray {
+		if tmpDomainSrPath.IsSatisfiedNetworkReq(appLinkAttr, reverseDelay, false) == true {
+			domainSrPathArray = append(domainSrPathArray, *tmpDomainSrPath)
 		}
 	}
 	if len(domainSrPathArray) == 0 {

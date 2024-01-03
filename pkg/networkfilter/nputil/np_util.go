@@ -20,7 +20,7 @@ type LocalStatus uint32
 const (
 	LocalStatus_Invalid LocalStatus = 0
 	LocalStatus_Running LocalStatus = 1
-	LogSwitch                       = "Off"
+	LogSwitch                       = "OFF"
 )
 
 func TraceInfo(inputString string) {

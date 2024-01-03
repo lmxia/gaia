@@ -626,6 +626,7 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 		slaAttr.DelayValue = uint32(appConnectDomainPath.AppConnectAttr.SlaAttr.DelayValue)
 		slaAttr.JitterValue = uint32(appConnectDomainPath.AppConnectAttr.SlaAttr.JitterValue)
 		slaAttr.ThroughputValue = uint64(appConnectDomainPath.AppConnectAttr.SlaAttr.ThroughputValue)
+		slaAttr.LostValue = uint32(appConnectDomainPath.AppConnectAttr.SlaAttr.LostValue)
 		pbAppConnectAttr.SlaAttr = slaAttr
 
 		for _, srcKv := range appConnectDomainPath.AppConnectAttr.SrcScnidKVList {
@@ -1047,7 +1048,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			nputil.TraceInfo(infoString)
 			encodeToString := base64.StdEncoding.EncodeToString(NpContentBase64)
 			infoString = fmt.Sprintf("Proto marshal content base64 encodeToString is (%+v)", encodeToString)
-			nputil.TraceInfoAlwaysPrint(infoString)
+			nputil.TraceInfo(infoString)
 
 			// Verify the unmarshal action
 			dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(NpContentBase64)))

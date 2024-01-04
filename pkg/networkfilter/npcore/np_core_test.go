@@ -1365,7 +1365,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
+						Extent:   []byte("{\"delay\":40,\"lost\":20,\"jitter\":30,\"bandwidth\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -1391,7 +1391,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
+						Extent:   []byte("{\"delay\":41,\"lost\":11,\"jitter\":21,\"bandwidth\":101}"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{

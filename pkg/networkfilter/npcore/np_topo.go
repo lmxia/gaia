@@ -66,7 +66,7 @@ type DomainSrNamePath struct {
 /**********************************************************************************************/
 /******************************************* API ********************************************/
 /**********************************************************************************************/
-func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr, reverseDelay uint32) bool {
+func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr, reverseDelay uint32, allMandatory bool) bool {
 	nputil.TraceInfoBegin("")
 
 	var bCheckSla bool
@@ -76,7 +76,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 	infoString := fmt.Sprintf("appLinkAttr is: (%+v).", appLinkAttr)
 	nputil.TraceInfo(infoString)
 	// Check Sla
-	if appLinkAttr.LinkSlaAttr.Mandatory == true {
+	if appLinkAttr.LinkSlaAttr.Mandatory == true || allMandatory == true {
 		bCheckSla = domainSrPath.IsSatisfiedSla(appLinkAttr.LinkSlaAttr.SlaAttr)
 		// 如果设置的Mandatory属性
 		if bCheckSla == false {
@@ -85,7 +85,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 		}
 	}
 	// Check RTT
-	if appLinkAttr.LinkRttAttr.Mandatory == true {
+	if appLinkAttr.LinkRttAttr.Mandatory == true || allMandatory == true {
 		bRttCheck = domainSrPath.IsSatisfiedRtt(reverseDelay, appLinkAttr.LinkRttAttr)
 		// 如果设置的Mandatory属性
 		if bRttCheck == false {
@@ -94,7 +94,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 		}
 	}
 	// Check Providers
-	if appLinkAttr.Providers.Mandatory == true {
+	if appLinkAttr.Providers.Mandatory == true || allMandatory == true {
 		bProviderCheck = domainSrPath.IsSatisfiedProvider(appLinkAttr.Providers)
 		// 如果设置的Mandatory属性
 		if bProviderCheck == false {

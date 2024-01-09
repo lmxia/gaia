@@ -42,6 +42,7 @@ type BaseDomainDb struct {
 	Key        DomainKey  `json:"key" groups:"db"`
 	Type       DomainType `json:"type" groups:"db"`
 	DomainName string     `json:"domainName" groups:"db"`
+	IspName    string     `json:"ispName" groups:"db"`
 }
 
 type BaseDomainLink struct {
@@ -182,7 +183,7 @@ func (domainLinkKey DomainLinkKey) Hash() int {
 /******************************************* API ********************************************/
 /**********************************************************************************************/
 
-func baseDomainCreateById(domainId uint32, domainName string, domainType DomainType, baseDomainGraph *BaseDomainGraph) *BaseDomain {
+func baseDomainCreateById(domainId uint32, domainName string, ispName string, domainType DomainType, baseDomainGraph *BaseDomainGraph) *BaseDomain {
 	nputil.TraceInfoBegin("")
 
 	baseDomain := new(BaseDomain)
@@ -190,6 +191,7 @@ func baseDomainCreateById(domainId uint32, domainName string, domainType DomainT
 
 	baseDomain.BaseDomainDbV.Type = domainType
 	baseDomain.BaseDomainDbV.DomainName = domainName
+	baseDomain.BaseDomainDbV.IspName = ispName
 	baseDomain.BaseDomainGraphPoint = baseDomainGraph
 	nputil.TraceInfoEnd("")
 	return baseDomain
@@ -211,18 +213,18 @@ func (baseDomainGraph *BaseDomainGraph) BaseDomainFindById(domainId uint32) *Bas
 	return val.(*BaseDomain)
 }
 
-func (baseGraph *BaseGraph) BaseDomainAdd(domainId uint32, domainName string, domainType DomainType) *BaseDomain {
+func (baseGraph *BaseGraph) BaseDomainAdd(domainId uint32, domainName string, ispName string, domainType DomainType) *BaseDomain {
 	nputil.TraceInfoBegin("")
 
 	baseDomainGraph := baseGraph.BaseDomainGraphPoint
 
-	addDomain := baseDomainGraph.BaseDomainAdd(domainId, domainName, domainType)
+	addDomain := baseDomainGraph.BaseDomainAdd(domainId, domainName, ispName, domainType)
 
 	nputil.TraceInfoEnd("")
 	return addDomain
 }
 
-func (baseDomainGraph *BaseDomainGraph) BaseDomainAdd(domainId uint32, domainName string, domainType DomainType) *BaseDomain {
+func (baseDomainGraph *BaseDomainGraph) BaseDomainAdd(domainId uint32, domainName string, ispName string, domainType DomainType) *BaseDomain {
 	nputil.TraceInfoBegin("")
 
 	// basegraph 中添加 domain
@@ -233,7 +235,7 @@ func (baseDomainGraph *BaseDomainGraph) BaseDomainAdd(domainId uint32, domainNam
 		return findDomain
 	}
 
-	addDomain := baseDomainCreateById(domainId, domainName, domainType, baseDomainGraph)
+	addDomain := baseDomainCreateById(domainId, domainName, ispName, domainType, baseDomainGraph)
 	// 加入树中
 	err := baseDomainGraph.BaseDomainTree.Put(addDomain.BaseDomainDbV.Key, addDomain)
 	if err != nil {
@@ -277,7 +279,7 @@ func (baseDomainGraph *BaseDomainGraph) BaseDomainDelete(domainId uint32) error 
 	return nil
 }
 
-func DomainAddForAllGraph(domainID uint32, domainName string, domainTypeString string) {
+func DomainAddForAllGraph(domainID uint32, domainName string, ispName string, domainTypeString string) {
 	nputil.TraceInfoBegin("------------------------------------------------------")
 
 	local := GetCoreLocal()
@@ -288,7 +290,7 @@ func DomainAddForAllGraph(domainID uint32, domainName string, domainTypeString s
 	if baseDomain == nil {
 		domainType := String2DomainType(domainTypeString)
 
-		newBaseDomain := baseDomainGraph.BaseDomainAdd(domainID, domainName, domainType)
+		newBaseDomain := baseDomainGraph.BaseDomainAdd(domainID, domainName, ispName, domainType)
 		if newBaseDomain == nil {
 			rtnErr := errors.New("DomainAddForAllGraph error")
 			nputil.TraceErrorWithStack(rtnErr)
@@ -401,6 +403,23 @@ func GetDomainNameByDomainId(domainId uint32) string {
 
 	nputil.TraceInfoEnd("")
 	return baseDomain.BaseDomainDbV.DomainName
+}
+func GetIspNameByDomainId(domainId uint32) string {
+	nputil.TraceInfoBegin("")
+
+	local := GetCoreLocal()
+	baseDomainGraph := local.BaseGraphPoint.BaseDomainGraphPoint
+
+	baseDomain := baseDomainGraph.BaseDomainFindById(domainId)
+	if baseDomain == nil {
+		infoString := fmt.Sprintf("The domain is nil and domainId is (%d)!\n", domainId)
+		nputil.TraceInfoEnd(infoString)
+		nputil.TraceErrorString("baseDomain is nil.")
+		return ""
+	}
+
+	nputil.TraceInfoEnd("")
+	return baseDomain.BaseDomainDbV.IspName
 }
 
 func DomainVLinkCreateByBaseDomainLink(baseDomainLink *BaseDomainLink) *ncsnp.DomainVLink {
@@ -650,7 +669,7 @@ func (baseDomain *BaseDomain) BaseDomainLinkAddFromCache(domainTopoCache ncsnp.D
 		if domainVlink.AttachDomainName != "" {
 			infoString := fmt.Sprintf("fabric domainId(%d) is , fabricName is (%s)", domainVlink.AttachDomainId, domainVlink.AttachDomainName)
 			nputil.TraceInfoEnd(infoString)
-			DomainAddForAllGraph(uint32(domainVlink.AttachDomainId), domainVlink.AttachDomainName, domainTypeString_Fabric_Internet)
+			DomainAddForAllGraph(uint32(domainVlink.AttachDomainId), domainVlink.AttachDomainName, domainVlink.Isp, domainTypeString_Fabric_Internet)
 		}
 	}
 

@@ -36,6 +36,7 @@ message DomainVLink {
     string AttachDomainName  = 11; //AttachDomainId对应的Fabric名称
     string IngressPeerSN     = 12; //Fabric 入设备SN号
     string EgressPeerSN      = 13; //Fabric 出设备SN号
+    string Isp               = 14;//Isp名称:运营商名字
 
 }
 

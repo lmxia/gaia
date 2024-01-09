@@ -695,10 +695,14 @@ func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainL
 	}
 
 	// 计算APP连接请求的反向K条路径,反向路径按照因为没有其他SLA要求，只按照时延算路，且选择时延最小的作为返程路径
-	reverseDelay, err := domain.CalReverseDomainPathMinDelay(domainLinkKspGraph, spfCalcMaxNum, appLinkAttr)
-	if err != nil {
+	var reverseDelay uint32
+	if appLinkAttr.LinkRttAttr.Rtt != 0 {
+		revDelay, err := domain.CalReverseDomainPathMinDelay(domainLinkKspGraph, spfCalcMaxNum, appLinkAttr)
+		if err != nil && appLinkAttr.LinkRttAttr.Mandatory == true {
 		nputil.TraceInfoEnd("No reverse shortest path!")
 		return domainSrPathArray
+		}
+		reverseDelay = revDelay
 	}
 
 	var domainSrPathLeftArray []*DomainSrPath

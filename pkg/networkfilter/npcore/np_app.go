@@ -664,10 +664,8 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 		pbRbDomainPaths.SelectedDomainPath = append(pbRbDomainPaths.SelectedDomainPath, pbAppConnectDomainPath)
 	}
 
-	for i, rbDomainPaths := range pbRbDomainPaths.SelectedDomainPath {
-		infoString := fmt.Sprintf("pbRbDomainPaths[%d] is: (%+v).", i, rbDomainPaths)
-		infoString1 := fmt.Sprintf("pbRbDomainPaths.AppConnect.Accelerate is (%+v)!", rbDomainPaths.AppConnect.Accelerate)
-		nputil.TraceInfo(infoString1)
+	for i, rbDomainPath := range pbRbDomainPaths.SelectedDomainPath {
+		infoString := fmt.Sprintf("pbRbDomainPaths[%d] is: (%+v).", i, rbDomainPath)
 		nputil.TraceInfo(infoString)
 	}
 

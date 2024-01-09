@@ -73,7 +73,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 	var bRttCheck bool
 	var bProviderCheck bool
 
-	infoString := fmt.Sprintf("appLinkAttr is: (%+v).", appLinkAttr)
+	infoString := fmt.Sprintf("appLinkAttr is: (%+v), allMandatory is:(%+v)", appLinkAttr, allMandatory)
 	nputil.TraceInfo(infoString)
 	// Check Sla
 	if appLinkAttr.LinkSlaAttr.Mandatory == true || allMandatory == true {
@@ -85,7 +85,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 		}
 	}
 	// Check RTT
-	if appLinkAttr.LinkRttAttr.Mandatory == true || allMandatory == true {
+	if appLinkAttr.LinkRttAttr.Rtt != 0 && (appLinkAttr.LinkRttAttr.Mandatory == true || allMandatory == true) {
 		bRttCheck = domainSrPath.IsSatisfiedRtt(reverseDelay, appLinkAttr.LinkRttAttr)
 		// 如果设置的Mandatory属性
 		if bRttCheck == false {
@@ -94,7 +94,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedNetworkReq(appLinkAttr AppLinkAttr,
 		}
 	}
 	// Check Providers
-	if appLinkAttr.Providers.Mandatory == true || allMandatory == true {
+	if (len(appLinkAttr.Providers.Providers) != 0) && (appLinkAttr.Providers.Mandatory == true || allMandatory == true) {
 		bProviderCheck = domainSrPath.IsSatisfiedProvider(appLinkAttr.Providers)
 		// 如果设置的Mandatory属性
 		if bProviderCheck == false {
@@ -133,23 +133,27 @@ func (domainSrPath *DomainSrPath) IsSatisfiedProvider(provider AppLinkProviderAt
 		nputil.TraceInfoEnd("ProviderList is null, True")
 		return true
 	}
+
 	graph := GraphFindByGraphType(GraphTypeAlgo_Cspf)
 	domainInfoPath := graph.GetDomainPathNameWithFaric(*domainSrPath)
-	var domainNameList []string
+	var IspNameList []string
 	for _, domainInfo := range domainInfoPath {
 		if domainInfo.DomainType == uint32(String2DomainType(domainTypeString_Fabric_Internet)) {
-			domainNameList = append(domainNameList, domainInfo.DomainName)
+			IspName := GetIspNameByDomainId(domainInfo.DomainID)
+			if IspName != "" {
+				IspNameList = append(IspNameList, IspName)
 		}
 	}
-	info := fmt.Sprintf("Providerlist is (%+v): domainNameList is: (%+v)", provider.Providers, domainNameList)
+	}
+	info := fmt.Sprintf("Providerlist is (%+v): IspNameList is: (%+v)", provider.Providers, IspNameList)
 	nputil.TraceInfo(info)
 	providerLits := provider.Providers
-	for _, domainName := range domainNameList {
+	for _, Isp := range IspNameList {
 		sort.Strings(providerLits)
-		info := fmt.Sprintf("domainName is (%+v).", domainName)
+		info := fmt.Sprintf("IspName is (%+v).", Isp)
 		nputil.TraceInfo(info)
-		index := sort.SearchStrings(providerLits, domainName)
-		if !(index < len(providerLits) && providerLits[index] == domainName) {
+		index := sort.SearchStrings(providerLits, Isp)
+		if !(index < len(providerLits) && providerLits[index] == Isp) {
 			nputil.TraceInfoEnd("False: Provider is not satisfied")
 			return false
 		}
@@ -184,7 +188,7 @@ func (domainSrPath *DomainSrPath) IsSatisfiedSla(appSlaAttr AppSlaAttr) bool {
 
 	// 丢包率是否满足SLA,100认为是最大值，不需要关注丢包率
 	if appSlaAttr.LostValue != 0 &&
-		appSlaAttr.LostValue < 100 {
+		appSlaAttr.LostValue <= 100 {
 		bCheck := domainSrPath.isSatisfiedLost(appSlaAttr)
 		if bCheck == false {
 			nputil.TraceInfoEnd("False: lostrate is not satisfied")

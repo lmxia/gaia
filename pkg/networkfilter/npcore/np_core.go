@@ -224,7 +224,7 @@ func DomainLinkTopoAddFromScache(topoContents map[string][]byte) {
 		baseDomain := baseDomainGraph.BaseDomainFindById(domainTopoCache.LocalDomainId)
 		if baseDomain == nil {
 			domainType := String2DomainType(domainTypeString_Field)
-			newBaseDomain := baseDomainGraph.BaseDomainAdd(domainTopoCache.LocalDomainId, domainTopoCache.LocalDomainName, domainType)
+			newBaseDomain := baseDomainGraph.BaseDomainAdd(domainTopoCache.LocalDomainId, domainTopoCache.LocalDomainName, "", domainType)
 			if err != nil {
 				rtnErr := errors.New("BaseDomainAdd error")
 				nputil.TraceErrorWithStack(rtnErr)
@@ -254,7 +254,7 @@ func DomainLinkAddForScache(domainTopoCache ncsnp.DomainTopoCacheNotify) {
 	// Add domain in baseDomainGraph and graph tree
 	local := GetCoreLocal()
 	baseDomainGraph := local.BaseGraphPoint.BaseDomainGraphPoint
-	DomainAddForAllGraph(domainTopoCache.LocalDomainId, domainTopoCache.LocalDomainName, domainTypeString_Field)
+	DomainAddForAllGraph(domainTopoCache.LocalDomainId, domainTopoCache.LocalDomainName, "", domainTypeString_Field)
 
 	// Add domainlink in baseDomainGraph and graph
 	baseDomain := baseDomainGraph.BaseDomainFindById(domainTopoCache.LocalDomainId)

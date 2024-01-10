@@ -183,7 +183,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"chinaUnicom\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -506,7 +506,7 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"chinaUnicom\",\"ChinaMobile\",\"ChinaTelecom\",\"CNOS\"]"),
+						Extent:   []byte("[\"ChinaUnicom\",\"ChinaMobile\",\"ChinaTelecom\",\"CNOS\"]"),
 					},
 				},
 				BestEffort: []v1alpha1.Condition{
@@ -615,7 +615,7 @@ func SetRbsAndNetReqProvidersFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.Ne
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"chinaUnicom\",\"CNOS\",\"CENI\"]"),
+						Extent:   []byte("[\"ChinaUnicom\",\"CNOS\",\"CENI\"]"),
 					},
 				},
 			},
@@ -859,7 +859,7 @@ func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"CNOS\",\"CENI\",\"chinaUnicom\"]"),
+						Extent:   []byte("[\"CNOS\",\"CENI\",\"ChinaUnicom\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1396,7 +1396,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"chinaUnicom\",\"CNOS\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CNOS\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1589,7 +1589,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"chinaUnicom\",\"CNOS\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CNOS\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1789,7 +1789,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"chinaUnicom\",\"CNOS\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CNOS\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1984,7 +1984,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"chinaUnicom\",\"CENI\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CENI\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -2112,7 +2112,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink23.RemoteNodeSN = "Node32"
 	domainVLink23.AttachDomainId = 1023
 	domainVLink23.AttachDomainName = "Fabric23"
-	domainVLink23.Isp = "chinaUnicom"
+	domainVLink23.Isp = "ChinaUnicom"
 	vLinkSlaAttr23 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr23.Delay = 2
 	vLinkSlaAttr23.Bandwidth = 15000
@@ -2176,7 +2176,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink32.RemoteNodeSN = "Node23"
 	domainVLink32.AttachDomainId = 1023
 	domainVLink32.AttachDomainName = "Fabric23"
-	domainVLink32.Isp = "chinaUnicom"
+	domainVLink32.Isp = "ChinaUnicom"
 	vLinkSlaAttr32 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr32.Delay = 2
 	vLinkSlaAttr32.Bandwidth = 15000
@@ -2286,7 +2286,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink14.RemoteNodeSN = "Node41"
 	domainVLink14.AttachDomainId = 1014
 	domainVLink14.AttachDomainName = "Fabric14"
-	domainVLink14.Isp = "chinaUnicom"
+	domainVLink14.Isp = "ChinaUnicom"
 	vLinkSlaAttr14 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr14.Delay = 15
 	vLinkSlaAttr14.Bandwidth = 20000
@@ -2366,7 +2366,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink41.RemoteNodeSN = "Node14"
 	domainVLink41.AttachDomainId = 1014
 	domainVLink41.AttachDomainName = "Fabric14"
-	domainVLink41.Isp = "chinaUnicom"
+	domainVLink41.Isp = "ChinaUnicom"
 	vLinkSlaAttr41 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr41.Delay = 4
 	vLinkSlaAttr41.Bandwidth = 20000

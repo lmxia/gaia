@@ -353,7 +353,7 @@ func DomainLinkKeyCreateFromCache(domainVlink *ncsnp.DomainVLink) *DomainLinkKey
 	nputil.TraceInfoBegin("")
 
 	infoString := fmt.Sprintf("domainVlink is (%+v)!", domainVlink)
-	nputil.TraceInfo(infoString)
+	nputil.TraceInfoAlwaysPrint(infoString)
 	domainLinkKey := new(DomainLinkKey)
 	domainLinkKey.SrcDomainId = domainVlink.LocalDomainId
 	domainLinkKey.SrcNodeSN = domainVlink.LocalNodeSN

@@ -110,7 +110,7 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 
 func (c *Controller) addHypernode(obj interface{}) {
 	hyperNode := obj.(*clusterv1alpha1.Hypernode)
-	klog.Infof("adding Hypernode %q", klog.KObj(hyperNode))
+	klog.V(5).Infof("adding Hypernode %q", klog.KObj(hyperNode))
 	c.enqueue(hyperNode)
 }
 
@@ -230,7 +230,7 @@ func (c *Controller) sync(key string) error {
 		klog.V(2).Infof("Hypernode %q not found, may be it is deleted", key)
 		return nil
 	case err != nil:
-		klog.Errorf("failed to get Hypernode from parent cluster", "Hypernode", klog.KObj(hyperNode), "error", err)
+		klog.Errorf("failed to get Hypernode from parent cluster, Hypernode==%q, error==%v", klog.KObj(hyperNode), err)
 		return err
 	}
 
@@ -275,7 +275,8 @@ func (c *Controller) syncHypernode(hyperNode *clusterv1alpha1.Hypernode) error {
 			node, errUpdate := c.localGaiaClient.ClusterV1alpha1().Hypernodes(localHyperNode.Namespace).Update(
 				context.TODO(), localHyperNodeCopy, metav1.UpdateOptions{})
 			if errUpdate != nil {
-				klog.Errorf("failed to update Hypernode", "Hypernode", klog.KObj(parentHyperNodeCopy), "error", err)
+				klog.Errorf("failed to update Hypernode, Hypernode==%q, error==%v",
+					klog.KObj(parentHyperNodeCopy), err)
 			}
 			klog.InfoS("successfully update existed hyperNode", "Hypernode", klog.KObj(node),
 				"MyAreaName", node.Spec.MyAreaName, "SupervisorName", node.Spec.SupervisorName,
@@ -294,7 +295,7 @@ func (c *Controller) syncHypernode(hyperNode *clusterv1alpha1.Hypernode) error {
 			node, errCreate := c.localGaiaClient.ClusterV1alpha1().Hypernodes(parentHyperNodeCopy.Namespace).
 				Create(context.TODO(), parentHyperNodeCopy, metav1.CreateOptions{})
 			if errCreate != nil {
-				klog.Errorf("failed to create Hypernode", "Hypernode", klog.KObj(parentHyperNodeCopy), "error", err)
+				klog.Errorf("failed to create Hypernode, Hypernode==%q, error==%v", klog.KObj(hyperNode), err)
 			}
 			klog.InfoS("successfully created new hyperNode", "Hypernode", klog.KObj(node),
 				"MyAreaName", node.Spec.MyAreaName, "SupervisorName", node.Spec.SupervisorName,
@@ -302,13 +303,13 @@ func (c *Controller) syncHypernode(hyperNode *clusterv1alpha1.Hypernode) error {
 			c.recorder.Event(hyperNode, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 			return errCreate
 		} else {
-			klog.InfoS("this Hypernode not belong to this cluster", "Hypernode", klog.KObj(parentHyperNodeCopy),
-				"MyAreaName", parentHyperNodeCopy.Spec.MyAreaName, "SupervisorName", parentHyperNodeCopy.Spec.SupervisorName,
+			klog.InfoS("this Hypernode not belong to this cluster", "Hypernode", klog.KObj(hyperNode),
+				"MyAreaName", hyperNode.Spec.MyAreaName, "SupervisorName", hyperNode.Spec.SupervisorName,
 				"LocalClusterName", c.gaiaClusterName)
 		}
 		return nil
 	case err != nil:
-		klog.Errorf("failed to get Hypernode", "Hypernode", klog.KObj(parentHyperNodeCopy), "error", err)
+		klog.Errorf("failed to get Hypernode, Hypernode==%q, error==%v", klog.KObj(hyperNode), err)
 		return err
 	}
 

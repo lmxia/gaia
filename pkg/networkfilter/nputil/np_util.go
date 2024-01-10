@@ -24,7 +24,7 @@ const (
 )
 
 func TraceInfo(inputString string) {
-	if LogSwitch == "Off" {
+	if LogSwitch == "OFF" {
 		return
 	}
 	pc, _, _, _ := runtime.Caller(1)
@@ -46,7 +46,7 @@ func TraceInfoAlwaysPrint(inputString string) {
 }
 
 func TraceInfoBegin(inputString string) {
-	if LogSwitch == "Off" {
+	if LogSwitch == "OFF" {
 		return
 	}
 	pc, _, _, _ := runtime.Caller(1)
@@ -56,7 +56,7 @@ func TraceInfoBegin(inputString string) {
 }
 
 func TraceInfoEnd(inputString string) {
-	if LogSwitch == "Off" {
+	if LogSwitch == "OFF" {
 		return
 	}
 	pc, _, _, _ := runtime.Caller(1)
@@ -67,7 +67,7 @@ func TraceInfoEnd(inputString string) {
 }
 
 func TraceError(err error) {
-	if LogSwitch == "Off" {
+	if LogSwitch == "0FF" {
 		return
 	}
 	pc, _, _, _ := runtime.Caller(1)
@@ -78,7 +78,7 @@ func TraceError(err error) {
 }
 
 func TraceErrorString(errString string) {
-	if LogSwitch == "Off" {
+	if LogSwitch == "OFF" {
 		return
 	}
 	err := errors.New(errString)
@@ -90,7 +90,7 @@ func TraceErrorString(errString string) {
 }
 
 func TraceErrorWithStack(err error) {
-	if LogSwitch == "Off" {
+	if LogSwitch == "OFF" {
 		return
 	}
 	pc, _, _, _ := runtime.Caller(1)
@@ -102,7 +102,7 @@ func TraceErrorWithStack(err error) {
 }
 
 func TraceErrorStringWithStack(errString string) {
-	if LogSwitch == "Off" {
+	if LogSwitch == "OFF" {
 		return
 	}
 	err := errors.New(errString)

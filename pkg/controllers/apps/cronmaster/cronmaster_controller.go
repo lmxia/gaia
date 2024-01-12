@@ -928,13 +928,21 @@ func (c *Controller) handleOnlyEnd(cron *appsV1alpha1.CronMaster, resource *unst
 	return cron, nil, nil
 }
 
-func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string, now time.Time) (*appsV1alpha1.CronMaster, *time.Duration, error) {
+func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string,
+	now time.Time,
+) (*appsV1alpha1.CronMaster, *time.Duration, error) {
 	if cron.Status.NextScheduleAction == appsV1alpha1.Processed {
 		klog.InfoS("handleStartAndStop: already handled",
 			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
 			"resourceVersion", cron.ResourceVersion)
 		return cron, nil, nil
 	}
+	depList, serList, err := c.getResourcesToBeReconciled(cron, kind)
+	if err != nil {
+		klog.Errorf("failed to get resource to reconcile")
+		return nil, nil, err
+	}
+	notExist := len(cron.Status.Active) == 0 && (len(depList) == 0 && len(serList) == 0)
 
 	scheduledTime, isStart, err := getCronNextScheduleTime(cron, now)
 	if err != nil {
@@ -951,9 +959,9 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
 			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
 
-		if isStart1 {
+		if notExist {
 			cron.Status.NextScheduleAction = appsV1alpha1.Start
-		} else {
+		} else if !isStart1 && !notExist {
 			cron.Status.NextScheduleAction = appsV1alpha1.Stop
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime}
@@ -975,10 +983,12 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
 			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
 
-		if isStart1 {
+		if notExist {
 			cron.Status.NextScheduleAction = appsV1alpha1.Start
-		} else {
+		} else if !isStart1 && !notExist {
 			cron.Status.NextScheduleAction = appsV1alpha1.Stop
+		} else {
+			return cron, t, nil
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime}
 		updatedCron, errUS := c.updateCronMasterStatus(cron)
@@ -991,7 +1001,7 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 	}
 
 	// create or update resources for a cronmaster
-	if isStart {
+	if isStart && notExist {
 		updated := false
 		switch kind {
 		case deploymentKind:
@@ -1086,7 +1096,7 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 			}
 			*cron = *updatedCron
 		}
-	} else {
+	} else if !isStart && !notExist {
 		// stop delete resource and update status
 		updated := false
 		switch kind {
@@ -1165,15 +1175,13 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 		"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", td)
 
 	switch {
-	case isStart1 && cron.Status.NextScheduleAction == "":
+	case cron.Status.NextScheduleAction == "":
 		cron.Status.NextScheduleAction = appsV1alpha1.Start
 	case !isStart1 && cron.Status.NextScheduleAction == "start":
 		cron.Status.NextScheduleAction = appsV1alpha1.Stop
-	default:
-		klog.InfoS("timing start before timing stop: failed to get correct nextScheduledTimeDuration",
-			"cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "resourceVersion", cron.ResourceVersion)
-		return cron, nil, fmt.Errorf("timing start before timing stop: failed to get correct nextScheduledTimeDuration,"+
-			" cronmaster: %q(rv = %s)", klog.KRef(cron.GetNamespace(), cron.GetName()), cron.ResourceVersion)
+	}
+	if cron.Status.LastScheduleTime == nil {
+		cron.Status.LastScheduleTime = &metav1.Time{Time: now}
 	}
 	cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime}
 	updatedCron, err := c.updateCronMasterStatus(cron)

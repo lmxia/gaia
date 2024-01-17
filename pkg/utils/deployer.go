@@ -708,16 +708,7 @@ func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
-				newLabels := map[string]string{
-					known.GaiaDescriptionLabel:            descName,
-					known.GaiaComponentLabel:              comCopy.Name,
-					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
-				}
-				if descLabels[known.UserIDLabel] != "" {
-					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
-				}
+				newLabels := addLabels(comCopy, descLabels, descName)
 				ds := &appsv1.DaemonSet{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "DaemonSet",
@@ -775,16 +766,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 			if replicas == 0 {
 				return nil, nil
 			}
-			newLabels := map[string]string{
-				known.GaiaDescriptionLabel:            descName,
-				known.GaiaComponentLabel:              comCopy.Name,
-				known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-				known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-				known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
-			}
-			if descLabels[known.UserIDLabel] != "" {
-				newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
-			}
+			newLabels := addLabels(comCopy, descLabels, descName)
 			userAPP := &appsv1alpha1.UserAPP{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "UserAPP",
@@ -890,16 +872,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			if replicas <= 0 {
 				return nil, fmt.Errorf("deployment name==%s, have zero replicas", comCopy.Name)
 			}
-			newLabels := map[string]string{
-				known.GaiaDescriptionLabel:            descName,
-				known.GaiaComponentLabel:              comCopy.Name,
-				known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-				known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-				known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
-			}
-			if descLabels[known.UserIDLabel] != "" {
-				newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
-			}
+			newLabels := addLabels(comCopy, descLabels, descName)
 			dep := &appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
@@ -943,6 +916,24 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 	}
 
 	return depUnstructured, nil
+}
+
+func addLabels(com *appsv1alpha1.Component, descLabels map[string]string, descName string) map[string]string {
+	newLabels := map[string]string{
+		known.GaiaDescriptionLabel:            descName,
+		known.GaiaComponentLabel:              com.Name,
+		known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
+		known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
+		known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+	}
+	if descLabels[known.UserIDLabel] != "" {
+		newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+	}
+	for k, v := range com.Module.Labels {
+		newLabels[k] = v
+	}
+
+	return newLabels
 }
 
 func addNodeSelector(comCopy *appsv1alpha1.Component, src, group2VPC map[string]string) map[string]string {
@@ -1057,16 +1048,7 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
-				newLabels := map[string]string{
-					known.GaiaDescriptionLabel:            descName,
-					known.GaiaComponentLabel:              comCopy.Name,
-					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
-				}
-				if descLabels[known.UserIDLabel] != "" {
-					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
-				}
+				newLabels := addLabels(comCopy, descLabels, descName)
 				cron := &appsv1alpha1.CronMaster{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "CronMaster",
@@ -1157,16 +1139,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 		if clusterName == rbApp.ClusterName && len(rbApp.Children) == 0 {
 			replicas := rbApp.Replicas[comCopy.Name]
 			if replicas > 0 {
-				newLabels := map[string]string{
-					known.GaiaDescriptionLabel:            descName,
-					known.GaiaComponentLabel:              comCopy.Name,
-					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
-				}
-				if descLabels[known.UserIDLabel] != "" {
-					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
-				}
+				newLabels := addLabels(comCopy, descLabels, descName)
 				cron := &appsv1alpha1.CronMaster{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "CronMaster",
@@ -1270,16 +1243,7 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			replicas := rbApp.Replicas[comCopy.Name]
 			comCopy.Workload.TraitServerless.Foundingmember = rbApp.ChosenOne[comCopy.Name] == 1
 			if replicas > 0 {
-				newLabels := map[string]string{
-					known.GaiaDescriptionLabel:            descName,
-					known.GaiaComponentLabel:              comCopy.Name,
-					known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-					known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-					known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
-				}
-				if descLabels[known.UserIDLabel] != "" {
-					newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
-				}
+				newLabels := addLabels(comCopy, descLabels, descName)
 				ser := &lmmserverless.Serverless{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "Serverless",

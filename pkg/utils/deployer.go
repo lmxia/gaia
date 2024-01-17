@@ -612,7 +612,7 @@ func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 					nodeAffinity := AddNodeAffinity(comCopy)
 					ds.Spec.Template.Spec.Affinity = nodeAffinity
 
-					label := ds.GetLabels()
+					label := getTemLabel(comCopy, newLabels)
 					ds.Spec.Template.Labels = label
 					ds.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 					// add  env variables log needed
@@ -659,7 +659,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 			if !delete {
 				userAPP.Spec.Module = comCopy.Module
 				userAPP.Spec.SN = comCopy.Workload.TraitUserAPP.SN
-				label := userAPP.GetLabels()
+				label := getTemLabel(comCopy, newLabels)
 				userAPP.Spec.Module.Labels = label
 				// add  env variables log needed
 				userAPP.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
@@ -768,7 +768,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 					}
 				}
 				dep.Spec.Replicas = &replicas
-				label := dep.GetLabels()
+				label := getTemLabel(comCopy, newLabels)
 				dep.Spec.Template.Labels = label
 				dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 				// add  env variables log needed
@@ -801,6 +801,15 @@ func addLabels(com *appsv1alpha1.Component, descLabels map[string]string, descNa
 	}
 	if descLabels[known.UserIDLabel] != "" {
 		newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+	}
+
+	return newLabels
+}
+
+func getTemLabel(com *appsv1alpha1.Component, depLabels map[string]string) map[string]string {
+	newLabels := map[string]string{}
+	for k, v := range depLabels {
+		newLabels[k] = v
 	}
 	for k, v := range com.Module.Labels {
 		newLabels[k] = v
@@ -950,7 +959,7 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 						}
 					}
 					dep.Spec.Replicas = &replicas
-					label := dep.GetLabels()
+					label := getTemLabel(comCopy, newLabels)
 					dep.Spec.Template.Labels = label
 					dep.Spec.Selector = &metav1.LabelSelector{MatchLabels: label}
 					// add  env variables log needed
@@ -1053,7 +1062,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 							v1alpha1.ParsedRuntimeStateKey: comCopy.RuntimeType,
 						}
 					}
-					ser.Spec.Module.Labels = ser.GetLabels()
+					ser.Spec.Module.Labels = getTemLabel(comCopy, newLabels)
 
 					serJs, errSer := json.Marshal(ser)
 					if errSer != nil {
@@ -1126,7 +1135,7 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 							v1alpha1.ParsedRuntimeStateKey: comCopy.RuntimeType,
 						}
 					}
-					ser.Spec.Module.Labels = ser.GetLabels()
+					ser.Spec.Module.Labels = getTemLabel(comCopy, newLabels)
 
 					serUnstructured, err = ObjectConvertToUnstructured(ser)
 				} else {

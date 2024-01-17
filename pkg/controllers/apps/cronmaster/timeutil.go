@@ -43,14 +43,16 @@ func getCronNextScheduleTime(cron *appsV1alpha1.CronMaster, now time.Time) (*tim
 
 	t, isStart, numberOfMissedSchedules, err := getMostRecentScheduleTime(cron.Spec.Schedule, earliestTime, now)
 	if numberOfMissedSchedules > 100 {
-		klog.InfoS("too many missed times", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "missed times", numberOfMissedSchedules)
+		klog.InfoS("too many missed times", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
+			"missed times", numberOfMissedSchedules)
 	}
 
 	return t, isStart, err
 }
 
 // getMostRecentScheduleTime returns the latest next schedule time after earliestTime
-func getMostRecentScheduleTime(config appsV1alpha1.SchedulerConfig, earliestTime, now time.Time) (*time.Time, bool, int64, error) {
+func getMostRecentScheduleTime(config appsV1alpha1.SchedulerConfig, earliestTime, now time.Time,
+) (*time.Time, bool, int64, error) {
 	t1, isStart1 := getNextScheduledTimeAfterNow(config, earliestTime)
 	t2, _ := getNextScheduledTimeAfterNow(config, t1)
 
@@ -124,16 +126,18 @@ func getRecentStartTime(now time.Time, scheduleOfWeekday map[time.Weekday]appsV1
 	nowWeekday := now.Weekday()
 	for j := 0; j < 8; j++ {
 		if nowWeekday == 7 {
-			nowWeekday = nowWeekday - 7
+			nowWeekday -= 7
 		}
 		if scheduleOfWeekday[nowWeekday].StartSchedule != "" {
 			tOnly, err := time.Parse(time.TimeOnly, scheduleOfWeekday[nowWeekday].StartSchedule)
 			if err != nil {
-				klog.WarningDepth(2, "invalid ScheduleTimeSet, 'Weekday' is ", nowWeekday, "'StartSchedule' is ", scheduleOfWeekday[nowWeekday].StartSchedule)
+				klog.WarningDepth(2, "invalid ScheduleTimeSet, 'Weekday' is ", nowWeekday,
+					"'StartSchedule' is ", scheduleOfWeekday[nowWeekday].StartSchedule)
 				utilruntime.HandleError(err)
 				return nil
 			}
-			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(), tOnly.Second(), 0, LocalZone)
+			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(),
+				tOnly.Second(), 0, LocalZone)
 			tSchedule = tSchedule.AddDate(0, 0, j)
 			if tSchedule.After(now) {
 				klog.V(5).InfoS("next start schedule", "DateTime", tSchedule, "weekday ", nowWeekday, "after the datetime", now)
@@ -150,7 +154,7 @@ func getRecentEndTime(now time.Time, scheduleOfWeekday map[time.Weekday]appsV1al
 	nowWeekday := now.Weekday()
 	for j := 0; j < 8; j++ {
 		if nowWeekday == 7 {
-			nowWeekday = nowWeekday - 7
+			nowWeekday -= 7
 		}
 		if scheduleOfWeekday[nowWeekday].EndSchedule != "" {
 			tOnly, err := time.Parse(time.TimeOnly, scheduleOfWeekday[nowWeekday].EndSchedule)

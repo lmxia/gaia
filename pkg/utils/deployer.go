@@ -281,10 +281,11 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 	var allErrs []error
 	var err error
 	wg := sync.WaitGroup{}
-	wg.Add(len(resources))
+	// wg.Add(len(resources))
 	errCh := make(chan error, len(resources))
 	descName := rbLabel[known.OriginDescriptionNameLabel]
 	for _, res := range resources {
+		wg.Add(1)
 		go func(un unstructured.Unstructured) {
 			defer wg.Done()
 			unStructure := &un

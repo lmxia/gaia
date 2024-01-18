@@ -64,6 +64,9 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	klog.V(5).Infof("comLocation is %+v,affinity is %v", comLocation, affinity) // 临时占用
 
 	numComponent := len(components)
+	if numComponent == 0 {
+		return result, errors.New("the desc is empty, we can't handle this case")
+	}
 	// 2, means allspread, one spread, 2 spread.
 	allResultGlobal := make([][]mat.Matrix, 3)
 	for i := 0; i < 3; i++ {

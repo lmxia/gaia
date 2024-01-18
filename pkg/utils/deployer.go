@@ -799,8 +799,8 @@ func addLabels(com *appsv1alpha1.Component, descLabels map[string]string, descNa
 		known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
 		known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
 	}
-	if descLabels[known.UserIDLabel] != "" {
-		newLabels[known.UserIDLabel] = descLabels[known.UserIDLabel]
+	if descLabels[known.UserNameLabel] != "" {
+		newLabels[known.UserNameLabel] = descLabels[known.UserNameLabel]
 	}
 
 	return newLabels

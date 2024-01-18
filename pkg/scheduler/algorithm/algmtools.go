@@ -17,9 +17,10 @@ import (
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/scheduler/framework"
+	"github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 )
 
-func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster) ([]*framework.ClusterInfo, int64) {
+func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster, diagnosis interfaces.Diagnosis) ([]*framework.ClusterInfo, int64) {
 	result := make([]*framework.ClusterInfo, len(clusters))
 	total := int64(0)
 	for i, cluster := range clusters {
@@ -27,7 +28,12 @@ func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster)
 			Cluster: cluster,
 		}
 		clusterCapacity := clusterInfo.CalculateCapacity(cpu, mem)
+		if clusterCapacity == 0 {
+			diagnosis.UnschedulablePlugins.Insert("filted cluster has resource limit")
+			continue
+		}
 		clusterInfo.Total = clusterCapacity
+		total += clusterCapacity
 		result[i] = clusterInfo
 	}
 	return result, total

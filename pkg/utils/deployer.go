@@ -356,7 +356,7 @@ func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *ga
 				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, un)
 				if retryErr != nil {
 					klog.Infof("applyRBWorkloads Deployment name==%q err===%v \n",
-						klog.KRef(un.GetNamespace(), un.GetName()), retryErr)
+						klog.KRef(un.GetNamespace(), un.GetName()).String(), retryErr.Error())
 					errCh <- retryErr
 					return
 				}
@@ -433,9 +433,10 @@ func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *ga
 	} else {
 		err = updateRBStatusWithRetry(ctx, parentGaiaClient, rb, condition, clusterName)
 	}
-	if len(allErrs) > 0 {
-		return utilerrors.NewAggregate(allErrs)
-	}
+	// no more retries
+	// if len(allErrs) > 0 {
+	// 	return utilerrors.NewAggregate(allErrs)
+	// }
 
 	return err
 }
@@ -536,15 +537,14 @@ func getFitVPC(com *appsv1alpha1.HugeComponent, sli *vpcResourceSlice) (int, err
 
 func getDeployCondition(errs []error, clusterName, rbRef string) metav1.Condition {
 	if len(errs) > 0 {
-		reason := utilerrors.NewAggregate(errs).Error()
-		klog.Errorf("failed to apply workloads, ResourceBinding: %s, reason: %s", rbRef, reason)
+		errMessage := utilerrors.NewAggregate(errs).Error()
+		klog.Errorf("failed to apply workloads, ResourceBinding: %s, reason: %s", rbRef, errMessage)
 		return metav1.Condition{
 			Type:               clusterName,
 			Status:             metav1.ConditionFalse,
 			LastTransitionTime: metav1.Now(),
-			Reason:             reason,
-			Message: fmt.Sprintf("clusterName: %q ResourceBinding: %q  failed to deploy workloads",
-				clusterName, rbRef),
+			Reason:             "Error",
+			Message:            "failed to deploy workloads. " + errMessage,
 		}
 	}
 
@@ -554,8 +554,7 @@ func getDeployCondition(errs []error, clusterName, rbRef string) metav1.Conditio
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 		Reason:             "null",
-		Message: fmt.Sprintf("clusterName: %q ResourceBinding: %q  deployed workloads successfully",
-			clusterName, rbRef),
+		Message:            "deployed workloads successfully",
 	}
 }
 

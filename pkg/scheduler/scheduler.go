@@ -932,33 +932,40 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 }
 
 func (sched *Scheduler) handleFrontEndAPP(ctx context.Context, desc *appsapi.Description) error {
-	if len(desc.Spec.FrontEndAPP.Cdn) == 0 {
-		return fmt.Errorf("FrontEndAPP.cdn is nil, Description==%q", klog.KObj(desc))
+	if len(desc.Spec.FrontendComponents) == 0 {
+		return fmt.Errorf("the components of frontendAPP is nil, Description==%q", klog.KObj(desc))
 	}
-
-	label := algorithm.FillRBLabels(desc)
-	label[common.GaiaDescriptionLabel] = desc.Name
-	for _, cdn := range desc.Spec.FrontEndAPP.Cdn {
+	for _, com := range desc.Spec.FrontendComponents {
+		if len(com.Cdn) == 0 {
+			return fmt.Errorf("FrontEndAPP.cdn is nil, Description==%q", klog.KObj(desc))
+		}
+		label := algorithm.FillRBLabels(desc)
+		label[common.GaiaDescriptionLabel] = desc.Name
+		label[common.GaiaComponentLabel] = com.ComponentName
 		frontEnd := &appsapi.Frontend{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "apps.gaia.io/v1alpha1",
 				Kind:       "Frontend",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      desc.Name + "-" + cdn.Supplier,
+				Name:      com.ComponentName,
 				Namespace: common.GaiaFrontendNamespace,
 				Labels:    label,
 				Finalizers: []string{
 					common.FrontendAliyunFinalizers,
 				},
 			},
-			Spec: desc.Spec.FrontEndAPP,
+			Spec: appsapi.FrontendSpec{
+				DomainName:    com.DomainName,
+				CdnAccelerate: com.CdnAccelerate,
+				Cdn:           com.Cdn,
+			},
 		}
 
 		_, err := sched.localGaiaClient.AppsV1alpha1().Frontends(frontEnd.Namespace).Create(ctx, frontEnd,
 			metav1.CreateOptions{})
 		if err != nil && errors.IsNotFound(err) {
-			klog.V(2).ErrorS(err, "failed to create Frontend", "Frontend", klog.KObj(frontEnd))
+			klog.ErrorS(err, "failed to create Frontend", "Frontend", klog.KObj(frontEnd))
 		} else {
 			klog.V(5).InfoS("successfully created Frontend", "Frontend", klog.KObj(frontEnd))
 		}

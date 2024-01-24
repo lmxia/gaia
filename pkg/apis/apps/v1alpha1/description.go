@@ -33,9 +33,9 @@ type DescriptionSpec struct {
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=boolean
-	IsFrontEnd bool `json:"IsFrontEnd,omitempty"`
+	IsFrontEnd bool `json:"isFrontEnd,omitempty"`
 	// +optional
-	FrontEndAPP FrontendSpec `json:"frontEndAPP,omitempty"`
+	FrontendComponents []FrontendComponent `json:"frontendComponents,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
 	WorkloadComponents []WorkloadComponent `json:"workloadComponents,omitempty"`
@@ -61,6 +61,19 @@ const (
 	Kata    SandboxType = "SecureContainer"
 	Wasm    SandboxType = "wasm"
 )
+
+type FrontendComponent struct {
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	ComponentName string `json:"componentName,omitempty"`
+	// +required
+	DomainName string `json:"domainName,omitempty"`
+	// +optional
+	CdnAccelerate bool `json:"cdnAccelerate,omitempty"`
+	// +required
+	Cdn []CdnSpec `json:"cdnSpec,omitempty"`
+}
 
 type WorkloadComponent struct {
 	// +required

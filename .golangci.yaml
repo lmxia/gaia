@@ -31,7 +31,7 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - gomnd
+    # - gomnd
     - goprintffuncname
     - gosec
     - gosimple

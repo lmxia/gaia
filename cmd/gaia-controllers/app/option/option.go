@@ -21,8 +21,10 @@ import (
 
 // ClusterRegistrationOptions holds the command-line options for command
 type Options struct {
-	Kubeconfig          string
-	ClusterHostName     string
+	Kubeconfig      string
+	ClusterHostName string
+	ClusterLevel    string
+
 	NetworkBindURL      string
 	AliyunSourceSite    string
 	ClusterRegistration *ClusterRegistrationOptions
@@ -43,6 +45,8 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 		"Path to a kubeconfig file for current child cluster. Only required if out-of-cluster")
 	fs.StringVar(&o.ClusterHostName, "clustername", o.ClusterHostName,
 		"To generate ClusterRegistration name and gaiaName as gaia-'clustername'-UID ")
+	fs.StringVar(&o.ClusterLevel, "cluster-level", o.ClusterLevel,
+		"Specify the level of this cluster, 'cluster', 'field' or 'global' ")
 	fs.StringVar(&o.NetworkBindURL, "networkBindUrl", o.NetworkBindURL, "send network path Url")
 	fs.StringVar(&o.ManagedCluster.ManagedClusterSource, "mcSource", o.ManagedCluster.ManagedClusterSource,
 		"where to get the managerCluster Resource.")
@@ -184,6 +188,7 @@ func (o *Options) ApplyTo(c *gaiaappconfig.Config) error {
 		}
 	}
 	o.Metrics.Apply()
+
 	return nil
 }
 

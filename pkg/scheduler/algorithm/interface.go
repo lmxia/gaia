@@ -10,7 +10,8 @@ import (
 // ScheduleAlgorithm is an interface implemented by things that know how to schedule resources to target
 // managed clusters.
 type ScheduleAlgorithm interface {
-	Schedule(context.Context, framework.Framework, []*v1alpha1.ResourceBinding, *v1alpha1.Description) (scheduleResult ScheduleResult, err error)
+	Schedule(context.Context, framework.Framework, []*v1alpha1.ResourceBinding, *v1alpha1.Description,
+	) (scheduleResult ScheduleResult, err error)
 	SetSelfClusterName(name string)
 }
 

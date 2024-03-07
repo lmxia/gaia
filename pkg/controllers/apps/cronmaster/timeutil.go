@@ -159,14 +159,17 @@ func getRecentEndTime(now time.Time, scheduleOfWeekday map[time.Weekday]appsV1al
 		if scheduleOfWeekday[nowWeekday].EndSchedule != "" {
 			tOnly, err := time.Parse(time.TimeOnly, scheduleOfWeekday[nowWeekday].EndSchedule)
 			if err != nil {
-				klog.WarningDepth(2, "invalid ScheduleTimeSet, 'Weekday' is ", nowWeekday, "'EndSchedule' is ", scheduleOfWeekday[nowWeekday].EndSchedule)
+				klog.WarningDepth(2, "invalid ScheduleTimeSet, 'Weekday' is ",
+					nowWeekday, "'EndSchedule' is ", scheduleOfWeekday[nowWeekday].EndSchedule)
 				utilruntime.HandleError(err)
 				return nil
 			}
-			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(), tOnly.Second(), 0, LocalZone)
+			tSchedule := time.Date(now.Year(), now.Month(), now.Day(), tOnly.Hour(), tOnly.Minute(),
+				tOnly.Second(), 0, LocalZone)
 			tSchedule = tSchedule.AddDate(0, 0, j)
 			if tSchedule.After(now) {
-				klog.V(5).InfoS("next stop schedule", "DateTime", tSchedule, "weekday", nowWeekday, "after the datetime", now)
+				klog.V(5).InfoS("next stop schedule", "DateTime", tSchedule, "weekday",
+					nowWeekday, "after the datetime", now)
 				return &tSchedule
 			}
 		}

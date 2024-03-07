@@ -16,7 +16,9 @@ import (
 )
 
 // EnsureClusterRole will make sure desired clusterrole exists and update it if available
-func EnsureClusterRole(ctx context.Context, clusterRole v1.ClusterRole, client *kubernetes.Clientset, backoff wait.Backoff) error {
+func EnsureClusterRole(ctx context.Context, clusterRole v1.ClusterRole, client *kubernetes.Clientset,
+	backoff wait.Backoff,
+) error {
 	klog.V(5).Infof("ensure ClusterRole %s...", clusterRole.Name)
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, backoff, func() (bool, error) {
@@ -51,7 +53,9 @@ func EnsureClusterRole(ctx context.Context, clusterRole v1.ClusterRole, client *
 }
 
 // EnsureClusterRoleBinding will make sure desired clusterrolebinding exists and update it if available
-func EnsureClusterRoleBinding(ctx context.Context, clusterRolebinding v1.ClusterRoleBinding, client *kubernetes.Clientset, backoff wait.Backoff) error {
+func EnsureClusterRoleBinding(ctx context.Context, clusterRolebinding v1.ClusterRoleBinding,
+	client *kubernetes.Clientset, backoff wait.Backoff,
+) error {
 	klog.V(5).Infof("ensure ClusterRoleBinding %s...", clusterRolebinding.Name)
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, backoff, func() (bool, error) {
@@ -121,7 +125,9 @@ func EnsureRole(ctx context.Context, role v1.Role, client *kubernetes.Clientset,
 }
 
 // EnsureRoleBinding will make sure desired rolebinding exists and update it if available
-func EnsureRoleBinding(ctx context.Context, rolebinding v1.RoleBinding, client *kubernetes.Clientset, backoff wait.Backoff) error {
+func EnsureRoleBinding(ctx context.Context, rolebinding v1.RoleBinding, client *kubernetes.Clientset,
+	backoff wait.Backoff,
+) error {
 	klog.V(5).Infof("ensure RoleBinding %s...", klog.KObj(&rolebinding).String())
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, backoff, func() (done bool, err error) {

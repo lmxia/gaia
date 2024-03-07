@@ -20,7 +20,8 @@ import (
 	"github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 )
 
-func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster, diagnosis interfaces.Diagnosis) ([]*framework.ClusterInfo, int64) {
+func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster, diagnosis interfaces.Diagnosis,
+) ([]*framework.ClusterInfo, int64) {
 	result := make([]*framework.ClusterInfo, len(clusters))
 	total := int64(0)
 	for i, cluster := range clusters {
@@ -124,7 +125,8 @@ func GetResultWithRB(result [][][]mat.Matrix, rbIndex, levelIndex, comIndex int)
 	return got
 }
 
-// GetAffinityComPlanForDeployment return a new mat.Matrix according to the destination component when that is dispersion or serverless
+// GetAffinityComPlanForDeployment return a new mat.Matrix according to
+// the destination component when that is dispersion or serverless
 func GetAffinityComPlanForDeployment(m mat.Matrix, replicas int64, dispersion bool) mat.Matrix {
 	if dispersion {
 		return GetAffinityComPlan(m, replicas)
@@ -243,7 +245,9 @@ func GetAffinityComPlanForServerless(m mat.Matrix) mat.Matrix {
 }
 
 // make a matrix to a rbApps struct.
-func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedCluster, components []appv1alpha1.Component) []*appv1alpha1.ResourceBindingApps {
+func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedCluster,
+	components []appv1alpha1.Component,
+) []*appv1alpha1.ResourceBindingApps {
 	matR, matC := mat.Dims()
 	chosenMat := chosenOneInArrow(mat)
 	rbapps := make([]*appv1alpha1.ResourceBindingApps, len(allClusters))
@@ -490,7 +494,8 @@ func plan(weight []*framework.ClusterInfo, request int64) []float64 {
 		currentFinalAssign := math.Floor(currentAssign)
 		totalFirstAssign += currentFinalAssign
 		if currentTotal != 0 {
-			targetF = append(targetF, float64(sum)/float64(request)*(1+(currentAssign-math.Floor(currentAssign))/math.Floor(currentAssign)))
+			targetF = append(targetF, float64(sum)/float64(request)*(1+
+				(currentAssign-math.Floor(currentAssign))/math.Floor(currentAssign)))
 		} else {
 			targetF = append(targetF, float64(0))
 		}

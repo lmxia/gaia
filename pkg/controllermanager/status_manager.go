@@ -1,4 +1,4 @@
-// copied and modified from clusternet.
+// Package controllermanager copied and modified from clusternet.
 package controllermanager
 
 import (
@@ -22,7 +22,6 @@ import (
 	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
-	known "github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllers/clusterstatus"
 	"github.com/lmxia/gaia/pkg/features"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
@@ -39,8 +38,11 @@ type Manager struct {
 	localSuperKubeConfig *rest.Config
 }
 
-func NewStatusManager(ctx context.Context, apiserverURL, clusterName string, managedCluster *clusterapi.ManagedClusterOptions, kubeClient kubernetes.Interface, gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset) *Manager {
-	retryCtx, retryCancel := context.WithTimeout(ctx, known.DefaultRetryPeriod)
+func NewStatusManager(ctx context.Context, apiserverURL, clusterName string,
+	managedCluster *clusterapi.ManagedClusterOptions, kubeClient kubernetes.Interface,
+	gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset,
+) *Manager {
+	retryCtx, retryCancel := context.WithTimeout(ctx, common.DefaultRetryPeriod)
 	defer retryCancel()
 
 	// get high priority secret.
@@ -60,12 +62,15 @@ func NewStatusManager(ctx context.Context, apiserverURL, clusterName string, man
 	return &Manager{
 		statusReportFrequency: metav1.Duration{Duration: common.DefaultClusterStatusCollectFrequency},
 		clusterStatusController: clusterstatus.NewController(ctx, apiserverURL, clusterName, managedCluster,
-			kubeClient, gaiaClient, hypernodeClient, common.DefaultClusterStatusCollectFrequency, common.DefaultClusterStatusReportFrequency),
+			kubeClient, gaiaClient, hypernodeClient, common.DefaultClusterStatusCollectFrequency,
+			common.DefaultClusterStatusReportFrequency),
 		localSuperKubeConfig: clusterStatusKubeConfig,
 	}
 }
 
-func (mgr *Manager) Run(ctx context.Context, parentDedicatedKubeConfig *rest.Config, dedicatedNamespace *string, clusterID *types.UID) {
+func (mgr *Manager) Run(ctx context.Context, parentDedicatedKubeConfig *rest.Config,
+	dedicatedNamespace *string, clusterID *types.UID,
+) {
 	klog.Infof("starting status manager to report heartbeats...")
 	go mgr.clusterStatusController.Run(ctx)
 	// used to handle parent resource
@@ -87,7 +92,9 @@ func (mgr *Manager) Run(ctx context.Context, parentDedicatedKubeConfig *rest.Con
 	}, mgr.statusReportFrequency.Duration)
 }
 
-func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterID string, client gaiaclientset.Interface, backoff wait.Backoff) {
+func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterID string,
+	client gaiaclientset.Interface, backoff wait.Backoff,
+) {
 	if features.DefaultMutableFeatureGate.Enabled(features.AbnormalScheduler) {
 		if isParent, errGetCluster := mgr.clusterStatusController.IsParentCluster(); errGetCluster == nil {
 			if isParent {
@@ -102,7 +109,7 @@ func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterI
 	if mgr.managedCluster == nil {
 		managedClusters, err := client.PlatformV1alpha1().ManagedClusters(namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set{
-				known.ClusterIDLabel: clusterID,
+				common.ClusterIDLabel: clusterID,
 			}).String(),
 		})
 		if err != nil {
@@ -132,7 +139,8 @@ func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterI
 			return false, nil
 		}
 		mgr.managedCluster.SetLabels(mgr.getNewManagedClusterLabels())
-		mcls, updateMCError = client.PlatformV1alpha1().ManagedClusters(namespace).Update(ctx, mgr.managedCluster, metav1.UpdateOptions{})
+		mcls, updateMCError = client.PlatformV1alpha1().ManagedClusters(namespace).Update(ctx,
+			mgr.managedCluster, metav1.UpdateOptions{})
 		if updateMCError == nil {
 			mgr.managedCluster = mcls
 		} else {
@@ -140,13 +148,15 @@ func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterI
 		}
 
 		mgr.managedCluster.Status = *status
-		mcls, lastError = client.PlatformV1alpha1().ManagedClusters(namespace).UpdateStatus(ctx, mgr.managedCluster, metav1.UpdateOptions{})
+		mcls, lastError = client.PlatformV1alpha1().ManagedClusters(namespace).UpdateStatus(ctx,
+			mgr.managedCluster, metav1.UpdateOptions{})
 		if lastError == nil {
 			mgr.managedCluster = mcls
 			return true, nil
 		}
 		if apierrors.IsConflict(lastError) {
-			mcls, lastError = client.PlatformV1alpha1().ManagedClusters(namespace).Get(ctx, mgr.managedCluster.Name, metav1.GetOptions{})
+			mcls, lastError = client.PlatformV1alpha1().ManagedClusters(namespace).Get(ctx,
+				mgr.managedCluster.Name, metav1.GetOptions{})
 			if lastError == nil {
 				mgr.managedCluster = mcls
 			}
@@ -163,14 +173,16 @@ func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterI
 func (mgr *Manager) getNewManagedClusterLabels() map[string]string {
 	managedClusterLabels := mgr.managedCluster.GetLabels()
 	for k := range managedClusterLabels {
-		if strings.HasPrefix(k, known.SpecificNodeLabelsKeyPrefix) {
+		if strings.HasPrefix(k, common.SpecificNodeLabelsKeyPrefix) {
 			delete(managedClusterLabels, k)
 		}
 	}
 	return labels.Merge(managedClusterLabels, mgr.clusterStatusController.GetManagedClusterLabels())
 }
 
-func (mgr *Manager) modifyDescStatusForAbnormalPods(ctx context.Context, namespace string, client gaiaclientset.Interface) {
+func (mgr *Manager) modifyDescStatusForAbnormalPods(ctx context.Context, namespace string,
+	client gaiaclientset.Interface,
+) {
 	descNameMap := mgr.clusterStatusController.GetDescNameFromAbnormalPod()
 	if len(descNameMap) == 0 {
 		klog.Infof("There is no description that needs to be updated.")
@@ -182,15 +194,16 @@ func (mgr *Manager) modifyDescStatusForAbnormalPods(ctx context.Context, namespa
 			klog.Errorf("Failed to get the description(%v/%v), err is. %v", desc.Namespace, desc.Name, GetErr)
 			return
 		}
-		klog.V(5).Infof("Update the status phase of the desc(%v/%v)to %v", namespace, descName, appsapi.DescriptionPhaseReSchedule)
+		klog.V(5).Infof("Update the status phase of the desc(%v/%v)to %v",
+			namespace, descName, appsapi.DescriptionPhaseReSchedule)
 
 		desc.Status.Phase = appsapi.DescriptionPhaseReSchedule
 		err := utils.UpdateDescriptionStatus(client, desc)
 		if err != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ", desc.Namespace, desc.Name, err)
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
+				desc.Namespace, desc.Name, err)
 		}
 		klog.V(5).Infof("Update the status phase of the desc(%v/%v) to %s successfully.",
 			namespace, descName, appsapi.DescriptionPhaseReSchedule)
 	}
-	return
 }

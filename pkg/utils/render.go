@@ -82,7 +82,8 @@ func DescToHugeComponents(desc *appsv1alpha1.Description) map[string]*appsv1alph
 					TotalMem:       non0MEM,
 					SchedulePolicy: *groupSchedulePolicy[com.GroupName],
 				}
-				huge.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions = append(huge.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions,
+				huge.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions = append(
+					huge.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions,
 					metav1.LabelSelectorRequirement{
 						Key:      "runtime-state",
 						Operator: metav1.LabelSelectorOpIn,

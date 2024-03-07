@@ -364,7 +364,9 @@ func nomalizeClusters(feasibleClusters []*framework2.ClusterInfo, allClusters []
 
 // selectResourceBindings takes a prioritized list of rbs and then picks a fraction of clusters
 // in a reservoir sampling manner from the clusters that had the highest score.
-func (g *genericScheduler) selectResourceBindings(rbScoreList framework.ResourceBindingScoreList, result []*v1alpha1.ResourceBinding) ([]*v1alpha1.ResourceBinding, error) {
+func (g *genericScheduler) selectResourceBindings(rbScoreList framework.ResourceBindingScoreList,
+	result []*v1alpha1.ResourceBinding,
+) ([]*v1alpha1.ResourceBinding, error) {
 	if len(rbScoreList) == 0 {
 		return nil, fmt.Errorf("empty rbScoreList")
 	}
@@ -379,7 +381,9 @@ func (g *genericScheduler) selectResourceBindings(rbScoreList framework.Resource
 }
 
 // Filters the clusters to find the ones that fit the subscription based on the framework filter plugins.
-func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk framework.Framework, comm *v1alpha1.Component) ([]*framework2.ClusterInfo, framework.Diagnosis, error) {
+func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk framework.Framework,
+	comm *v1alpha1.Component,
+) ([]*framework2.ClusterInfo, framework.Diagnosis, error) {
 	diagnosis := framework.Diagnosis{
 		ClusterToStatusMap:   make(framework.ClusterToStatusMap),
 		UnschedulablePlugins: sets.NewString(),
@@ -465,8 +469,10 @@ func (g *genericScheduler) findClustersThatPassFilters(ctx context.Context, fwk 
 	statusCode := framework.Success
 	defer func() {
 		// We record Filter extension point latency here instead of in framework.go because framework.RunFilterPlugins
-		// function is called for each cluster, whereas we want to have an overall latency for all clusters per scheduling cycle.
-		metrics.FrameworkExtensionPointDuration.WithLabelValues(runtime.Filter, statusCode.String(), fwk.ProfileName()).Observe(metrics.SinceInSeconds(beginCheckCluster))
+		// function is called for each cluster, whereas we want to
+		// have an overall latency for all clusters per scheduling cycle.
+		metrics.FrameworkExtensionPointDuration.WithLabelValues(runtime.Filter, statusCode.String(),
+			fwk.ProfileName()).Observe(metrics.SinceInSeconds(beginCheckCluster))
 	}()
 
 	// Stops searching for more clusters once the configured number of feasible clusters

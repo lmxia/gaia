@@ -16,7 +16,6 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/lmxia/gaia/pkg/common"
-	known "github.com/lmxia/gaia/pkg/common"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	externalInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 )
@@ -54,17 +53,17 @@ func ObjectConvertToUnstructured(object runtime.Object) (*unstructured.Unstructu
 
 func GetLocalClusterName(localkubeclient *kubernetes.Clientset) (string, string, error) {
 	var clusterName string
-	secret, err := localkubeclient.CoreV1().Secrets(known.GaiaSystemNamespace).Get(context.TODO(),
-		known.ParentClusterSecretName, metav1.GetOptions{})
+	secret, err := localkubeclient.CoreV1().Secrets(common.GaiaSystemNamespace).Get(context.TODO(),
+		common.ParentClusterSecretName, metav1.GetOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		klog.Errorf("failed to get clustername  From secret,error==: %v", err)
 		return clusterName, "", err
 	}
 	parentNs := string(secret.Data[corev1.ServiceAccountNamespaceKey])
 	if len(secret.Labels) > 0 {
-		clusterName = secret.Labels[known.ClusterNameLabel]
+		clusterName = secret.Labels[common.ClusterNameLabel]
 	}
-	if len(clusterName) <= 0 || len(parentNs) <= 0 {
+	if len(clusterName) == 0 || len(parentNs) == 0 {
 		klog.Errorf("failed to get clustername  From secret labels. ")
 		return clusterName, parentNs, err
 	}
@@ -116,7 +115,7 @@ func SetParentClient(localKubeClient *kubernetes.Clientset,
 		parentGaiaClient := gaiaClientSet.NewForConfigOrDie(parentKubeConfig)
 		parentDynamicClient, _ := dynamic.NewForConfig(parentKubeConfig)
 		parentMergedGaiaInformerFactory := externalInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient,
-			known.DefaultResync, externalInformers.WithNamespace(known.GaiaRBMergedReservedNamespace))
+			common.DefaultResync, externalInformers.WithNamespace(common.GaiaRBMergedReservedNamespace))
 
 		return parentGaiaClient, parentDynamicClient, parentMergedGaiaInformerFactory
 	}

@@ -17,13 +17,15 @@ func UpdateDescriptionStatus(gaiaClient gaiaclientset.Interface, desc *v1alpha1.
 	status := desc.Status
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		_, err := gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
+		_, err := gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(
+			context.TODO(), desc, metav1.UpdateOptions{})
 		if err == nil {
 			// TODO
 			return nil
 		}
 
-		updated, err2 := gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).Get(context.TODO(), desc.Name, metav1.GetOptions{})
+		updated, err2 := gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).Get(
+			context.TODO(), desc.Name, metav1.GetOptions{})
 		if err2 == nil {
 			// make a copy, so we don't mutate the shared cache
 			desc = updated.DeepCopy()

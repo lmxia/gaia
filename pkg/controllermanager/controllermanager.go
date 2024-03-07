@@ -60,7 +60,7 @@ const (
 type ControllerManager struct {
 	ctx context.Context
 
-	// Identity is the unique string identifying a lease holder across
+	// Identity is the unique string to identify a lease holder across
 	// all participants in an election.
 	Identity string
 	// kubernetes clustername to generate gaiaName and clsrrName
@@ -97,7 +97,7 @@ type ControllerManager struct {
 }
 
 // NewControllerManager returns a new Agent.
-func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, networkBindUrl,
+func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, networkBindURL,
 	aliyunSourceSite string, managedCluster *platformv1alpha1.ManagedClusterOptions, opts *option.Options) (
 	*gaiaconfig.CompletedConfig, *ControllerManager, error) {
 	if errs := opts.Validate(); len(errs) > 0 {
@@ -160,7 +160,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		klog.Error(err)
 	}
 	binder, rbErr := resourcebinding.NewBinder(localKubeClientSet, localGaiaClientSet, localKubeInformerFactory,
-		localGaiaInformerFactory, localKubeConfig, networkBindUrl)
+		localGaiaInformerFactory, localKubeConfig, networkBindURL)
 	if rbErr != nil {
 		klog.Error(rbErr)
 	}

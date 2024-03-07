@@ -17,7 +17,8 @@ import (
 	"github.com/lmxia/gaia/pkg/utils"
 )
 
-func (c *Controller) Init(accessKeyId *string, accessKeySecret *string, regionId *string) (result *dns.Client, err error) {
+func (c *Controller) Init(accessKeyId *string, accessKeySecret *string, regionId *string,
+) (result *dns.Client, err error) {
 	config := &openapi.Config{}
 	config.AccessKeyId = accessKeyId
 	config.AccessKeySecret = accessKeySecret

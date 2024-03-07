@@ -277,20 +277,23 @@ func (crrApprover *CRRApprover) handleClusterRR(crr *platformv1alpha1.ClusterReg
 	// validate cluster id
 	expectedClusterID := strings.TrimPrefix(crr.Name, crr.Spec.ClusterNamePrefix)
 	if expectedClusterID != string(crr.Spec.ClusterID) {
-		err := fmt.Errorf("ClusterRegistrationRequest %q has got illegal update on spec.clusterID from %q to %q, will skip processing",
+		err := fmt.Errorf("ClusterRegistrationRequest %q has got illegal update on spec.clusterID "+
+			"from %q to %q, will skip processing",
 			crr.Name, expectedClusterID, crr.Spec.ClusterID)
 		klog.Error(err)
 
 		*result = platformv1alpha1.RequestDenied
-		utilruntime.HandleError(crrApprover.crrController.UpdateCRRStatus(crr, &platformv1alpha1.ClusterRegistrationRequestStatus{
-			Result:       result,
-			ErrorMessage: err.Error(),
-		}))
+		utilruntime.HandleError(crrApprover.crrController.UpdateCRRStatus(crr,
+			&platformv1alpha1.ClusterRegistrationRequestStatus{
+				Result:       result,
+				ErrorMessage: err.Error(),
+			}))
 		return nil
 	}
 
 	if crr.Status.Result != nil {
-		klog.V(4).Infof("ClusterRegistrationRequest %q has already been processed with Result %q. Skip it.", klog.KObj(crr), *crr.Status.Result)
+		klog.V(4).Infof("ClusterRegistrationRequest %q has already been processed with Result %q. "+
+			"Skip it.", klog.KObj(crr), *crr.Status.Result)
 		return nil
 	}
 

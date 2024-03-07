@@ -295,7 +295,8 @@ func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
 func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
-			if labelKey == clusterapi.ParsedSNKey || labelKey == clusterapi.ParsedGeoLocationKey || labelKey == clusterapi.ParsedProviderKey {
+			if labelKey == clusterapi.ParsedSNKey || labelKey == clusterapi.ParsedGeoLocationKey ||
+				labelKey == clusterapi.ParsedProviderKey {
 				nodeLabels[labelKey+"__"+nodeName] = labelValue
 			} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
 				nodeLabels[labelKey] = labelValue

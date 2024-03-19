@@ -23,7 +23,6 @@ import (
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
-	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/apiserver/pkg/server/mux"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -45,7 +44,6 @@ import (
 	"github.com/lmxia/gaia/pkg/common"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
-	"github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	listner "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/scheduler/algorithm"
 	schedulercache "github.com/lmxia/gaia/pkg/scheduler/cache"
@@ -71,7 +69,6 @@ type Scheduler struct {
 	// just local options
 	dynamicClient                  dynamic.Interface
 	localGaiaClient                *gaiaClientSet.Clientset
-	localSuperConfig               *rest.Config
 	localNamespacedInformerFactory gaiainformers.SharedInformerFactory // namespaced
 	localGaiaAllFactory            gaiainformers.SharedInformerFactory // all ns
 	localDescLister                listner.DescriptionLister
@@ -82,13 +79,13 @@ type Scheduler struct {
 	parentDedicatedKubeConfig   *rest.Config
 	parentInformerFactory       gaiainformers.SharedInformerFactory // namespaced
 	parentDescriptionLister     listner.DescriptionLister
-	parentResourceBindingLister v1alpha1.ResourceBindingLister
+	parentResourceBindingLister listner.ResourceBindingLister
 	parentGaiaClient            *gaiaClientSet.Clientset
 
 	// clientset for child cluster
 	childKubeClientSet kubernetes.Interface
 
-	dedicatedNamespace string `json:"dedicatednamespace,omitempty" protobuf:"bytes,1,opt,name=dedicatedNamespace"`
+	dedicatedNamespace string
 	Identity           string
 	// default in-tree registry
 	registry frameworkruntime.Registry
@@ -197,23 +194,23 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 	return &cc, sched, nil
 }
 
-func (scheduler *Scheduler) Run(cxt context.Context, cc *schedulerserverconfig.CompletedConfig) {
+func (sched *Scheduler) Run(cxt context.Context, cc *schedulerserverconfig.CompletedConfig) {
 	klog.Info("starting gaia schedule scheduler ...")
-	defer scheduler.localSchedulingQueue.ShutDown()
+	defer sched.localSchedulingQueue.ShutDown()
 
 	// start the leader election code loop
-	leaderelection.RunOrDie(context.TODO(), *newLeaderElectionConfigWithDefaultValue(scheduler.Identity,
-		scheduler.childKubeClientSet, leaderelection.LeaderCallbacks{
+	leaderelection.RunOrDie(context.TODO(), *newLeaderElectionConfigWithDefaultValue(sched.Identity,
+		sched.childKubeClientSet, leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				// 1. start local gaia generic informers
-				scheduler.localGaiaAllFactory.Start(ctx.Done())
-				scheduler.localGaiaAllFactory.WaitForCacheSync(ctx.Done())
+				sched.localGaiaAllFactory.Start(ctx.Done())
+				sched.localGaiaAllFactory.WaitForCacheSync(ctx.Done())
 
 				// 2. start local scheduler.
 				go func() {
-					scheduler.localNamespacedInformerFactory.Start(ctx.Done())
-					scheduler.localNamespacedInformerFactory.WaitForCacheSync(ctx.Done())
-					wait.UntilWithContext(ctx, scheduler.RunLocalScheduler, 0)
+					sched.localNamespacedInformerFactory.Start(ctx.Done())
+					sched.localNamespacedInformerFactory.WaitForCacheSync(ctx.Done())
+					wait.UntilWithContext(ctx, sched.RunLocalScheduler, 0)
 				}()
 
 				// metrics
@@ -227,20 +224,20 @@ func (scheduler *Scheduler) Run(cxt context.Context, cc *schedulerserverconfig.C
 				}
 
 				// 3. when we get add parentDedicatedKubeConfig add parent desc scheduler and start it.
-				scheduler.SetparentDedicatedConfig(ctx)
-				scheduler.parentInformerFactory.Start(ctx.Done())
-				scheduler.parentInformerFactory.WaitForCacheSync(ctx.Done())
+				sched.SetparentDedicatedConfig(ctx)
+				sched.parentInformerFactory.Start(ctx.Done())
+				sched.parentInformerFactory.WaitForCacheSync(ctx.Done())
 				go func() {
-					wait.UntilWithContext(ctx, scheduler.RunParentReScheduler, 0)
+					wait.UntilWithContext(ctx, sched.RunParentReScheduler, 0)
 				}()
-				wait.UntilWithContext(ctx, scheduler.RunParentScheduler, 0)
+				wait.UntilWithContext(ctx, sched.RunParentScheduler, 0)
 			},
 			OnStoppedLeading: func() {
 				klog.Error("leader election got lost")
 			},
 			OnNewLeader: func(identity string) {
 				// we're notified when new leader elected
-				if identity == scheduler.Identity {
+				if identity == sched.Identity {
 					// I just got the lock
 					return
 				}
@@ -274,19 +271,6 @@ func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
 func newMetricsHandler() http.Handler {
 	pathRecorderMux := mux.NewPathRecorderMux("gaia-scheduler")
 	installMetricHandler(pathRecorderMux)
-	return pathRecorderMux
-}
-
-// newHealthzHandler creates a healthz server from the config, and will also
-// embed the metrics handler if the healthz and metrics address configurations
-// are the same.
-func newHealthzHandler(separateMetrics bool, checks ...healthz.HealthChecker) http.Handler {
-	pathRecorderMux := mux.NewPathRecorderMux("gaia-scheduler")
-	healthz.InstallHandler(pathRecorderMux, checks...)
-	if !separateMetrics {
-		installMetricHandler(pathRecorderMux)
-	}
-
 	return pathRecorderMux
 }
 
@@ -440,10 +424,10 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 			}
 			newDesc := utils.ConstructDescriptionFromExistOne(desc)
 			newDesc.Namespace = itemCluster.Namespace
-			_, err := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc,
+			_, err2 := sched.localGaiaClient.AppsV1alpha1().Descriptions(itemCluster.Namespace).Create(ctx, newDesc,
 				metav1.CreateOptions{})
-			if err != nil {
-				klog.InfoS("scheduler success, but desc not created success in sub child cluster.", err)
+			if err2 != nil {
+				klog.InfoS("scheduler success, but desc not created success in sub child cluster.", err2)
 			}
 		}
 		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
@@ -611,17 +595,17 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx,
 		metav1.ListOptions{})
 	if len(mcls.Items) > 0 {
-		scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
-		if err != nil {
-			sched.recordParentReSchedulingFailure(desc, err, ReasonUnschedulable)
+		scheduleResult, err2 := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
+		if err2 != nil {
+			sched.recordParentReSchedulingFailure(desc, err2, ReasonUnschedulable)
 			return
 		}
-		localRB, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
+		localRB, err2 := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
 			List(ctx, metav1.ListOptions{
 				LabelSelector: labelSelector.String(),
 			})
-		if err != nil {
-			sched.recordParentReSchedulingFailure(desc, err, ReasonUnschedulable)
+		if err2 != nil {
+			sched.recordParentReSchedulingFailure(desc, err2, ReasonUnschedulable)
 			return
 		}
 		for _, rbapp := range scheduleResult.ResourceBindings[0].Spec.RbApps {

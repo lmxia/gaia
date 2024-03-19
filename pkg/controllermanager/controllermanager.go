@@ -22,7 +22,6 @@ import (
 	genericapifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
-	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/apiserver/pkg/server/mux"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -93,7 +92,6 @@ type ControllerManager struct {
 
 	gaiaInformerFactory gaiainformers.SharedInformerFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
-	triggerFunc         func(metav1.Object)
 }
 
 // NewControllerManager returns a new Agent.
@@ -654,18 +652,5 @@ func installMetricHandler(pathRecorderMux *mux.PathRecorderMux) {
 func newMetricsHandler() http.Handler {
 	pathRecorderMux := mux.NewPathRecorderMux("gaia-controller-manager")
 	installMetricHandler(pathRecorderMux)
-	return pathRecorderMux
-}
-
-// newHealthzHandler creates a healthz server from the config, and will also
-// embed the metrics handler if the healthz and metrics address configurations
-// are the same.
-func newHealthzHandler(separateMetrics bool, checks ...healthz.HealthChecker) http.Handler {
-	pathRecorderMux := mux.NewPathRecorderMux("gaia-controller-manager")
-	healthz.InstallHandler(pathRecorderMux, checks...)
-	if !separateMetrics {
-		installMetricHandler(pathRecorderMux)
-	}
-
 	return pathRecorderMux
 }

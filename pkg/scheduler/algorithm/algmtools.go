@@ -269,7 +269,7 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 }
 
 // makeUserAPPPlan return userapp plan, only one replicas needed.
-func makeUserAPPPlan(capability []*framework.ClusterInfo) (mat.Matrix, bool) {
+func makeUserAPPPlan(capability []*framework.ClusterInfo) mat.Matrix {
 	result := mat.NewDense(1, len(capability), nil)
 	numResult := make([]float64, len(capability))
 	success := false
@@ -285,7 +285,7 @@ func makeUserAPPPlan(capability []*framework.ClusterInfo) (mat.Matrix, bool) {
 	} else {
 		result.Zero()
 	}
-	return result, success
+	return result
 }
 
 // makeServelessPlan return serverless plan
@@ -413,7 +413,7 @@ func makeResourceBindingMatrix(in []mat.Matrix) ([]mat.Matrix, error) {
 			return nil, errors.New("can't produce logic matrix")
 		}
 		aR, _ := in[i].Dims()
-		totalCount = totalCount * aR
+		totalCount *= aR
 	}
 
 	// only one component.
@@ -559,11 +559,12 @@ func GenerateRandomClusterInfos(capacities []*framework.ClusterInfo, count int) 
 			nonZeroCount += 1
 		}
 	}
-	if nonZeroCount < count {
+	switch {
+	case nonZeroCount < count:
 		return nil, errors.New("math: can't allocate desired count into clusters")
-	} else if nonZeroCount == count {
+	case nonZeroCount == count:
 		return capacities, nil
-	} else {
+	default:
 		nums := make(map[int]struct{}, 0)
 		randomCapacity := make([]*framework.ClusterInfo, len(capacities))
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -683,11 +684,9 @@ func checkAGroupValid(m mat.Matrix, components []appv1alpha1.Component) bool {
 					// 没有赋值过
 					if groupName2Index[components[r].GroupName] == -1 {
 						groupName2Index[components[r].GroupName] = c
-					} else {
+					} else if groupName2Index[components[r].GroupName] != c {
 						// 过去有过赋值
-						if groupName2Index[components[r].GroupName] != c {
-							return false
-						}
+						return false
 					}
 					break
 				}
@@ -722,8 +721,5 @@ func checkSpread(a []float64) bool {
 			num++
 		}
 	}
-	if num > 1 {
-		return true
-	}
-	return false
+	return num > 1
 }

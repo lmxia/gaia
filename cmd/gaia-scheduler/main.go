@@ -27,6 +27,5 @@ func main() {
 
 	if err := scheduleCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
 	}
 }

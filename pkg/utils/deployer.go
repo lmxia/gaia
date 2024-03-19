@@ -316,10 +316,10 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 	return nil
 }
 
-func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *gaiaClientSet.Clientset, localDynamicClient dynamic.Interface,
-	rb *appsv1alpha1.ResourceBinding, nodes []*corev1.Node, desc *appsv1alpha1.Description,
-	components []appsv1alpha1.Component, discoveryRESTMapper meta.RESTMapper, clusterName string,
-) error {
+func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *gaiaClientSet.Clientset,
+	localDynamicClient dynamic.Interface, rb *appsv1alpha1.ResourceBinding, nodes []*corev1.Node,
+	desc *appsv1alpha1.Description, components []appsv1alpha1.Component, discoveryRESTMapper meta.RESTMapper,
+	clusterName string) error {
 	var allErrs []error
 	var vpcResourceSli vpcResourceSlice
 	group2VPC := make(map[string]string)
@@ -672,7 +672,7 @@ func PostNetworkRequest(url, descriptionName, operate string, path []byte) {
 	if jsonErr != nil {
 		klog.Errorf("marshal post new network request, error=%v \n", jsonErr)
 	}
-	request, err := http.NewRequest("POST", url, bytes.NewBuffer(data))
+	request, err := http.NewRequestWithContext(context.Background(), "POST", url, bytes.NewBuffer(data))
 	if err != nil {
 		klog.Errorf("PostNetworkRequest: request post new network request, error=%v \n", err)
 	}
@@ -1414,7 +1414,7 @@ func CreateRBtoParentWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Cl
 			lastError = err
 			return false, nil
 		}
-		if autoUpdate, ok := rbExist.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == "true" {
+		if autoUpdate, ok := rbExist.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == known.AutoTrue {
 			_, lastError = gaiaClient.AppsV1alpha1().ResourceBindings(namespace).Update(ctx, rb, metav1.UpdateOptions{})
 			if lastError != nil {
 				return false, nil

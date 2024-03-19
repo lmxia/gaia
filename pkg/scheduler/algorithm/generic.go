@@ -37,7 +37,6 @@ var ErrNoClustersAvailable = fmt.Errorf("no clusters available to schedule subsc
 type genericScheduler struct {
 	cache                       schedulercache.Cache
 	percentageOfClustersToScore int32
-	nextStartClusterIndex       int
 }
 
 func (g *genericScheduler) SetSelfClusterName(name string) {
@@ -45,7 +44,8 @@ func (g *genericScheduler) SetSelfClusterName(name string) {
 }
 
 // Schedule
-func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework, rbs []*v1alpha1.ResourceBinding, desc *v1alpha1.Description) (result ScheduleResult, err error) {
+func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework, rbs []*v1alpha1.ResourceBinding,
+	desc *v1alpha1.Description) (result ScheduleResult, err error) {
 	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: desc.Namespace},
 		utiltrace.Field{Key: "name", Value: desc.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
@@ -141,7 +141,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			commonHugeComponent := utils.HugeComponentToCommanComponent(hugeComm)
 			feasibleClusters, diagnosis, err = g.findClustersThatFitComponent(ctx, fwk, commonHugeComponent)
 		} else {
-			feasibleClusters, diagnosis, _ = g.findClustersThatFitComponent(ctx, fwk, &comm)
+			feasibleClusters, diagnosis, _ = g.findClustersThatFitComponent(ctx, fwk, &components[i])
 		}
 
 		if desc.Namespace == common.GaiaReservedNamespace {
@@ -158,53 +158,47 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {
 			for j := range spreadLevels {
-				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
+				switch comm.Workload.Workloadtype {
+				case v1alpha1.WorkloadTypeDeployment:
 					if comm.GroupName != "" {
 						componentMat := makeUniqeDeployPlans(allPlan, int64(1), 1)
 						var m mat.Dense
 						m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)
 						allResultGlobal[j][i] = &m
 					} else {
-						// componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
-						componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), 1)
-						allResultGlobal[j][i] = componentMat
+						// componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas),
+						// int64(comm.Dispersion))
+						allResultGlobal[j][i] = makeDeployPlans(allPlan,
+							int64(comm.Workload.TraitDeployment.Replicas), 1)
 					}
-				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
-					componentMat := makeServelessPlan(allPlan, 1)
-					allResultGlobal[j][i] = componentMat
-				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-					// same as serverless.
-					componentMat := makeServelessPlan(allPlan, 1)
-					allResultGlobal[j][i] = componentMat
-				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
-					componentMat, _ := makeUserAPPPlan(allPlan)
-					allResultGlobal[j][i] = componentMat
+				case v1alpha1.WorkloadTypeServerless:
+					allResultGlobal[j][i] = makeServelessPlan(allPlan, 1)
+				case v1alpha1.WorkloadTypeAffinityDaemon:
+					allResultGlobal[j][i] = makeServelessPlan(allPlan, 1)
+				case v1alpha1.WorkloadTypeUserApp:
+					allResultGlobal[j][i] = makeUserAPPPlan(allPlan)
 				}
 			}
 		} else {
 			for j, rb := range rbs {
 				replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
 				for k := range spreadLevels {
-					if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
+					switch comm.Workload.Workloadtype {
+					case v1alpha1.WorkloadTypeDeployment:
 						if comm.GroupName != "" && replicas != 0 {
-							componentMat := makeUniqeDeployPlans(allPlan, int64(1), 1)
 							var m mat.Dense
-							m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)
+							m.Scale(float64(comm.Workload.TraitDeployment.Replicas),
+								makeUniqeDeployPlans(allPlan, int64(1), 1))
 							allResultWithRB[j][k][i] = &m
 						} else {
-							componentMat := makeDeployPlans(allPlan, replicas, spreadLevels[k])
-							allResultWithRB[j][k][i] = componentMat
+							allResultWithRB[j][k][i] = makeDeployPlans(allPlan, replicas, spreadLevels[k])
 						}
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
-						componentMat := makeServelessPlan(allPlan, replicas)
-						allResultWithRB[j][k][i] = componentMat
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-						// same as serverless.
-						componentMat := makeServelessPlan(allPlan, replicas)
-						allResultWithRB[j][k][i] = componentMat
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
-						componentMat, _ := makeUserAPPPlan(allPlan)
-						allResultWithRB[j][k][i] = componentMat
+					case v1alpha1.WorkloadTypeServerless:
+						allResultWithRB[j][k][i] = makeServelessPlan(allPlan, replicas)
+					case v1alpha1.WorkloadTypeAffinityDaemon:
+						allResultWithRB[j][k][i] = makeServelessPlan(allPlan, replicas)
+					case v1alpha1.WorkloadTypeUserApp:
+						allResultWithRB[j][k][i] = makeUserAPPPlan(allPlan)
 					}
 				}
 			}
@@ -218,7 +212,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		// all 5
 		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc, components, affinity)
 		// 1. add networkFilter only if we can get nwr
-		if nwr, err := g.cache.GetNetworkRequirement(desc); err == nil {
+		if nwr, err2 := g.cache.GetNetworkRequirement(desc); err2 == nil {
 			networkInfoMap := g.getTopologyInfoMap()
 			klog.Infof("Log: networkInfoMap is %v", networkInfoMap)
 			klog.Infof("resource binding before net filter %v", rbsResultFinal)

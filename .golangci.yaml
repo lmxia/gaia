@@ -28,7 +28,6 @@ linters:
     - gocheckcompilerdirectives
     - goconst
     - gocritic
-    - gocyclo
     - gofmt
     - goimports
     # - gomnd

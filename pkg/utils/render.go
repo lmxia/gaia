@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"strings"
 
-	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
-	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
+
+	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
+	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	known "github.com/lmxia/gaia/pkg/common"
 )
 
 func HugeComponentToCommanComponent(hugeComponent *appsv1alpha1.HugeComponent) *appsv1alpha1.Component {
@@ -196,15 +198,15 @@ func GetWorkloadType(workloadType string) (workload appsv1alpha1.Workload) {
 		workloadArray[i] = strings.ToLower(value)
 	}
 
-	if ContainsString(workloadArray, "task") {
+	switch {
+	case ContainsString(workloadArray, "task"):
 		klog.V(5).Info("This case wouldn't be existed. That should be constrained by the UI")
-	} else if ContainsString(workloadArray, "user") {
-		// xxx-user-xxx
+	case ContainsString(workloadArray, "user"):
 		workload = appsv1alpha1.Workload{
 			Workloadtype: appsv1alpha1.WorkloadTypeUserApp,
 			TraitUserAPP: &appsv1alpha1.TraitUserAPP{},
 		}
-	} else {
+	default:
 		workload = appsv1alpha1.Workload{}
 	}
 
@@ -228,10 +230,10 @@ func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alp
 	for _, condition := range deploymentConditions {
 		klog.V(5).Info("parse DeploymentConditions")
 
-		if condition.Subject.Type == "component" {
+		if condition.Subject.Type == known.TypeComponent {
 			if index, okCom := comLocation[condition.Subject.Name]; okCom {
 				// when affinity, change the affinity index array
-				if condition.Relation == "Affinity" && condition.Object.Type == "component" {
+				if condition.Relation == "Affinity" && condition.Object.Type == known.TypeComponent {
 					// component对应的索引位置的值用亲和对象的索引值表示
 					if affinityIndex, ok := comLocation[condition.Object.Name]; ok {
 						affinity[index] = affinityIndex
@@ -274,7 +276,7 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition,
 // SchedulePolicyReflect reflect the condition to MatchExpressions according to the different schedule policy
 func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector) *metav1.LabelSelector {
 	var extentStr []string
-	if condition.Object.Type == "label" && condition.Subject.Type == "component" {
+	if condition.Object.Type == "label" && condition.Subject.Type == known.TypeComponent {
 		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
 		_ = json.Unmarshal(condition.Extent, &extentStr)
 		klog.V(5).Infof("after unmarshal,extent is %v", extentStr)

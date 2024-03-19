@@ -601,13 +601,11 @@ const (
 )
 
 // lookahead func returns the current token and string. No increment of current position
-func (p *Parser) lookahead(context ParserContext) (Token, string) {
+func (p *Parser) lookahead() (Token, string) {
 	tok, lit := p.scannedItems[p.position].tok, p.scannedItems[p.position].literal
-	if context == Values {
-		switch tok {
-		case InToken, NotInToken:
-			tok = IdentifierToken
-		}
+	switch tok {
+	case InToken, NotInToken:
+		tok = IdentifierToken
 	}
 	return tok, lit
 }
@@ -644,7 +642,7 @@ func (p *Parser) parse() (internalSelector, error) {
 
 	var requirements internalSelector
 	for {
-		tok, lit := p.lookahead(Values)
+		tok, lit := p.lookahead()
 		switch tok {
 		case IdentifierToken, DoesNotExistToken:
 			r, err := p.parseRequirement()
@@ -657,7 +655,7 @@ func (p *Parser) parse() (internalSelector, error) {
 			case EndOfStringToken:
 				return requirements, nil
 			case CommaToken:
-				t2, l2 := p.lookahead(Values)
+				t2, l2 := p.lookahead()
 				if t2 != IdentifierToken && t2 != DoesNotExistToken {
 					return nil, fmt.Errorf("found '%s', expected: identifier after ','", l2)
 				}
@@ -714,7 +712,7 @@ func (p *Parser) parseKeyAndInferOperator() (string, selection.Operator, error) 
 	if err := validateLabelKey(literal, p.path); err != nil {
 		return "", "", err
 	}
-	if t, _ := p.lookahead(Values); t == EndOfStringToken || t == CommaToken {
+	if t, _ := p.lookahead(); t == EndOfStringToken || t == CommaToken {
 		if operator != selection.DoesNotExist {
 			operator = selection.Exists
 		}
@@ -754,7 +752,7 @@ func (p *Parser) parseValues() (sets.String, error) {
 	if tok != OpenParToken {
 		return nil, fmt.Errorf("found '%s' expected: '('", lit)
 	}
-	tok, lit = p.lookahead(Values)
+	tok, lit = p.lookahead()
 	switch tok {
 	case IdentifierToken, CommaToken:
 		s, err := p.parseIdentifiersList() // handles general cases
@@ -782,7 +780,7 @@ func (p *Parser) parseIdentifiersList() (sets.String, error) {
 		switch tok {
 		case IdentifierToken:
 			s.Insert(lit)
-			tok2, lit2 := p.lookahead(Values)
+			tok2, lit2 := p.lookahead()
 			switch tok2 {
 			case CommaToken:
 				continue
@@ -795,7 +793,7 @@ func (p *Parser) parseIdentifiersList() (sets.String, error) {
 			if s.Len() == 0 {
 				s.Insert("") // to handle (,
 			}
-			tok2, _ := p.lookahead(Values)
+			tok2, _ := p.lookahead()
 			if tok2 == ClosedParToken {
 				s.Insert("") // to handle ,)  Double "" removed by StringSet
 				return s, nil
@@ -813,7 +811,7 @@ func (p *Parser) parseIdentifiersList() (sets.String, error) {
 // parseExactValue parses the only value for exact match style
 func (p *Parser) parseExactValue() (sets.String, error) {
 	s := sets.NewString()
-	tok, _ := p.lookahead(Values)
+	tok, _ := p.lookahead()
 	if tok == EndOfStringToken || tok == CommaToken {
 		s.Insert("")
 		return s, nil

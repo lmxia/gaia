@@ -19,8 +19,8 @@ func (c *Controller) cdnConfig(frontend *v1alpha1.Frontend) (*string, *string) {
 	cdnSupplierMsg, _ := c.cdnSupplierLister.CdnSuppliers(common.GaiaFrontendNamespace).Get(frontend.Spec.Cdn[0].Supplier)
 	// RSA
 	secertKey := cdnSupplierMsg.Spec.CloudAccessKeyid
-	secertId := cdnSupplierMsg.Spec.CloudAccessKeysecret
-	return &secertKey, &secertId
+	secertID := cdnSupplierMsg.Spec.CloudAccessKeysecret
+	return &secertKey, &secertID
 }
 
 func (c *Controller) supplierClient(frontend *v1alpha1.Frontend) (result *cdn20180510.Client, err error) {
@@ -48,10 +48,10 @@ func (c *Controller) cdnAccelerateState(frontend *v1alpha1.Frontend) (bool, *str
 				e = r
 			}
 		}()
-		domainMsg, err := client.DescribeUserDomainsWithOptions(describeUserDomainsRequest, runtime)
-		if err != nil {
-			klog.Error(err)
-			return err
+		domainMsg, domainErr := client.DescribeUserDomainsWithOptions(describeUserDomainsRequest, runtime)
+		if domainErr != nil {
+			klog.Error(domainErr)
+			return domainErr
 		}
 		for i := range domainMsg.Body.Domains.PageData {
 			cname := domainMsg.Body.Domains.PageData[i].Cname
@@ -68,13 +68,13 @@ func (c *Controller) cdnAccelerateState(frontend *v1alpha1.Frontend) (bool, *str
 	}()
 
 	if tryErr != nil {
-		var error = &tea.SDKError{}
+		var sdkError = &tea.SDKError{}
 		if t, ok := tryErr.(*tea.SDKError); ok {
-			error = t
+			sdkError = t
 		} else {
-			error.Message = tea.String(tryErr.Error())
+			sdkError.Message = tea.String(tryErr.Error())
 		}
-		_, err = util.AssertAsString(error.Message)
+		_, err = util.AssertAsString(sdkError.Message)
 		if err != nil {
 			return false, nil, err
 		}
@@ -130,7 +130,7 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 			klog.V(4).Infof("add domain succeed：" + tea.StringValue(response.Body.RequestId))
 			domainName = tea.StringValue(domain)
 		}
-		for true {
+		for {
 			status, cname, err := c.GetDomainStatus(client, &domainName)
 			if err != nil {
 				return err
@@ -213,7 +213,7 @@ func (c *Controller) cdnAccelerateUpdate(frontend *v1alpha1.Frontend, cdnStatus 
 			}
 		}
 	case common.FrontendAliyunCdnConfigureStatus:
-		//configure
+		// configure
 		err := c.cdnAccelerateCreate(frontend, cdnStatus)
 		if err != nil {
 			klog.Errorf("Failed to do cdn Accelerate create of 'Frontend' %q, error == %v", frontend.Name, err)
@@ -240,7 +240,7 @@ func (c *Controller) cdnAccelerateRecycle(frontend *v1alpha1.Frontend) error {
 				domains := tea.String(tea.StringValue(&domainName))
 				domainArray := str.Split(domains, tea.String(","), tea.Int(3))
 				for _, domain := range domainArray {
-					for true {
+					for {
 						status, _, err := c.GetDomainStatus(client, domain)
 						if err != nil {
 							return err

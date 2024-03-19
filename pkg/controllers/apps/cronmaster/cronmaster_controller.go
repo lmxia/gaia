@@ -1191,17 +1191,21 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 	return updatedCron, td, nil
 }
 
-func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string, now time.Time) (*appsV1alpha1.CronMaster, *time.Duration, error) {
+func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string,
+	now time.Time) (*appsV1alpha1.CronMaster, *time.Duration, error) {
 	scheduledTime, isStart, err := getCronNextScheduleTime(cron, now)
 	if err != nil {
-		klog.ErrorS(err, "invalid schedule", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
+		klog.ErrorS(err, "invalid schedule", "CronMaster",
+			klog.KRef(cron.GetNamespace(), cron.GetName()))
 		return cron, nil, err
 	}
 	if scheduledTime == nil {
-		klog.V(4).InfoS("No unmet start times", "CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()))
+		klog.V(4).InfoS("No unmet start times", "CronMaster",
+			klog.KRef(cron.GetNamespace(), cron.GetName()))
 		nextTime, isStart1 := getNextScheduledTimeAfterNow(cron.Spec.Schedule, now)
 		if nextTime.Equal(now) {
-			return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q", nextTime.String())
+			return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q",
+				nextTime.String())
 		}
 		td := nextScheduledTimeDuration(nextTime, now)
 		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
@@ -1225,7 +1229,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			"CronMaster", klog.KRef(cron.GetNamespace(), cron.GetName()), "schedule", scheduledTime)
 		nextTime, isStart1 := getNextScheduledTimeAfterNow(cron.Spec.Schedule, now)
 		if nextTime.Equal(now) {
-			return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q", nextTime.String())
+			return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q",
+				nextTime.String())
 		}
 		td := nextScheduledTimeDuration(nextTime, now)
 		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
@@ -1266,7 +1271,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 						deploymentKind, klog.KRef(resource.GetNamespace(), resource.GetName()),
 						"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 				} else {
-					klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), errGet)
+					klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v",
+						klog.KObj(cron), errGet)
 					return cron, nil, errGet
 				}
 			} else {
@@ -1293,7 +1299,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			dep2, err2 := c.kubeClient.AppsV1().Deployments(cron.GetNamespace()).Get(
 				context.TODO(), cron.GetName(), metav1.GetOptions{})
 			if err2 != nil {
-				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), err2)
+				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v",
+					klog.KObj(cron), err2)
 				return cron, nil, err2
 			}
 			deleteFromActiveList(cron, dep2.GetUID())
@@ -1317,7 +1324,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
 			restMapping, errM := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if errM != nil {
-				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error==%v", klog.KObj(cron), errM)
+				klog.Errorf("syncCronMaster: failed to get restMapping for 'Serverless' %q, error==%v",
+					klog.KObj(cron), errM)
 				return cron, nil, errM
 			}
 			_, err = c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(
@@ -1337,7 +1345,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 						"CronMaster", klog.KRef(resource.GetNamespace(), resource.GetName()))
 					updated = true
 				} else {
-					klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), err)
+					klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v",
+						klog.KObj(cron), err)
 				}
 			}
 			// else Serverless自调谐
@@ -1347,7 +1356,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 				serU, errGet := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(
 					context.TODO(), resource.GetName(), metav1.GetOptions{})
 				if errGet != nil {
-					klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v", klog.KObj(cron), errGet)
+					klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster %q, error==%v",
+						klog.KObj(cron), errGet)
 					return cron, nil, errGet
 				}
 				deleteFromActiveList(cron, serU.GetUID())
@@ -1381,7 +1391,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 						deploymentKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "err3", err2)
 					break
 				}
-				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v", klog.KObj(cron), err2)
+				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v",
+					klog.KObj(cron), err2)
 				return cron, nil, err2
 			}
 			retryErr := utils.DeleteResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
@@ -1398,7 +1409,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			gvk := schema.GroupVersionKind{Group: "serverless.pml.com.cn", Version: "v1", Kind: serverlessKind}
 			restMapping, err3 := c.restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 			if err3 != nil {
-				klog.Errorf("syncCronMaster: failed to get restMapping for Serverless==%q, error==%v", klog.KObj(cron), err3)
+				klog.Errorf("syncCronMaster: failed to get restMapping for Serverless==%q, error==%v",
+					klog.KObj(cron), err3)
 				return cron, nil, err3
 			}
 			serU, err2 := c.dynamicClient.Resource(restMapping.Resource).Namespace(resource.GetNamespace()).Get(
@@ -1409,7 +1421,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 						serverlessKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "err3", err2)
 					break
 				}
-				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster==%q, error==%v", klog.KObj(cron), err2)
+				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster==%q, error==%v",
+					klog.KObj(cron), err2)
 				return cron, nil, err2
 			}
 			retryErr := utils.DeleteResourceWithRetry(context.TODO(), c.dynamicClient, c.restMapper, resource)
@@ -1437,7 +1450,8 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 	// get and update NextScheduleAction
 	nextTime, isStart1 := getNextScheduledTimeAfterNow(cron.Spec.Schedule, now)
 	if nextTime.Equal(now) {
-		return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q", nextTime.String())
+		return cron, nil, fmt.Errorf("failed to get next schedule datetime, next ScheduleTime==now %q",
+			nextTime.String())
 	}
 	td := nextScheduledTimeDuration(nextTime, now)
 	klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),

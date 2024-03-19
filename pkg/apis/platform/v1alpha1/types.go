@@ -366,7 +366,7 @@ func (opts *ManagedClusterOptions) Validate() []error {
 
 		if opts.ManagedClusterSource != common.ManagedClusterSourceFromPrometheus &&
 			opts.ManagedClusterSource != common.ManagedClusterSourceFromInformer {
-			allErrs = append(allErrs, fmt.Errorf("Invalid value for managedClusterSource --%s,"+
+			allErrs = append(allErrs, fmt.Errorf("invalid value for managedClusterSource --%s,"+
 				" please use 'prometheus' or 'informer'. ", opts.ManagedClusterSource))
 		}
 

@@ -106,7 +106,9 @@ func (suite *DeployerSuite) SetupTest() {
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":999999,\"throughputValue\":100}"),
+						Extent: []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5L" +
+							"CJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":" +
+							"999999,\"throughputValue\":100}"),
 					},
 					{
 						Subject: v1alpha1.Xject{
@@ -118,7 +120,9 @@ func (suite *DeployerSuite) SetupTest() {
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":999999,\"throughputValue\":100}"),
+						Extent: []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ" +
+							"0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":" +
+							"999999,\"throughputValue\":100}"),
 					},
 				},
 			},
@@ -181,7 +185,9 @@ func (suite *DeployerSuite) SetupTest() {
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":999999,\"throughputValue\":100}"),
+						Extent: []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0" +
+							"aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":" +
+							"999999,\"throughputValue\":100}"),
 					},
 				},
 			},

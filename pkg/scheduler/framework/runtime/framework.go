@@ -452,10 +452,10 @@ func (f *frameworkImpl) runScorePlugin(ctx context.Context, pl framework.ScorePl
 }
 
 func (f *frameworkImpl) runScoreExtension(ctx context.Context, pl framework.ScorePlugin,
-	RBScoreList framework.ResourceBindingScoreList,
+	rbScoreList framework.ResourceBindingScoreList,
 ) *framework.Status {
 	startTime := time.Now()
-	status := pl.ScoreExtensions().NormalizeScore(ctx, RBScoreList)
+	status := pl.ScoreExtensions().NormalizeScore(ctx, rbScoreList)
 	f.metricsRecorder.observePluginDurationAsync(scoreExtensionNormalize, pl.Name(), status,
 		metrics.SinceInSeconds(startTime))
 	return status

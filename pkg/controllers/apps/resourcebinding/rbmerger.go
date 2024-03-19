@@ -461,7 +461,8 @@ func (m *RBMerger) postMergedRBs(descName string) error {
 	}
 	fmt.Printf("postMergedRBs: postBody:\n%s \n\n", string(postBody))
 
-	request, err := http.NewRequest("POST", m.postURL, bytes.NewBuffer(postBody))
+	request, err := http.NewRequestWithContext(context.Background(), "POST", m.postURL,
+		bytes.NewBuffer(postBody))
 	if err != nil {
 		return fmt.Errorf("postMergedRBs: post new request, error=%v", err)
 	}

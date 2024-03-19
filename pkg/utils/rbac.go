@@ -37,7 +37,7 @@ func EnsureClusterRole(ctx context.Context, clusterRole v1.ClusterRole, client *
 			lastError = err
 			return false, nil
 		}
-		if autoUpdate, ok := cr.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == "true" {
+		if autoUpdate, ok := cr.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == known.AutoTrue {
 			_, lastError = client.RbacV1().ClusterRoles().Update(ctx, &clusterRole, metav1.UpdateOptions{})
 			if lastError != nil {
 				return false, nil
@@ -74,7 +74,7 @@ func EnsureClusterRoleBinding(ctx context.Context, clusterRolebinding v1.Cluster
 			lastError = err
 			return false, nil
 		}
-		if autoUpdate, ok := crb.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == "true" {
+		if autoUpdate, ok := crb.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == known.AutoTrue {
 			_, lastError = client.RbacV1().ClusterRoleBindings().Update(ctx, &clusterRolebinding, metav1.UpdateOptions{})
 			if lastError != nil {
 				return false, nil
@@ -109,7 +109,7 @@ func EnsureRole(ctx context.Context, role v1.Role, client *kubernetes.Clientset,
 			lastError = err
 			return false, nil
 		}
-		if autoUpdate, ok := r.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == "true" {
+		if autoUpdate, ok := r.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == known.AutoTrue {
 			_, lastError = client.RbacV1().Roles(role.Namespace).Update(ctx, &role, metav1.UpdateOptions{})
 			if lastError != nil {
 				return false, nil
@@ -146,7 +146,7 @@ func EnsureRoleBinding(ctx context.Context, rolebinding v1.RoleBinding, client *
 			lastError = err
 			return false, nil
 		}
-		if autoUpdate, ok := rb.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == "true" {
+		if autoUpdate, ok := rb.Annotations[known.AutoUpdateAnnotation]; ok && autoUpdate == known.AutoTrue {
 			_, lastError = client.RbacV1().RoleBindings(rolebinding.Namespace).Update(ctx, &rolebinding, metav1.UpdateOptions{})
 			if lastError != nil {
 				return false, nil

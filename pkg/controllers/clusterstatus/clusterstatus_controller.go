@@ -23,7 +23,6 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
-	hypernodelister "github.com/SUMMERLm/hyperNodes/pkg/generated/listers/cluster/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllers/clusterstatus/toposync"
@@ -46,12 +45,9 @@ type Controller struct {
 	managedClusterSource   string
 	promURLPrefix          string
 	topoSyncBaseURL        string
-	appPusherEnabled       bool
-	useSocket              bool
 	useHypernodeController bool
 	mclsLister             gaialister.ManagedClusterLister
 	nodeLister             corev1lister.NodeLister
-	hypernodeLister        hypernodelister.HypernodeLister
 	hypernodeClient        *hypernodeclientset.Clientset
 	nodeSynced             cache.InformerSynced
 	podLister              corev1lister.PodLister
@@ -121,9 +117,9 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	var topoInfo clusterapi.Topo
 	if len(clusters) == 0 {
 		klog.V(7).Info("no joined clusters, collecting cluster resources...")
-		nodes, err := c.nodeLister.List(labels.Everything())
-		if err != nil {
-			klog.Warningf("failed to list nodes: %v", err)
+		nodes, err2 := c.nodeLister.List(labels.Everything())
+		if err2 != nil {
+			klog.Warningf("failed to list nodes: %v", err2)
 		}
 
 		nodeStatistics = getNodeStatistics(nodes)
@@ -214,8 +210,11 @@ func getTopoInfo(ctx context.Context, clusterName, topoSyncBaseURL string) (topo
 	hyperTopoSync := clusterapi.Fields{
 		Field: []string{clusterName},
 	}
-	topos, _, err := toposync.NewAPIClient(toposync.NewConfiguration(topoSyncBaseURL)).
+	topos, body, err := toposync.NewAPIClient(toposync.NewConfiguration(topoSyncBaseURL)).
 		TopoSyncAPI.TopoSync(ctx, hyperTopoSync)
+	if body != nil {
+		defer body.Body.Close()
+	}
 	if err != nil {
 		klog.Warningf("failed to get network topology info: %v", err)
 		return topoInfo
@@ -382,9 +381,9 @@ func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 		}
 		if len(clusters) == 0 {
 			// get nodes
-			nodes, err := c.nodeLister.List(labels.Everything())
-			if err != nil {
-				klog.Warningf("failed to list nodes: %v", err)
+			nodes, err2 := c.nodeLister.List(labels.Everything())
+			if err2 != nil {
+				klog.Warningf("failed to list nodes: %v", err2)
 				nodeLabels = getNodeLabels(nodes)
 			}
 			nodeLabels = getNodeLabels(nodes)
@@ -492,7 +491,7 @@ func getDataFromPrometheus(promPreURL, metric string) (model.Value, error) {
 }
 
 // getNodeResourceFromPrometheus returns the cpu and memory resources from Prometheus in the cluster
-func getNodeResourceFromPrometheus(promPreUrl string) (capacity, allocatable, available corev1.ResourceList) {
+func getNodeResourceFromPrometheus(promPreURL string) (capacity, allocatable, available corev1.ResourceList) {
 	var capacityCPU, capacityMem, allocatableCPU, allocatableMem, availableCPU, availableMem resource.Quantity
 	capacity, allocatable, available = make(map[corev1.ResourceName]resource.Quantity),
 		make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
@@ -501,7 +500,7 @@ func getNodeResourceFromPrometheus(promPreUrl string) (capacity, allocatable, av
 	QueryMetricSet, ClusterMetricList, err := utils.InitConfig(known.MetricConfigMapAbsFilePath)
 	if err == nil && len(ClusterMetricList) == 6 {
 		for index, metric := range ClusterMetricList[:6] {
-			result, err := getDataFromPrometheus(promPreUrl, QueryMetricSet[metric])
+			result, err := getDataFromPrometheus(promPreURL, QueryMetricSet[metric])
 			if err == nil {
 				if len(result.(model.Vector)) == 0 {
 					klog.Warningf("Query from prometheus successfully, but the result is a null array.")

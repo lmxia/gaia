@@ -128,8 +128,8 @@ func CalculateResource(templateSpec corev1.PodTemplateSpec) (non0CPU int64, non0
 		Spec:       templateSpec.Spec,
 	}
 
-	for _, c := range templateSpec.Spec.Containers {
-		non0CPUReq, non0MemReq := GetNonzeroRequests(&c.Resources.Requests)
+	for i := range templateSpec.Spec.Containers {
+		non0CPUReq, non0MemReq := GetNonzeroRequests(&templateSpec.Spec.Containers[i].Resources.Requests)
 		non0CPU += non0CPUReq
 		non0Mem += non0MemReq
 		// No non-zero resources for GPUs or opaque resources.

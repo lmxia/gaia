@@ -44,7 +44,7 @@ func (c *Controller) DescribeDomainRecords(client *dns.Client, domainName *strin
 		}
 		domainRecords := resp.Body.DomainRecords.Record
 		for i, record := range domainRecords {
-			klog.V(4).Infof("%s,%s", i, record)
+			klog.V(4).Infof("%i,%s", i, record)
 			if *record.RR == frontend.Name {
 				exit = common.FrontendAliyunDNSCnameExist
 				break
@@ -65,12 +65,13 @@ func (c *Controller) DescribeDomainRecords(client *dns.Client, domainName *strin
 	return exit, tryErr
 }
 
-func (c *Controller) AddDomainRecord(client *dns.Client, domainName *string, rr *string, recordType *string, Value *string, frontend *v1alpha1.Frontend) error {
+func (c *Controller) AddDomainRecord(client *dns.Client, domainName *string, rr *string, recordType *string,
+	value *string, frontend *v1alpha1.Frontend) error {
 	req := &dns.AddDomainRecordRequest{}
 	req.DomainName = domainName
 	req.RR = rr
 	req.Type = recordType
-	req.Value = Value
+	req.Value = value
 	tryErr := func() (e error) {
 		defer func() {
 			if r := tea.Recover(recover()); r != nil {
@@ -135,15 +136,7 @@ func (c *Controller) DeleteDomainRecord(client *dns.Client, recordId *string) er
 	}
 	return tryErr
 }
-func (c *Controller) dnsAccelerateCreate(frontend *v1alpha1.Frontend) error {
-	cname := frontend.Labels["domainCname"]
-	err := c.dnsAccelerateCreateDo(frontend, &cname)
-	if err != nil {
-		klog.Errorf("Failed to create dns accelerate of 'Frontend' %q, error == %v", frontend.Name, err)
-		return err
-	}
-	return nil
-}
+
 func (c *Controller) dnsAccelerateCreateDo(frontend *v1alpha1.Frontend, cname *string) error {
 	regionId := common.FrontendAliyunCdnRegionID
 	acckey, secret := c.cdnConfig(frontend)
@@ -152,7 +145,7 @@ func (c *Controller) dnsAccelerateCreateDo(frontend *v1alpha1.Frontend, cname *s
 		klog.Errorf("Failed to init dns client  'Frontend' %q, error == %v", frontend.Name, err)
 		return err
 	}
-	for i, _ := range frontend.Spec.Cdn {
+	for i := range frontend.Spec.Cdn {
 		domainName := frontend.Spec.DomainName
 		RR := frontend.Name
 		recordType := frontend.Spec.Cdn[i].RecordType
@@ -164,11 +157,9 @@ func (c *Controller) dnsAccelerateCreateDo(frontend *v1alpha1.Frontend, cname *s
 		}
 	}
 	return nil
-
 }
 
 func (c *Controller) dnsAccelerateRecycle(frontend *v1alpha1.Frontend) error {
-
 	recordId := frontend.Labels["domainRecordId"]
 	if recordId != "" {
 		regionId := common.FrontendAliyunCdnRegionID
@@ -193,16 +184,16 @@ func (c *Controller) dnsAccelerateRecycle(frontend *v1alpha1.Frontend) error {
 			return nil
 		}
 		klog.WarningDepth(4, fmt.Sprintf("handleFrontend: failed to remove finalizer %s "+
-			"from frontend Descriptions %s: %v", common.FrontendAliyunFinalizers, frontend, err))
+			"from frontend Descriptions %v: %v", common.FrontendAliyunFinalizers, frontend, err))
 	}
 	return nil
 }
 
 func (c *Controller) dnsAccelerateState(frontend *v1alpha1.Frontend) (bool, error) {
-	regionId := common.FrontendAliyunCdnRegionID
+	regionID := common.FrontendAliyunCdnRegionID
 	domainName := frontend.Spec.DomainName
 	acckey, secret := c.cdnConfig(frontend)
-	client, err := c.Init(acckey, secret, &regionId)
+	client, err := c.Init(acckey, secret, &regionID)
 	if err != nil {
 		klog.Errorf("Failed to init dns client  'Frontend' %q, error == %v", frontend.Name, err)
 		return common.FrontendAliyunDNSCnameNoExist, err

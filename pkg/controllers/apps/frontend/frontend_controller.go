@@ -144,7 +144,7 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 	klog.V(4).Infof("start processing frontend accelerate %q", key)
-	//Get the ClusterRegistrationRequest resource with this name
+	// Get the ClusterRegistrationRequest resource with this name
 	frontend, err := c.frontendLister.Frontends(namespace).Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -171,14 +171,14 @@ func (c *Controller) syncHandler(key string) error {
 		return nil
 	}
 
-	//judge cdn  state
+	// judge cdn  state
 	cdnstate, cdnStatus, err := c.cdnAccelerateState(frontend)
 	if err != nil {
 		klog.Errorf("Failed to get  'Frontend state and status' %s, error == %v", frontend.Name, err)
 		return err
 	}
 	klog.V(5).Infof("Cdn state is: %s  and cdn status is: %s ", cdnstate, cdnStatus)
-	//domain accelerate manage
+	// domain accelerate manage
 	switch cdnstate {
 	case common.FrontendAliyunCdnNoExist:
 		err = c.cdnAccelerateCreate(frontend, cdnStatus)
@@ -246,6 +246,6 @@ func (c *Controller) enqueueForDelete(obj interface{}) {
 		utilruntime.HandleError(err)
 		return
 	}
-	//requeue
+	// requeue
 	c.workqueue.AddRateLimited(key)
 }

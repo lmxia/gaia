@@ -263,12 +263,12 @@ func (c *Controller) UpdateCRRStatus(crr *clusterapi.ClusterRegistrationRequest,
 			return nil
 		}
 
-		if updated, err := c.crrsLister.Get(crr.Name); err == nil {
+		if updated, crrErr := c.crrsLister.Get(crr.Name); crrErr == nil {
 			// make a copy so we don't mutate the shared cache
 			crr = updated.DeepCopy()
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated ClusterRegistrationRequest %q"+
-				" from lister: %v", crr.Name, err))
+				" from lister: %v", crr.Name, crrErr))
 		}
 		return err
 	})

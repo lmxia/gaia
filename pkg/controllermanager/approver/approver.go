@@ -119,7 +119,6 @@ func (crrApprover *CRRApprover) Run(threadiness int, stopCh <-chan struct{}) {
 
 	// todo: gorountine
 	crrApprover.crrController.Run(threadiness, stopCh)
-	return
 }
 
 func (crrApprover *CRRApprover) applyDefaultRBACRules(ctx context.Context) {

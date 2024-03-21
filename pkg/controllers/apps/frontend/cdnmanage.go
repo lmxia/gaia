@@ -141,11 +141,11 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 					return err
 				}
 				frontend.SetLabels(map[string]string{"domainCname": *cname})
-				frontendUpdate, err := c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(),
+				frontendUpdate, errUpdate := c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(),
 					frontend, metav1.UpdateOptions{})
-				if err != nil {
-					klog.Errorf("Failed to update  'Frontend' %q, error == %v", frontend.Name, err)
-					return err
+				if errUpdate != nil {
+					klog.Errorf("Failed to update  'Frontend' %q, error == %v", frontend.Name, errUpdate)
+					return errUpdate
 				}
 				frontend.SetResourceVersion(frontendUpdate.ResourceVersion)
 				err = c.dnsAccelerateCreateDo(frontend, cname)
@@ -241,9 +241,9 @@ func (c *Controller) cdnAccelerateRecycle(frontend *v1alpha1.Frontend) error {
 				domainArray := str.Split(domains, tea.String(","), tea.Int(3))
 				for _, domain := range domainArray {
 					for {
-						status, _, err := c.GetDomainStatus(client, domain)
-						if err != nil {
-							return err
+						status, _, errGetDomain := c.GetDomainStatus(client, domain)
+						if errGetDomain != nil {
+							return errGetDomain
 						}
 						if tea.BoolValue(util.EqualString(status, tea.String(common.FrontendAliyunCdnOnlineStatus))) {
 							if err != nil {

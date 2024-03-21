@@ -177,7 +177,7 @@ func (c *Controller) syncHandler(key string) error {
 		klog.Errorf("Failed to get  'Frontend state and status' %s, error == %v", frontend.Name, err)
 		return err
 	}
-	klog.V(5).Infof("Cdn state is: %s  and cdn status is: %s ", cdnstate, cdnStatus)
+	klog.V(5).Infof("Cdn state is: %t  and cdn status is: %s ", cdnstate, *cdnStatus)
 	// domain accelerate manage
 	switch cdnstate {
 	case common.FrontendAliyunCdnNoExist:
@@ -205,7 +205,7 @@ func (c *Controller) syncHandler(key string) error {
 // change in spec.schedule otherwise it re-queues it now
 func (c *Controller) addFrontend(obj interface{}) {
 	frontend := obj.(*appsV1alpha1.Frontend)
-	klog.V(4).Infof("adding Frontend %q", frontend)
+	klog.V(4).Infof("adding Frontend %s", frontend.Name)
 	c.enqueue(frontend)
 }
 

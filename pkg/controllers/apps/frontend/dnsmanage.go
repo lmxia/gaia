@@ -17,12 +17,12 @@ import (
 	"github.com/lmxia/gaia/pkg/utils"
 )
 
-func (c *Controller) Init(accessKeyId *string, accessKeySecret *string, regionId *string,
+func (c *Controller) Init(accessKeyID *string, accessKeySecret *string, regionID *string,
 ) (result *dns.Client, err error) {
 	config := &openapi.Config{}
-	config.AccessKeyId = accessKeyId
+	config.AccessKeyId = accessKeyID
 	config.AccessKeySecret = accessKeySecret
-	config.RegionId = regionId
+	config.RegionId = regionID
 	return dns.NewClient(config)
 }
 
@@ -44,7 +44,7 @@ func (c *Controller) DescribeDomainRecords(client *dns.Client, domainName *strin
 		}
 		domainRecords := resp.Body.DomainRecords.Record
 		for i, record := range domainRecords {
-			klog.V(4).Infof("%i,%s", i, record)
+			klog.V(4).Infof("%d,%s", i, record)
 			if *record.RR == frontend.Name {
 				exit = common.FrontendAliyunDNSCnameExist
 				break
@@ -107,9 +107,9 @@ func (c *Controller) AddDomainRecord(client *dns.Client, domainName *string, rr 
 	return tryErr
 }
 
-func (c *Controller) DeleteDomainRecord(client *dns.Client, recordId *string) error {
+func (c *Controller) DeleteDomainRecord(client *dns.Client, recordID *string) error {
 	req := &dns.DeleteDomainRecordRequest{}
-	req.RecordId = recordId
+	req.RecordId = recordID
 	tryErr := func() (e error) {
 		defer func() {
 			if r := tea.Recover(recover()); r != nil {
@@ -138,9 +138,9 @@ func (c *Controller) DeleteDomainRecord(client *dns.Client, recordId *string) er
 }
 
 func (c *Controller) dnsAccelerateCreateDo(frontend *v1alpha1.Frontend, cname *string) error {
-	regionId := common.FrontendAliyunCdnRegionID
+	regionID := common.FrontendAliyunCdnRegionID
 	acckey, secret := c.cdnConfig(frontend)
-	client, err := c.Init(acckey, secret, &regionId)
+	client, err := c.Init(acckey, secret, &regionID)
 	if err != nil {
 		klog.Errorf("Failed to init dns client  'Frontend' %q, error == %v", frontend.Name, err)
 		return err
@@ -160,16 +160,16 @@ func (c *Controller) dnsAccelerateCreateDo(frontend *v1alpha1.Frontend, cname *s
 }
 
 func (c *Controller) dnsAccelerateRecycle(frontend *v1alpha1.Frontend) error {
-	recordId := frontend.Labels["domainRecordId"]
-	if recordId != "" {
-		regionId := common.FrontendAliyunCdnRegionID
+	recordID := frontend.Labels["domainRecordId"]
+	if recordID != "" {
+		regionID := common.FrontendAliyunCdnRegionID
 		acckey, secret := c.cdnConfig(frontend)
-		client, err := c.Init(acckey, secret, &regionId)
+		client, err := c.Init(acckey, secret, &regionID)
 		if err != nil {
 			klog.Errorf("Failed to init dns client  'Frontend' %q, error == %v", frontend.Name, err)
 			return err
 		}
-		err = c.DeleteDomainRecord(client, &recordId)
+		err = c.DeleteDomainRecord(client, &recordID)
 		if err != nil {
 			klog.Errorf("Failed to delete domain record of 'Frontend' %q, error == %v", frontend.Name, err)
 			return err

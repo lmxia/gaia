@@ -62,6 +62,7 @@ type SyncHandlerFunc func(binding *appsV1alpha1.ResourceBinding) error
 // Binder defines configuration for ResourceBinding requests
 type Binder struct {
 	networkBindURL string
+	promURLPrefix  string
 
 	localGaiaInformerFactory     gaiaInformers.SharedInformerFactory
 	localPushGaiaInformerFactory gaiaInformers.SharedInformerFactory
@@ -110,12 +111,13 @@ type Controller struct {
 // NewBinder returns a new Controller for ResourceBindings and Descriptions.
 func NewBinder(localKubeClient *kubernetes.Clientset, localGaiaClient *gaiaClientSet.Clientset,
 	kubeInformerFactory kubeInformers.SharedInformerFactory, localGaiaInformerFactory gaiaInformers.SharedInformerFactory,
-	localKubeConfig *rest.Config, networkBindURL string,
+	localKubeConfig *rest.Config, networkBindURL, prometheusMonitorURLPrefix string,
 ) (*Binder, error) {
 	localDynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 
 	rbController := &Binder{
 		networkBindURL:           networkBindURL,
+		promURLPrefix:            prometheusMonitorURLPrefix,
 		localKubeClient:          localKubeClient,
 		localNodeLister:          kubeInformerFactory.Core().V1().Nodes().Lister(),
 		localNodeSynced:          kubeInformerFactory.Core().V1().Nodes().Informer().HasSynced,
@@ -586,7 +588,7 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 				// need schedule across clusters
 				err = utils.ApplyRBWorkloads(context.TODO(), c.localGaiaClient, c.parentGaiaClient,
 					c.localDynamicClient, rb, nodes, desc, components,
-					c.restMapper, clusterName)
+					c.restMapper, clusterName, c.promURLPrefix)
 				if err != nil {
 					return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
 				}

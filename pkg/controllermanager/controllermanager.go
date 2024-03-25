@@ -158,7 +158,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		klog.Error(err)
 	}
 	binder, rbErr := resourcebinding.NewBinder(localKubeClientSet, localGaiaClientSet, localKubeInformerFactory,
-		localGaiaInformerFactory, localKubeConfig, networkBindURL)
+		localGaiaInformerFactory, localKubeConfig, networkBindURL, managedCluster.PrometheusMonitorURLPrefix)
 	if rbErr != nil {
 		klog.Error(rbErr)
 	}

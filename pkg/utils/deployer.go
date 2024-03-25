@@ -16,6 +16,7 @@ import (
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	"github.com/prometheus/common/model"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -319,7 +320,7 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *gaiaClientSet.Clientset,
 	localDynamicClient dynamic.Interface, rb *appsv1alpha1.ResourceBinding, nodes []*corev1.Node,
 	desc *appsv1alpha1.Description, components []appsv1alpha1.Component, discoveryRESTMapper meta.RESTMapper,
-	clusterName string) error {
+	clusterName, promURLPrefix string) error {
 	var allErrs []error
 	var vpcResourceSli vpcResourceSlice
 	group2VPC := make(map[string]string)
@@ -330,7 +331,7 @@ func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *ga
 	// Binding hugeComponent with reference to vpc resources
 	group2HugeCom := DescToHugeComponents(desc)
 	if len(group2HugeCom) != 0 {
-		getVPCForGroup(group2HugeCom, nodes, vpcResourceSli, group2VPC)
+		getVPCForGroup(group2HugeCom, nodes, vpcResourceSli, group2VPC, promURLPrefix)
 	}
 
 	errCh := make(chan error, len(comToBeApply))
@@ -487,7 +488,7 @@ func updateRBStatusWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clie
 }
 
 func getVPCForGroup(group2HugeCom map[string]*appsv1alpha1.HugeComponent, nodes []*corev1.Node, sli vpcResourceSlice,
-	group2VPC map[string]string,
+	group2VPC map[string]string, promURLPrefix string,
 ) {
 	vpc2CPU, vpc2Mem := make(map[string]resource.Quantity), make(map[string]resource.Quantity)
 	for _, node := range nodes {
@@ -497,9 +498,10 @@ func getVPCForGroup(group2HugeCom map[string]*appsv1alpha1.HugeComponent, nodes 
 		vpcLabel := node.Labels[known.SpecificNodeLabelsKeyPrefix+known.VpcLabel]
 		if len(vpcLabel) != 0 {
 			cpu := vpc2CPU[vpcLabel]
-			cpu.Add(*node.Status.Allocatable.Cpu())
 			mem := vpc2Mem[vpcLabel]
-			mem.Add(*node.Status.Allocatable.Memory())
+			availableCPU, availableMem := getNodeResFromProm(node, promURLPrefix)
+			cpu.Add(availableCPU)
+			mem.Add(availableMem)
 
 			vpc2CPU[vpcLabel] = cpu
 			vpc2Mem[vpcLabel] = mem
@@ -521,6 +523,33 @@ func getVPCForGroup(group2HugeCom map[string]*appsv1alpha1.HugeComponent, nodes 
 			group2VPC[groupName] = sli[index].VPCName
 		}
 	}
+}
+
+func getNodeResFromProm(node *corev1.Node, promURLPrefix string) (cpu, mem resource.Quantity) {
+	var valueList [2]string
+	query := [2]string{
+		fmt.Sprintf("sum(system_cpu_utilization{node_name=%q,state=\"idle\"})", node.GetLabels()["kubernetes.io/hostname"]),
+		fmt.Sprintf("sum(system_memory_usage{node_name=%q} and (system_memory_usage{state=\"buffered\"} "+
+			"or system_memory_usage{state=\"free\"} or system_memory_usage{state=\"cached\"}))/1024",
+			node.GetLabels()["kubernetes.io/hostname"]),
+	}
+
+	for index, q := range query {
+		result, err := GetDataFromPrometheus(promURLPrefix, q)
+		if err == nil {
+			if len(result.(model.Vector)) == 0 {
+				klog.Warningf("Query from prometheus successfully, but the result is a null array.")
+				valueList[index] = "0"
+			} else {
+				valueList[index] = result.(model.Vector)[0].Value.String()
+			}
+		} else {
+			valueList[index] = "0"
+		}
+	}
+
+	return resource.MustParse(GetSubStringWithSpecifiedDecimalPlace(valueList[0], 3)),
+		resource.MustParse(valueList[1] + "Ki")
 }
 
 func getFitVPC(com *appsv1alpha1.HugeComponent, sli *vpcResourceSlice) (int, error) {
@@ -726,9 +755,9 @@ func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 
 				if !delete {
 					ds.Spec.Template = comCopy.Module
-					nodeAffinity := AddNodeAffinity(comCopy)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
 					ds.Spec.Template.Spec.Affinity = nodeAffinity
-					ds.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy, ds.Spec.Template.Spec.NodeSelector, group2VPC)
+					ds.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy, ds.Spec.Template.Spec.NodeSelector)
 
 					label := getTemLabel(comCopy, newLabels)
 					ds.Spec.Template.Labels = label
@@ -800,7 +829,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 	return depUnstructured, nil
 }
 
-func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
+func AddNodeAffinity(com *appsv1alpha1.Component, group2VPC map[string]string) *corev1.Affinity {
 	nodeAffinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
@@ -814,6 +843,21 @@ func AddNodeAffinity(com *appsv1alpha1.Component) *corev1.Affinity {
 				},
 			}},
 		},
+	}
+	// add vpc preferred
+	if vpc, ok := group2VPC[com.GroupName]; ok {
+		nodeAffinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution = append(
+			nodeAffinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution,
+			corev1.PreferredSchedulingTerm{
+				Weight: 10,
+				Preference: corev1.NodeSelectorTerm{
+					MatchExpressions: []corev1.NodeSelectorRequirement{{
+						Key:      known.SpecificNodeLabelsKeyPrefix + known.VpcLabel,
+						Operator: corev1.NodeSelectorOpIn,
+						Values:   []string{vpc},
+					}},
+				},
+			})
 	}
 
 	if com.Workload.Workloadtype == appsv1alpha1.WorkloadTypeAffinityDaemon {
@@ -889,10 +933,10 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			dep.Name = comCopy.Name
 			if !delete {
 				dep.Spec.Template = comCopy.Module
-				nodeAffinity := AddNodeAffinity(comCopy)
+				nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
 				dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
-					dep.Spec.Template.Spec.NodeSelector, group2VPC)
+					dep.Spec.Template.Spec.NodeSelector)
 				dep.Spec.Replicas = &replicas
 				label := getTemLabel(comCopy, newLabels)
 				dep.Spec.Template.Labels = label
@@ -944,13 +988,10 @@ func getTemLabel(com *appsv1alpha1.Component, depLabels map[string]string) map[s
 	return newLabels
 }
 
-func addNodeSelector(comCopy *appsv1alpha1.Component, src, group2VPC map[string]string) map[string]string {
+func addNodeSelector(comCopy *appsv1alpha1.Component, src map[string]string) map[string]string {
 	if src == nil {
 		nodeSelector := map[string]string{
 			v1alpha1.ParsedRuntimeStateKey: comCopy.RuntimeType,
-		}
-		if vpc, ok := group2VPC[comCopy.GroupName]; ok {
-			nodeSelector[known.SpecificNodeLabelsKeyPrefix+known.VpcLabel] = vpc
 		}
 
 		return nodeSelector
@@ -958,9 +999,6 @@ func addNodeSelector(comCopy *appsv1alpha1.Component, src, group2VPC map[string]
 
 	if _, ok := src[v1alpha1.ParsedRuntimeStateKey]; !ok {
 		src[v1alpha1.ParsedRuntimeStateKey] = comCopy.RuntimeType
-	}
-	if vpc, ok := group2VPC[comCopy.GroupName]; ok {
-		src[known.SpecificNodeLabelsKeyPrefix+known.VpcLabel] = vpc
 	}
 
 	return src
@@ -1101,10 +1139,10 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 					}
 					dep.Name = comCopy.Name
 					dep.Spec.Template = comCopy.Module
-					nodeAffinity := AddNodeAffinity(comCopy)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
 					dep.Spec.Template.Spec.Affinity = nodeAffinity
 					dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
-						dep.Spec.Template.Spec.NodeSelector, group2VPC)
+						dep.Spec.Template.Spec.NodeSelector)
 					dep.Spec.Replicas = &replicas
 					label := getTemLabel(comCopy, newLabels)
 					dep.Spec.Template.Labels = label
@@ -1202,10 +1240,10 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 							TraitServerless: comCopy.Workload.TraitServerless,
 						},
 					}
-					nodeAffinity := AddNodeAffinity(comCopy)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
 					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy,
-						ser.Spec.Module.Spec.NodeSelector, group2VPC)
+						ser.Spec.Module.Spec.NodeSelector)
 					// add  env variables log needed
 					ser.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
 					if ser.Spec.Module.Spec.NodeSelector == nil {
@@ -1279,10 +1317,9 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 							TraitServerless: comCopy.Workload.TraitServerless,
 						},
 					}
-					nodeAffinity := AddNodeAffinity(comCopy)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
-					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy, ser.Spec.Module.Spec.NodeSelector,
-						group2VPC)
+					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy, ser.Spec.Module.Spec.NodeSelector)
 					// add  env variables log needed
 					ser.Spec.Module.Spec.Containers = addEnvVars(comCopy.Module.Spec.Containers, com.Scc)
 					if ser.Spec.Module.Spec.NodeSelector == nil {

@@ -29,8 +29,6 @@ import (
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	gaialister "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
-	"github.com/prometheus/client_golang/api"
-	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 )
 
@@ -384,7 +382,7 @@ func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 			nodes, err2 := c.nodeLister.List(labels.Everything())
 			if err2 != nil {
 				klog.Warningf("failed to list nodes: %v", err2)
-				nodeLabels = getNodeLabels(nodes)
+				// nodeLabels = getNodeLabels(nodes)
 			}
 			nodeLabels = getNodeLabels(nodes)
 		} else {
@@ -464,32 +462,6 @@ func getNodeCondition(status *corev1.NodeStatus, conditionType corev1.NodeCondit
 	return -1, nil
 }
 
-// getDataFromPrometheus returns the result from Prometheus according to the specified metric in the cluster
-func getDataFromPrometheus(promPreURL, metric string) (model.Value, error) {
-	client, err := api.NewClient(api.Config{
-		Address: promPreURL,
-	})
-	if err != nil {
-		klog.Warningf("Error creating client: %v", err)
-		return nil, err
-	}
-
-	v1api := prometheusv1.NewAPI(client)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	result, warnings, err := v1api.Query(ctx, metric, time.Now())
-	if err != nil {
-		klog.Warningf("Error querying Prometheus: %v", err)
-		return nil, err
-	}
-	if len(warnings) > 0 {
-		klog.Warningf("Warnings: %v\n", warnings)
-	}
-
-	return result, nil
-}
-
 // getNodeResourceFromPrometheus returns the cpu and memory resources from Prometheus in the cluster
 func getNodeResourceFromPrometheus(promPreURL string) (capacity, allocatable, available corev1.ResourceList) {
 	var capacityCPU, capacityMem, allocatableCPU, allocatableMem, availableCPU, availableMem resource.Quantity
@@ -500,8 +472,8 @@ func getNodeResourceFromPrometheus(promPreURL string) (capacity, allocatable, av
 	QueryMetricSet, ClusterMetricList, err := utils.InitConfig(known.MetricConfigMapAbsFilePath)
 	if err == nil && len(ClusterMetricList) == 6 {
 		for index, metric := range ClusterMetricList[:6] {
-			result, err := getDataFromPrometheus(promPreURL, QueryMetricSet[metric])
-			if err == nil {
+			result, err2 := utils.GetDataFromPrometheus(promPreURL, QueryMetricSet[metric])
+			if err2 == nil {
 				if len(result.(model.Vector)) == 0 {
 					klog.Warningf("Query from prometheus successfully, but the result is a null array.")
 					valueList[index] = "0"
@@ -536,7 +508,7 @@ func getNodeResourceFromPrometheus(promPreURL string) (capacity, allocatable, av
 	available[corev1.ResourceCPU] = availableCPU
 	available[corev1.ResourceMemory] = availableMem
 
-	return
+	return capacity, allocatable, available
 }
 
 // getSubStringWithSpecifiedDecimalPlace returns a sub string based on the specified number of decimal places
@@ -572,7 +544,7 @@ func (c *Controller) GetDescNameFromAbnormalPod() (descNameMap DescNameMap) {
 	}
 
 	for _, metricPsql := range metricMap {
-		pendingLatencyResult, err := getDataFromPrometheus(c.promURLPrefix, metricPsql)
+		pendingLatencyResult, err := utils.GetDataFromPrometheus(c.promURLPrefix, metricPsql)
 		if err != nil {
 			klog.Warningf("Query failed from prometheus, err is %v. The metric is %v", err, metricPsql)
 			return descNameMap

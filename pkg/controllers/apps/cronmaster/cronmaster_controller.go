@@ -231,9 +231,18 @@ func (c *Controller) updateCronMaster(old interface{}, curr interface{}) {
 
 func (c *Controller) updateCronMasterStatus(cron *appsV1alpha1.CronMaster) (*appsV1alpha1.CronMaster, error) {
 	klog.V(5).InfoS("try to update CronMaster status", "CronMaster", klog.KObj(cron))
+	exist, errGet := c.cronMasterList.CronMasters(cron.Namespace).Get(cron.Name)
+	if errGet != nil {
+		klog.Errorf("updateCronMasterStatus: failed to get existed cronmaster==%q",
+			klog.KRef(cron.Namespace, cron.Name))
+	}
+	if exist.Status.NextScheduleAction == cron.Status.NextScheduleAction &&
+		exist.Status.NextScheduleDateTime == cron.Status.NextScheduleDateTime {
+		return cron, nil
+	}
+
 	status := cron.Status.DeepCopy()
 	updated := &appsV1alpha1.CronMaster{}
-
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var updateErr error
 		cron.Status = *status

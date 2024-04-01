@@ -1398,6 +1398,7 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 				if apierrors.IsNotFound(err2) {
 					klog.InfoS("syncCronMaster: stop deployment, but not exists",
 						deploymentKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "err3", err2)
+					updated = true
 					break
 				}
 				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error==%v",

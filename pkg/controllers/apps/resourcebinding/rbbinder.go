@@ -517,25 +517,25 @@ func (c *Binder) handleParentDescription(desc *appsV1alpha1.Description) error {
 func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
 	klog.V(5).Infof("handleParentAndPushResourceBinding: handle resourceBinding %q ...", klog.KObj(rb))
 	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
-		if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
-			err := c.updateSelectedRB(rb)
-			if err != nil {
-				return err
-			}
-		}
-
-		descriptionName := rb.GetLabels()[common.GaiaDescriptionLabel]
 		var clusterName, descNs string
 		var err error
 		clusterName, descNs, err = utils.GetLocalClusterName(c.localKubeClient)
 		if err != nil {
 			klog.Errorf("handleParentAndPushResourceBinding: failed to get local clusterName From secret: %v", err)
 		}
-		if rb.Namespace == common.GaiaPushReservedNamespace {
-			descNs = common.GaiaPushReservedNamespace
-		}
 		if len(clusterName) == 0 {
 			return fmt.Errorf("handleParentAndPushResourceBinding: local clusterName is nil")
+		}
+		if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
+			err = c.updateSelectedRB(rb, clusterName)
+			if err != nil {
+				return err
+			}
+		}
+
+		descriptionName := rb.GetLabels()[common.GaiaDescriptionLabel]
+		if rb.Namespace == common.GaiaPushReservedNamespace {
+			descNs = common.GaiaPushReservedNamespace
 		}
 		createRB := false
 		if len(rb.Spec.RbApps) > 0 {
@@ -657,6 +657,61 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 	}
 
 	return nil
+}
+
+func getRBCondition(clusterName string) metav1.Condition {
+	return metav1.Condition{
+		Type:               clusterName,
+		Status:             metav1.ConditionFalse,
+		LastTransitionTime: metav1.Now(),
+		Reason:             "null",
+		Message:            "the number of rb.Spec.NetworkPath is not one",
+	}
+}
+
+func updateRBStatusWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clientset,
+	rb *appsV1alpha1.ResourceBinding, condition metav1.Condition, clusterName string,
+) error {
+	rb = rb.DeepCopy()
+	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+		rb.Status.Conditions = append(rb.Status.Conditions, condition)
+		if rb.Status.Clusters == nil {
+			rb.Status.Clusters = make(map[string]appsV1alpha1.StatusRBDeploy)
+		}
+		if condition.Status == metav1.ConditionFalse {
+			rb.Status.Clusters[clusterName] = appsV1alpha1.ResourceBindingRed
+		} else {
+			rb.Status.Clusters[clusterName] = appsV1alpha1.ResourceBindingGreen
+		}
+		for _, status := range rb.Status.Clusters {
+			if status == appsV1alpha1.ResourceBindingRed {
+				rb.Status.Status = appsV1alpha1.ResourceBindingRed
+				break
+			}
+			rb.Status.Status = appsV1alpha1.ResourceBindingGreen
+		}
+		_, err := gaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(),
+			rb, metav1.UpdateOptions{})
+		// check if failed
+		if err == nil {
+			return true, nil
+		}
+
+		newRB, err2 := gaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Get(context.TODO(),
+			rb.Name, metav1.GetOptions{})
+		if err2 == nil {
+			rb = newRB.DeepCopy()
+		}
+
+		return false, nil
+	})
+
+	if err != nil {
+		klog.Errorf("failed to update status of resourcebinding %q, err: %v",
+			klog.KRef(rb.Namespace, rb.Name), err)
+	}
+
+	return err
 }
 
 func (c *Binder) SetParentBinderController(dedicatedNamespace *string) (*Binder, error) {
@@ -923,7 +978,14 @@ func (c *Binder) offloadLocalNetworkRequirement(descName, descNS string) error {
 	return nil
 }
 
-func (c *Binder) updateSelectedRB(rb *appsV1alpha1.ResourceBinding) error {
+func (c *Binder) updateSelectedRB(rb *appsV1alpha1.ResourceBinding, clusterName string) error {
+	if len(rb.Spec.NetworkPath) > 1 {
+		klog.Errorf("the number of rb.Spec.NetworkPath is not one, ResourceBinding: %s", klog.KObj(rb))
+		condition := getRBCondition(clusterName)
+		err2 := updateRBStatusWithRetry(context.TODO(), c.localGaiaClient, rb, condition, clusterName)
+		return err2
+	}
+
 	rbLabels := rb.GetLabels()
 	rb.Finalizers = append(rb.Finalizers, common.AppFinalizer)
 	rbLabels[common.StatusScheduler] = string(appsV1alpha1.ResourceBindingSelected)

@@ -60,9 +60,8 @@ type ResourceBindingApps struct {
 type StatusRBDeploy string
 
 const (
-	ResourceBindingRed    StatusRBDeploy = "Red"
-	ResourceBindingGreen  StatusRBDeploy = "Green"
-	ResourceBindingYellow StatusRBDeploy = "Yellow"
+	ResourceBindingRed   StatusRBDeploy = "Red"
+	ResourceBindingGreen StatusRBDeploy = "Green"
 )
 
 type ResourceBindingStatus struct {

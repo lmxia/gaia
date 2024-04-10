@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sort"
 	"strings"
@@ -109,7 +108,7 @@ func getStatusCause(err error) ([]metav1.StatusCause, bool) {
 func GetDeployerCredentials(ctx context.Context, childKubeClientSet kubernetes.Interface, sa string) *corev1.Secret {
 	var secret *corev1.Secret
 	localCtx, cancel := context.WithCancel(ctx)
-
+	defer cancel()
 	ver, err := childKubeClientSet.Discovery().ServerVersion()
 	if err != nil {
 		return nil
@@ -142,10 +141,7 @@ func GetDeployerCredentials(ctx context.Context, childKubeClientSet kubernetes.I
 			klog.ErrorDepth(5, fmt.Errorf("failed to get Secret %s/%s: %v", known.GaiaSystemNamespace, secretName, err))
 			return
 		}
-
-		cancel()
 	}, known.DefaultRetryPeriod, 0.4, true)
-
 	klog.V(4).Info("successfully get credentials populated for deployer")
 	return secret
 }
@@ -708,20 +704,16 @@ func PostNetworkRequest(url, descriptionName, operate string, path []byte) {
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("cache-control", "no-cache")
 	resp, respErr := http.DefaultClient.Do(request)
-	if resp != nil {
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-				utilRuntime.HandleError(fmt.Errorf("PostNetworkRequest: failed to close response body, "+
-					"Description: %q ERROR: %v", descriptionName, err))
-			}
-		}(resp.Body)
-	}
 	if respErr != nil {
 		klog.Errorf("PostNetworkRequest: post do sent, error====%v\n", respErr)
 		return
 	}
 
+	err = resp.Body.Close()
+	if err != nil {
+		utilRuntime.HandleError(fmt.Errorf("PostNetworkRequest: failed to close response body, "+
+			"Description: %q ERROR: %v", descriptionName, err))
+	}
 	klog.InfoS("successfully post network path", "operate", operate, "Description",
 		descriptionName, "NetworkPath", string(path))
 }

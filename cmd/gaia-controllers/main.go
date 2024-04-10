@@ -3,9 +3,7 @@ package main
 import (
 	goflag "flag"
 	"fmt"
-	"math/rand"
 	"os"
-	"time"
 
 	"github.com/lmxia/gaia/cmd/gaia-controllers/app"
 	"github.com/lmxia/gaia/pkg/utils"
@@ -14,8 +12,6 @@ import (
 )
 
 func main() {
-	rand.Seed(time.Now().UTC().UnixNano())
-
 	klog.InitFlags(nil)
 	defer klog.Flush()
 

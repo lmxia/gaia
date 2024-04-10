@@ -154,7 +154,8 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 	// 4. Some transformations according to the different workload types.
 	// For sn, transfer it to the specified TraitXxx.
 	for _, comn := range components {
-		if comn.Workload.Workloadtype == appsv1alpha1.WorkloadTypeUserApp && comn.SchedulePolicy.Level != nil {
+		switch {
+		case comn.Workload.Workloadtype == appsv1alpha1.WorkloadTypeUserApp && comn.SchedulePolicy.Level != nil:
 			// use appsv1alpha1.SchedulePolicyMandatory for default
 			for _, exp := range comn.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions {
 				if exp.Key == "sn" { // 还要加上sn.Operator的参考 TODO
@@ -163,7 +164,7 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 				}
 			}
 			klog.V(5).Infof("%s's Workload.TraitUserAPP is %+v", comn.Name, comn.Workload.TraitUserAPP)
-		} else if comn.Workload.Workloadtype == appsv1alpha1.WorkloadTypeAffinityDaemon && comn.SchedulePolicy.Level != nil {
+		case comn.Workload.Workloadtype == appsv1alpha1.WorkloadTypeAffinityDaemon && comn.SchedulePolicy.Level != nil:
 			// use appsv1alpha1.SchedulePolicyMandatory for default
 			for _, exp := range comn.SchedulePolicy.Level[appsv1alpha1.SchedulePolicyMandatory].MatchExpressions {
 				if exp.Key == "sn" { // 还要加上sn.Operator的参考 TODO
@@ -173,7 +174,7 @@ func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1
 			}
 			klog.V(5).Infof("%s's Workload.TraitAffinityDaemon is %+v",
 				comn.Name, comn.Workload.TraitAffinityDaemon)
-		} else {
+		default:
 			// for log view
 			if comn.Workload.TraitServerless != nil {
 				klog.V(5).Infof("%s's 'Workload.TraitServerless is %+v",
@@ -323,7 +324,8 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 	for _, inner := range boundary.Inner {
 		klog.V(5).Infof("inner is %+v", inner)
 		if index, ok := comLocation[inner.Subject]; ok {
-			if "replicas" == inner.Type {
+			switch inner.Type {
+			case "replicas":
 				var data int32
 				_ = json.Unmarshal(inner.Value, &data)
 				klog.V(5).Infof("%v's replicas is %v", inner.Subject, data)
@@ -336,7 +338,7 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 					klog.V(5).Infof("%s:components[%d].Workload.TraitDeployment.Replicas is %v",
 						inner.Subject, index, components[index].Workload.TraitDeployment.Replicas)
 				}
-			} else if inner.Type == "daemonset" {
+			case "daemonset":
 				var data bool
 				_ = json.Unmarshal(inner.Value, &data)
 				if data {
@@ -346,7 +348,7 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 				} else {
 					continue
 				}
-			} else {
+			default:
 				// serverless
 				var data int32
 				_ = json.Unmarshal(inner.Value, &data)
@@ -356,15 +358,16 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 					components[index].Workload.Workloadtype = appsv1alpha1.WorkloadTypeServerless
 					components[index].Workload.TraitServerless = &lmmserverless.TraitServerless{}
 				}
-				if "maxReplicas" == inner.Type {
+				switch inner.Type {
+				case "maxReplicas":
 					components[index].Workload.TraitServerless.MaxReplicas = data
 					klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxReplicas is %v",
 						inner.Subject, index, components[index].Workload.TraitServerless.MaxReplicas)
-				} else if inner.Type == "maxQPS" {
+				case "maxQPS":
 					components[index].Workload.TraitServerless.MaxQPS = data
 					klog.V(5).Infof("%s:components[%d].Workload.TraitServerless.MaxQPS is %v",
 						inner.Subject, index, components[index].Workload.TraitServerless.MaxQPS)
-				} else {
+				default:
 					// serverless threshold fields: cpuMax, cpuMin, memMax, memMin, qpsMax, qpsMin
 					boundaryMap[inner.Name] = inner
 				}
@@ -399,13 +402,15 @@ func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[stri
 		if index, ok := comLocation[hpa.Subject]; ok {
 			var value, step int32
 			_ = json.Unmarshal(hpa.Strategy.Value, &step)
-			if components[index].Workload.TraitServerless.MaxQPS != 0 {
+			switch {
+			case components[index].Workload.TraitServerless.MaxQPS != 0:
 				components[index].Workload.TraitServerless.QpsStep = step
-			} else if components[index].Workload.TraitServerless.MaxReplicas != 0 {
+			case components[index].Workload.TraitServerless.MaxReplicas != 0:
 				components[index].Workload.TraitServerless.ResplicasStep = step
-			} else {
+			default:
 				components[index].Workload.TraitServerless.ResplicasStep = 1 // default: 1
 			}
+
 			if hpa.Strategy.Type == "increase" {
 				// 扩 或 最大值
 				boundaryList := strings.Split(hpa.Trigger, "||")

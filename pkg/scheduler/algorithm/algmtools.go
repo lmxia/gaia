@@ -1,13 +1,13 @@
 package algorithm
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/big"
 	"reflect"
 	"sort"
-	"time"
 
 	"gonum.org/v1/gonum/mat"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -328,7 +328,7 @@ func makeDeployPlans(capability []*framework.ClusterInfo, componentTotal, spread
 		for i < 2 {
 			randomClusterInfo, err := GenerateRandomClusterInfos(capability, int(spreadOver))
 			availableCountForThisPlan := int64(0)
-			if randomClusterInfo != nil {
+			if err == nil {
 				for _, item := range randomClusterInfo {
 					if item != nil {
 						availableCountForThisPlan += item.Total
@@ -567,9 +567,13 @@ func GenerateRandomClusterInfos(capacities []*framework.ClusterInfo, count int) 
 	default:
 		nums := make(map[int]struct{}, 0)
 		randomCapacity := make([]*framework.ClusterInfo, len(capacities))
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for len(nums) < count {
-			num := r.Intn(len(capacities))
+			n, err := rand.Int(rand.Reader, big.NewInt(int64(len(capacities))))
+			if err != nil {
+				klog.Info("can't rand.int, continue")
+				continue
+			}
+			num := int(n.Int64())
 			if _, ok := nums[num]; ok {
 				// we have chosen this cluster.
 				continue
@@ -636,7 +640,11 @@ func randowChoseOneGreateThanZero(in []float64) []float64 {
 	}
 	// 存在这个值
 	if len(indexArrow) > 0 {
-		indexChosen := indexArrow[rand.Intn(len(indexArrow))]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(indexArrow))))
+		if err != nil {
+			klog.Info("random error...")
+		}
+		indexChosen := indexArrow[n.Int64()]
 		denseOut.Set(0, indexChosen, 1)
 	}
 	return denseOut.RawRowView(0)

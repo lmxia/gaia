@@ -186,8 +186,8 @@ func (suite *DeployerSuite) SetupTest() {
 						},
 						Relation: "Is",
 						Extent: []byte("eyJkZWxheVZhbHVlIjoxMDAsImxvc3RWYWx1ZSI6MTAwLCJqaXR0ZXJWYWx1ZSI6OTk5OTk5LCJ0" +
-							"aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100,\"jitterValue\":" +
-							"999999,\"throughputValue\":100}"),
+							"aHJvdWdocHV0VmFsdWUiOjEwMH0= # {\"delayValue\":100,\"lostValue\":100," +
+							"\"jitterValue\":999999,\"throughputValue\":100}"),
 					},
 				},
 			},

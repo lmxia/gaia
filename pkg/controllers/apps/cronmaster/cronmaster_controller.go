@@ -992,11 +992,12 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 		klog.InfoS("next schedule", "cronmaster", klog.KRef(cron.GetNamespace(), cron.GetName()),
 			"DateTime", nextTime.String(), "isStart", isStart1, "requeueAfter", t)
 
-		if notExist {
+		switch {
+		case notExist:
 			cron.Status.NextScheduleAction = appsV1alpha1.Start
-		} else if !isStart1 && !notExist {
+		case !isStart1 && !notExist:
 			cron.Status.NextScheduleAction = appsV1alpha1.Stop
-		} else {
+		default:
 			return cron, t, nil
 		}
 		cron.Status.NextScheduleDateTime = &metav1.Time{Time: nextTime}

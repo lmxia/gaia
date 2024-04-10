@@ -469,15 +469,6 @@ func (m *RBMerger) postMergedRBs(descName string) error {
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("cache-control", "no-cache")
 	resp, err := http.DefaultClient.Do(request)
-	if resp != nil {
-		defer func(Body io.ReadCloser) {
-			errClose := Body.Close()
-			if errClose != nil {
-				utilRuntime.HandleError(fmt.Errorf("postMergedRBs: failed to close response body,"+
-					" Description: %q ERROR: %v", klog.KRef(common.GaiaReservedNamespace, descName), errClose))
-			}
-		}(resp.Body)
-	}
 	if err != nil {
 		return fmt.Errorf("postHyperOM: post to HyperOM error, Description: %q ERROR: %v",
 			klog.KRef(common.GaiaReservedNamespace, descName), err)
@@ -487,9 +478,12 @@ func (m *RBMerger) postMergedRBs(descName string) error {
 		return fmt.Errorf("ERROR: PostHyperOM: read response error, Description: %q ERROR: %v",
 			klog.KRef(common.GaiaReservedNamespace, descName), errRd)
 	}
-
 	klog.Infof("PostHyperOM: post the ResourceBindings of desc %q to HyperOM, Response: %s", descName, content)
-
+	errClose := resp.Body.Close()
+	if errClose != nil {
+		utilRuntime.HandleError(fmt.Errorf("postMergedRBs: failed to close response body,"+
+			" Description: %q ERROR: %v", klog.KRef(common.GaiaReservedNamespace, descName), errClose))
+	}
 	return nil
 }
 

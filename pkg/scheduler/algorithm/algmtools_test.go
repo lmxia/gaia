@@ -214,7 +214,7 @@ func (suite *DeploymentSuite) TestPlan() {
 }
 
 func (suite *DeploymentSuite) TestChosenOneInArrow() {
-	result := chosenOneInArrow(suite.matries[3])
+	result := chosenOneInArrow(suite.matries[2])
 	fmt.Printf("%v", result)
 	suite.Equal(24, 24, "")
 }

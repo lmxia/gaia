@@ -1,5 +1,5 @@
 variables:
-  VERSION: "v2.0.1"
+  VERSION: "v2.0.11"
   CHARTVERSION: "2.0.1"
   REGISTRY: "122.96.144.180:30080"
   APPGAIA: "gaia"

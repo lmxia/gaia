@@ -1430,6 +1430,7 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 				if apierrors.IsNotFound(err2) {
 					klog.InfoS("syncCronMaster: stop serverless, but not exists",
 						serverlessKind, klog.KObj(cron), "CronMaster", klog.KObj(cron), "err3", err2)
+					updated = true
 					break
 				}
 				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster==%q, error==%v",

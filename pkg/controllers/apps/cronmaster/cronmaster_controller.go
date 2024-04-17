@@ -1227,6 +1227,7 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			if err2 != nil {
 				if apierrors.IsNotFound(err2) {
 					klog.InfoS("syncCronMaster: stop deployment, but not exists", "Deployment", klog.KObj(cron), "CronMaster", klog.KObj(cron), "err", err2)
+					updated = true
 					break
 				}
 				klog.Errorf("syncCronMaster: failed to get Deployment of cronmaster %q, error == %v", klog.KObj(cron), err2)
@@ -1251,6 +1252,7 @@ func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstruc
 			if err2 != nil {
 				if apierrors.IsNotFound(err2) {
 					klog.InfoS("syncCronMaster: stop serverless, but not exists", "Serverless", klog.KObj(cron), "CronMaster", klog.KObj(cron), "err", err2)
+					updated = true
 					break
 				}
 				klog.Errorf("syncCronMaster: failed to get Serverless of cronmaster==%q, error==%v", klog.KObj(cron), err2)

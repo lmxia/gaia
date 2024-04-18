@@ -24,23 +24,16 @@ spec:
                 - name: SCNID1
                   value: /IOT/usermanage
               image: 122.96.144.180:30080/ar/iot-user:latest
+              imagePullPolicy: Always
               name: case3usermanage
               resources:
                 limits:
-                  cpu: 1000m
+                  cpu: 2000m
                   memory: 512Mi
                 requests:
                   cpu: 1000m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
-          hostNetwork: true
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
+          hostNetwork: false
     - componentName: case3property
       namespace: ar3
       sandbox: SecureContainer
@@ -57,23 +50,16 @@ spec:
                 - name: SCNID2
                   value: /IOT/propertyservice
               image: 122.96.144.180:30080/ar/empty-app:latest
+              imagePullPolicy: Always
               name: case3property
               resources:
                 limits:
                   cpu: 500m
-                  memory: 256Mi
+                  memory: 512Mi
                 requests:
                   cpu: 500m
                   memory: 256Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
-          hostNetwork: true
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
+          hostNetwork: false
     - componentName: case3iotservice
       namespace: ar3
       sandbox: SecureContainer
@@ -90,56 +76,16 @@ spec:
                 - name: SCNID3
                   value: /IOT/autoservice
               image: 122.96.144.180:30080/ar/iot-device:latest
+              imagePullPolicy: Always
               name: case3iotservice
               resources:
                 limits:
-                  cpu: 1000m
+                  cpu: 2000m
                   memory: 512Mi
                 requests:
                   cpu: 1000m
                   memory: 512Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
           hostNetwork: true
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
-    - componentName: case3cloudlocate
-      namespace: ar3
-      sandbox: SecureContainer
-      workloadType: "stateless-system-service"
-      module:
-        metadata:
-          labels:
-            app: case3cloudlocate
-        spec:
-          containers:
-            - env:
-                - name: SCNNUM
-                  value: "3"
-                - name: SCNID3
-                  value: /IOT/case3cloudlocate
-              image: 122.96.144.180:30080/ar/iot-device:latest
-              name: case3cloudlocate
-              resources:
-                limits:
-                  cpu: 2000m
-                  memory: 8192Mi
-                requests:
-                  cpu: 2000m
-                  memory: 8192Mi
-              volumeMounts:
-                - mountPath: /tmp
-                  name: usock
-          hostNetwork: true
-          volumes:
-            - hostPath:
-                path: /tmp
-                type: DirectoryOrCreate
-              name: usock
   deploymentCondition:
     mandatory:
       - subject:
@@ -149,7 +95,7 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
+        extent: WyJoYW5nemhvdS1hbGkiXQo= # ["hangzhou-ali"]
       - subject:
           name: case3property
           type: component
@@ -157,7 +103,7 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJzaGFuZ2hhaS10ZW5jZW50Il0K # ["shanghai-tencent"]
+        extent: WyJoYW5nemhvdS1hbGkiXQo= # ["hangzhou-ali"]
       - subject:
           name: case3iotservice
           type: component
@@ -165,7 +111,7 @@ spec:
           name: supplier-name
           type: label
         relation: In
-        extent: WyJiZWlqaW5nLWh1YXdlaSJdCg== # ["beijing-huawei"]
+        extent: WyJoYW5nemhvdS1hbGkiXQo= # ["hangzhou-ali"]
   expectedPerformance:
     boundaries:
       inner:
@@ -179,9 +125,5 @@ spec:
           value: MQo= # 1
         - name: boundary3
           subject: case3iotservice
-          type: replicas
-          value: MQo= # 1
-        - name: boundary4
-          subject: case3cloudlocate
           type: replicas
           value: MQo= # 1

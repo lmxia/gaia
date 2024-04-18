@@ -214,7 +214,7 @@ func (suite *DeploymentSuite) TestPlan() {
 }
 
 func (suite *DeploymentSuite) TestChosenOneInArrow() {
-	result := chosenOneInArrow(suite.matries[3])
+	result := chosenOneInArrow(suite.matries[2])
 	fmt.Printf("%v", result)
 	suite.Equal(24, 24, "")
 }
@@ -438,7 +438,8 @@ func TestGetAffinityComPlanForDeployment(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetAffinityComPlanForDeployment(tt.args.result, tt.args.replicas, tt.args.dispersion); !reflect.DeepEqual(got, tt.want) {
+			if got := GetAffinityComPlanForDeployment(tt.args.result, tt.args.replicas,
+				tt.args.dispersion); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetAffinityComPlanForDeployment() = %v, want %v", got, tt.want)
 			}
 		})

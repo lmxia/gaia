@@ -73,6 +73,9 @@ type ManagedClusterSpec struct {
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
 	ClusterID types.UID `json:"clusterId"`
+
+	// +optional
+	Secondary bool `json:"secondary"`
 	// Taints has the "effect" on any resource that does not tolerate the Taint.
 	// +optional
 	Taints []corev1.Taint `json:"taints,omitempty"`
@@ -154,7 +157,7 @@ type ManagedClusterStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope="Namespaced",shortName=mcls,categories=gaia
-// +kubebuilder:printcolumn:name="CLUSTER ID",type=string,JSONPath=`.spec.clusterId`,description="The unique id for the cluster"
+// +kubebuilder:printcolumn:name="CLUSTER ID",type=string,JSONPath=`.spec.clusterId`,description="Unique id for cluster"
 // +kubebuilder:printcolumn:name="KUBERNETES",type=string,JSONPath=".status.k8sVersion"
 // +kubebuilder:printcolumn:name="READYZ",type=string,JSONPath=".status.readyz"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
@@ -237,6 +240,11 @@ type ClusterRegistrationRequestSpec struct {
 	// +optional
 	// +kubebuilder:validation:Type=object
 	ClusterLabels map[string]string `json:"clusterLabels,omitempty"`
+
+	// Secondary True means this rr is oriented from secondary platform.
+	//
+	// +optional
+	Secondary bool `json:"secondary"`
 }
 
 // ClusterRegistrationRequestStatus defines the observed state of ClusterRegistrationRequest
@@ -290,8 +298,8 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope="Cluster",shortName=clsrr,categories=gaia
-// +kubebuilder:printcolumn:name="CLUSTER ID",type=string,JSONPath=`.spec.clusterId`,description="The unique id for the cluster"
-// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.result`,description="The status of current cluster registration request"
+// +kubebuilder:printcolumn:name="CLUSTER ID",type=string,JSONPath=`.spec.clusterId`,description="Unique id for cluster"
+// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.result`,description="state of request"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ClusterRegistrationRequest is the Schema for the clusterregistrationrequests API
@@ -317,10 +325,10 @@ type ClusterRegistrationRequestList struct {
 type ManagedClusterOptions struct {
 	// ManagedClusterSource specified where to get the managerCluster Resource.
 	ManagedClusterSource string
-	// PrometheusMonitorUrlPrefix specified the prefix of the prometheus monitor url.
-	PrometheusMonitorUrlPrefix string
-	// TopoSyncBaseUrl is the base url of the synccontroller service.
-	TopoSyncBaseUrl string
+	// PrometheusMonitorURLPrefix specified the prefix of the prometheus monitor url.
+	PrometheusMonitorURLPrefix string
+	// TopoSyncBaseURL is the base url of the synccontroller service.
+	TopoSyncBaseURL string
 	// UseHypernodeController means whether use hypernode controller, default value is false.
 	UseHypernodeController bool
 }
@@ -329,8 +337,8 @@ type ManagedClusterOptions struct {
 func NewManagedClusterOptions() *ManagedClusterOptions {
 	return &ManagedClusterOptions{
 		ManagedClusterSource:       common.ManagedClusterSourceFromInformer,
-		PrometheusMonitorUrlPrefix: common.PrometheusUrlPrefix,
-		TopoSyncBaseUrl:            common.TopoSyncBaseUrl,
+		PrometheusMonitorURLPrefix: common.PrometheusURLPrefix,
+		TopoSyncBaseURL:            common.TopoSyncBaseURL,
 		UseHypernodeController:     false,
 	}
 }
@@ -338,8 +346,8 @@ func NewManagedClusterOptions() *ManagedClusterOptions {
 // Complete completes all the required options.
 func (opts *ManagedClusterOptions) Complete() {
 	opts.ManagedClusterSource = strings.TrimSpace(opts.ManagedClusterSource)
-	opts.PrometheusMonitorUrlPrefix = strings.TrimSpace(opts.PrometheusMonitorUrlPrefix)
-	opts.TopoSyncBaseUrl = strings.TrimSpace(opts.TopoSyncBaseUrl)
+	opts.PrometheusMonitorURLPrefix = strings.TrimSpace(opts.PrometheusMonitorURLPrefix)
+	opts.TopoSyncBaseURL = strings.TrimSpace(opts.TopoSyncBaseURL)
 }
 
 var validateClusterNameRegex = regexp.MustCompile(common.NameFmt)
@@ -352,17 +360,21 @@ func (opts *ManagedClusterOptions) Validate() []error {
 	if len(opts.ManagedClusterSource) > 0 {
 		if !validateClusterNameRegex.MatchString(opts.ManagedClusterSource) {
 			allErrs = append(allErrs,
-				fmt.Errorf("invalid name for --%s, regex used for validation is %q", common.ClusterRegistrationName, common.NameFmt))
+				fmt.Errorf("invalid name for --%s, regex used for validation is %q",
+					common.ClusterRegistrationName, common.NameFmt))
 		}
 
-		if opts.ManagedClusterSource != common.ManagedClusterSourceFromPrometheus && opts.ManagedClusterSource != common.ManagedClusterSourceFromInformer {
-			allErrs = append(allErrs, fmt.Errorf("Invalid value for managedClusterSource --%s, please use 'prometheus' or 'informer'. ", opts.ManagedClusterSource))
+		if opts.ManagedClusterSource != common.ManagedClusterSourceFromPrometheus &&
+			opts.ManagedClusterSource != common.ManagedClusterSourceFromInformer {
+			allErrs = append(allErrs, fmt.Errorf("invalid value for managedClusterSource --%s,"+
+				" please use 'prometheus' or 'informer'. ", opts.ManagedClusterSource))
 		}
 
-		if len(opts.PrometheusMonitorUrlPrefix) > 0 {
-			_, err := url.ParseRequestURI(opts.PrometheusMonitorUrlPrefix)
+		if len(opts.PrometheusMonitorURLPrefix) > 0 {
+			_, err := url.ParseRequestURI(opts.PrometheusMonitorURLPrefix)
 			if err != nil {
-				allErrs = append(allErrs, fmt.Errorf("invalid value for --%s: %v", opts.PrometheusMonitorUrlPrefix, err))
+				allErrs = append(allErrs, fmt.Errorf("invalid value for --%s: %v",
+					opts.PrometheusMonitorURLPrefix, err))
 			}
 		}
 	}
@@ -384,9 +396,13 @@ type Fields struct {
 	Field []string `json:"field,omitempty"`
 }
 
-// getHypernodeLabelsMapFromManagedCluster returns hypernode labels of the current cluster from the managedCluster
-func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers map[string]struct{}) {
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
+// GetHypernodeLabelsMapFromManagedCluster  returns hypernode labels of the current cluster from the managedCluster
+func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap,
+	runtimeStateMap, snMap, geolocationMap, providers, floatingIPMap map[string]struct{}) {
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers,
+		floatingIPMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
+		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
+		make(map[string]struct{})
 	var labelValueArray []string
 	clusterLabels := cluster.GetLabels()
 	for labelKey, labelValue := range clusterLabels {
@@ -396,37 +412,42 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 			} else {
 				labelValueArray = []string{labelValue}
 			}
-			if strings.HasPrefix(labelKey, ParsedNetEnvironmentKey) {
+			switch {
+			case strings.HasPrefix(labelKey, ParsedNetEnvironmentKey):
 				for _, v := range labelValueArray {
 					netEnvironmentMap[v] = struct{}{}
 				}
-			} else if strings.HasPrefix(labelKey, ParsedNodeRoleKey) {
+			case strings.HasPrefix(labelKey, ParsedNodeRoleKey):
 				for _, v := range labelValueArray {
 					nodeRoleMap[v] = struct{}{}
 				}
-			} else if strings.HasPrefix(labelKey, ParsedResFormKey) {
+			case strings.HasPrefix(labelKey, ParsedResFormKey):
 				for _, v := range labelValueArray {
 					resFormMap[v] = struct{}{}
 				}
-			} else if strings.HasPrefix(labelKey, ParsedRuntimeStateKey) {
+			case strings.HasPrefix(labelKey, ParsedRuntimeStateKey):
 				for _, v := range labelValueArray {
 					runtimeStateMap[v] = struct{}{}
 				}
-			} else if strings.HasPrefix(labelKey, ParsedSNKey) {
+			case strings.HasPrefix(labelKey, ParsedSNKey):
 				snMap[labelValue] = struct{}{}
-			} else if strings.HasPrefix(labelKey, ParsedGeoLocationKey) {
+			case strings.HasPrefix(labelKey, ParsedGeoLocationKey):
 				geolocationMap[labelValue] = struct{}{}
-			} else if strings.HasPrefix(labelKey, ParsedProviderKey) {
+			case strings.HasPrefix(labelKey, ParsedProviderKey):
 				providers[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedHasFloatingIPKey):
+				floatingIPMap[labelValue] = struct{}{}
 			}
 		}
 	}
-	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers
+	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap,
+		providers, floatingIPMap
 }
 
 // GetGaiaLabels return gaia type labels.
-func (mcluster *ManagedCluster) GetGaiaLabels() map[string][]string {
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap := mcluster.GetHypernodeLabelsMapFromManagedCluster()
+func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap,
+		floatingIPMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
 	clusterLabels := make(map[string][]string, 0)
 
 	// no.1
@@ -471,6 +492,12 @@ func (mcluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 		providers = append(providers, k)
 	}
 	clusterLabels["supplier-name"] = providers
+	// no.8
+	hasFloatingIPs := make([]string, 0, len(floatingIPMap))
+	for k := range floatingIPMap {
+		hasFloatingIPs = append(hasFloatingIPs, k)
+	}
+	clusterLabels["has-floating-ip"] = hasFloatingIPs
 
 	return clusterLabels
 }
@@ -483,6 +510,7 @@ var (
 	RuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "RuntimeState"
 	SNKey             = common.SpecificNodeLabelsKeyPrefix + "SN"
 	NetworkEnvKey     = common.SpecificNodeLabelsKeyPrefix + "SupplierName"
+	HasFloatingIPKey  = common.SpecificNodeLabelsKeyPrefix + "HasFloatingIP"
 
 	HypernodeLableKeyList = []string{
 		GeoLocationKey,
@@ -492,6 +520,7 @@ var (
 		RuntimeStateKey,
 		SNKey,
 		NetworkEnvKey,
+		HasFloatingIPKey,
 	}
 
 	ParsedGeoLocationKey    = common.SpecificNodeLabelsKeyPrefix + "geo-location"
@@ -501,6 +530,7 @@ var (
 	ParsedRuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "runtime-state"
 	ParsedSNKey             = common.SpecificNodeLabelsKeyPrefix + "sn"
 	ParsedProviderKey       = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
+	ParsedHasFloatingIPKey  = common.SpecificNodeLabelsKeyPrefix + "has-floating-ip"
 
 	ParsedHypernodeLableKeyList = []string{
 		ParsedGeoLocationKey,
@@ -510,6 +540,7 @@ var (
 		ParsedRuntimeStateKey,
 		ParsedSNKey,
 		ParsedProviderKey,
+		ParsedHasFloatingIPKey,
 	}
 
 	HypernodeLableKeyToStandardLabelKey = map[string]string{
@@ -520,5 +551,6 @@ var (
 		RuntimeStateKey:   ParsedRuntimeStateKey,
 		SNKey:             ParsedSNKey,
 		NetworkEnvKey:     ParsedProviderKey,
+		HasFloatingIPKey:  ParsedHasFloatingIPKey,
 	}
 )

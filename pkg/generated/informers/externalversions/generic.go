@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	clusterv1alpha1 "github.com/lmxia/gaia/pkg/apis/cluster/v1alpha1"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
@@ -54,16 +55,24 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=apps.gaia.io, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("cdnsuppliers"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().CdnSuppliers().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("cronmasters"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().CronMasters().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("descriptions"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().Descriptions().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("frontends"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().Frontends().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("networkrequirements"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().NetworkRequirements().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("resourcebindings"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().ResourceBindings().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("userapps"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Apps().V1alpha1().UserAPPs().Informer()}, nil
+
+		// Group=cluster.pml.com.cn, Version=v1alpha1
+	case clusterv1alpha1.SchemeGroupVersion.WithResource("hypernodes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Cluster().V1alpha1().Hypernodes().Informer()}, nil
 
 		// Group=platform.gaia.io, Version=v1alpha1
 	case platformv1alpha1.SchemeGroupVersion.WithResource("clusterregistrationrequests"):

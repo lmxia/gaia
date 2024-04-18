@@ -33,6 +33,8 @@ type ResourceBindingSpec struct {
 	// +optional
 	TotalPeer int `json:"totalpeer,omitempty"`
 	// +optional
+	NonZeroClusterNum int `json:"nonZeroClusterNum,omitempty"`
+	// +optional
 	ParentRB string `json:"parentRB,omitempty"`
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
@@ -58,9 +60,8 @@ type ResourceBindingApps struct {
 type StatusRBDeploy string
 
 const (
-	ResourceBindingRed    StatusRBDeploy = "Red"
-	ResourceBindingGreen  StatusRBDeploy = "Green"
-	ResourceBindingYellow StatusRBDeploy = "Yellow"
+	ResourceBindingRed   StatusRBDeploy = "Red"
+	ResourceBindingGreen StatusRBDeploy = "Green"
 )
 
 type ResourceBindingStatus struct {

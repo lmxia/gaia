@@ -117,7 +117,7 @@ func (c *FakeUserAPPs) UpdateStatus(ctx context.Context, userAPP *v1alpha1.UserA
 // Delete takes name of the userAPP and deletes it. Returns an error if one occurs.
 func (c *FakeUserAPPs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(userappsResource, c.ns, name, opts), &v1alpha1.UserAPP{})
+		Invokes(testing.NewDeleteAction(userappsResource, c.ns, name), &v1alpha1.UserAPP{})
 
 	return err
 }

@@ -113,12 +113,12 @@ func (domainSrPath *DomainSrPath) IsSatisfiedRtt(reverseDelay uint32, rttAttr Ap
 	infoString := fmt.Sprintf("reverseDelay is: (%+v), rttAttr is: (%+v)", reverseDelay, rttAttr)
 	nputil.TraceInfo(infoString)
 	if rttAttr.Rtt != 0 {
-		_, tmpDelay := domainSrPath.GetDomainSrPathDelay()
-		// 标识通信有rt指标要求
+	_, tmpDelay := domainSrPath.GetDomainSrPathDelay()
+	// 标识通信有rt指标要求
 		if (tmpDelay + reverseDelay) > (uint32)(rttAttr.Rtt) {
-			nputil.TraceInfoEnd("False: Rtt is not satisfied")
-			return false
-		}
+		nputil.TraceInfoEnd("False: Rtt is not satisfied")
+		return false
+	}
 	}
 	nputil.TraceInfoEnd("RTT is satisfied, True")
 	return true

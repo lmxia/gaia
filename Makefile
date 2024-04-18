@@ -18,7 +18,7 @@ gaia-scheduler:
 	CGO_ENABLED=0 GOOS=linux go build -ldflags "-w -s" -a -installsuffix cgo -o cmd/bin/gaia-scheduler cmd/gaia-scheduler/main.go
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=deploy/gaia/crds/
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=../scheduler-stack/charts/gaia/crds/
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -44,3 +44,7 @@ fmt:
 PHONY: fmt-check
 fmt-check:
 	gofumpt -l -d -e .
+
+.PHONY: lint
+lint:
+	golangci-lint run -c .golangci.yaml

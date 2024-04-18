@@ -1009,7 +1009,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 					rvrAppSelectedPath.DomainSrPath = *reverseDomainSrPath
 					rvrAppSelectedPath.DomainInfoPath = graph.GetDomainPathNameWithFaric(rvrAppSelectedPath.DomainSrPath)
 				}
-				rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
+					rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, appSelectedPath)
 				if appDomainPath.AppConnect.Rtt != 0 {
 					rbSdp.SelectedDomainPath = append(rbSdp.SelectedDomainPath, rvrAppSelectedPath)
 				}

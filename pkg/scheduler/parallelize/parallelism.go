@@ -54,5 +54,6 @@ func chunkSizeFor(n, parallelism int) int {
 
 // Until is a wrapper around workqueue.ParallelizeUntil to use in scheduling algorithms.
 func (p Parallelizer) Until(ctx context.Context, pieces int, doWorkPiece workqueue.DoWorkPieceFunc) {
-	workqueue.ParallelizeUntil(ctx, p.parallelism, pieces, doWorkPiece, workqueue.WithChunkSize(chunkSizeFor(pieces, p.parallelism)))
+	workqueue.ParallelizeUntil(ctx, p.parallelism, pieces, doWorkPiece,
+		workqueue.WithChunkSize(chunkSizeFor(pieces, p.parallelism)))
 }

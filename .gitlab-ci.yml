@@ -1,6 +1,6 @@
 variables:
-  VERSION: "v2.0.11"
-  CHARTVERSION: "2.0.1"
+  VERSION: "v2.1.0-alpha"
+  CHARTVERSION: "v2.1.0-alpha"
   REGISTRY: "122.96.144.180:30080"
   APPGAIA: "gaia"
   APPGAIASCHEDULER: "gaia-scheduler"
@@ -53,23 +53,6 @@ debug-image:
   only:
     - merge_requests
 
-compile-charts:
-  stage: build
-  image:
-    name: ${REGISTRY}/ci/helm:3.12.1
-  tags: 
-    - hyperos
-    - cloud
-  script:
-    - cd deploy
-    - helm package -u --version ${CHARTVERSION} ${APPGAIA}
-    - cp ${APPGAIA}-${CHARTVERSION}.tgz /hyperrepo/charts/hyperos
-    - helm repo index /hyperrepo/charts/hyperos
-  only:
-    # - hyperos-s2
-    - merge_requests
-
-
 compile:
   stage: build
   image:
@@ -98,5 +81,5 @@ compile:
       --target ${APPGAIASCHEDULER}
       --destination "${REGISTRY}/${HARBOR_PROJECT}/${APPGAIASCHEDULER}:${VERSION}"
   only:
-    - main
+    - hyperos-s2.1
   # - if: $CI_COMMIT_TAG

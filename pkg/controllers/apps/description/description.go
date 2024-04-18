@@ -44,14 +44,12 @@ type Controller struct {
 	descLister      appListers.DescriptionLister
 	descSynced      cache.InformerSynced
 	rbSynced        cache.InformerSynced
-	mcSynced        cache.InformerSynced
 	syncHandlerFunc SyncHandlerFunc
-	cacheHandler    cache.ResourceEventHandler
 }
 
 // NewController creates and initializes a new Controller
-func NewController(gaiaClient gaiaClientSet.Interface,
-	descInformer appInformers.DescriptionInformer, rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc,
+func NewController(gaiaClient gaiaClientSet.Interface, descInformer appInformers.DescriptionInformer,
+	rbInformer appInformers.ResourceBindingInformer, syncHandler SyncHandlerFunc,
 ) (*Controller, error) {
 	if syncHandler == nil {
 		return nil, fmt.Errorf("syncHandler must be set")
@@ -72,16 +70,16 @@ func NewController(gaiaClient gaiaClientSet.Interface,
 		UpdateFunc: c.updateDescription,
 		DeleteFunc: c.deleteDescription,
 	})
-	rbInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		DeleteFunc: c.deleteRB,
-	})
+	// rbInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	// 	DeleteFunc: c.deleteRB,
+	// })
 
 	return c, nil
 }
 
 // Run will set up the event handlers for types we are interested in, as well
 // as syncing informer caches and starting workers. It will block until stopCh
-// is closed, at which point it will shutdown the workqueue and wait for
+// is closed, at which point it will shut down the workqueue and wait for
 // workers to finish processing their current work items.
 func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
@@ -146,35 +144,37 @@ func (c *Controller) deleteDescription(obj interface{}) {
 	klog.V(4).Infof("deleting Description %q", klog.KObj(desc))
 	c.Enqueue(desc)
 
-	descOrigin := c.resolveOriginRef(desc.Labels[known.OriginDescriptionNameLabel], desc.Labels[known.OriginDescriptionNamespaceLabel], types.UID(desc.Labels[known.OriginDescriptionUIDLabel]))
+	descOrigin := c.resolveOriginRef(desc.Labels[known.OriginDescriptionNameLabel],
+		desc.Labels[known.OriginDescriptionNamespaceLabel], types.UID(desc.Labels[known.OriginDescriptionUIDLabel]))
 	if descOrigin == nil {
 		return
 	}
 	c.Enqueue(descOrigin)
 }
 
-func (c *Controller) deleteRB(obj interface{}) {
-	rb, ok := obj.(*appsapi.ResourceBinding)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
-			return
-		}
-		rb, ok = tombstone.Obj.(*appsapi.ResourceBinding)
-		if !ok {
-			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ResourceBinding %#v", obj))
-			return
-		}
-	}
-
-	desc := c.resolveOriginRef(rb.Labels[known.OriginDescriptionNameLabel], rb.Labels[known.OriginDescriptionNamespaceLabel], types.UID(rb.Labels[known.OriginDescriptionUIDLabel]))
-	if desc == nil {
-		return
-	}
-	klog.V(4).Infof("deleting ResourceBinding %q", klog.KObj(rb))
-	c.Enqueue(desc)
-}
+// func (c *Controller) deleteRB(obj interface{}) {
+// 	rb, ok := obj.(*appsapi.ResourceBinding)
+// 	if !ok {
+// 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+// 		if !ok {
+// 			utilruntime.HandleError(fmt.Errorf("couldn't get object from tombstone %#v", obj))
+// 			return
+// 		}
+// 		rb, ok = tombstone.Obj.(*appsapi.ResourceBinding)
+// 		if !ok {
+// 			utilruntime.HandleError(fmt.Errorf("tombstone contained object that is not a ResourceBinding %#v", obj))
+// 			return
+// 		}
+// 	}
+//
+// 	desc := c.resolveOriginRef(rb.Labels[known.OriginDescriptionNameLabel],
+// 		rb.Labels[known.OriginDescriptionNamespaceLabel], types.UID(rb.Labels[known.OriginDescriptionUIDLabel]))
+// 	if desc == nil {
+// 		return
+// 	}
+// 	klog.V(4).Infof("deleting ResourceBinding %q", klog.KObj(rb))
+// 	c.Enqueue(desc)
+// }
 
 // resolveOriginRef returns the desc referenced by a Ref,
 // or nil if the Ref could not be resolved to a matching desc
@@ -309,14 +309,16 @@ func (c *Controller) UpdateDescriptionStatus(desc *appsapi.Description, status *
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		desc.Status = *status
-		_, err := c.gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(context.TODO(), desc, metav1.UpdateOptions{})
+		_, err := c.gaiaClient.AppsV1alpha1().Descriptions(desc.Namespace).UpdateStatus(
+			context.TODO(), desc, metav1.UpdateOptions{})
 		if err == nil {
 			// TODO
 			return nil
 		}
 
-		if updated, err := c.descLister.Descriptions(desc.Namespace).Get(desc.Name); err == nil {
-			// make a copy so we don't mutate the shared cache
+		updated, err := c.descLister.Descriptions(desc.Namespace).Get(desc.Name)
+		if err == nil {
+			// make a copy, so we don't mutate the shared cache
 			desc = updated.DeepCopy()
 		} else {
 			utilruntime.HandleError(fmt.Errorf("error getting updated Description %q from lister: %v", desc.Name, err))

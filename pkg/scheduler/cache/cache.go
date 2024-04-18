@@ -13,7 +13,6 @@ import (
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	applisters "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	platformlisters "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 )
 
@@ -37,10 +36,9 @@ type Cache interface {
 }
 
 type schedulerCache struct {
-	clusterListers        platformlisters.ManagedClusterLister
-	resourcebindingLister applisters.ResourceBindingLister
-	localGaiaClient       *gaiaClientSet.Clientset
-	selfClusterName       string
+	clusterListers  platformlisters.ManagedClusterLister
+	localGaiaClient *gaiaClientSet.Clientset
+	selfClusterName string
 }
 
 // NumClusters returns the number of clusters in the cache.
@@ -90,7 +88,8 @@ func (s *schedulerCache) GetSelfClusterName() string {
 }
 
 func (s *schedulerCache) GetNetworkRequirement(desc *v1alpha1.Description) (*v1alpha1.NetworkRequirement, error) {
-	nwr, err := s.localGaiaClient.AppsV1alpha1().NetworkRequirements(desc.Namespace).Get(context.TODO(), desc.Name, metav1.GetOptions{})
+	nwr, err := s.localGaiaClient.AppsV1alpha1().NetworkRequirements(desc.Namespace).Get(context.TODO(),
+		desc.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}

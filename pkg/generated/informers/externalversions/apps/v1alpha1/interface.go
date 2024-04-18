@@ -24,10 +24,14 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// CdnSuppliers returns a CdnSupplierInformer.
+	CdnSuppliers() CdnSupplierInformer
 	// CronMasters returns a CronMasterInformer.
 	CronMasters() CronMasterInformer
 	// Descriptions returns a DescriptionInformer.
 	Descriptions() DescriptionInformer
+	// Frontends returns a FrontendInformer.
+	Frontends() FrontendInformer
 	// NetworkRequirements returns a NetworkRequirementInformer.
 	NetworkRequirements() NetworkRequirementInformer
 	// ResourceBindings returns a ResourceBindingInformer.
@@ -47,6 +51,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
+// CdnSuppliers returns a CdnSupplierInformer.
+func (v *version) CdnSuppliers() CdnSupplierInformer {
+	return &cdnSupplierInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
 // CronMasters returns a CronMasterInformer.
 func (v *version) CronMasters() CronMasterInformer {
 	return &cronMasterInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
@@ -55,6 +64,11 @@ func (v *version) CronMasters() CronMasterInformer {
 // Descriptions returns a DescriptionInformer.
 func (v *version) Descriptions() DescriptionInformer {
 	return &descriptionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Frontends returns a FrontendInformer.
+func (v *version) Frontends() FrontendInformer {
+	return &frontendInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // NetworkRequirements returns a NetworkRequirementInformer.

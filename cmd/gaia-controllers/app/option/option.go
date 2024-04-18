@@ -21,9 +21,12 @@ import (
 
 // ClusterRegistrationOptions holds the command-line options for command
 type Options struct {
-	Kubeconfig          string
-	ClusterHostName     string
-	NetworkBindUrl      string
+	Kubeconfig      string
+	ClusterHostName string
+	ClusterLevel    string
+
+	NetworkBindURL      string
+	AliyunSourceSite    string
 	ClusterRegistration *ClusterRegistrationOptions
 	ManagedCluster      *clusterapi.ManagedClusterOptions
 
@@ -37,18 +40,24 @@ type Options struct {
 }
 
 // AddFlags adds the flags to the flagset.
-func (opts *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.Kubeconfig, "kubeconfig", opts.Kubeconfig,
+func (o *Options) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&o.Kubeconfig, "kubeconfig", o.Kubeconfig,
 		"Path to a kubeconfig file for current child cluster. Only required if out-of-cluster")
-	fs.StringVar(&opts.ClusterHostName, "clustername", opts.ClusterHostName, "To generate ClusterRegistration name and gaiaName as gaia-'clustername'-UID ")
-	fs.StringVar(&opts.NetworkBindUrl, "networkBindUrl", opts.NetworkBindUrl, "send network path Url")
-	fs.StringVar(&opts.ManagedCluster.ManagedClusterSource, "mcSource", opts.ManagedCluster.ManagedClusterSource,
+	fs.StringVar(&o.ClusterHostName, "clustername", o.ClusterHostName,
+		"To generate ClusterRegistration name and gaiaName as gaia-'clustername'-UID ")
+	fs.StringVar(&o.ClusterLevel, "cluster-level", o.ClusterLevel,
+		"Specify the level of this cluster, 'cluster', 'field' or 'global' ")
+	fs.StringVar(&o.NetworkBindURL, "networkBindUrl", o.NetworkBindURL, "send network path Url")
+	fs.StringVar(&o.ManagedCluster.ManagedClusterSource, "mcSource", o.ManagedCluster.ManagedClusterSource,
 		"where to get the managerCluster Resource.")
-	fs.StringVar(&opts.ManagedCluster.PrometheusMonitorUrlPrefix, "promUrlPrefix", opts.ManagedCluster.PrometheusMonitorUrlPrefix,
+	fs.StringVar(&o.ManagedCluster.PrometheusMonitorURLPrefix, "promUrlPrefix",
+		o.ManagedCluster.PrometheusMonitorURLPrefix,
 		"The prefix of the prometheus monitor url.")
-	fs.StringVar(&opts.ManagedCluster.TopoSyncBaseUrl, "topoSyncBaseUrl", opts.ManagedCluster.TopoSyncBaseUrl,
+	fs.StringVar(&o.AliyunSourceSite, "aliyunSourceSite", o.AliyunSourceSite, "aliyun source site for cdn")
+	fs.StringVar(&o.ManagedCluster.TopoSyncBaseURL, "topoSyncBaseUrl", o.ManagedCluster.TopoSyncBaseURL,
 		"The base url of the synccontroller service.")
-	fs.BoolVar(&opts.ManagedCluster.UseHypernodeController, "useHypernodeController", opts.ManagedCluster.UseHypernodeController,
+	fs.BoolVar(&o.ManagedCluster.UseHypernodeController, "useHypernodeController",
+		o.ManagedCluster.UseHypernodeController,
 		"Whether use hypernode controller, default value is false.")
 }
 
@@ -123,27 +132,27 @@ func NewClusterRegistrationOptions() *ClusterRegistrationOptions {
 }
 
 // Complete completes all the required options.
-func (opts *Options) Complete() {
+func (o *Options) Complete() {
 	// complete cluster registration options
-	opts.ClusterRegistration.Complete()
-	opts.ManagedCluster.Complete()
+	o.ClusterRegistration.Complete()
+	o.ManagedCluster.Complete()
 }
 
 // Validate validates all the required options.
-func (opts *Options) Validate() []error {
+func (o *Options) Validate() []error {
 	var allErrs []error
 
 	// validate cluster registration options
-	errs := opts.ClusterRegistration.Validate()
+	errs := o.ClusterRegistration.Validate()
 	allErrs = append(allErrs, errs...)
 
-	allErrs = append(allErrs, opts.SecureServing.Validate()...)
-	allErrs = append(allErrs, opts.Authentication.Validate()...)
-	allErrs = append(allErrs, opts.Authorization.Validate()...)
-	allErrs = append(allErrs, opts.Metrics.Validate()...)
+	allErrs = append(allErrs, o.SecureServing.Validate()...)
+	allErrs = append(allErrs, o.Authentication.Validate()...)
+	allErrs = append(allErrs, o.Authorization.Validate()...)
+	allErrs = append(allErrs, o.Metrics.Validate()...)
 
 	// validate managed cluster options
-	mcErrs := opts.ManagedCluster.Validate()
+	mcErrs := o.ManagedCluster.Validate()
 	allErrs = append(allErrs, mcErrs...)
 
 	return allErrs
@@ -152,7 +161,8 @@ func (opts *Options) Validate() []error {
 // Config return a gaia-controller-manager config object
 func (o *Options) Config() (*gaiaappconfig.Config, error) {
 	if o.SecureServing != nil {
-		if err := o.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{netutils.ParseIPSloppy("127.0.0.1")}); err != nil {
+		if err := o.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil,
+			[]net.IP{netutils.ParseIPSloppy("127.0.0.1")}); err != nil {
 			return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
 		}
 	}
@@ -178,6 +188,7 @@ func (o *Options) ApplyTo(c *gaiaappconfig.Config) error {
 		}
 	}
 	o.Metrics.Apply()
+
 	return nil
 }
 
@@ -194,18 +205,21 @@ func (opts *ClusterRegistrationOptions) Validate() []error {
 	if len(opts.ParentURL) > 0 {
 		_, err := url.ParseRequestURI(opts.ParentURL)
 		if err != nil {
-			allErrs = append(allErrs, fmt.Errorf("invalid value for --%s: %v", common.ClusterRegistrationURL, err))
+			allErrs = append(allErrs, fmt.Errorf("invalid value for --%s: %v",
+				common.ClusterRegistrationURL, err))
 		}
 	}
 
 	if len(opts.ClusterName) > 0 {
 		if len(opts.ClusterName) > common.ClusterNameMaxLength {
-			allErrs = append(allErrs, fmt.Errorf("cluster name %s is longer than %d", opts.ClusterName, common.ClusterNameMaxLength))
+			allErrs = append(allErrs, fmt.Errorf("cluster name %s is longer than %d", opts.ClusterName,
+				common.ClusterNameMaxLength))
 		}
 
 		if !validateClusterNameRegex.MatchString(opts.ClusterName) {
 			allErrs = append(allErrs,
-				fmt.Errorf("invalid name for --%s, regex used for validation is %q", common.ClusterRegistrationName, common.NameFmt))
+				fmt.Errorf("invalid name for --%s, regex used for validation is %q",
+					common.ClusterRegistrationName, common.NameFmt))
 		}
 	}
 	return allErrs

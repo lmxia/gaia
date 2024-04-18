@@ -4,7 +4,6 @@ import (
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	serveringv1 "knative.dev/serving/pkg/apis/serving/v1"
 )
 
 // Important: Run "make generated" to regenerate code after modifying this file
@@ -33,6 +32,12 @@ type DescriptionSpec struct {
 	Preoccupy string `json:"preoccupy,omitempty"`
 	// +required
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=boolean
+	IsFrontEnd bool `json:"isFrontEnd,omitempty"`
+	// +optional
+	FrontendComponents []FrontendComponent `json:"frontendComponents,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
 	WorkloadComponents []WorkloadComponent `json:"workloadComponents,omitempty"`
 	// +optional
 	// +kubebuilder:validation:Optional
@@ -56,6 +61,19 @@ const (
 	Kata    SandboxType = "SecureContainer"
 	Wasm    SandboxType = "wasm"
 )
+
+type FrontendComponent struct {
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	ComponentName string `json:"componentName,omitempty"`
+	// +required
+	DomainName string `json:"domainName,omitempty"`
+	// +optional
+	CdnAccelerate bool `json:"cdnAccelerate,omitempty"`
+	// +required
+	Cdn []CdnSpec `json:"cdnSpec,omitempty"`
+}
 
 type WorkloadComponent struct {
 	// +required
@@ -81,6 +99,8 @@ type WorkloadComponent struct {
 	Schedule SchedulerConfig `json:"schedule,omitempty"`
 	// +optional
 	Scc []SccConfig `json:"scc,omitempty"`
+	// +optional
+	FQDN string `json:"fqdn,omitempty"`
 	// +required
 	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required
@@ -254,10 +274,6 @@ type Component struct {
 	// +optional
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:pruning:PreserveUnknownFields
-	Serverless ServerlessSpec `json:"serverless,omitempty" protobuf:"bytes,3,opt,name=serverless"`
-	// +optional
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:pruning:PreserveUnknownFields
 	Module corev1.PodTemplateSpec `json:"module" protobuf:"bytes,3,opt,name=module"`
 	// +required
 	RuntimeType string `json:"runtimeType,omitempty"`
@@ -290,14 +306,6 @@ type Workload struct {
 	TraitAffinityDaemon *TraitAffinityDaemon `json:"traitaffinitydaemon,omitempty"`
 	// +optional
 	TraitUserAPP *TraitUserAPP `json:"traitUserAPP,omitempty"`
-}
-type ServerlessSpec struct {
-	// +optional
-	Revision RevisionSpec `json:"revision,omitempty"`
-	// Traffic specifies how to distribute traffic over a collection of
-	// revisions and configurations.
-	// +optional
-	Traffic []serveringv1.TrafficTarget `json:"traffic,omitempty"`
 }
 
 // RevisionSpec holds the desired state of the Revision (from the client).

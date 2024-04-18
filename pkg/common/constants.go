@@ -19,8 +19,10 @@ const (
 	GaiaSchedulerLeaseName            = "self-scheduler"
 	GaiaSystemNamespace               = "gaia-system"
 	GaiaReservedNamespace             = "gaia-reserved"
+	GaiaFrontendNamespace             = "gaia-frontend"
 	GaiaRSToBeMergedReservedNamespace = "gaia-to-be-merged"
 	GaiaRBMergedReservedNamespace     = "gaia-merged"
+	GaiaPushReservedNamespace         = "gaia-push-reserved"
 	// ClusterAPIServerURLKey denotes the apiserver address
 	ClusterAPIServerURLKey  = "apiserver-advertise-url"
 	ParentClusterSecretName = "parent-cluster"
@@ -46,10 +48,12 @@ const (
 	GaiaAppSA = "gaia-resource-deployer"
 
 	SpecificNodeLabelsKeyPrefix = "hypernode.cluster.pml.com.cn/"
+	VpcLabel                    = "vpc"
 
 	ManagedClusterSourceFromInformer   = "informer"
 	ManagedClusterSourceFromPrometheus = "prometheus"
-	PrometheusUrlPrefix                = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090" // current cluster
+	// current cluster
+	PrometheusURLPrefix = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090"
 
 	// description labels on rb
 	GaiaDescriptionLabel            = "apps.gaia.io/description"
@@ -58,21 +62,39 @@ const (
 	OriginDescriptionNamespaceLabel = "apps.gaia.io/ori.desc.namespace"
 	OriginDescriptionUIDLabel       = "apps.gaia.io/ori.desc.uid"
 	UserNameLabel                   = "apps.gaia.io/user.name"
+	ParentRBLabel                   = "apps.gaia.io/ori.parent-rb"
 
 	NetworkLocationCore = "core"
 	NodeResourceForm    = "pool"
 
-	TopoSyncBaseUrl = "http://ssiexpose.synccontroller.svc:8080" // network controller address, maybe on global
-	TopoSyncUrlPath = "/v1.0/globalsync/topo"
+	TopoSyncBaseURL = "http://ssiexpose.synccontroller.svc:8080" // network controller address, maybe on global
+	TopoSyncURLPath = "/v1.0/globalsync/topo"
 
 	// env
-	ResourceBindMergePostURL = "RESOURCEBINDING_MERGER_POST_URL"
+	ResourceBindingMergerPostURL = "RESOURCEBINDING_MERGER_POST_URL"
 
 	MetricConfigMapAbsFilePath             = "/etc/config/gaia-prometheus_metrics.conf"
 	ServiceMaintenanceConfigMapAbsFilePath = "/etc/config/service-maintenance-prometheus_metrics.conf"
 
 	HypernodeClusterNodeRole       = "hypernode.cluster.pml.com.cn/node-role"
 	HypernodeClusterNodeRolePublic = "Public"
+
+	FrontendAliyunCdnName            = "aliyun"
+	FrontendAliyunCdnEndpoint        = "cdn.aliyuncs.com"
+	FrontendAliyunFinalizers         = "apps.gaia.io/aliyunfinalizer"
+	FrontendAliyunCdnRegionID        = "cn-hangzhou"
+	FrontendAliyunCdnExist           = true
+	FrontendAliyunCdnNoExist         = false
+	FrontendAliyunDNSCnameExist      = true
+	FrontendAliyunDNSCnameNoExist    = false
+	FrontendAliyunCdnOnlineStatus    = "online"
+	FrontendAliyunCdnConfigureStatus = "configuring"
+	FrontendAliyunCdnVhostKind       = "Vhost"
+	FrontendAliyunCdnVhostAPIVersion = "frontend.pml.com.cn/v1"
+	FrontendAliyunCdnVhostFinalizer  = "apps.gaia.io/vhostfinalizer"
+
+	FrontendAliyunCdnSleepWait  = 1000
+	FrontendAliyunCdnSleepError = 2000
 )
 
 // lease lock

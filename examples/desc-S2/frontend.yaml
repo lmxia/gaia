@@ -1,0 +1,17 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Frontend
+metadata:
+  name: front1
+  namespace: gaia-frontend
+  finalizers:
+    - apps.gaia.io/aliyunfinalizer
+spec:
+  cdnAccelerate: true
+  cdnSpec:
+    - accerlateRegion: domestic
+      cdnType: web
+      internetChargeType: traffic
+      sourceSite: '[{"content":"47.98.227.108","type":"ipaddr","priority":"20","port":80,"weight":"10"}]'
+      supplier: aliyun
+      recordType: CNAME
+  domainName: foolishtoohungry.com

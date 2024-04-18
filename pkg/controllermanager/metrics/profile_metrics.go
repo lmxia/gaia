@@ -3,11 +3,7 @@
 
 package metrics
 
-var (
-	registeredResult   = "registered"
-	unregisteredResult = "unregistered"
-	errorResult        = "error"
-)
+var registeredResult = "registered"
 
 // ClusterRegisteredApproved can record a successful scheduling attempt and the duration
 // since `start`.

@@ -1,0 +1,9 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: CdnSupplier
+metadata:
+  name: aliyunsupplier
+  namespace: gaia-frontend
+spec:
+  supplierName: "aliyun"
+  cloudAccessKeyid: "11111111"
+  cloudAccessKeysecret: "xxxxxxxxx"

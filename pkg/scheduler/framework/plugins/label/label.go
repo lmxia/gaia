@@ -29,7 +29,9 @@ func (pl *ClusterAffinity) Name() string {
 }
 
 // Filter invoked at the filter extension point.
-func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component, cluster *clusterapi.ManagedCluster) *framework.Status {
+func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component,
+	cluster *clusterapi.ManagedCluster,
+) *framework.Status {
 	if cluster == nil {
 		return framework.AsStatus(fmt.Errorf("label invalid cluster "))
 	}
@@ -40,20 +42,27 @@ func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component, 
 	clusterLabels := cluster.GetGaiaLabels()
 	gaiaSelector, err := LabelSelectorAsSelector(com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory])
 	if err != nil {
-		return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("can't change gaia schedule policy to label selector %v, component name is %v", com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory], err))
+		return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf(
+			"can't change gaia schedule policy to label selector %v, component name is %v",
+			com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory], err))
 	}
 	if gaiaSelector.Matches(gaiaLabels.Set(clusterLabels)) {
 		return nil
 	}
-	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf("there is no label fit for this com. cluster name is %v, component name is %v, clusterLabels is %+v, gaiaSelector is %+v", cluster.Name, com.Name, clusterLabels, gaiaSelector))
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf(
+		"there is no label fit for this com. cluster name is %v, component name is %v gaiaSelector is %+v",
+		cluster.Name, com.Name, gaiaSelector))
 }
 
 // NormalizeScore invoked after scoring all clusters.
-func (pl *ClusterAffinity) NormalizeScore(ctx context.Context, scores framework.ResourceBindingScoreList) *framework.Status {
+func (pl *ClusterAffinity) NormalizeScore(ctx context.Context,
+	scores framework.ResourceBindingScoreList,
+) *framework.Status {
 	return helper.DefaultNormalizeScore(framework.MaxClusterScore, true, scores)
 }
 
-func (pl *ClusterAffinity) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding, clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
+func (pl *ClusterAffinity) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding,
+	clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
 	clusterMap := make(map[string]*clusterapi.ManagedCluster, 0)
 	for _, cluster := range clusters {
 		clusterMap[cluster.Name] = cluster
@@ -67,11 +76,12 @@ func (pl *ClusterAffinity) ScoreExtensions() framework.ScoreExtensions {
 	return pl
 }
 
-func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps, clusterMap map[string]*clusterapi.ManagedCluster) int64 {
+func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps,
+	clusterMap map[string]*clusterapi.ManagedCluster) int64 {
 	for _, item := range apps {
 		cluster := clusterMap[item.ClusterName]
 		if cluster != nil && cluster.GetLabels() != nil {
-			netenviroments, _, _, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
+			netenviroments, _, _, _, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
 			if _, exist := netenviroments[common.NetworkLocationCore]; exist {
 				for _, v := range item.Replicas {
 					score += int64(v)

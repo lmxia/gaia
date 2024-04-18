@@ -20,6 +20,7 @@ package fake
 
 import (
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	clusterv1alpha1 "github.com/lmxia/gaia/pkg/apis/cluster/v1alpha1"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -33,6 +34,7 @@ var codecs = serializer.NewCodecFactory(scheme)
 
 var localSchemeBuilder = runtime.SchemeBuilder{
 	appsv1alpha1.AddToScheme,
+	clusterv1alpha1.AddToScheme,
 	platformv1alpha1.AddToScheme,
 }
 

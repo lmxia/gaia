@@ -20,9 +20,9 @@ package versioned
 
 import (
 	"fmt"
-	"net/http"
 
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
+	clusterv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/cluster/v1alpha1"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
@@ -32,6 +32,7 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
 	AppsV1alpha1() appsv1alpha1.AppsV1alpha1Interface
+	ClusterV1alpha1() clusterv1alpha1.ClusterV1alpha1Interface
 	PlatformV1alpha1() platformv1alpha1.PlatformV1alpha1Interface
 }
 
@@ -40,12 +41,18 @@ type Interface interface {
 type Clientset struct {
 	*discovery.DiscoveryClient
 	appsV1alpha1     *appsv1alpha1.AppsV1alpha1Client
+	clusterV1alpha1  *clusterv1alpha1.ClusterV1alpha1Client
 	platformV1alpha1 *platformv1alpha1.PlatformV1alpha1Client
 }
 
 // AppsV1alpha1 retrieves the AppsV1alpha1Client
 func (c *Clientset) AppsV1alpha1() appsv1alpha1.AppsV1alpha1Interface {
 	return c.appsV1alpha1
+}
+
+// ClusterV1alpha1 retrieves the ClusterV1alpha1Client
+func (c *Clientset) ClusterV1alpha1() clusterv1alpha1.ClusterV1alpha1Interface {
+	return c.clusterV1alpha1
 }
 
 // PlatformV1alpha1 retrieves the PlatformV1alpha1Client
@@ -64,25 +71,7 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 // NewForConfig creates a new Clientset for the given config.
 // If config's RateLimiter is not set and QPS and Burst are acceptable,
 // NewForConfig will generate a rate-limiter in configShallowCopy.
-// NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
-// where httpClient was generated with rest.HTTPClientFor(c).
 func NewForConfig(c *rest.Config) (*Clientset, error) {
-	configShallowCopy := *c
-
-	// share the transport between all clients
-	httpClient, err := rest.HTTPClientFor(&configShallowCopy)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewForConfigAndClient(&configShallowCopy, httpClient)
-}
-
-// NewForConfigAndClient creates a new Clientset for the given config and http client.
-// Note the http client provided takes precedence over the configured transport values.
-// If config's RateLimiter is not set and QPS and Burst are acceptable,
-// NewForConfigAndClient will generate a rate-limiter in configShallowCopy.
-func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset, error) {
 	configShallowCopy := *c
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
 		if configShallowCopy.Burst <= 0 {
@@ -90,19 +79,22 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 		}
 		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
 	}
-
 	var cs Clientset
 	var err error
-	cs.appsV1alpha1, err = appsv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	cs.appsV1alpha1, err = appsv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
-	cs.platformV1alpha1, err = platformv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	cs.clusterV1alpha1, err = clusterv1alpha1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
+	cs.platformV1alpha1, err = platformv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
 
-	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
+	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -112,17 +104,20 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 // NewForConfigOrDie creates a new Clientset for the given config and
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
-	cs, err := NewForConfig(c)
-	if err != nil {
-		panic(err)
-	}
-	return cs
+	var cs Clientset
+	cs.appsV1alpha1 = appsv1alpha1.NewForConfigOrDie(c)
+	cs.clusterV1alpha1 = clusterv1alpha1.NewForConfigOrDie(c)
+	cs.platformV1alpha1 = platformv1alpha1.NewForConfigOrDie(c)
+
+	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
+	return &cs
 }
 
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.appsV1alpha1 = appsv1alpha1.New(c)
+	cs.clusterV1alpha1 = clusterv1alpha1.New(c)
 	cs.platformV1alpha1 = platformv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)

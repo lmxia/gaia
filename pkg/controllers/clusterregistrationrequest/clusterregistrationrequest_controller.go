@@ -54,10 +54,11 @@ func NewController(gaiaClient gaiaClientSet.Interface,
 	}
 
 	c := &Controller{
-		gaiaClient:  gaiaClient,
-		crrsLister:  crrsInformer.Lister(),
-		crrsSynced:  crrsInformer.Informer().HasSynced,
-		workqueue:   workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cluster-registration-requests"),
+		gaiaClient: gaiaClient,
+		crrsLister: crrsInformer.Lister(),
+		crrsSynced: crrsInformer.Informer().HasSynced,
+		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
+			"cluster-registration-requests"),
 		SyncHandler: syncHandler,
 	}
 
@@ -233,12 +234,13 @@ func (c *Controller) syncHandler(key string) error {
 	return c.SyncHandler(crr)
 }
 
-func (c *Controller) UpdateCRRStatus(crr *clusterapi.ClusterRegistrationRequest, status *clusterapi.ClusterRegistrationRequestStatus) error {
+func (c *Controller) UpdateCRRStatus(crr *clusterapi.ClusterRegistrationRequest,
+	status *clusterapi.ClusterRegistrationRequestStatus) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 
-	klog.V(5).Infof("try to update ClusterRegistrationRequest %q status", crr.Name)
+	klog.Infof("try to update ClusterRegistrationRequest %q status", crr.Name)
 	if status.Result != nil && *status.Result != clusterapi.RequestApproved {
 		if status.ErrorMessage == "" {
 			return fmt.Errorf("for non approved requests, must set an error message")
@@ -253,17 +255,20 @@ func (c *Controller) UpdateCRRStatus(crr *clusterapi.ClusterRegistrationRequest,
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		crr.Status = *status
-		_, err := c.gaiaClient.PlatformV1alpha1().ClusterRegistrationRequests().UpdateStatus(context.TODO(), crr, metav1.UpdateOptions{})
+		_, err := c.gaiaClient.PlatformV1alpha1().ClusterRegistrationRequests().UpdateStatus(context.TODO(),
+			crr, metav1.UpdateOptions{})
 		if err == nil {
-			klog.V(4).Infof("successfully update status of ClusterRegistrationRequest %q to %q", crr.Name, status.Result)
+			klog.V(4).Infof("successfully update status of ClusterRegistrationRequest %q to %q",
+				crr.Name, status.Result)
 			return nil
 		}
 
-		if updated, err := c.crrsLister.Get(crr.Name); err == nil {
+		if updated, crrErr := c.crrsLister.Get(crr.Name); crrErr == nil {
 			// make a copy so we don't mutate the shared cache
 			crr = updated.DeepCopy()
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated ClusterRegistrationRequest %q from lister: %v", crr.Name, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated ClusterRegistrationRequest %q"+
+				" from lister: %v", crr.Name, crrErr))
 		}
 		return err
 	})

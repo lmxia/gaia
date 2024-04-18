@@ -71,8 +71,9 @@ func NewController(clusternetClient gaiaClientSet.Interface,
 		clusternetClient: clusternetClient,
 		rbsLister:        rbsInformer.Lister(),
 		rbsSynced:        rbsInformer.Informer().HasSynced,
-		workqueue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "resource-bindings-to-merge"),
-		SyncHandler:      syncHandler,
+		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
+			"resource-bindings-to-merge"),
+		SyncHandler: syncHandler,
 	}
 
 	// Manage the addition/update of cluster registration requests
@@ -254,17 +255,18 @@ func (c *Controller) UpdateRBStatus(rb *appv1alpha1.ResourceBinding, status *app
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		rb.Status = *status
-		_, err := c.clusternetClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(), rb, metav1.UpdateOptions{})
+		_, err := c.clusternetClient.AppsV1alpha1().ResourceBindings(rb.Namespace).UpdateStatus(context.TODO(),
+			rb, metav1.UpdateOptions{})
 		if err == nil {
 			klog.V(4).Infof("successfully update status of ResourceBinding %q to %q", rb.Name, status.Status)
 			return nil
 		}
 
-		if updated, err := c.rbsLister.ResourceBindings(rb.Namespace).Get(rb.Name); err == nil {
+		if updated, err2 := c.rbsLister.ResourceBindings(rb.Namespace).Get(rb.Name); err2 == nil {
 			// make a copy so we don't mutate the shared cache
 			rb = updated.DeepCopy()
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error getting updated ResourceBinding %q from lister: %v", rb.Name, err))
+			utilruntime.HandleError(fmt.Errorf("error getting updated ResourceBinding %q from lister: %v", rb.Name, err2))
 		}
 		return err
 	})

@@ -4,9 +4,7 @@
 package metrics
 
 var (
-	scheduledResult     = "scheduled"
-	unschedulableResult = "unschedulable"
-	errorResult         = "error"
+	scheduledResult = "scheduled"
 )
 
 // DescriptionScheduled can record a successful scheduling attempt and the duration

@@ -37,7 +37,6 @@ var ErrNoClustersAvailable = fmt.Errorf("no clusters available to schedule subsc
 type genericScheduler struct {
 	cache                       schedulercache.Cache
 	percentageOfClustersToScore int32
-	nextStartClusterIndex       int
 }
 
 func (g *genericScheduler) SetSelfClusterName(name string) {
@@ -45,8 +44,10 @@ func (g *genericScheduler) SetSelfClusterName(name string) {
 }
 
 // Schedule
-func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework, rbs []*v1alpha1.ResourceBinding, desc *v1alpha1.Description) (result ScheduleResult, err error) {
-	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: desc.Namespace}, utiltrace.Field{Key: "name", Value: desc.Name})
+func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework, rbs []*v1alpha1.ResourceBinding,
+	desc *v1alpha1.Description) (result ScheduleResult, err error) {
+	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: desc.Namespace},
+		utiltrace.Field{Key: "name", Value: desc.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
 
 	// 1. get backup clusters.
@@ -63,6 +64,9 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	klog.V(5).Infof("comLocation is %+v,affinity is %v", comLocation, affinity) // 临时占用
 
 	numComponent := len(components)
+	if numComponent == 0 {
+		return result, errors.New("the desc is empty, we can't handle this case")
+	}
 	// 2, means allspread, one spread, 2 spread.
 	allResultGlobal := make([][]mat.Matrix, 3)
 	for i := 0; i < 3; i++ {
@@ -103,20 +107,12 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						// componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
 						// affinity logic
 						// components[i] is affinity with component[affinityDest]
-						componentMat = GetAffinityComPlanForDeployment(GetResultWithoutRB(allResultGlobal, j, affinityDest), int64(comm.Workload.TraitDeployment.Replicas), false)
+						componentMat = GetAffinityComPlanForDeployment(GetResultWithoutRB(allResultGlobal, j, affinityDest),
+							int64(comm.Workload.TraitDeployment.Replicas), false)
 						allResultGlobal[j][i] = componentMat
 					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 						componentMat = GetAffinityComPlanForServerless(GetResultWithoutRB(allResultGlobal, j, affinityDest))
 						allResultGlobal[j][i] = componentMat
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-						// TODO no entrance in the UI about HyperOS S2 version
-						// same as serverless.
-						// componentMat := makeServelessPlan(allPlan, 1)
-						// allResultGlobal[j][i] = componentMat
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
-						// TODO no entrance in the UI about HyperOS S2 version
-						// componentMat, _ := makeUserAPPPlan(allPlan)
-						// allResultGlobal[j][i] = componentMat
 					}
 				}
 			} else {
@@ -126,20 +122,12 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
 							// affinity logic
 							// components[i] is affinity with component[affinityDest]
-							componentMat = GetAffinityComPlanForDeployment(GetResultWithRB(allResultWithRB, j, k, affinityDest), replicas, false)
+							componentMat = GetAffinityComPlanForDeployment(GetResultWithRB(allResultWithRB, j, k, affinityDest),
+								replicas, false)
 							allResultWithRB[j][k][i] = componentMat
 						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
 							componentMat = GetAffinityComPlanForServerless(GetResultWithRB(allResultWithRB, j, k, affinityDest))
 							allResultWithRB[j][k][i] = componentMat
-						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-							// TODO no entrance in the UI about HyperOS S2 version
-							// same as serverless.
-							// componentMat := makeServelessPlan(allPlan, replicas)
-							// allResultWithRB[j][k][i] = componentMat
-						} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
-							// TODO no entrance in the UI about HyperOS S2 version
-							// componentMat, _ := makeUserAPPPlan(allPlan)
-							// allResultWithRB[j][k][i] = componentMat
 						}
 					}
 				}
@@ -153,7 +141,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 			commonHugeComponent := utils.HugeComponentToCommanComponent(hugeComm)
 			feasibleClusters, diagnosis, err = g.findClustersThatFitComponent(ctx, fwk, commonHugeComponent)
 		} else {
-			feasibleClusters, diagnosis, _ = g.findClustersThatFitComponent(ctx, fwk, &comm)
+			feasibleClusters, diagnosis, _ = g.findClustersThatFitComponent(ctx, fwk, &components[i])
 		}
 
 		if desc.Namespace == common.GaiaReservedNamespace {
@@ -170,53 +158,47 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {
 			for j := range spreadLevels {
-				if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
+				switch comm.Workload.Workloadtype {
+				case v1alpha1.WorkloadTypeDeployment:
 					if comm.GroupName != "" {
 						componentMat := makeUniqeDeployPlans(allPlan, int64(1), 1)
 						var m mat.Dense
 						m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)
 						allResultGlobal[j][i] = &m
 					} else {
-						// componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), int64(comm.Dispersion))
-						componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas), 1)
-						allResultGlobal[j][i] = componentMat
+						// componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas),
+						// int64(comm.Dispersion))
+						allResultGlobal[j][i] = makeDeployPlans(allPlan,
+							int64(comm.Workload.TraitDeployment.Replicas), 1)
 					}
-				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
-					componentMat := makeServelessPlan(allPlan, 1)
-					allResultGlobal[j][i] = componentMat
-				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-					// same as serverless.
-					componentMat := makeServelessPlan(allPlan, 1)
-					allResultGlobal[j][i] = componentMat
-				} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
-					componentMat, _ := makeUserAPPPlan(allPlan)
-					allResultGlobal[j][i] = componentMat
+				case v1alpha1.WorkloadTypeServerless:
+					allResultGlobal[j][i] = makeServelessPlan(allPlan, 1)
+				case v1alpha1.WorkloadTypeAffinityDaemon:
+					allResultGlobal[j][i] = makeServelessPlan(allPlan, 1)
+				case v1alpha1.WorkloadTypeUserApp:
+					allResultGlobal[j][i] = makeUserAPPPlan(allPlan)
 				}
 			}
 		} else {
 			for j, rb := range rbs {
 				replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
 				for k := range spreadLevels {
-					if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeDeployment {
+					switch comm.Workload.Workloadtype {
+					case v1alpha1.WorkloadTypeDeployment:
 						if comm.GroupName != "" && replicas != 0 {
-							componentMat := makeUniqeDeployPlans(allPlan, int64(1), 1)
 							var m mat.Dense
-							m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)
+							m.Scale(float64(comm.Workload.TraitDeployment.Replicas),
+								makeUniqeDeployPlans(allPlan, int64(1), 1))
 							allResultWithRB[j][k][i] = &m
 						} else {
-							componentMat := makeDeployPlans(allPlan, replicas, spreadLevels[k])
-							allResultWithRB[j][k][i] = componentMat
+							allResultWithRB[j][k][i] = makeDeployPlans(allPlan, replicas, spreadLevels[k])
 						}
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeServerless {
-						componentMat := makeServelessPlan(allPlan, replicas)
-						allResultWithRB[j][k][i] = componentMat
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeAffinityDaemon {
-						// same as serverless.
-						componentMat := makeServelessPlan(allPlan, replicas)
-						allResultWithRB[j][k][i] = componentMat
-					} else if comm.Workload.Workloadtype == v1alpha1.WorkloadTypeUserApp {
-						componentMat, _ := makeUserAPPPlan(allPlan)
-						allResultWithRB[j][k][i] = componentMat
+					case v1alpha1.WorkloadTypeServerless:
+						allResultWithRB[j][k][i] = makeServelessPlan(allPlan, replicas)
+					case v1alpha1.WorkloadTypeAffinityDaemon:
+						allResultWithRB[j][k][i] = makeServelessPlan(allPlan, replicas)
+					case v1alpha1.WorkloadTypeUserApp:
+						allResultWithRB[j][k][i] = makeUserAPPPlan(allPlan)
 					}
 				}
 			}
@@ -230,7 +212,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		// all 5
 		rbsResultFinal = spawnResourceBindings(allResultGlobal, allClusters, desc, components, affinity)
 		// 1. add networkFilter only if we can get nwr
-		if nwr, err := g.cache.GetNetworkRequirement(desc); err == nil {
+		if nwr, err2 := g.cache.GetNetworkRequirement(desc); err2 == nil {
 			networkInfoMap := g.getTopologyInfoMap()
 			klog.Infof("Log: networkInfoMap is %v", networkInfoMap)
 			klog.Infof("resource binding before net filter %v", rbsResultFinal)
@@ -274,17 +256,19 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				}
 				rbLabels := rbForrb[j].GetLabels()
 				rbLabels[common.TotalPeerOfParentRB] = fmt.Sprintf("%d", rbOld.Spec.TotalPeer)
+				rbLabels[common.ParentRBLabel] = rbOld.Name
 				rbNew := &v1alpha1.ResourceBinding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   fmt.Sprintf("%s-%d", rbOld.Name, rbIndex),
 						Labels: rbLabels,
 					},
 					Spec: v1alpha1.ResourceBindingSpec{
-						AppID:       desc.Name,
-						ParentRB:    rbOld.Name,
-						RbApps:      subRBApps,
-						TotalPeer:   getTotalPeer(len(rbForrb), common.DefaultResouceBindingNumber),
-						NetworkPath: rbOld.Spec.NetworkPath,
+						AppID:             desc.Name,
+						NonZeroClusterNum: rbOld.Spec.NonZeroClusterNum,
+						ParentRB:          rbOld.Name,
+						RbApps:            subRBApps,
+						TotalPeer:         getTotalPeer(len(rbForrb), common.DefaultResouceBindingNumber),
+						NetworkPath:       rbOld.Spec.NetworkPath,
 					},
 				}
 				rbNew.Kind = "ResourceBinding"
@@ -350,7 +334,8 @@ func prioritizeResourcebindings(ctx context.Context, fwk framework.Framework, de
 	return result, nil
 }
 
-func nomalizeClusters(feasibleClusters []*framework2.ClusterInfo, allClusters []*clusterapi.ManagedCluster) []*framework2.ClusterInfo {
+func nomalizeClusters(feasibleClusters []*framework2.ClusterInfo, allClusters []*clusterapi.ManagedCluster,
+) []*framework2.ClusterInfo {
 	indexCluster := make(map[string]*framework2.ClusterInfo)
 	result := make([]*framework2.ClusterInfo, len(allClusters))
 	for _, feasibleCluster := range feasibleClusters {
@@ -373,7 +358,9 @@ func nomalizeClusters(feasibleClusters []*framework2.ClusterInfo, allClusters []
 
 // selectResourceBindings takes a prioritized list of rbs and then picks a fraction of clusters
 // in a reservoir sampling manner from the clusters that had the highest score.
-func (g *genericScheduler) selectResourceBindings(rbScoreList framework.ResourceBindingScoreList, result []*v1alpha1.ResourceBinding) ([]*v1alpha1.ResourceBinding, error) {
+func (g *genericScheduler) selectResourceBindings(rbScoreList framework.ResourceBindingScoreList,
+	result []*v1alpha1.ResourceBinding,
+) ([]*v1alpha1.ResourceBinding, error) {
 	if len(rbScoreList) == 0 {
 		return nil, fmt.Errorf("empty rbScoreList")
 	}
@@ -388,7 +375,9 @@ func (g *genericScheduler) selectResourceBindings(rbScoreList framework.Resource
 }
 
 // Filters the clusters to find the ones that fit the subscription based on the framework filter plugins.
-func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk framework.Framework, comm *v1alpha1.Component) ([]*framework2.ClusterInfo, framework.Diagnosis, error) {
+func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk framework.Framework,
+	comm *v1alpha1.Component,
+) ([]*framework2.ClusterInfo, framework.Diagnosis, error) {
 	diagnosis := framework.Diagnosis{
 		ClusterToStatusMap:   make(framework.ClusterToStatusMap),
 		UnschedulablePlugins: sets.NewString(),
@@ -431,7 +420,7 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 
 	// aggregate all container resource
 	non0CPU, non0MEM, _ := utils.CalculateResource(comm.Module)
-	result, _ := scheduleWorkload(non0CPU, non0MEM, feasibleClusters)
+	result, _ := scheduleWorkload(non0CPU, non0MEM, feasibleClusters, diagnosis)
 
 	return result, diagnosis, nil
 }
@@ -474,8 +463,10 @@ func (g *genericScheduler) findClustersThatPassFilters(ctx context.Context, fwk 
 	statusCode := framework.Success
 	defer func() {
 		// We record Filter extension point latency here instead of in framework.go because framework.RunFilterPlugins
-		// function is called for each cluster, whereas we want to have an overall latency for all clusters per scheduling cycle.
-		metrics.FrameworkExtensionPointDuration.WithLabelValues(runtime.Filter, statusCode.String(), fwk.ProfileName()).Observe(metrics.SinceInSeconds(beginCheckCluster))
+		// function is called for each cluster, whereas we want to
+		// have an overall latency for all clusters per scheduling cycle.
+		metrics.FrameworkExtensionPointDuration.WithLabelValues(runtime.Filter, statusCode.String(),
+			fwk.ProfileName()).Observe(metrics.SinceInSeconds(beginCheckCluster))
 	}()
 
 	// Stops searching for more clusters once the configured number of feasible clusters

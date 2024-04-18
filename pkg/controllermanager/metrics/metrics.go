@@ -13,15 +13,18 @@ import (
 const (
 	// GaiaControllerSubsystem - subsystem name used by gaia-controller-manager
 	GaiaControllerSubsystem = "gaia_controller_manager"
+	metrixStart             = 0.001
 )
 
 // All the histogram based metrics have 1ms as size for the smallest bucket.
 var (
 	registerAttempts = metrics.NewCounterVec(
 		&metrics.CounterOpts{
-			Subsystem:      GaiaControllerSubsystem,
-			Name:           "register_attempts_total",
-			Help:           "Number of attempts to schedule subscriptions, by the result. 'unregistered' means a subscription could not be scheduled, while 'error' means an internal gaia-controller-manager problem.",
+			Subsystem: GaiaControllerSubsystem,
+			Name:      "register_attempts_total",
+			Help: "Number of attempts to schedule subscriptions, by the result." +
+				" 'unregistered' means a subscription could not be scheduled, while 'error'" +
+				" means an internal gaia-controller-manager problem.",
 			StabilityLevel: metrics.ALPHA,
 		}, []string{"result"})
 
@@ -30,7 +33,7 @@ var (
 			Subsystem:      GaiaControllerSubsystem,
 			Name:           "registering_attempt_duration_seconds",
 			Help:           "Registering attempt latency in seconds (registering + approve)",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			Buckets:        metrics.ExponentialBuckets(metrixStart, 2, 15),
 			StabilityLevel: metrics.STABLE,
 		}, []string{"result"})
 
@@ -39,7 +42,7 @@ var (
 			Subsystem:      GaiaControllerSubsystem,
 			Name:           "registering_algorithm_duration_seconds",
 			Help:           "Registering algorithm latency in seconds",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			Buckets:        metrics.ExponentialBuckets(metrixStart, 2, 15),
 			StabilityLevel: metrics.ALPHA,
 		},
 	)

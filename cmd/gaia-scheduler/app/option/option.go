@@ -26,8 +26,8 @@ type Options struct {
 }
 
 // AddFlags adds the flags to the flagset.
-func (opts *Options) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&opts.Kubeconfig, "kubeconfig", opts.Kubeconfig,
+func (o *Options) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&o.Kubeconfig, "kubeconfig", o.Kubeconfig,
 		"Path to a kubeconfig file for current child cluster. Only required if out-of-cluster")
 }
 
@@ -84,7 +84,8 @@ func (o *Options) Validate() []error {
 // Config return a scheduler config object
 func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	if o.SecureServing != nil {
-		if err := o.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil, []net.IP{netutils.ParseIPSloppy("127.0.0.1")}); err != nil {
+		if err := o.SecureServing.MaybeDefaultWithSelfSignedCerts("localhost", nil,
+			[]net.IP{netutils.ParseIPSloppy("127.0.0.1")}); err != nil {
 			return nil, fmt.Errorf("error creating self-signed certificates: %v", err)
 		}
 	}

@@ -13,6 +13,10 @@ import (
 const (
 	// SchedulerSubsystem - subsystem name used by scheduler
 	SchedulerSubsystem = "gaia_scheduler"
+	factorNum          = 2
+	metrixStart        = 0.001
+	middleMetrixStart  = 0.0001
+	minusMetrixStart   = 0.00001
 
 	// Binding - binding operation label value
 	Binding = "binding"
@@ -22,9 +26,10 @@ const (
 var (
 	scheduleAttempts = metrics.NewCounterVec(
 		&metrics.CounterOpts{
-			Subsystem:      SchedulerSubsystem,
-			Name:           "schedule_attempts_total",
-			Help:           "Number of attempts to schedule subscriptions, by the result. 'unschedulable' means a subscription could not be scheduled, while 'error' means an internal scheduler problem.",
+			Subsystem: SchedulerSubsystem,
+			Name:      "schedule_attempts_total",
+			Help: "Number of attempts to schedule subscriptions, by the result. 'unschedulable' " +
+				"means a subscription could not be scheduled, while 'error' means an internal scheduler problem.",
 			StabilityLevel: metrics.ALPHA,
 		}, []string{"result", "profile"})
 
@@ -33,7 +38,7 @@ var (
 			Subsystem:      SchedulerSubsystem,
 			Name:           "e2e_scheduling_duration_seconds",
 			Help:           "E2e scheduling latency in seconds (scheduling algorithm + binding)",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			Buckets:        metrics.ExponentialBuckets(metrixStart, factorNum, 15),
 			StabilityLevel: metrics.ALPHA,
 		}, []string{"result", "profile"})
 
@@ -42,7 +47,7 @@ var (
 			Subsystem:      SchedulerSubsystem,
 			Name:           "scheduling_attempt_duration_seconds",
 			Help:           "Scheduling attempt latency in seconds (scheduling algorithm + binding)",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			Buckets:        metrics.ExponentialBuckets(metrixStart, factorNum, 15),
 			StabilityLevel: metrics.STABLE,
 		}, []string{"result", "profile"})
 
@@ -51,7 +56,7 @@ var (
 			Subsystem:      SchedulerSubsystem,
 			Name:           "scheduling_algorithm_duration_seconds",
 			Help:           "Scheduling algorithm latency in seconds",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			Buckets:        metrics.ExponentialBuckets(metrixStart, factorNum, 15),
 			StabilityLevel: metrics.ALPHA,
 		},
 	)
@@ -70,7 +75,7 @@ var (
 			Name:      "framework_extension_point_duration_seconds",
 			Help:      "Latency for running all plugins of a specific extension point.",
 			// Start with 0.1ms with the last bucket being [~200ms, Inf)
-			Buckets:        metrics.ExponentialBuckets(0.0001, 2, 12),
+			Buckets:        metrics.ExponentialBuckets(middleMetrixStart, factorNum, 12),
 			StabilityLevel: metrics.ALPHA,
 		},
 		[]string{"extension_point", "status", "profile"})
@@ -82,7 +87,7 @@ var (
 			Help:      "Duration for running a plugin at a specific extension point.",
 			// Start with 0.01ms with the last bucket being [~22ms, Inf). We use a small factor (1.5)
 			// so that we have better granularity since plugin latency is very sensitive.
-			Buckets:        metrics.ExponentialBuckets(0.00001, 1.5, 20),
+			Buckets:        metrics.ExponentialBuckets(minusMetrixStart, 1.5, 20),
 			StabilityLevel: metrics.ALPHA,
 		},
 		[]string{"plugin", "extension_point", "status"})
@@ -92,7 +97,7 @@ var (
 			Subsystem:      SchedulerSubsystem,
 			Name:           "permit_wait_duration_seconds",
 			Help:           "Duration of waiting on permit.",
-			Buckets:        metrics.ExponentialBuckets(0.001, 2, 15),
+			Buckets:        metrics.ExponentialBuckets(metrixStart, factorNum, 15),
 			StabilityLevel: metrics.ALPHA,
 		},
 		[]string{"result"})

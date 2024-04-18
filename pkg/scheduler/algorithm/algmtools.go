@@ -1,13 +1,13 @@
 package algorithm
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/big"
 	"reflect"
 	"sort"
-	"time"
 
 	"gonum.org/v1/gonum/mat"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,9 +17,11 @@ import (
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/scheduler/framework"
+	"github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 )
 
-func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster) ([]*framework.ClusterInfo, int64) {
+func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster, diagnosis interfaces.Diagnosis,
+) ([]*framework.ClusterInfo, int64) {
 	result := make([]*framework.ClusterInfo, len(clusters))
 	total := int64(0)
 	for i, cluster := range clusters {
@@ -27,7 +29,12 @@ func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster)
 			Cluster: cluster,
 		}
 		clusterCapacity := clusterInfo.CalculateCapacity(cpu, mem)
+		if clusterCapacity == 0 {
+			diagnosis.UnschedulablePlugins.Insert("filted cluster has resource limit")
+			continue
+		}
 		clusterInfo.Total = clusterCapacity
+		total += clusterCapacity
 		result[i] = clusterInfo
 	}
 	return result, total
@@ -40,7 +47,7 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 	result := make([]*appv1alpha1.ResourceBinding, 0)
 	matResult := make([]mat.Matrix, 0)
 	rbIndex := 0
-	rbLabels := fillRBLabels(desc)
+	rbLabels := FillRBLabels(desc)
 	rbLabels[common.GaiaDescriptionLabel] = desc.Name
 	for _, items := range ins {
 		indexMatrix, err := makeResourceBindingMatrix(items)
@@ -86,7 +93,7 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 	return result
 }
 
-func fillRBLabels(desc *appv1alpha1.Description) map[string]string {
+func FillRBLabels(desc *appv1alpha1.Description) map[string]string {
 	newLabels := make(map[string]string)
 	oldLabels := desc.GetLabels()
 	if len(oldLabels) != 0 {
@@ -118,7 +125,8 @@ func GetResultWithRB(result [][][]mat.Matrix, rbIndex, levelIndex, comIndex int)
 	return got
 }
 
-// GetAffinityComPlanForDeployment return a new mat.Matrix according to the destination component when that is dispersion or serverless
+// GetAffinityComPlanForDeployment return a new mat.Matrix according to
+// the destination component when that is dispersion or serverless
 func GetAffinityComPlanForDeployment(m mat.Matrix, replicas int64, dispersion bool) mat.Matrix {
 	if dispersion {
 		return GetAffinityComPlan(m, replicas)
@@ -237,7 +245,9 @@ func GetAffinityComPlanForServerless(m mat.Matrix) mat.Matrix {
 }
 
 // make a matrix to a rbApps struct.
-func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedCluster, components []appv1alpha1.Component) []*appv1alpha1.ResourceBindingApps {
+func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedCluster,
+	components []appv1alpha1.Component,
+) []*appv1alpha1.ResourceBindingApps {
 	matR, matC := mat.Dims()
 	chosenMat := chosenOneInArrow(mat)
 	rbapps := make([]*appv1alpha1.ResourceBindingApps, len(allClusters))
@@ -259,7 +269,7 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 }
 
 // makeUserAPPPlan return userapp plan, only one replicas needed.
-func makeUserAPPPlan(capability []*framework.ClusterInfo) (mat.Matrix, bool) {
+func makeUserAPPPlan(capability []*framework.ClusterInfo) mat.Matrix {
 	result := mat.NewDense(1, len(capability), nil)
 	numResult := make([]float64, len(capability))
 	success := false
@@ -275,7 +285,7 @@ func makeUserAPPPlan(capability []*framework.ClusterInfo) (mat.Matrix, bool) {
 	} else {
 		result.Zero()
 	}
-	return result, success
+	return result
 }
 
 // makeServelessPlan return serverless plan
@@ -318,7 +328,7 @@ func makeDeployPlans(capability []*framework.ClusterInfo, componentTotal, spread
 		for i < 2 {
 			randomClusterInfo, err := GenerateRandomClusterInfos(capability, int(spreadOver))
 			availableCountForThisPlan := int64(0)
-			if randomClusterInfo != nil {
+			if err == nil {
 				for _, item := range randomClusterInfo {
 					if item != nil {
 						availableCountForThisPlan += item.Total
@@ -403,7 +413,7 @@ func makeResourceBindingMatrix(in []mat.Matrix) ([]mat.Matrix, error) {
 			return nil, errors.New("can't produce logic matrix")
 		}
 		aR, _ := in[i].Dims()
-		totalCount = totalCount * aR
+		totalCount *= aR
 	}
 
 	// only one component.
@@ -464,8 +474,6 @@ func getComponentClusterTotal(rbApps []*appv1alpha1.ResourceBindingApps, cluster
 // plan https://www.jianshu.com/p/12b89147993c
 func plan(weight []*framework.ClusterInfo, request int64) []float64 {
 	sum := int64(0)
-	percent := make([]float64, 0)
-	firstAssign := make([]float64, 0)
 	finalAssign := make([]float64, 0)
 	targetF := make([]float64, 0)
 	totalFirstAssign := float64(0)
@@ -485,10 +493,9 @@ func plan(weight []*framework.ClusterInfo, request int64) []float64 {
 		currentAssign := currentPercent * float64(request)
 		currentFinalAssign := math.Floor(currentAssign)
 		totalFirstAssign += currentFinalAssign
-		percent = append(percent, currentPercent)
-		firstAssign = append(firstAssign, float64(request)*currentPercent)
 		if currentTotal != 0 {
-			targetF = append(targetF, float64(sum)/float64(request)*(1+(currentAssign-math.Floor(currentAssign))/math.Floor(currentAssign)))
+			targetF = append(targetF, float64(sum)/float64(request)*(1+
+				(currentAssign-math.Floor(currentAssign))/math.Floor(currentAssign)))
 		} else {
 			targetF = append(targetF, float64(0))
 		}
@@ -552,16 +559,21 @@ func GenerateRandomClusterInfos(capacities []*framework.ClusterInfo, count int) 
 			nonZeroCount += 1
 		}
 	}
-	if nonZeroCount < count {
+	switch {
+	case nonZeroCount < count:
 		return nil, errors.New("math: can't allocate desired count into clusters")
-	} else if nonZeroCount == count {
+	case nonZeroCount == count:
 		return capacities, nil
-	} else {
+	default:
 		nums := make(map[int]struct{}, 0)
 		randomCapacity := make([]*framework.ClusterInfo, len(capacities))
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		for len(nums) < count {
-			num := r.Intn(len(capacities))
+			n, err := rand.Int(rand.Reader, big.NewInt(int64(len(capacities))))
+			if err != nil {
+				klog.Info("can't rand.int, continue")
+				continue
+			}
+			num := int(n.Int64())
 			if _, ok := nums[num]; ok {
 				// we have chosen this cluster.
 				continue
@@ -628,7 +640,11 @@ func randowChoseOneGreateThanZero(in []float64) []float64 {
 	}
 	// 存在这个值
 	if len(indexArrow) > 0 {
-		indexChosen := indexArrow[rand.Intn(len(indexArrow))]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(indexArrow))))
+		if err != nil {
+			klog.Info("random error...")
+		}
+		indexChosen := indexArrow[n.Int64()]
 		denseOut.Set(0, indexChosen, 1)
 	}
 	return denseOut.RawRowView(0)
@@ -676,11 +692,9 @@ func checkAGroupValid(m mat.Matrix, components []appv1alpha1.Component) bool {
 					// 没有赋值过
 					if groupName2Index[components[r].GroupName] == -1 {
 						groupName2Index[components[r].GroupName] = c
-					} else {
+					} else if groupName2Index[components[r].GroupName] != c {
 						// 过去有过赋值
-						if groupName2Index[components[r].GroupName] != c {
-							return false
-						}
+						return false
 					}
 					break
 				}
@@ -715,8 +729,5 @@ func checkSpread(a []float64) bool {
 			num++
 		}
 	}
-	if num > 1 {
-		return true
-	}
-	return false
+	return num > 1
 }

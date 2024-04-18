@@ -326,16 +326,16 @@ func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, m
 			sla := new(AppSlaAttr)
 			userSla := new(UserSla)
 			slaByte := fmt.Sprintf("slaStr is: (%s)", condition.Extent)
-			nputil.TraceInfoAlwaysPrint(slaByte)
+			nputil.TraceInfo(slaByte)
 			err := json.Unmarshal(condition.Extent, userSla)
 			if err != nil {
 				info := fmt.Sprintf("slaStr unmarshal is failed!")
-				nputil.TraceInfoAlwaysPrint(info)
+				nputil.TraceInfo(info)
 				nputil.TraceInfoEnd("")
 				return
 			} else {
 				info := fmt.Sprintf("userSla is: (%+v)", userSla)
-				nputil.TraceInfoAlwaysPrint(info)
+				nputil.TraceInfo(info)
 				sla.DelayValue = userSla.Delay
 				sla.LostValue = userSla.Lost
 				sla.JitterValue = userSla.Jitter
@@ -348,11 +348,11 @@ func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, m
 		} else if condition.Object.Type == "rtt" {
 			rtt := new(RttAttr)
 			rttByte := fmt.Sprintf("rttStr is: (%s)", condition.Extent)
-			nputil.TraceInfoAlwaysPrint(rttByte)
+			nputil.TraceInfo(rttByte)
 			err := json.Unmarshal(condition.Extent, rtt)
 			if err != nil {
 				info := fmt.Sprintf("rttStr unmarshal is failed!")
-				nputil.TraceInfoAlwaysPrint(info)
+				nputil.TraceInfo(info)
 				nputil.TraceInfoEnd("")
 				return
 			} else {
@@ -364,11 +364,11 @@ func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, m
 		} else if condition.Object.Type == "label" {
 			providers := new([]string)
 			providerByte := fmt.Sprintf("providerStr is: (%s)", condition.Extent)
-			nputil.TraceInfoAlwaysPrint(providerByte)
+			nputil.TraceInfo(providerByte)
 			err := json.Unmarshal(condition.Extent, providers)
 			if err != nil {
 				info := fmt.Sprintf("providerStr unmarshal is failed!")
-				nputil.TraceInfoAlwaysPrint(info)
+				nputil.TraceInfo(info)
 				nputil.TraceInfoEnd("")
 				return
 			} else {
@@ -380,11 +380,11 @@ func ParseDeployCondition(appReq *AppConnectReq, condition v1alpha1.Condition, m
 		} else if condition.Object.Type == "accelerate" {
 			accelerate := new(AccelerateAttr)
 			accelerateByte := fmt.Sprintf("accelerateStr is: (%s)", condition.Extent)
-			nputil.TraceInfoAlwaysPrint(accelerateByte)
+			nputil.TraceInfo(accelerateByte)
 			err := json.Unmarshal(condition.Extent, accelerate)
 			if err != nil {
 				info := fmt.Sprintf("accelerateStr unmarshal is failed!")
-				nputil.TraceInfoAlwaysPrint(info)
+				nputil.TraceInfo(info)
 				nputil.TraceInfoEnd("")
 				return
 			} else {
@@ -626,6 +626,7 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 		slaAttr.DelayValue = uint32(appConnectDomainPath.AppConnectAttr.SlaAttr.DelayValue)
 		slaAttr.JitterValue = uint32(appConnectDomainPath.AppConnectAttr.SlaAttr.JitterValue)
 		slaAttr.ThroughputValue = uint64(appConnectDomainPath.AppConnectAttr.SlaAttr.ThroughputValue)
+		slaAttr.LostValue = uint32(appConnectDomainPath.AppConnectAttr.SlaAttr.LostValue)
 		pbAppConnectAttr.SlaAttr = slaAttr
 
 		for _, srcKv := range appConnectDomainPath.AppConnectAttr.SrcScnidKVList {
@@ -663,10 +664,8 @@ func PbRbDomainPathsCreate(rbDomainPaths BindingSelectedDomainPath) *ncsnp.Bindi
 		pbRbDomainPaths.SelectedDomainPath = append(pbRbDomainPaths.SelectedDomainPath, pbAppConnectDomainPath)
 	}
 
-	for i, rbDomainPaths := range pbRbDomainPaths.SelectedDomainPath {
-		infoString := fmt.Sprintf("pbRbDomainPaths[%d] is: (%+v).", i, rbDomainPaths)
-		infoString1 := fmt.Sprintf("pbRbDomainPaths.AppConnect.Accelerate is (%+v)!", rbDomainPaths.AppConnect.Accelerate)
-		nputil.TraceInfo(infoString1)
+	for i, rbDomainPath := range pbRbDomainPaths.SelectedDomainPath {
+		infoString := fmt.Sprintf("pbRbDomainPaths[%d] is: (%+v).", i, rbDomainPath)
 		nputil.TraceInfo(infoString)
 	}
 
@@ -1047,7 +1046,7 @@ func CalAppConnectAttrForRb(rb *v1alpha1.ResourceBinding, networkReq v1alpha1.Ne
 			nputil.TraceInfo(infoString)
 			encodeToString := base64.StdEncoding.EncodeToString(NpContentBase64)
 			infoString = fmt.Sprintf("Proto marshal content base64 encodeToString is (%+v)", encodeToString)
-			nputil.TraceInfoAlwaysPrint(infoString)
+			nputil.TraceInfo(infoString)
 
 			// Verify the unmarshal action
 			dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(NpContentBase64)))

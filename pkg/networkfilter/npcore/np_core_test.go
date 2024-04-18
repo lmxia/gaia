@@ -183,7 +183,7 @@ func SetRbsAndNetReqAvailable() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -435,6 +435,10 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 						Name:   "b",
 						SelfID: []string{"scb1"},
 					},
+					2: {
+						Name:   "c",
+						SelfID: []string{"scc1"},
+					},
 				},
 
 				Links: []v1alpha1.Link{
@@ -463,6 +467,31 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							},
 						},
 					},
+					1: {
+						LinkName:      "link-a-c",
+						SourceID:      "sca1",
+						DestinationID: "scc1",
+						SourceAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "sca1-sk1",
+								Value: "sca1-sv1",
+							},
+							1: {
+								Key:   "sca1-sk2",
+								Value: "sca1-sv2",
+							},
+						},
+						DestinationAttributes: []v1alpha1.Attributes{
+							0: {
+								Key:   "scc1-dk1",
+								Value: "scc1-dv1",
+							},
+							1: {
+								Key:   "scc1-dk2",
+								Value: "scc1-dv2",
+							},
+						},
+					},
 				},
 			},
 			Deployconditions: v1alpha1.DeploymentCondition{
@@ -477,7 +506,21 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
+						Extent:   []byte("[\"ChinaUnicom\",\"ChinaMobile\",\"ChinaTelecom\",\"CNOS\"]"),
+					},
+				},
+				BestEffort: []v1alpha1.Condition{
+					0: {
+						Subject: v1alpha1.Xject{
+							Name: "link-a-c",
+							Type: "link",
+						},
+						Object: v1alpha1.Xject{
+							Name: "provider",
+							Type: "label",
+						},
+						Relation: "In",
+						Extent:   []byte("[]"),
 					},
 				},
 			},
@@ -486,7 +529,7 @@ func SetRbsAndNetReqProviders() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkR
 	return rbs, &networkReq
 }
 
-func SetRbsAndNetReqProvidersNULL() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
+func SetRbsAndNetReqProvidersFailed() ([]*v1alpha1.ResourceBinding, *v1alpha1.NetworkRequirement) {
 	var rbs []*v1alpha1.ResourceBinding
 	rb0 := v1alpha1.ResourceBinding{
 		Spec: v1alpha1.ResourceBindingSpec{
@@ -572,7 +615,7 @@ func SetRbsAndNetReqProvidersNULL() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[]"),
+						Extent:   []byte("[\"ChinaUnicom\",\"CNOS\",\"CENI\"]"),
 					},
 				},
 			},
@@ -816,7 +859,7 @@ func SetRbsAndNetReqBestEffort() ([]*v1alpha1.ResourceBinding, *v1alpha1.Network
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
+						Extent:   []byte("[\"CNOS\",\"CENI\",\"ChinaUnicom\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1353,7 +1396,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric14\",\"Fabric23\",\"Fabric34\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CNOS\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1365,7 +1408,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
+						Extent:   []byte("{\"delay\":40,\"lost\":20,\"jitter\":30,\"bandwidth\":100}"),
 					},
 					2: {
 						Subject: v1alpha1.Xject{
@@ -1391,7 +1434,7 @@ func SetRbsAndNetReqThroughputSla() ([]*v1alpha1.ResourceBinding, *v1alpha1.Netw
 							Type: "sla",
 						},
 						Relation: "Is",
-						Extent:   []byte("{\"delay\":10000,\"lost\":100,\"jitter\":100,\"bandwidth\":100}"),
+						Extent:   []byte("{\"delay\":41,\"lost\":11,\"jitter\":21,\"bandwidth\":101}"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1546,7 +1589,7 @@ func SetRbsAndNetReqThroughputSlaFailed() ([]*v1alpha1.ResourceBinding, *v1alpha
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CNOS\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1746,7 +1789,7 @@ func SetRbsAndNetReqNoInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alph
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CNOS\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -1941,7 +1984,7 @@ func SetRbsAndNetReqInterCommunication() ([]*v1alpha1.ResourceBinding, *v1alpha1
 							Type: "label",
 						},
 						Relation: "In",
-						Extent:   []byte("[\"Fabric12\",\"Fabric13\",\"Fabric23\",\"Fabric34\"]"),
+						Extent:   []byte("[\"ChinaMobile\",\"ChinaTelecom\",\"ChinaUnicom\",\"CENI\"]"),
 					},
 					1: {
 						Subject: v1alpha1.Xject{
@@ -2021,6 +2064,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink12.RemoteNodeSN = "Node21"
 	domainVLink12.AttachDomainId = 1012
 	domainVLink12.AttachDomainName = "Fabric12"
+	domainVLink12.Isp = "ChinaMobile"
 	vLinkSlaAttr12 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr12.Delay = 1
 	vLinkSlaAttr12.Bandwidth = 15000
@@ -2036,6 +2080,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink13.RemoteNodeSN = "Node31"
 	domainVLink13.AttachDomainId = 1013
 	domainVLink13.AttachDomainName = "Fabric13"
+	domainVLink13.Isp = "ChinaTelecom"
 	vLinkSlaAttr13 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr13.Delay = 1
 	vLinkSlaAttr13.Bandwidth = 10000
@@ -2067,6 +2112,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink23.RemoteNodeSN = "Node32"
 	domainVLink23.AttachDomainId = 1023
 	domainVLink23.AttachDomainName = "Fabric23"
+	domainVLink23.Isp = "ChinaUnicom"
 	vLinkSlaAttr23 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr23.Delay = 2
 	vLinkSlaAttr23.Bandwidth = 15000
@@ -2083,6 +2129,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink21.RemoteNodeSN = "Node12"
 	domainVLink21.AttachDomainId = 1012
 	domainVLink21.AttachDomainName = "Fabric12"
+	domainVLink21.Isp = "ChinaMobile"
 	vLinkSlaAttr21 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr21.Delay = 1
 	vLinkSlaAttr21.Bandwidth = 15000
@@ -2113,6 +2160,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink34.RemoteNodeSN = "Node43"
 	domainVLink34.AttachDomainId = 1034
 	domainVLink34.AttachDomainName = "Fabric34"
+	domainVLink34.Isp = "ChinaMobile"
 	vLinkSlaAttr34 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr34.Delay = 3
 	vLinkSlaAttr34.Bandwidth = 15000
@@ -2128,6 +2176,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink32.RemoteNodeSN = "Node23"
 	domainVLink32.AttachDomainId = 1023
 	domainVLink32.AttachDomainName = "Fabric23"
+	domainVLink32.Isp = "ChinaUnicom"
 	vLinkSlaAttr32 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr32.Delay = 2
 	vLinkSlaAttr32.Bandwidth = 15000
@@ -2158,6 +2207,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink43.RemoteNodeSN = "Node34"
 	domainVLink43.AttachDomainId = 1034
 	domainVLink43.AttachDomainName = "Fabric34"
+	domainVLink43.Isp = "ChinaMobile"
 	vLinkSlaAttr43 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr43.Delay = 3
 	vLinkSlaAttr43.Bandwidth = 15000
@@ -2174,6 +2224,7 @@ func BuildNetworkDomainEdge() map[string]clusterapi.Topo {
 	domainVLink42.RemoteNodeSN = "Node24"
 	domainVLink42.AttachDomainId = 1024
 	domainVLink42.AttachDomainName = "Fabric24"
+	domainVLink42.Isp = "ChinaTelecom"
 	vLinkSlaAttr42 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr42.Delay = 2
 	vLinkSlaAttr42.Bandwidth = 15000
@@ -2219,6 +2270,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink12.RemoteNodeSN = "Node21"
 	domainVLink12.AttachDomainId = 1012
 	domainVLink12.AttachDomainName = "Fabric12"
+	domainVLink12.Isp = "ChinaMobile"
 	vLinkSlaAttr12 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr12.Delay = 8
 	vLinkSlaAttr12.Bandwidth = 20000
@@ -2234,6 +2286,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink14.RemoteNodeSN = "Node41"
 	domainVLink14.AttachDomainId = 1014
 	domainVLink14.AttachDomainName = "Fabric14"
+	domainVLink14.Isp = "ChinaUnicom"
 	vLinkSlaAttr14 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr14.Delay = 15
 	vLinkSlaAttr14.Bandwidth = 20000
@@ -2265,6 +2318,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink24.RemoteNodeSN = "Node42"
 	domainVLink24.AttachDomainId = 1024
 	domainVLink24.AttachDomainName = "Fabric24"
+	domainVLink24.Isp = "ChinaTelecom"
 	vLinkSlaAttr24 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr24.Delay = 2
 	vLinkSlaAttr24.Bandwidth = 20000
@@ -2281,6 +2335,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink21.RemoteNodeSN = "Node12"
 	domainVLink21.AttachDomainId = 1012
 	domainVLink21.AttachDomainName = "Fabric12"
+	domainVLink21.Isp = "ChinaMobile"
 	vLinkSlaAttr21 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr21.Delay = 2
 	vLinkSlaAttr21.Bandwidth = 20000
@@ -2311,6 +2366,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink41.RemoteNodeSN = "Node14"
 	domainVLink41.AttachDomainId = 1014
 	domainVLink41.AttachDomainName = "Fabric14"
+	domainVLink41.Isp = "ChinaUnicom"
 	vLinkSlaAttr41 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr41.Delay = 4
 	vLinkSlaAttr41.Bandwidth = 20000
@@ -2326,6 +2382,7 @@ func BuildNetworkDomainEdgeForJointDebug() map[string]clusterapi.Topo {
 	domainVLink42.RemoteNodeSN = "Node24"
 	domainVLink42.AttachDomainId = 1024
 	domainVLink42.AttachDomainName = "Fabric24"
+	domainVLink42.Isp = "ChinaTelecom"
 	vLinkSlaAttr42 := new(ncsnp.VLinkSla)
 	vLinkSlaAttr42.Delay = 1
 	vLinkSlaAttr42.Bandwidth = 20000
@@ -2521,6 +2578,24 @@ func TestNetworkFilterProviders(t *testing.T) {
 	}
 
 	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterProviders  END ===")
+	nputil.TraceInfo(infoString)
+}
+
+func TestNetworkFilterProvidersFailed(t *testing.T) {
+	logx.NewLogger()
+	infoString := fmt.Sprintf("=== RUN   TestNetworkFilterProvidersFailed  BEGIN ===")
+	nputil.TraceInfo(infoString)
+
+	rbs, networkRequirement := SetRbsAndNetReqProvidersFailed()
+	networkInfoMap := BuildNetworkDomainEdge()
+	rbsRet := NetworkFilter(rbs, networkRequirement, networkInfoMap)
+	if !reflect.DeepEqual(0, len(rbsRet)) {
+		infoString := fmt.Sprintf("The rbs should be unavailable!")
+		nputil.TraceErrorString(infoString)
+		t.Errorf("The rbs should be unavailable!")
+	}
+
+	infoString = fmt.Sprintf("=== RUN   TestNetworkFilterProvidersFailed  END ===")
 	nputil.TraceInfo(infoString)
 }
 

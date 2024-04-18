@@ -20,97 +20,98 @@ type LocalStatus uint32
 const (
 	LocalStatus_Invalid LocalStatus = 0
 	LocalStatus_Running LocalStatus = 1
-	LogSwitch                       = "Off"
+	LogSwitch                       = "OFF"
 )
 
 func TraceInfo(inputString string) {
-	if LogSwitch == "Off" {
-		return
-	}
+	LogEnable := os.Getenv("NetFilterLogEnable")
+	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
 	logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + "input:" + inputString)
+	}
+	return
 }
 
 func TraceInfoAlwaysPrint(inputString string) {
 	LogEnable := os.Getenv("NetFilterLogEnable")
-	if len(LogEnable) == 0 || LogEnable != "ON" {
-		//if len(LogEnable) == 0 {
-		return
-	}
+	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "INFO" || LogEnable == "ALL")) {
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
 	logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + "input:" + inputString)
+	}
+	return
 }
 
 func TraceInfoBegin(inputString string) {
-	if LogSwitch == "Off" {
-		return
-	}
+	LogEnable := os.Getenv("NetFilterLogEnable")
+	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
 	logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + " Begin. input:" + inputString)
+	}
+	return
 }
 
 func TraceInfoEnd(inputString string) {
-	if LogSwitch == "Off" {
-		return
-	}
+	LogEnable := os.Getenv("NetFilterLogEnable")
+	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
 	logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + " End input:" + inputString)
+	}
 	return
 }
 
 func TraceError(err error) {
-	if LogSwitch == "Off" {
-		return
-	}
+	LogEnable := os.Getenv("NetFilterLogEnable")
+	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
 	logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
+	}
 	return
 }
 
 func TraceErrorString(errString string) {
-	if LogSwitch == "Off" {
-		return
-	}
+	LogEnable := os.Getenv("NetFilterLogEnable")
+	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
 	err := errors.New(errString)
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
 	logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
+	}
 	return
 }
 
 func TraceErrorWithStack(err error) {
-	if LogSwitch == "Off" {
-		return
-	}
+	LogEnable := os.Getenv("NetFilterLogEnable")
+	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
 	logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
 	logx.Error(string(debug.Stack()))
+	}
 	return
 }
 
 func TraceErrorStringWithStack(errString string) {
-	if LogSwitch == "Off" {
-		return
-	}
+	LogEnable := os.Getenv("NetFilterLogEnable")
+	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
 	err := errors.New(errString)
 	pc, _, _, _ := runtime.Caller(1)
 	funcName := runtime.FuncForPC(pc).Name()
 	routineId := GetGIDString()
 	logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
 	logx.Error(string(debug.Stack()))
+	}
 	return
 }
 

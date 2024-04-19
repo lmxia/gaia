@@ -20,6 +20,8 @@ ci-check:
   script:
     - go env -w GOPROXY=https://goproxy.cn,direct
     - make fmt-check
+    - make lint
+    - go mod tidy
   only:
     - merge_requests
 

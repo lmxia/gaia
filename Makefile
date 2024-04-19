@@ -47,4 +47,4 @@ fmt-check:
 
 .PHONY: lint
 lint:
-	golangci-lint run -c .golangci.yaml
+	golangci-lint run -c .golangci.yaml --timeout=10m

@@ -519,17 +519,19 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
 		var clusterName, descNs string
 		var err error
-		clusterName, descNs, err = utils.GetLocalClusterName(c.localKubeClient)
-		if err != nil {
-			klog.Errorf("handleParentAndPushResourceBinding: failed to get local clusterName From secret: %v", err)
-		}
-		if len(clusterName) == 0 {
-			return fmt.Errorf("handleParentAndPushResourceBinding: local clusterName is nil")
-		}
-		if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
-			err = c.updateSelectedRB(rb, clusterName)
+		if rb.Namespace != common.GaiaPushReservedNamespace {
+			clusterName, descNs, err = utils.GetLocalClusterName(c.localKubeClient)
 			if err != nil {
-				return err
+				klog.Errorf("handleParentAndPushResourceBinding: failed to get local clusterName From secret: %v", err)
+			}
+			if len(clusterName) == 0 {
+				return fmt.Errorf("handleParentAndPushResourceBinding: local clusterName is nil")
+			}
+			if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
+				err = c.updateSelectedRB(rb, clusterName)
+				if err != nil {
+					return err
+				}
 			}
 		}
 

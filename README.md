@@ -24,6 +24,7 @@ common:
   topoSyncBaseUrl: "http://ssiexpose.synccontroller.svc:8080"
   networkBindUrl: http://nbi.domain1.svc.cluster.local/v1.0/network/scheme        # only on field level
   resourceBindingMergePostURL: http://192.168.101.73:37100/api/server/preScheduleSchemeReceiver
+  # get label from hypernode if true, or get labels from node 
   useNodeRoleSelector: true
   aliyunSourceSite: '[{"content":"47.111.131.212","type":"ipaddr","priority":"20","port":80,"weight":"10"}]'
 

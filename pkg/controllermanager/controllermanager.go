@@ -367,11 +367,11 @@ func (controller *ControllerManager) registerSelfCluster(ctx context.Context) {
 		target, err := controller.localGaiaClientSet.PlatformV1alpha1().Targets().Get(ctx,
 			common.ParentClusterTargetName, metav1.GetOptions{})
 		if err != nil {
-			klog.ErrorDepth(2, "failed to get targets: %v wait for next loop", err)
+			klog.V(2).ErrorS(err, "failed to get targets wait for next loop")
 			return
 		}
 
-		// get parent cluster kubeconfig
+		// get parent cluster kubeConfig
 		if tryToUseSecret {
 			secret, err := controller.localKubeClientSet.CoreV1().Secrets(common.GaiaSystemNamespace).Get(ctx,
 				common.ParentClusterSecretName, metav1.GetOptions{})

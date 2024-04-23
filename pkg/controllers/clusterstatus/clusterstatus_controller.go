@@ -147,7 +147,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 
 	serviceCIDR, err := c.discoverServiceCIDR()
 	if err != nil {
-		klog.Warningf("failed to discover service CIDR: %v", err)
+		klog.V(2).ErrorS(err, "failed to discover service CIDR")
 	}
 
 	var status clusterapi.ManagedClusterStatus

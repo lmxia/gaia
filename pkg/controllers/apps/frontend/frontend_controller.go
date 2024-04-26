@@ -151,6 +151,9 @@ func (c *Controller) syncHandler(key string) error {
 			return nil
 		}
 	}
+	if len(frontend.Spec.Cdn) == 0 {
+		return fmt.Errorf("'Frontend' %q has no cdn", frontend.Name)
+	}
 	frontendDel := frontend.DeletionTimestamp.IsZero()
 	if !frontendDel {
 		err = c.cdnAccelerateRecycle(frontend)

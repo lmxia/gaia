@@ -139,7 +139,10 @@ func (c *Controller) DeleteDomainRecord(client *dns.Client, recordID *string) er
 
 func (c *Controller) dnsAccelerateCreateDo(frontend *v1alpha1.Frontend, cname *string) error {
 	regionID := common.FrontendAliyunCdnRegionID
-	acckey, secret := c.cdnConfig(frontend)
+	acckey, secret, err2 := c.cdnConfig(frontend)
+	if err2 != nil {
+		return err2
+	}
 	client, err := c.Init(acckey, secret, &regionID)
 	if err != nil {
 		klog.Errorf("Failed to init dns client  'Frontend' %q, error == %v", frontend.Name, err)
@@ -163,7 +166,10 @@ func (c *Controller) dnsAccelerateRecycle(frontend *v1alpha1.Frontend) error {
 	recordID := frontend.Labels["domainRecordId"]
 	if recordID != "" {
 		regionID := common.FrontendAliyunCdnRegionID
-		acckey, secret := c.cdnConfig(frontend)
+		acckey, secret, err2 := c.cdnConfig(frontend)
+		if err2 != nil {
+			return err2
+		}
 		client, err := c.Init(acckey, secret, &regionID)
 		if err != nil {
 			klog.Errorf("Failed to init dns client  'Frontend' %q, error == %v", frontend.Name, err)
@@ -192,7 +198,10 @@ func (c *Controller) dnsAccelerateRecycle(frontend *v1alpha1.Frontend) error {
 func (c *Controller) dnsAccelerateState(frontend *v1alpha1.Frontend) (bool, error) {
 	regionID := common.FrontendAliyunCdnRegionID
 	domainName := frontend.Spec.DomainName
-	acckey, secret := c.cdnConfig(frontend)
+	acckey, secret, err2 := c.cdnConfig(frontend)
+	if err2 != nil {
+		return common.FrontendAliyunDNSCnameNoExist, err2
+	}
 	client, err := c.Init(acckey, secret, &regionID)
 	if err != nil {
 		klog.Errorf("Failed to init dns client  'Frontend' %q, error == %v", frontend.Name, err)

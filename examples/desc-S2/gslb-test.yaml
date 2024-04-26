@@ -1,0 +1,63 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  name: gslb-test
+  namespace: gaia-reserved
+  labels:
+    apps.gaia.io/user.id: admin
+spec:
+  appID: gslb-test
+  workloadComponents:
+    - componentName: douyin
+      sandbox: SecureContainer
+      namespace: arpublic
+      fqdn: douyin
+      module:
+        metadata:
+          labels:
+            app: douyin
+        spec:
+          containers:
+            - name: douyin
+              image: 122.96.144.180:30080/hyperio/pressuretestserver:kata
+              imagePullPolicy: Always
+              env:
+                - name: TASK_NO
+                  value: "4ace0457075342dfb1750fc42909167d"
+                - name: PML_TEST_FLAG
+                  value: "pressure"
+                - name: TEST_CLIENT_SOURCE_SID
+                  value: "/inner-private/presstest/1"
+                - name: TEST_CLIENT_TARGET_SID
+                  value: "/inner-private/presstest/2"
+                - name: TEST_CLIENT_SOURCE_SID_ATTR
+                  value: "POLICY_SOURCE=policy_inst1"
+                - name: TEST_CLIENT_TARGET_SID_ATTR
+                  value: "POLICY_DEST=policy_inst2"
+                - name: TEST_CLIENT_MESSAGE
+                  value: "YXNkZmFzZGY="
+                - name: TEST_CLIENT_CONCURRENT_VALUE
+                  value: "800=10,1000=20"
+                - name: TEST_CLIENT_RESPONSE_BODY
+                  value: "YXNkZmFzZGY="
+                - name: HYPEROS_LOG_SERVER
+                  value: 172.24.33.32
+              ports:
+                - containerPort: 8443
+  deploymentCondition:
+    mandatory:
+      - subject:
+          name: douyin
+          type: component
+        object:
+          name: supplier-name
+          type: label
+        relation: In
+        extent: WyJ3dXN1biJdCg== # ["wusun"]
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary1
+          subject: douyin
+          type: replicas
+          value: MQo= # 1

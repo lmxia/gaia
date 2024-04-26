@@ -22,20 +22,20 @@ import (
 
 func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster, diagnosis interfaces.Diagnosis,
 ) ([]*framework.ClusterInfo, int64) {
-	result := make([]*framework.ClusterInfo, len(clusters))
+	result := make([]*framework.ClusterInfo, 0)
 	total := int64(0)
-	for i, cluster := range clusters {
+	for _, cluster := range clusters {
 		clusterInfo := &framework.ClusterInfo{
 			Cluster: cluster,
 		}
 		clusterCapacity := clusterInfo.CalculateCapacity(cpu, mem)
 		if clusterCapacity == 0 {
-			diagnosis.UnschedulablePlugins.Insert("filted cluster has resource limit")
+			diagnosis.UnschedulablePlugins.Insert("filtered cluster ", cluster.Name, " has resource limit")
 			continue
 		}
 		clusterInfo.Total = clusterCapacity
 		total += clusterCapacity
-		result[i] = clusterInfo
+		result = append(result, clusterInfo)
 	}
 	return result, total
 }

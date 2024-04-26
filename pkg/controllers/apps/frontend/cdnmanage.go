@@ -15,16 +15,24 @@ import (
 	"github.com/lmxia/gaia/pkg/common"
 )
 
-func (c *Controller) cdnConfig(frontend *v1alpha1.Frontend) (*string, *string) {
-	cdnSupplierMsg, _ := c.cdnSupplierLister.CdnSuppliers(common.GaiaFrontendNamespace).Get(frontend.Spec.Cdn[0].Supplier)
+func (c *Controller) cdnConfig(frontend *v1alpha1.Frontend) (*string, *string, error) {
+	cdnSupplierMsg, err := c.cdnSupplierLister.CdnSuppliers(common.GaiaFrontendNamespace).
+		Get(frontend.Spec.Cdn[0].Supplier)
+	if err != nil {
+		klog.Errorf("Failed to get cdn supplier of 'Frontend' %q, error == %v", frontend.Name, err)
+		return nil, nil, err
+	}
 	// RSA
 	secertKey := cdnSupplierMsg.Spec.CloudAccessKeyid
 	secertID := cdnSupplierMsg.Spec.CloudAccessKeysecret
-	return &secertKey, &secertID
+	return &secertKey, &secertID, nil
 }
 
 func (c *Controller) supplierClient(frontend *v1alpha1.Frontend) (result *cdn20180510.Client, err error) {
-	acckey, secret := c.cdnConfig(frontend)
+	acckey, secret, err2 := c.cdnConfig(frontend)
+	if err2 != nil {
+		return nil, err2
+	}
 	config := &openapi.Config{
 		AccessKeyId:     acckey,
 		AccessKeySecret: secret,

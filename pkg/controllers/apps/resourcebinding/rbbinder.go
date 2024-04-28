@@ -519,26 +519,24 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
 		var clusterName, descNs string
 		var err error
-		if rb.Namespace != common.GaiaPushReservedNamespace {
-			clusterName, descNs, err = utils.GetLocalClusterName(c.localKubeClient)
+		clusterName, descNs, err = utils.GetLocalClusterName(c.localKubeClient)
+		if err != nil {
+			klog.Errorf("handleParentAndPushResourceBinding: failed to get local clusterName From secret: %v", err)
+		}
+		if len(clusterName) == 0 {
+			return fmt.Errorf("handleParentAndPushResourceBinding: local clusterName is nil")
+		}
+		if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
+			err = c.updateSelectedRB(rb, clusterName)
 			if err != nil {
-				klog.Errorf("handleParentAndPushResourceBinding: failed to get local clusterName From secret: %v", err)
-			}
-			if len(clusterName) == 0 {
-				return fmt.Errorf("handleParentAndPushResourceBinding: local clusterName is nil")
-			}
-			if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
-				err = c.updateSelectedRB(rb, clusterName)
-				if err != nil {
-					return err
-				}
+				return err
 			}
 		}
-
-		descriptionName := rb.GetLabels()[common.GaiaDescriptionLabel]
 		if rb.Namespace == common.GaiaPushReservedNamespace {
 			descNs = common.GaiaPushReservedNamespace
 		}
+		descriptionName := rb.GetLabels()[common.GaiaDescriptionLabel]
+
 		createRB := false
 		if len(rb.Spec.RbApps) > 0 {
 			for _, rba := range rb.Spec.RbApps {

@@ -565,21 +565,21 @@ func getDeployCondition(errs []error, clusterName, rbRef string) metav1.Conditio
 		errMessage := utilerrors.NewAggregate(errs).Error()
 		klog.Errorf("failed to apply workloads, ResourceBinding: %s, reason: %s", rbRef, errMessage)
 		return metav1.Condition{
-			Type:               clusterName,
+			Type:               appsv1alpha1.ConditionFail,
 			Status:             metav1.ConditionFalse,
 			LastTransitionTime: metav1.Now(),
 			Reason:             "Error",
-			Message:            "failed to deploy workloads. " + errMessage,
+			Message:            clusterName + " failed to deploy workloads. " + errMessage,
 		}
 	}
 
 	klog.InfoS("deploy workloads successfully", "ResourceBinding", rbRef)
 	return metav1.Condition{
-		Type:               clusterName,
+		Type:               appsv1alpha1.ConditionSuccess,
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: metav1.Now(),
 		Reason:             "null",
-		Message:            "deployed workloads successfully",
+		Message:            clusterName + " deployed workloads successfully",
 	}
 }
 

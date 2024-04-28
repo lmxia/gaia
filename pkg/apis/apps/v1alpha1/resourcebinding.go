@@ -62,6 +62,9 @@ type StatusRBDeploy string
 const (
 	ResourceBindingRed   StatusRBDeploy = "Red"
 	ResourceBindingGreen StatusRBDeploy = "Green"
+
+	ConditionFail    string = "Failure"
+	ConditionSuccess string = "Success"
 )
 
 type ResourceBindingStatus struct {

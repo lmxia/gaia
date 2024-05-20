@@ -1,7 +1,7 @@
 variables:
   VERSION: "v2.1.0"
   CHARTVERSION: "v2.1.0"
-  REGISTRY: "122.96.144.180:30080"
+  REGISTRY: "121.40.102.76:30080"
   APPGAIA: "gaia"
   APPGAIASCHEDULER: "gaia-scheduler"
 

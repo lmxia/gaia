@@ -32,6 +32,7 @@ const (
 	ClusterIDLabel            = "clusters.gaia.io/cluster-id"
 	ClusterNameLabel          = "clusters.gaia.io/cluster-name"
 	ClusterBootstrappingLabel = "clusters.gaia.io/bootstrapping"
+	YuanLaoClusterLabel       = "clusters.gaia.io/yuanlao"
 	RBMergerLabel             = "clusters.gaia.io/merger"
 	CredentialsAuto           = "credentials-auto"
 

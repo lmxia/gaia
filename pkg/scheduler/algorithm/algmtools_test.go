@@ -28,6 +28,9 @@ func (suite *DeploymentSuite) SetupTest() {
 			Cluster: &platformv1alpha1.ManagedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cluster0",
+					Labels: map[string]string{
+						"clusters.gaia.io/yuanlao": "no",
+					},
 				},
 				Spec: platformv1alpha1.ManagedClusterSpec{
 					ClusterID: "0",
@@ -39,6 +42,9 @@ func (suite *DeploymentSuite) SetupTest() {
 			Cluster: &platformv1alpha1.ManagedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cluster1",
+					Labels: map[string]string{
+						"clusters.gaia.io/yuanlao": "no",
+					},
 				},
 				Spec: platformv1alpha1.ManagedClusterSpec{
 					ClusterID: "2",
@@ -50,6 +56,9 @@ func (suite *DeploymentSuite) SetupTest() {
 			Cluster: &platformv1alpha1.ManagedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cluster2",
+					Labels: map[string]string{
+						"clusters.gaia.io/yuanlao": "yes",
+					},
 				},
 				Spec: platformv1alpha1.ManagedClusterSpec{
 					ClusterID: "2",
@@ -61,6 +70,9 @@ func (suite *DeploymentSuite) SetupTest() {
 			Cluster: &platformv1alpha1.ManagedCluster{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cluster3",
+					Labels: map[string]string{
+						"clusters.gaia.io/yuanlao": "no",
+					},
 				},
 				Spec: platformv1alpha1.ManagedClusterSpec{
 					ClusterID: "3",
@@ -214,7 +226,11 @@ func (suite *DeploymentSuite) TestPlan() {
 }
 
 func (suite *DeploymentSuite) TestChosenOneInArrow() {
-	result := chosenOneInArrow(suite.matries[2])
+	clusters := make([]*platformv1alpha1.ManagedCluster, 0)
+	for _, item := range suite.capability {
+		clusters = append(clusters, item.Cluster)
+	}
+	result := chosenOneInArrow(suite.matries[0], clusters)
 	fmt.Printf("%v", result)
 	suite.Equal(24, 24, "")
 }

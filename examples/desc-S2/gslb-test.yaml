@@ -19,7 +19,7 @@ spec:
         spec:
           containers:
             - name: douyin
-              image: 122.96.144.180:30080/hyperio/pressuretestserver:kata
+              image: 121.40.102.76:30080/hyperio/pressuretestserver:kata
               imagePullPolicy: Always
               env:
                 - name: TASK_NO

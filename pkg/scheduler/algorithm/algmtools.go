@@ -249,7 +249,7 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 	components []appv1alpha1.Component,
 ) []*appv1alpha1.ResourceBindingApps {
 	matR, matC := mat.Dims()
-	chosenMat := chosenOneInArrow(mat)
+	chosenMat := chosenOneInArrow(mat, allClusters)
 	rbapps := make([]*appv1alpha1.ResourceBindingApps, len(allClusters))
 	for i, item := range allClusters {
 		rbapps[i] = &appv1alpha1.ResourceBindingApps{
@@ -628,18 +628,33 @@ func checkContainMatrix(matrices []mat.Matrix, matix mat.Matrix) bool {
 	return false
 }
 
-func randowChoseOneGreateThanZero(in []float64) []float64 {
+func randowChoseOneGreateThanZero(in []float64, clusters []*v1alpha1.ManagedCluster) []float64 {
 	indexArrow := make([]int, 0)
+	truePositiveIndices := []int{}
 	// init zero dense
 	denseOut := mat.NewDense(1, len(in), nil)
 	denseOut.Zero()
 	for i, item := range in {
 		if item > 0 {
 			indexArrow = append(indexArrow, i)
+			if val, ok := clusters[i].GetLabels()[common.YuanLaoClusterLabel]; !ok || val != "no" {
+				truePositiveIndices = append(truePositiveIndices, i)
+			}
 		}
 	}
-	// 存在这个值
-	if len(indexArrow) > 0 {
+	if len(indexArrow) == 0 {
+		return denseOut.RawRowView(0)
+	}
+
+	// 存在, 即没有污点，又符合标签的集群
+	if len(truePositiveIndices) > 0 {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(truePositiveIndices))))
+		if err != nil {
+			klog.Info("random error...")
+		}
+		indexChosen := truePositiveIndices[n.Int64()]
+		denseOut.Set(0, indexChosen, 1)
+	} else {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(indexArrow))))
 		if err != nil {
 			klog.Info("random error...")
@@ -651,12 +666,12 @@ func randowChoseOneGreateThanZero(in []float64) []float64 {
 }
 
 // chosen one
-func chosenOneInArrow(in mat.Matrix) mat.Matrix {
+func chosenOneInArrow(in mat.Matrix, clusters []*v1alpha1.ManagedCluster) mat.Matrix {
 	aR, aC := in.Dims()
 	out := mat.NewDense(aR, aC, nil)
 	for i := 0; i < aR; i++ {
 		row := mat.DenseCopyOf(in).RawRowView(i)
-		dense := randowChoseOneGreateThanZero(row)
+		dense := randowChoseOneGreateThanZero(row, clusters)
 		out.SetRow(i, dense)
 	}
 	return out

@@ -160,7 +160,7 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 		localDescLister:     localAllGaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister(),
 		childKubeClientSet:  childKubeClientSet,
 
-		//dynamicClient:              dynamicClient,
+		// dynamicClient:              dynamicClient,
 		registry:                   plugins.NewInTreeRegistry(),
 		scheduleAlgorithm:          algorithm.NewGenericScheduler(schedulerCache),
 		localSchedulingQueue:       workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
@@ -361,18 +361,19 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 			}
 			return
 		}
+		if len(desc.Spec.WorkloadComponents) == 0 {
+			desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+			err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
+			if err != nil {
+				klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
+					desc.Namespace, desc.Name, err)
+			}
 
-		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
-		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
-		if err != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
-				desc.Namespace, desc.Name, err)
+			metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
+			sched.localSchedulingQueue.Forget(key)
+			klog.InfoS("schedule frontendAPP successful", "Description", klog.KObj(desc))
+			return
 		}
-
-		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
-		sched.localSchedulingQueue.Forget(key)
-		klog.InfoS("schedule frontendAPP successful", "Description", klog.KObj(desc))
-		return
 	}
 
 	scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, nil, desc)
@@ -939,6 +940,7 @@ func (sched *Scheduler) handleFrontEndAPP(ctx context.Context, desc *appsapi.Des
 				},
 			},
 			Spec: appsapi.FrontendSpec{
+				FQDN:          com.FQDN,
 				DomainName:    com.DomainName,
 				CdnAccelerate: com.CdnAccelerate,
 				Cdn:           com.Cdn,

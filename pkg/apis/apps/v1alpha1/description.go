@@ -68,11 +68,13 @@ type FrontendComponent struct {
 	// +kubebuilder:validation:Type=string
 	ComponentName string `json:"componentName,omitempty"`
 	// +required
+	FQDN string `json:"fqdn,omitempty"`
+	// +required
 	DomainName string `json:"domainName,omitempty"`
 	// +optional
 	CdnAccelerate bool `json:"cdnAccelerate,omitempty"`
 	// +required
-	Cdn []CdnSpec `json:"cdnSpec,omitempty"`
+	Cdn []CdnSpec `json:"cdn,omitempty"`
 }
 
 type WorkloadComponent struct {

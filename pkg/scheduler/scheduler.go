@@ -932,7 +932,7 @@ func (sched *Scheduler) handleFrontEndAPP(ctx context.Context, desc *appsapi.Des
 				Kind:       "Frontend",
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      com.ComponentName,
+				Name:      com.FQDN,
 				Namespace: common.GaiaFrontendNamespace,
 				Labels:    label,
 				Finalizers: []string{
@@ -940,7 +940,6 @@ func (sched *Scheduler) handleFrontEndAPP(ctx context.Context, desc *appsapi.Des
 				},
 			},
 			Spec: appsapi.FrontendSpec{
-				FQDN:          com.FQDN,
 				DomainName:    com.DomainName,
 				CdnAccelerate: com.CdnAccelerate,
 				Cdn:           com.Cdn,

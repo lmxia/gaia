@@ -22,8 +22,6 @@ type Frontend struct {
 
 type FrontendSpec struct {
 	// +required
-	FQDN string `json:"fqdn,omitempty"`
-	// +required
 	DomainName string `json:"domainName,omitempty"`
 	// +optional
 	CdnAccelerate bool `json:"cdnAccelerate,omitempty"`

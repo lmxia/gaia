@@ -602,3 +602,25 @@ func TestGetAffinityComPlanForServerless(t *testing.T) {
 		})
 	}
 }
+
+func (suite *DeploymentSuite) Test_makeUniqeDeployPlans() {
+	// [0,30, 10, 0, 0]
+	got := makeUniqeDeployPlans(suite.capability, 12, 2)
+	fmt.Printf("%v", got)
+	data := []float64{
+		0, 9, 3, 0, 0,
+	}
+	matrix := mat.NewDense(1, 5, data)
+	suite.Equal(got, matrix, "")
+}
+
+func (suite *DeploymentSuite) Test_makeUniqeDeployPlansOne() {
+	// [0,30, 10, 0, 0]
+	got := makeUniqeDeployPlans(suite.capability, 12, 1)
+	fmt.Printf("%v", got)
+	data := []float64{
+		0, 12, 0, 0, 0,
+	}
+	matrix := mat.NewDense(1, 5, data)
+	suite.Equal(got, matrix, "")
+}

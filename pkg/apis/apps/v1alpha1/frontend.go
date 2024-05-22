@@ -26,7 +26,7 @@ type FrontendSpec struct {
 	// +optional
 	CdnAccelerate bool `json:"cdnAccelerate,omitempty"`
 	// +required
-	Cdn []CdnSpec `json:"cdn,omitempty"`
+	Cdn []CdnSpec `json:"cdnSpec,omitempty"`
 }
 
 type CdnSpec struct {

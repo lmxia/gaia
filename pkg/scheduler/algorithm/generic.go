@@ -166,10 +166,9 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						m.Scale(float64(comm.Workload.TraitDeployment.Replicas), componentMat)
 						allResultGlobal[j][i] = &m
 					} else {
-						// componentMat := makeDeployPlans(allPlan, int64(comm.Workload.TraitDeployment.Replicas),
-						// int64(comm.Dispersion))
-						allResultGlobal[j][i] = makeDeployPlans(allPlan,
-							int64(comm.Workload.TraitDeployment.Replicas), 1)
+						//  不再随机了，遍历所有可行解，对范围做均衡。
+						allResultGlobal[j][i] = makeUniqeDeployPlans(allPlan,
+							int64(comm.Workload.TraitDeployment.Replicas), spreadLevels[j])
 					}
 				case v1alpha1.WorkloadTypeServerless:
 					allResultGlobal[j][i] = makeServelessPlan(allPlan, 1)
@@ -191,7 +190,8 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 								makeUniqeDeployPlans(allPlan, int64(1), 1))
 							allResultWithRB[j][k][i] = &m
 						} else {
-							allResultWithRB[j][k][i] = makeDeployPlans(allPlan, replicas, spreadLevels[k])
+							//  不再随机了，遍历所有可行解，对范围做均衡。
+							allResultWithRB[j][k][i] = makeUniqeDeployPlans(allPlan, replicas, spreadLevels[k])
 						}
 					case v1alpha1.WorkloadTypeServerless:
 						allResultWithRB[j][k][i] = makeServelessPlan(allPlan, replicas)

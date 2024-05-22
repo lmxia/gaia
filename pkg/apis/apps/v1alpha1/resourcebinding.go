@@ -41,6 +41,7 @@ type ResourceBindingSpec struct {
 	// +kubebuilder:validation:Schemaless
 	RbApps      []*ResourceBindingApps `json:"rbApps,omitempty"`
 	NetworkPath [][]byte               `json:"networkPath,omitempty"`
+	FrontendRbs []*FrontendRb          `json:"frontendRbs,omitempty"`
 
 	// +optional
 	// +kubebuilder:validation:Enum=merging;merged;schedulering;selected
@@ -55,6 +56,18 @@ type ResourceBindingApps struct {
 	Replicas  map[string]int32 `json:"replicas,omitempty"`
 	// +optional
 	Children []*ResourceBindingApps `json:"children,omitempty"`
+}
+
+type FrontendRb struct {
+	// +optional
+	Suppliers []*Supplier `json:"suppliers,omitempty"`
+}
+
+type Supplier struct {
+	// optional
+	SupplierName string `json:"supplierName,omitempty"`
+	// +optional
+	Replicas map[string]int32 `json:"replicas,omitempty"`
 }
 
 type StatusRBDeploy string

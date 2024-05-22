@@ -30,6 +30,7 @@ import (
 	gaiaInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	informers "github.com/lmxia/gaia/pkg/generated/informers/externalversions/apps/v1alpha1"
 	appListerV1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
+	"github.com/lmxia/gaia/pkg/scheduler/algorithm"
 	"github.com/lmxia/gaia/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -64,8 +65,7 @@ type Binder struct {
 	networkBindURL string
 	promURLPrefix  string
 
-	localGaiaInformerFactory     gaiaInformers.SharedInformerFactory
-	localPushGaiaInformerFactory gaiaInformers.SharedInformerFactory
+	localGaiaInformerFactory gaiaInformers.SharedInformerFactory
 	// localReservedInformerFactory gaiaInformers.SharedInformerFactory
 	localKubeClient     *kubernetes.Clientset
 	localNodeLister     corev1lister.NodeLister
@@ -398,7 +398,6 @@ func (c *Binder) RunLocalBinder(workers int, stopCh <-chan struct{}) {
 	klog.Info("starting local binder... ")
 	defer klog.Info("shutting local binder...")
 	c.localGaiaInformerFactory.Start(stopCh)
-	c.localPushGaiaInformerFactory.Start(stopCh)
 	if !cache.WaitForNamedCacheSync("local-Description-Controller", stopCh,
 		c.localDescSynced, c.localRBsSynced, c.localNodeSynced, c.localFrontSynced) {
 		return
@@ -459,12 +458,6 @@ func (c *Binder) handleLocalDescription(desc *appsV1alpha1.Description) error {
 				return err
 			}
 		}
-		if desc.Spec.IsFrontEnd {
-			err := c.offloadLocalFrontEnd(desc)
-			if err != nil {
-				return err
-			}
-		}
 
 		return c.removeDescFinalizer(desc)
 	}
@@ -513,27 +506,92 @@ func (c *Binder) handleParentDescription(desc *appsV1alpha1.Description) error {
 	return nil
 }
 
-// handles the gaia-merged and gaia-push-reserved namespace rbs
-func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
-	klog.V(5).Infof("handleParentAndPushResourceBinding: handle resourceBinding %q ...", klog.KObj(rb))
+func (c *Binder) handleLocalResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
+	klog.V(5).Infof("handleLocalResourceBinding: handle resourceBinding %q ...", klog.KObj(rb))
 	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
-		var clusterName, descNs string
+		var descNs string
 		var err error
-		clusterName, descNs, err = utils.GetLocalClusterName(c.localKubeClient)
-		if err != nil {
-			klog.Errorf("handleParentAndPushResourceBinding: failed to get local clusterName From secret: %v", err)
-		}
-		if len(clusterName) == 0 {
-			return fmt.Errorf("handleParentAndPushResourceBinding: local clusterName is nil")
-		}
 		if !utils.ContainsString(rb.Finalizers, common.AppFinalizer) && rb.DeletionTimestamp == nil {
-			err = c.updateSelectedRB(rb, clusterName)
+			err = c.updateSelectedRB(rb, "localSelfCluster")
 			if err != nil {
 				return err
 			}
 		}
 		if rb.Namespace == common.GaiaPushReservedNamespace {
 			descNs = common.GaiaPushReservedNamespace
+		} else {
+			descNs = common.GaiaReservedNamespace
+		}
+		descriptionName := rb.GetLabels()[common.GaiaDescriptionLabel]
+
+		if rb.DeletionTimestamp == nil {
+			if rb.Namespace == common.GaiaRBMergedReservedNamespace && len(rb.Spec.FrontendRbs) != 0 {
+				// deploy frontend app
+				errFront := c.deployFrontendAPP(rb, descriptionName)
+				if errFront != nil {
+					return errFront
+				}
+			}
+		} else {
+			if rb.Namespace == common.GaiaPushReservedNamespace {
+				err := utils.OffloadRBWorkloads(context.TODO(), c.localDynamicClient, c.restMapper, rb.GetLabels())
+				if err != nil {
+					return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ",
+						rb.Name, err)
+				}
+
+				rbCopy := rb.DeepCopy()
+				rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
+				if _, err := c.localGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(context.TODO(),
+					rbCopy, metav1.UpdateOptions{}); err != nil {
+					if apierrors.IsNotFound(err) {
+						return nil
+					}
+					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s"+
+						" from ResourceBinding %s: %v",
+						common.AppFinalizer, klog.KObj(rb), err))
+					return err
+				}
+			} else if len(rb.Spec.FrontendRbs) != 0 {
+				descUID := rb.GetLabels()[common.OriginDescriptionUIDLabel]
+				err := c.offloadLocalFrontEnd(descriptionName, descNs, descUID)
+				if err != nil {
+					return err
+				}
+
+				rb.Spec.FrontendRbs = nil
+				rbCopy := rb.DeepCopy()
+				if len(rbCopy.Spec.RbApps) == 0 {
+					rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
+				}
+				if _, err := c.localGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(context.TODO(),
+					rbCopy, metav1.UpdateOptions{}); err != nil {
+					if apierrors.IsNotFound(err) {
+						return err
+					}
+					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s"+
+						" from ResourceBinding %s: %v",
+						common.AppFinalizer, klog.KObj(rb), err))
+					return err
+				}
+				klog.V(5).Infof("offload local frontend app of Description==%q", descriptionName)
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Binder) handleParentResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
+	klog.V(5).Infof("handleParentResourceBinding: handle resourceBinding %q ...", klog.KObj(rb))
+	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
+		var clusterName, descNs string
+		var err error
+		clusterName, descNs, err = utils.GetLocalClusterName(c.localKubeClient)
+		if err != nil {
+			klog.Errorf("handleParentResourceBinding: failed to get local clusterName From secret: %v", err)
+		}
+		if len(clusterName) == 0 {
+			return fmt.Errorf("handleParentResourceBinding: local clusterName is nil")
 		}
 		descriptionName := rb.GetLabels()[common.GaiaDescriptionLabel]
 
@@ -558,28 +616,17 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 				return utils.ApplyResourceBinding(context.TODO(), c.localDynamicClient, c.restMapper, rb, clusterName,
 					descriptionName, c.networkBindURL, nwr)
 			} else {
-				var desc *appsV1alpha1.Description
-				if rb.Namespace == common.GaiaPushReservedNamespace {
-					desc, err = c.localGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName,
-						metav1.GetOptions{})
-					if err != nil {
-						klog.Errorf("handleParentAndPushResourceBinding: failed get local Description %s/%s, error == %v",
-							descNs, descriptionName, err)
-						return err
-					}
-				} else {
-					desc, err = c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName,
-						metav1.GetOptions{})
-					if err != nil {
-						klog.Errorf("handleParentAndPushResourceBinding: failed get parent Description %s/%s, error==%v",
-							descNs, descriptionName, err)
-						return err
-					}
+				desc, errDesc := c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName,
+					metav1.GetOptions{})
+				if errDesc != nil {
+					klog.Errorf("handleParentResourceBinding: failed get parent Description %s/%s, error==%v",
+						descNs, descriptionName, errDesc)
+					return errDesc
 				}
 
 				nodes, err := c.localNodeLister.List(labels.Everything())
 				if err != nil {
-					klog.Errorf("handleParentAndPushResourceBinding: failed to list nodes, Description=%s/%s, error==%v",
+					klog.Errorf("handleParentResourceBinding: failed to list nodes, Description=%s/%s, error==%v",
 						descNs, descriptionName, err)
 					return err
 				}
@@ -624,7 +671,7 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 				}
 				rb.Spec.RbApps = newRbApps
 				rbCopy := rb.DeepCopy()
-				if len(rbCopy.Spec.RbApps) == 0 {
+				if len(rbCopy.Spec.RbApps) == 0 && len(rbCopy.Spec.FrontendRbs) == 0 {
 					// remove finalizers
 					rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
 				}
@@ -635,20 +682,6 @@ func (c *Binder) handleParentAndPushResourceBinding(rb *appsV1alpha1.ResourceBin
 					}
 					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s "+
 						"from ResourceBinding %s: %v",
-						common.AppFinalizer, klog.KObj(rb), err))
-					return err
-				}
-			}
-			if rb.Namespace == common.GaiaPushReservedNamespace {
-				rbCopy := rb.DeepCopy()
-				rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
-				if _, err := c.localGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(context.TODO(),
-					rbCopy, metav1.UpdateOptions{}); err != nil {
-					if apierrors.IsNotFound(err) {
-						return nil
-					}
-					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s"+
-						" from ResourceBinding %s: %v",
 						common.AppFinalizer, klog.KObj(rb), err))
 					return err
 				}
@@ -722,7 +755,7 @@ func (c *Binder) SetParentBinderController(dedicatedNamespace *string) (*Binder,
 	c.parentDynamicClient = parentDynamicClient
 	c.parentMergedGaiaInformerFactory = parentMergedGaiaInformerFactory
 	rbController, rbErr := NewController(parentGaiaClient,
-		parentMergedGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentAndPushResourceBinding)
+		parentMergedGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentResourceBinding)
 	if rbErr != nil {
 		klog.Errorf("failed to set RBBindController, rbErr == %v", rbErr)
 		return nil, rbErr
@@ -750,16 +783,12 @@ func (c *Binder) SetParentBinderController(dedicatedNamespace *string) (*Binder,
 }
 
 func (c *Binder) SetLocalBinderController() (*Binder, error) {
-	// set local resource-binding controller
-	localPushReservedInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(c.localGaiaClient,
-		common.DefaultResync, gaiaInformers.WithNamespace(common.GaiaPushReservedNamespace))
 	rbController, rbErr := NewController(c.localGaiaClient,
-		localPushReservedInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleParentAndPushResourceBinding)
+		c.localGaiaInformerFactory.Apps().V1alpha1().ResourceBindings(), c.handleLocalResourceBinding)
 	if rbErr != nil {
 		klog.Errorf("failed to set RBBindController, rbErr == %v", rbErr)
 		return nil, rbErr
 	}
-	c.localPushGaiaInformerFactory = localPushReservedInformerFactory
 	c.localRBController = rbController
 
 	// set local description controller
@@ -775,12 +804,12 @@ func (c *Binder) SetLocalBinderController() (*Binder, error) {
 	return c, nil
 }
 
-func (c *Binder) offloadLocalFrontEnd(desc *appsV1alpha1.Description) error {
-	klog.V(5).InfoS("Start deleting local Frontend ...", "Description", klog.KObj(desc))
+func (c *Binder) offloadLocalFrontEnd(descName, descNs, descUID string) error {
+	klog.V(5).InfoS("Start deleting local Frontend ...", "Description", klog.KRef(descNs, descName))
 	frontEnds, err := c.localFrontLister.Frontends(common.GaiaFrontendNamespace).List(labels.SelectorFromSet(labels.Set{
-		common.OriginDescriptionNameLabel:      desc.Name,
-		common.OriginDescriptionNamespaceLabel: desc.Namespace,
-		common.OriginDescriptionUIDLabel:       string(desc.UID),
+		common.OriginDescriptionNameLabel:      descName,
+		common.OriginDescriptionNamespaceLabel: descNs,
+		common.OriginDescriptionUIDLabel:       descUID,
 	}))
 	if err != nil {
 		return err
@@ -796,7 +825,7 @@ func (c *Binder) offloadLocalFrontEnd(desc *appsV1alpha1.Description) error {
 		}
 	}
 	if frontEnds != nil || len(allErrs) > 0 {
-		return fmt.Errorf("waiting for local Frontends of Description %q getting deleted", klog.KObj(desc))
+		return fmt.Errorf("waiting for local Frontends of Description %q getting deleted", klog.KRef(descNs, descName))
 	}
 
 	return nil
@@ -989,16 +1018,16 @@ func (c *Binder) updateSelectedRB(rb *appsV1alpha1.ResourceBinding, clusterName 
 	rbLabels := rb.GetLabels()
 	rb.Finalizers = append(rb.Finalizers, common.AppFinalizer)
 	rbLabels[common.StatusScheduler] = string(appsV1alpha1.ResourceBindingSelected)
-	_, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
+	_, err := c.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
 		Update(context.TODO(), rb, metav1.UpdateOptions{})
 	switch {
 	case apierrors.IsConflict(err):
-		klog.V(5).InfoS("handleParentAndPushResourceBinding: update rb conflict for add label and inject finalizer",
+		klog.V(5).InfoS("Delete rbs not selected: update rb conflict for add label and inject finalizer",
 			"ResourceBinding", klog.KObj(rb), "err", err)
-		return fmt.Errorf("handleParentAndPushResourceBinding: update resourcebinding %q conflict "+
+		return fmt.Errorf("delete rbs not selected: update resourcebinding %q conflict "+
 			"for add label and inject finalizer", klog.KObj(rb))
 	case err != nil:
-		klog.Warning("handleParentAndPushResourceBinding: failed to inject finalizer %s "+
+		klog.Warning("Delete rbs not selected: failed to inject finalizer %s "+
 			"and update ResourceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err)
 		return err
 	}
@@ -1006,7 +1035,7 @@ func (c *Binder) updateSelectedRB(rb *appsV1alpha1.ResourceBinding, clusterName 
 	descName := rbLabels[common.OriginDescriptionNameLabel]
 	klog.V(4).Infof("Delete unselected ResourceBindings in namespace %q from Description %q.",
 		common.GaiaRBMergedReservedNamespace, descName)
-	err = c.parentGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
+	err = c.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
 		DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set{
 				common.OriginDescriptionNameLabel:      descName,
@@ -1020,4 +1049,64 @@ func (c *Binder) updateSelectedRB(rb *appsV1alpha1.ResourceBinding, clusterName 
 		return err
 	}
 	return nil
+}
+
+func (c *Binder) deployFrontendAPP(rb *appsV1alpha1.ResourceBinding, descName string) error {
+	if len(rb.Spec.FrontendRbs) != 0 {
+		desc, errDesc := c.localGaiaClient.AppsV1alpha1().Descriptions(common.GaiaReservedNamespace).
+			Get(context.TODO(), descName, metav1.GetOptions{})
+		if errDesc != nil {
+			klog.Errorf("deploy FrontendApp: failed get parent Description %q, error==%v",
+				klog.KRef(common.GaiaReservedNamespace, descName), errDesc)
+			return errDesc
+		}
+		for _, com := range desc.Spec.FrontendComponents {
+			if len(com.Cdn) == 0 {
+				return fmt.Errorf("failed to create frontend, FrontEndAPP.cdn is nil, Description==%q, FrontendAPP==%q",
+					klog.KObj(desc), com.ComponentName)
+			}
+
+			suppliers := rb.Spec.FrontendRbs[0].Suppliers
+			for _, sup := range suppliers {
+				if sup.SupplierName == com.Cdn[0].Supplier && sup.Replicas[com.ComponentName] > 0 {
+					label := algorithm.FillRBLabels(desc)
+					label[common.GaiaDescriptionLabel] = desc.Name
+					label[common.GaiaComponentLabel] = com.ComponentName
+					frontEnd := &appsV1alpha1.Frontend{
+						TypeMeta: metav1.TypeMeta{
+							APIVersion: "apps.gaia.io/v1alpha1",
+							Kind:       "Frontend",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      com.FQDN,
+							Namespace: common.GaiaFrontendNamespace,
+							Labels:    label,
+							Finalizers: []string{
+								common.FrontendAliyunFinalizers,
+							},
+						},
+						Spec: appsV1alpha1.FrontendSpec{
+							DomainName:    com.DomainName,
+							CdnAccelerate: com.CdnAccelerate,
+							Cdn:           com.Cdn,
+						},
+					}
+
+					_, err := c.localGaiaClient.AppsV1alpha1().Frontends(frontEnd.Namespace).Create(context.TODO(), frontEnd,
+						metav1.CreateOptions{})
+					if err != nil && apierrors.IsNotFound(err) {
+						klog.ErrorS(err, "failed to create Frontend", "Frontend", klog.KObj(frontEnd),
+							"Description", klog.KObj(desc))
+					} else {
+						klog.V(5).InfoS("successfully created Frontend", "Frontend", klog.KObj(frontEnd),
+							"Description", klog.KObj(desc))
+					}
+				}
+			}
+		}
+		return nil
+	}
+
+	return fmt.Errorf("the components of frontendAPP is nil, Description==%q",
+		klog.KRef(common.GaiaReservedNamespace, descName))
 }

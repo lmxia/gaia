@@ -10,7 +10,6 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -348,32 +347,31 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 	schedulingCycleCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if desc.Spec.IsFrontEnd {
-		errFront := sched.handleFrontEndAPP(ctx, desc)
-		if errFront != nil {
-			klog.Errorf("failed to schedule frontend app, error==%v", errFront)
-			sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
-			desc.Status.Phase = appsapi.DescriptionPhaseFailure
-			err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
-			if err != nil {
-				klog.WarningDepth(2, "failed to update status of description's "+
-					"status phase: Description==%q, error==%v", klog.KObj(desc), err)
-			}
-			return
+	// schedule frontend apps, only one supplier
+	frontendRbs, errS := sched.scheduleFrontend(desc)
+	if errS != nil {
+		sched.recordSchedulingFailure(desc, errS, ReasonUnschedulable)
+		desc.Status.Phase = appsapi.DescriptionPhaseFailure
+		desc.Status.Reason = truncateMessage(errS.Error())
+		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
+		if err != nil {
+			klog.Errorf("failed to update status of description's status phase: %v/%v, err is %v",
+				desc.Namespace, desc.Name, err)
 		}
-		if len(desc.Spec.WorkloadComponents) == 0 {
-			desc.Status.Phase = appsapi.DescriptionPhaseScheduled
-			err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
-			if err != nil {
-				klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
-					desc.Namespace, desc.Name, err)
-			}
-
+		klog.Errorf("scheduler failed %v", errS)
+		return
+	}
+	if len(desc.Spec.WorkloadComponents) == 0 {
+		errF := sched.createFrontRBLocal(desc, frontendRbs)
+		if errF != nil {
+			return
+		} else {
 			metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
+			metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
 			sched.localSchedulingQueue.Forget(key)
-			klog.InfoS("schedule frontendAPP successful", "Description", klog.KObj(desc))
-			return
+			klog.Infof("scheduler success, Description=%q", desc.Name)
 		}
+		return
 	}
 
 	scheduleResult, err := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, nil, desc)
@@ -388,6 +386,11 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 		}
 		klog.Warningf("scheduler failed %v", err)
 		return
+	}
+	if len(frontendRbs) != 0 {
+		for _, itemRb := range scheduleResult.ResourceBindings {
+			itemRb.Spec.FrontendRbs = frontendRbs
+		}
 	}
 
 	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx,
@@ -541,7 +544,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 	err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 	if err != nil {
-		klog.Errorf("failed to update status of description's status phase: %v/%v, err is ", desc.Namespace,
+		klog.Errorf("failed to update status of description's status phase: %v/%v, err is %v", desc.Namespace,
 			desc.Name, err)
 	}
 	sched.parentSchedulingQueue.Forget(key)
@@ -916,47 +919,91 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 		})
 }
 
-func (sched *Scheduler) handleFrontEndAPP(ctx context.Context, desc *appsapi.Description) error {
-	if len(desc.Spec.FrontendComponents) == 0 {
-		return fmt.Errorf("the components of frontendAPP is nil, Description==%q", klog.KObj(desc))
+func (sched *Scheduler) createFrontRBLocal(desc *appsapi.Description, rbs []*appsapi.FrontendRb) error {
+	descName := desc.Name
+	frontRB := &appsapi.ResourceBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-rs", descName),
+			Namespace: common.GaiaRSToBeMergedReservedNamespace,
+			Labels: map[string]string{
+				common.GaiaDescriptionLabel:            descName,
+				common.OriginDescriptionNameLabel:      descName,
+				common.OriginDescriptionNamespaceLabel: common.GaiaReservedNamespace,
+				common.OriginDescriptionUIDLabel:       string(desc.GetUID()),
+				common.UserNameLabel:                   desc.GetLabels()[common.UserNameLabel],
+			},
+		},
+		Spec: appsapi.ResourceBindingSpec{
+			AppID:           desc.Name,
+			FrontendRbs:     rbs,
+			StatusScheduler: appsapi.ResourceBindingMerging,
+		},
 	}
-	for _, com := range desc.Spec.FrontendComponents {
-		if len(com.Cdn) == 0 {
-			return fmt.Errorf("FrontEndAPP.cdn is nil, Description==%q", klog.KObj(desc))
-		}
-		label := algorithm.FillRBLabels(desc)
-		label[common.GaiaDescriptionLabel] = desc.Name
-		label[common.GaiaComponentLabel] = com.ComponentName
-		frontEnd := &appsapi.Frontend{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "apps.gaia.io/v1alpha1",
-				Kind:       "Frontend",
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      com.FQDN,
-				Namespace: common.GaiaFrontendNamespace,
-				Labels:    label,
-				Finalizers: []string{
-					common.FrontendAliyunFinalizers,
-				},
-			},
-			Spec: appsapi.FrontendSpec{
-				DomainName:    com.DomainName,
-				CdnAccelerate: com.CdnAccelerate,
-				Cdn:           com.Cdn,
-			},
-		}
+	frontRB.Kind = "ResourceBinding"
+	frontRB.APIVersion = "apps.gaia.io/v1alpha1"
 
-		_, err := sched.localGaiaClient.AppsV1alpha1().Frontends(frontEnd.Namespace).Create(ctx, frontEnd,
-			metav1.CreateOptions{})
-		if err != nil && errors.IsNotFound(err) {
-			klog.ErrorS(err, "failed to create Frontend", "Frontend", klog.KObj(frontEnd))
-		} else {
-			klog.V(5).InfoS("successfully created Frontend", "Frontend", klog.KObj(frontEnd))
+	_, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
+		Create(context.TODO(), frontRB, metav1.CreateOptions{})
+	if err != nil {
+		klog.Errorf("frontendAPP scheduler success, but rb not created success %v", err)
+		// update desc status
+		sched.recordSchedulingFailure(desc, err, ReasonUnschedulable)
+		desc.Status.Phase = appsapi.DescriptionPhaseFailure
+		desc.Status.Reason = truncateMessage(err.Error())
+		err2 := utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
+		if err2 != nil {
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
+				desc.Namespace, desc.Name, err2)
+			return err2
+		}
+		return err
+	} else {
+		klog.InfoS("successfully created rb", "Description", descName,
+			"ResourceBinding", klog.KObj(frontRB))
+
+		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
+		err2 := utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
+		if err2 != nil {
+			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, error==%v",
+				desc.Namespace, desc.Name, err2)
+			return err2
 		}
 	}
 
 	return nil
+}
+
+func (sched *Scheduler) scheduleFrontend(desc *appsapi.Description) ([]*appsapi.FrontendRb, error) {
+	frontendRbs := make([]*appsapi.FrontendRb, 0)
+	if desc.Spec.IsFrontEnd {
+		cdnSuppliers, err2 := sched.localGaiaClient.AppsV1alpha1().CdnSuppliers(common.GaiaFrontendNamespace).
+			List(context.TODO(), metav1.ListOptions{})
+		if err2 != nil {
+			klog.Errorf("failed to get cdn supplier, error==%v", err2)
+			return nil, err2
+		}
+
+		frontendRb := appsapi.FrontendRb{
+			Suppliers: make([]*appsapi.Supplier, 0),
+		}
+		if len(cdnSuppliers.Items) == 0 {
+			klog.Errorf("no cdn supplier, error==%v", err2)
+			return nil, fmt.Errorf("no cdn supplier in cluster")
+		} else if len(desc.Spec.FrontendComponents) != 0 {
+			fCom2Rep := make(map[string]int32)
+			// 暂时仅支持 多frontComponent, 单个supplier
+			for _, fc := range desc.Spec.FrontendComponents {
+				fCom2Rep[fc.ComponentName] = 1
+			}
+			supplier := appsapi.Supplier{
+				SupplierName: "aliyun",
+				Replicas:     fCom2Rep,
+			}
+			frontendRb.Suppliers = append(frontendRb.Suppliers, &supplier)
+		}
+		frontendRbs = append(frontendRbs, &frontendRb)
+	}
+	return frontendRbs, nil
 }
 
 // truncateMessage truncates a message if it hits the NoteLengthLimit.
@@ -988,6 +1035,7 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, des
 		rb.Spec = appsapi.ResourceBindingSpec{
 			AppID:             item.Spec.AppID,
 			ParentRB:          item.Spec.ParentRB,
+			FrontendRbs:       item.Spec.FrontendRbs,
 			RbApps:            item.Spec.RbApps,
 			TotalPeer:         item.Spec.TotalPeer,
 			NonZeroClusterNum: item.Spec.NonZeroClusterNum,

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"os"
 	"reflect"
 	"sort"
+	"strconv"
 
 	"gonum.org/v1/gonum/mat"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -350,6 +352,13 @@ func makeDeployPlans(capability []*framework.ClusterInfo, componentTotal, spread
 
 // makeDeployPlans make plans for specific component
 func makeUniqeDeployPlans(capability []*framework.ClusterInfo, componentTotal, spreadOver int64) mat.Matrix {
+	// 稍显突兀
+	maxRBNumberString := os.Getenv("MaxRBNumber")
+	maxRBNumber, err := strconv.Atoi(maxRBNumberString)
+	if err != nil {
+		maxRBNumber = 2
+	}
+
 	if componentTotal == 0 {
 		result := mat.NewDense(1, len(capability), nil)
 		result.Zero()
@@ -384,7 +393,7 @@ func makeUniqeDeployPlans(capability []*framework.ClusterInfo, componentTotal, s
 				temResult = append(temResult, r)
 				planNums += 1
 			}
-			if planNums >= 2 {
+			if planNums >= maxRBNumber {
 				break
 			}
 		}

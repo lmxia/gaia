@@ -36,7 +36,7 @@ func (suite *DeploymentSuite) SetupTest() {
 					ClusterID: "0",
 				},
 			},
-			Total: 0,
+			Total: 2,
 		},
 		1: {
 			Cluster: &platformv1alpha1.ManagedCluster{
@@ -616,7 +616,7 @@ func (suite *DeploymentSuite) Test_makeUniqeDeployPlans() {
 
 func (suite *DeploymentSuite) Test_makeUniqeDeployPlansOne() {
 	// [0,30, 10, 0, 0]
-	got := makeUniqeDeployPlans(suite.capability, 12, 1)
+	got := makeUniqeDeployPlans(suite.capability, 1, 1)
 	fmt.Printf("%v", got)
 	data := []float64{
 		0, 12, 0, 0, 0,

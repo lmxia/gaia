@@ -1,0 +1,172 @@
+apiVersion: apps.gaia.io/v1alpha1
+kind: Description
+metadata:
+  labels:
+    apps.gaia.io/user.name: xialingming
+  name: xialingming-test
+  namespace: gaia-reserved
+spec:
+  appID: app-xlm
+  deploymentCondition:
+    mandatory:
+      - extent: WyIwMDAwMDAtMDAwMDAxLTMyMDAwMC0zMjAxMDAtMzIwMTA2Il0=
+        object:
+          name: geo-location
+          type: label
+        relation: In
+        subject:
+          name: tpi-ca108f6157-20240111095046-21-2024052901-pr
+          type: component
+  expectedPerformance:
+    boundaries:
+      inner:
+        - name: boundary0
+          subject: train
+          type: replicas
+          value: MQo=   # 1
+        - name: 40f1e5cd9329475d9eb5a84a2f1c9744
+          subject: tpi-ca108f6157-20240111095046-21-2024052901-pr
+          type: maxReplicas
+          value: Mw==
+        - name: 7e00d80c23c84657a732417d74b62c21
+          subject: tpi-ca108f6157-20240111095046-21-2024052901-pr
+          type: cpu
+          value: ODA=
+        - name: 353a2a9998ba4fd7953345226ae28f47
+          subject: tpi-ca108f6157-20240111095046-21-2024052901-pr
+          type: mem
+          value: ODA=
+        - name: 6770ae47a4c14e50aefe70d532aa1b3b
+          subject: tpi-ca108f6157-20240111095046-21-2024052901-pr
+          type: cpu
+          value: MjA=
+        - name: 2953148163604f31a5ae27aa31c17d3f
+          subject: tpi-ca108f6157-20240111095046-21-2024052901-pr
+          type: mem
+          value: MzA=
+    maintenance:
+      hpa:
+        - name: increase replicas6824671f089e4512b107a558c3ac81ac
+          strategy:
+            type: increase
+            value: MQ==
+          subject: tpi-ca108f6157-20240111095046-21-2024052901-pr
+          trigger: 7e00d80c23c84657a732417d74b62c21||353a2a9998ba4fd7953345226ae28f47||e0a13558038248ec8e701f8fe56d1624
+        - name: decrease replicasa9acd4f07a1541148b2085a326ce8cdf
+          strategy:
+            type: decrease
+            value: MQ==
+          subject: tpi-ca108f6157-20240111095046-21-2024052901-pr
+          trigger: 6770ae47a4c14e50aefe70d532aa1b3b&&2953148163604f31a5ae27aa31c17d3f&&61574827c92347ab8d522b70ffb555ac
+  workloadComponents:
+    - componentName: train
+      namespace: ai
+      sandbox: SecureContainer
+      workloadType: "stateless-system-service"
+      schedule:
+        monday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        tuesday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        wednesday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        thursday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        friday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        saturday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        sunday:
+          endSchedule: "9:00:00"   # 停止时间,东八区,北京时间
+          startSchedule: "19:25:00" # 启动时间,东八区,北京时间
+        startEnable: true
+        endEnable: true
+        cronEnable: true    # 周期性标识
+      module:
+        metadata:
+          labels:
+            app: train
+        spec:
+          containers:
+            - name: train       #镜像名称（必填）
+              image: "122.96.144.180:30080/ai/train:latest"    #镜像地址（必填）
+              imagePullPolicy: IfNotPresent  #如果不存在则拉取（必填）
+              env:
+                - name: EPOCHS
+                  value: "300"
+                - name: ENDPOINT
+                  value: 47.98.99.10:32001
+                - name: ACCESS_KEY
+                  value: YRSAQvxRzZ9qtVBn
+                - name: SECRET_KEY
+                  value: 5sUVeTfXiaVmahGJLm3f0wHBLiAnWM7V
+                - name: PYTHONUNBUFFERED
+                  value: "1"
+              resources:
+                limits:
+                  cpu: "8000m"
+                  memory: "16000Mi"
+                requests:
+                  cpu: "6000m"
+                  memory: "10000Mi"
+    - componentName: tpi-ca108f6157-20240111095046-21-2024052901-pr
+      fqdn: tpi-ca108f6157-20240111095046-21-2024052901-pr
+      module:
+        metadata:
+          labels:
+            app: pr
+        spec:
+          containers:
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/tpi/pr/1
+              image: 121.40.102.76:30080/tpi/pr_ca108f6157_pr_demo_20240428092624:SecureContainer
+              name: pre3
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 500Mi
+                requests:
+                  cpu: 200m
+                  memory: 500Mi
+              volumeMounts:
+                - mountPath: /dev/shm
+                  name: shm
+                - mountPath: /tmp
+                  name: usock
+            - env:
+                - name: SCNNUM
+                  value: "1"
+                - name: SCNID
+                  value: /inner-private/tpi/pr/1
+              image: 121.40.102.76:30080/tpi/pr_ca108f6157_pr_demo_20231218183940:SecureContainer
+              name: pre2
+              resources:
+                limits:
+                  cpu: 1500m
+                  memory: 3000Mi
+                requests:
+                  cpu: 1500m
+                  memory: 3000Mi
+      namespace: tpiteam
+      sandbox: SecureContainer
+      schedule:
+        cronEnable: false
+        endEnable: false
+        friday: {}
+        monday: {}
+        saturday: {}
+        startEnable: false
+        sunday: {}
+        thursday: {}
+        tuesday: {}
+        wednesday: {}
+      workloadType: stateless-system-service

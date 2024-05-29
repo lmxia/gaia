@@ -107,7 +107,7 @@ const (
 	// DefaultResync means the default resync time
 	DefaultResync               = time.Hour * 12
 	DefaultThreadiness          = 2
-	DefaultResouceBindingNumber = 2
+	DefaultResouceBindingNumber = 3
 )
 
 const (

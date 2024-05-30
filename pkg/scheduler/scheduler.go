@@ -781,7 +781,8 @@ func (sched *Scheduler) addLocalAllEventHandlers() {
 					newSub := newObj.(*appsapi.Description)
 
 					// Decide whether discovery has reported a spec change.
-					if reflect.DeepEqual(oldSub.Spec, newSub.Spec) {
+					// if reflect.DeepEqual(oldSub.Spec, newSub.Spec) {
+					if true {
 						klog.V(4).Infof("no updates on the spec of Description %s, skipping syncing",
 							klog.KObj(oldSub))
 						return

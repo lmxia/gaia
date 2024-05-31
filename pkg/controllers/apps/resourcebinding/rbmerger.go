@@ -45,6 +45,11 @@ import (
 
 type UID string
 
+const (
+	kind       = "ResourceBinding"
+	apiVersion = "apps.gaia.io/v1alpha1"
+)
+
 // RBMerger defines configuration for ResourceBindings Merger
 type RBMerger struct {
 	rbToLocalController  *resourcebindingmerger.Controller
@@ -113,7 +118,7 @@ func (m *RBMerger) RunToLocalResourceBindingMerger(workers int, stopCh <-chan st
 	defer klog.Info("Shutting local Merger Controller in global level...")
 
 	m.localToMergeGaiaInformerFactory.Start(stopCh)
-	if !cache.WaitForNamedCacheSync("to-local-resourcebinding-merger", stopCh, m.toMergeRBSynced) {
+	if !cache.WaitForNamedCacheSync("to-local-ResourceBinding-merger", stopCh, m.toMergeRBSynced) {
 		return
 	}
 	m.rbToLocalController.Run(workers, stopCh)
@@ -121,11 +126,11 @@ func (m *RBMerger) RunToLocalResourceBindingMerger(workers int, stopCh <-chan st
 }
 
 func (m *RBMerger) RunToParentResourceBindingMerger(workers int, stopCh <-chan struct{}) {
-	klog.Info("Starting to-parent-resourcebinding-merger ...")
-	defer klog.Info("Shutting to-parent-resourcebinding-merger ...")
+	klog.Info("Starting to-parent-ResourceBinding-merger ...")
+	defer klog.Info("Shutting to-parent-ResourceBinding-merger ...")
 
 	m.localToMergeGaiaInformerFactory.Start(stopCh)
-	if !cache.WaitForNamedCacheSync("to-parent-resourcebinding-merger", stopCh, m.toMergeRBSynced) {
+	if !cache.WaitForNamedCacheSync("to-parent-ResourceBinding-merger", stopCh, m.toMergeRBSynced) {
 		return
 	}
 	m.rbTOParentController.Run(workers, stopCh)
@@ -202,7 +207,7 @@ func (m *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding
 							common.ParentRBLabel:                   rbLabels[common.ParentRBLabel],
 						}).String()})
 				if err != nil {
-					klog.Errorf("failed to delete rbs in %s ", common.GaiaRSToBeMergedReservedNamespace, err)
+					klog.Errorf("failed to delete rbs in %s, error==%v", common.GaiaRSToBeMergedReservedNamespace, err)
 					return err
 				}
 				m.deleteFieldDescUID(UID(uid), indexParentRB)
@@ -223,9 +228,13 @@ func (m *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding)
 	rbLabels := rb.GetLabels()
 	descUID := rbLabels[common.OriginDescriptionUIDLabel]
 	descName := rbLabels[common.OriginDescriptionNameLabel]
+
+	if len(rb.Spec.RbApps) == 0 {
+		return m.createFrontRb(rb, rbLabels, descUID, descName)
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
-
 	indexFieldRB := descUID + "-" + rb.Name
 	indexParentRB := descUID + "-" + rb.Spec.ParentRB
 	// clustersRBsOfOneFieldRB: map[descUID-RBName]*ClustersRBs
@@ -288,7 +297,7 @@ func (m *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding)
 					common.OriginDescriptionUIDLabel:       descUID,
 				}).String()})
 		if err != nil {
-			klog.Errorf("failed to delete gaia-to-be-merged rbs", "Description",
+			klog.Errorf("failed to delete gaia-to-be-merged rbs, Description==%q, error==%v",
 				klog.KRef(common.GaiaReservedNamespace, descName), err)
 			return err
 		}
@@ -323,46 +332,96 @@ func (m *RBMerger) getMergedResourceBindings(chanResult chan []*appV1alpha1.Reso
 			descName, klog.KObj(rb))
 		return
 	}
-	index := 0
-	for rbN := range chanResult {
-		// create new result ResourceBinding
-		newResultRB := &appV1alpha1.ResourceBinding{
-			ObjectMeta: metaV1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-%d", parentRBName, index),
-				Namespace: common.GaiaRBMergedReservedNamespace,
-				Labels: map[string]string{
-					common.StatusScheduler:                 string(appV1alpha1.ResourceBindingmerged),
-					common.GaiaDescriptionLabel:            desc.Name,
-					common.OriginDescriptionNameLabel:      desc.Name,
-					common.OriginDescriptionNamespaceLabel: desc.Namespace,
-					common.OriginDescriptionUIDLabel:       string(desc.UID),
+	// has frontend app
+	if len(rb.Spec.FrontendRbs) != 0 {
+		for indF, frontRbs := range rb.Spec.FrontendRbs {
+			indEnd := 0
+			for rbN := range chanResult {
+				newResultRB := &appV1alpha1.ResourceBinding{
+					ObjectMeta: metaV1.ObjectMeta{
+						Name:      fmt.Sprintf("%s-f%d-e%d", parentRBName, indF, indEnd),
+						Namespace: common.GaiaRBMergedReservedNamespace,
+						Labels: map[string]string{
+							common.StatusScheduler:                 string(appV1alpha1.ResourceBindingmerged),
+							common.GaiaDescriptionLabel:            desc.Name,
+							common.OriginDescriptionNameLabel:      desc.Name,
+							common.OriginDescriptionNamespaceLabel: desc.Namespace,
+							common.OriginDescriptionUIDLabel:       string(desc.UID),
+							common.UserNameLabel:                   desc.GetLabels()[common.UserNameLabel],
+						},
+					},
+					Spec: appV1alpha1.ResourceBindingSpec{
+						AppID:             descName,
+						NonZeroClusterNum: rb.Spec.NonZeroClusterNum,
+						ParentRB:          rb.Spec.ParentRB,
+						FrontendRbs: []*appV1alpha1.FrontendRb{
+							frontRbs},
+						RbApps:          rbN,
+						NetworkPath:     rb.Spec.NetworkPath,
+						StatusScheduler: appV1alpha1.ResourceBindingmerged,
+					},
+				}
+				newResultRB.Kind = kind
+				newResultRB.APIVersion = apiVersion
+
+				_, err := m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
+					Create(context.TODO(), newResultRB, metaV1.CreateOptions{})
+				if err != nil {
+					klog.InfoS("ResourceBinding merged success, but failed to create", "ResourceBinding",
+						parentRBName, err)
+				} else {
+					klog.Infof("ResourceBinding %q successfully merged and %q created.", parentRBName, newResultRB.Name)
+				}
+
+				indEnd += 1
+				// limit amount
+				if indEnd > 1 {
+					break
+				}
+			}
+		}
+	} else {
+		indEnd := 0
+		for rbN := range chanResult {
+			newResultRB := &appV1alpha1.ResourceBinding{
+				ObjectMeta: metaV1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-e%d", parentRBName, indEnd),
+					Namespace: common.GaiaRBMergedReservedNamespace,
+					Labels: map[string]string{
+						common.StatusScheduler:                 string(appV1alpha1.ResourceBindingmerged),
+						common.GaiaDescriptionLabel:            desc.Name,
+						common.OriginDescriptionNameLabel:      desc.Name,
+						common.OriginDescriptionNamespaceLabel: desc.Namespace,
+						common.OriginDescriptionUIDLabel:       string(desc.UID),
+						common.UserNameLabel:                   desc.GetLabels()[common.UserNameLabel],
+					},
 				},
-			},
-			Spec: appV1alpha1.ResourceBindingSpec{
-				AppID:             descName,
-				NonZeroClusterNum: rb.Spec.NonZeroClusterNum,
-				ParentRB:          rb.Spec.ParentRB,
-				RbApps:            rbN,
-				NetworkPath:       rb.Spec.NetworkPath,
-				StatusScheduler:   appV1alpha1.ResourceBindingmerged,
-			},
-		}
-		newResultRB.Kind = "ResourceBinding"
-		newResultRB.APIVersion = "apps.gaia.io/v1alpha1"
+				Spec: appV1alpha1.ResourceBindingSpec{
+					AppID:             descName,
+					NonZeroClusterNum: rb.Spec.NonZeroClusterNum,
+					ParentRB:          rb.Spec.ParentRB,
+					RbApps:            rbN,
+					NetworkPath:       rb.Spec.NetworkPath,
+					StatusScheduler:   appV1alpha1.ResourceBindingmerged,
+				},
+			}
+			newResultRB.Kind = kind
+			newResultRB.APIVersion = apiVersion
 
-		_, err := m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
-			Create(context.TODO(), newResultRB, metaV1.CreateOptions{})
-		if err != nil {
-			klog.InfoS("ResourceBinding merged success, but failed to create", "ResourceBinding",
-				parentRBName, err)
-		} else {
-			klog.Infof("ResourceBinding %q successfully merged and %q created.", parentRBName, newResultRB.Name)
-		}
+			_, err := m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
+				Create(context.TODO(), newResultRB, metaV1.CreateOptions{})
+			if err != nil {
+				klog.InfoS("ResourceBinding merged success, but failed to create", "ResourceBinding",
+					parentRBName, err)
+			} else {
+				klog.Infof("ResourceBinding %q successfully merged and %q created.", parentRBName, newResultRB.Name)
+			}
 
-		index += 1
-		// limit amount
-		if index > 1 {
-			break
+			indEnd += 1
+			// limit amount
+			if indEnd > 1 {
+				break
+			}
 		}
 	}
 }
@@ -406,13 +465,14 @@ func (m *RBMerger) createCollectedRBs(ctx context.Context, rb *appV1alpha1.Resou
 			ParentRB:          parenRB,
 			TotalPeer:         totalPeer,
 			NonZeroClusterNum: rb.Spec.NonZeroClusterNum,
+			FrontendRbs:       rb.Spec.FrontendRbs,
 			RbApps:            rbApps,
 			NetworkPath:       rb.Spec.NetworkPath,
 			StatusScheduler:   appV1alpha1.ResourceBindingMerging,
 		},
 	}
-	newResultRB.Kind = "ResourceBinding"
-	newResultRB.APIVersion = "apps.gaia.io/v1alpha1"
+	newResultRB.Kind = kind
+	newResultRB.APIVersion = apiVersion
 	utils.CreateRBtoParentWithRetry(ctx, m.parentGaiaClient,
 		common.GaiaRSToBeMergedReservedNamespace, newResultRB)
 
@@ -525,4 +585,55 @@ func (m *RBMerger) deleteFieldDescUID(uid UID, indexParentRB string) {
 	if len(m.parentRBsOfDescUID[uid]) == 0 {
 		delete(m.parentRBsOfDescUID, uid)
 	}
+}
+
+func (m *RBMerger) createFrontRb(rb *appV1alpha1.ResourceBinding, rbLabels map[string]string, descUID,
+	descName string) error {
+	for indF, frontRbs := range rb.Spec.FrontendRbs {
+		newResultRB := &appV1alpha1.ResourceBinding{
+			ObjectMeta: metaV1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-rs-f%d", descName, indF),
+				Namespace: common.GaiaRBMergedReservedNamespace,
+				Labels: map[string]string{
+					common.StatusScheduler:                 string(appV1alpha1.ResourceBindingmerged),
+					common.GaiaDescriptionLabel:            descName,
+					common.OriginDescriptionNameLabel:      descName,
+					common.OriginDescriptionNamespaceLabel: common.GaiaReservedNamespace,
+					common.OriginDescriptionUIDLabel:       descUID,
+					common.UserNameLabel:                   rbLabels[common.UserNameLabel],
+				},
+			},
+			Spec: appV1alpha1.ResourceBindingSpec{
+				AppID: descName,
+				FrontendRbs: []*appV1alpha1.FrontendRb{
+					frontRbs},
+				StatusScheduler: appV1alpha1.ResourceBindingmerged,
+			},
+		}
+		newResultRB.Kind = kind
+		newResultRB.APIVersion = apiVersion
+		_, err := m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).
+			Create(context.TODO(), newResultRB, metaV1.CreateOptions{})
+		if err != nil {
+			klog.Errorf("failed to create Frontend ResourceBinding, Description==%q", descName)
+			return err
+		} else {
+			klog.V(5).Infof("Frontend ResourceBinding %q created successfully.", newResultRB.Name)
+		}
+
+		// delete gaia-to-be-merged rbs
+		errD := m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
+			DeleteCollection(context.TODO(), metaV1.DeleteOptions{},
+				metaV1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+					common.OriginDescriptionNameLabel:      descName,
+					common.OriginDescriptionNamespaceLabel: common.GaiaReservedNamespace,
+					common.OriginDescriptionUIDLabel:       descUID,
+				}).String()})
+		if errD != nil {
+			klog.Errorf("failed to delete gaia-to-be-merged rbs, Description==%q, error==%v",
+				klog.KRef(common.GaiaReservedNamespace, descName), errD)
+			return errD
+		}
+	}
+	return nil
 }

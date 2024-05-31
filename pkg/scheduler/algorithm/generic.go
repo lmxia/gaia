@@ -266,6 +266,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						AppID:             desc.Name,
 						NonZeroClusterNum: rbOld.Spec.NonZeroClusterNum,
 						ParentRB:          rbOld.Name,
+						FrontendRbs:       rbOld.Spec.FrontendRbs,
 						RbApps:            subRBApps,
 						TotalPeer:         getTotalPeer(len(rbForrb), common.DefaultResouceBindingNumber),
 						NetworkPath:       rbOld.Spec.NetworkPath,

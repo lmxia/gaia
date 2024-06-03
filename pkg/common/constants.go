@@ -105,9 +105,8 @@ const (
 	// DefaultRetryPeriod means the default retry period
 	DefaultRetryPeriod = 15 * time.Second
 	// DefaultResync means the default resync time
-	DefaultResync               = time.Hour * 12
-	DefaultThreadiness          = 2
-	DefaultResouceBindingNumber = 3
+	DefaultResync      = time.Hour * 12
+	DefaultThreadiness = 2
 )
 
 const (

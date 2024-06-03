@@ -353,8 +353,8 @@ func makeDeployPlans(capability []*framework.ClusterInfo, componentTotal, spread
 // makeDeployPlans make plans for specific component
 func makeUniqeDeployPlans(capability []*framework.ClusterInfo, componentTotal, spreadOver int64) mat.Matrix {
 	// 稍显突兀
-	maxRBNumberString := os.Getenv("MaxRBNumber")
-	maxRBNumber, err := strconv.Atoi(maxRBNumberString)
+	maxRBPerComponentString := os.Getenv("MaxRBPerComponent")
+	maxRBNumber, err := strconv.Atoi(maxRBPerComponentString)
 	if err != nil {
 		maxRBNumber = 2
 	}

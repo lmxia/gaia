@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,6 +51,13 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 	trace := utiltrace.New("Scheduling", utiltrace.Field{Key: "namespace", Value: desc.Namespace},
 		utiltrace.Field{Key: "name", Value: desc.Name})
 	defer trace.LogIfLong(100 * time.Millisecond)
+
+	rbsResultFinal := make([]*v1alpha1.ResourceBinding, 0)
+	maxRBNumberString := os.Getenv("MaxRBNumber")
+	maxRBNumber, err := strconv.Atoi(maxRBNumberString)
+	if err != nil {
+		maxRBNumber = 2
+	}
 
 	// 1. get backup clusters.
 	if g.cache.NumClusters() == 0 {
@@ -205,8 +214,6 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		}
 	}
 
-	rbsResultFinal := make([]*v1alpha1.ResourceBinding, 0)
-
 	// NO.2 first we should spawn rbs.
 	if desc.Namespace == common.GaiaReservedNamespace {
 		// all 5
@@ -222,14 +229,14 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				return result, errors.New("network filter can't find path for current rbs")
 			}
 		}
-		if len(rbsResultFinal) > common.DefaultResouceBindingNumber {
+		if len(rbsResultFinal) > maxRBNumber {
 			// score plugins.
 			priorityList, scoreError := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResultFinal)
 			if scoreError != nil {
 				klog.Warningf("score plugin run error %v", scoreError)
 			}
-			// select 2
-			rbsResultFinal, err = g.selectResourceBindings(priorityList, rbsResultFinal)
+			// select maxRBNumber
+			rbsResultFinal, err = g.selectResourceBindings(priorityList, rbsResultFinal, maxRBNumber)
 		}
 	} else {
 		rbIndex := 0
@@ -268,7 +275,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						ParentRB:          rbOld.Name,
 						FrontendRbs:       rbOld.Spec.FrontendRbs,
 						RbApps:            subRBApps,
-						TotalPeer:         getTotalPeer(len(rbForrb), common.DefaultResouceBindingNumber),
+						TotalPeer:         getTotalPeer(len(rbForrb), maxRBNumber),
 						NetworkPath:       rbOld.Spec.NetworkPath,
 					},
 				}
@@ -277,14 +284,14 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 				rbIndex += 1
 				rbsResult = append(rbsResult, rbNew)
 			}
-			if len(rbsResult) > common.DefaultResouceBindingNumber {
+			if len(rbsResult) > maxRBNumber {
 				// score plugins.
 				priorityList, scoreError := prioritizeResourcebindings(ctx, fwk, desc, allClusters, rbsResult)
 				if scoreError != nil {
 					klog.Warningf("score pulgin run error %v", scoreError)
 				}
 				// select prioritize
-				rbsResult, err = g.selectResourceBindings(priorityList, rbsResult)
+				rbsResult, err = g.selectResourceBindings(priorityList, rbsResult, maxRBNumber)
 			}
 			rbsResultFinal = append(rbsResultFinal, rbsResult...)
 		}
@@ -360,18 +367,24 @@ func nomalizeClusters(feasibleClusters []*framework2.ClusterInfo, allClusters []
 // selectResourceBindings takes a prioritized list of rbs and then picks a fraction of clusters
 // in a reservoir sampling manner from the clusters that had the highest score.
 func (g *genericScheduler) selectResourceBindings(rbScoreList framework.ResourceBindingScoreList,
-	result []*v1alpha1.ResourceBinding,
-) ([]*v1alpha1.ResourceBinding, error) {
+	result []*v1alpha1.ResourceBinding, maxRBNumber int) ([]*v1alpha1.ResourceBinding, error) {
 	if len(rbScoreList) == 0 {
 		return nil, fmt.Errorf("empty rbScoreList")
 	}
 	sort.Sort(rbScoreList)
 
-	// Top best 2 rbs.
+	// Top best maxRBNumber rbs.
 	selected := []*v1alpha1.ResourceBinding{
 		0: result[rbScoreList[0].Index],
 		1: result[rbScoreList[1].Index],
 	}
+
+	for i := range rbScoreList {
+		if i < maxRBNumber {
+			selected = append(selected, result[rbScoreList[i].Index])
+		}
+	}
+
 	return selected, nil
 }
 

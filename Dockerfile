@@ -9,6 +9,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-w -s" -a -installsuffix cgo -o 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-w -s" -a -installsuffix cgo -o _output/bin/gaia-scheduler cmd/gaia-scheduler/main.go
 
 FROM 121.40.102.76:30080/ci/ubuntu:18.04 as gaia
+RUN apt-get update && apt-get install -y ca-certificates
 WORKDIR /
 COPY  --from=builder /build/_output/bin/gaia .
 ENTRYPOINT ["./gaia"]

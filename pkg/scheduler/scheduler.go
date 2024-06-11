@@ -815,7 +815,8 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 						sched.parentSchedulingQueue.Forget(klog.KObj(desc).String())
 						return false
 					}
-					if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending {
+					if len(desc.Status.Phase) == 0 || desc.Status.Phase == appsapi.DescriptionPhasePending ||
+						desc.Status.Phase == appsapi.DescriptionPhaseFailure {
 						// TODO: filter scheduler name
 						return true
 					} else {

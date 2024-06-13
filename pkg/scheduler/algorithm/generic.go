@@ -374,10 +374,7 @@ func (g *genericScheduler) selectResourceBindings(rbScoreList framework.Resource
 	sort.Sort(rbScoreList)
 
 	// Top best maxRBNumber rbs.
-	selected := []*v1alpha1.ResourceBinding{
-		0: result[rbScoreList[0].Index],
-		1: result[rbScoreList[1].Index],
-	}
+	selected := make([]*v1alpha1.ResourceBinding, 0)
 
 	for i := range rbScoreList {
 		if i < maxRBNumber {

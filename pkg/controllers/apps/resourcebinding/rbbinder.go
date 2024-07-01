@@ -1060,6 +1060,7 @@ func (c *Binder) deployFrontendAPP(rb *appsV1alpha1.ResourceBinding, descName st
 				klog.KRef(common.GaiaReservedNamespace, descName), errDesc)
 			return errDesc
 		}
+		var allErrs []error
 		for _, com := range desc.Spec.FrontendComponents {
 			if len(com.Cdn) == 0 {
 				return fmt.Errorf("failed to create frontend, FrontEndAPP.cdn is nil, Description==%q, FrontendAPP==%q",
@@ -1094,9 +1095,10 @@ func (c *Binder) deployFrontendAPP(rb *appsV1alpha1.ResourceBinding, descName st
 
 					_, err := c.localGaiaClient.AppsV1alpha1().Frontends(frontEnd.Namespace).Create(context.TODO(), frontEnd,
 						metav1.CreateOptions{})
-					if err != nil && apierrors.IsNotFound(err) {
+					if err != nil {
 						klog.ErrorS(err, "failed to create Frontend", "Frontend", klog.KObj(frontEnd),
 							"Description", klog.KObj(desc))
+						allErrs = append(allErrs, err)
 					} else {
 						klog.V(5).InfoS("successfully created Frontend", "Frontend", klog.KObj(frontEnd),
 							"Description", klog.KObj(desc))
@@ -1104,6 +1106,10 @@ func (c *Binder) deployFrontendAPP(rb *appsV1alpha1.ResourceBinding, descName st
 				}
 			}
 		}
+		if len(allErrs) != 0 {
+			return utilErrors.NewAggregate(allErrs)
+		}
+
 		return nil
 	}
 

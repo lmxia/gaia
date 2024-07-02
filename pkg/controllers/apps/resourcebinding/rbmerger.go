@@ -230,7 +230,15 @@ func (m *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding)
 	descName := rbLabels[common.OriginDescriptionNameLabel]
 
 	if len(rb.Spec.RbApps) == 0 {
-		return m.createFrontRb(rb, rbLabels, descUID, descName)
+		errF := m.createFrontRb(rb, rbLabels, descUID, descName)
+		if errF != nil {
+			return errF
+		}
+		postErr := m.postMergedRBs(descName)
+		if postErr != nil {
+			return postErr
+		}
+		return nil
 	}
 
 	m.mu.Lock()

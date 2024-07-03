@@ -148,7 +148,11 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 				if err != nil {
 					return err
 				}
-				frontend.SetLabels(map[string]string{"domainCname": *cname})
+				if frontend.Labels == nil {
+					frontend.SetLabels(map[string]string{"domainCname": *cname})
+				} else {
+					frontend.GetLabels()["domainCname"] = *cname
+				}
 				frontendUpdate, errUpdate := c.gaiaClient.AppsV1alpha1().Frontends(frontend.Namespace).Update(context.TODO(),
 					frontend, metav1.UpdateOptions{})
 				if errUpdate != nil {

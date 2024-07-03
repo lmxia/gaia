@@ -976,12 +976,26 @@ func (sched *Scheduler) createFrontRBLocal(desc *appsapi.Description, rbs []*app
 
 func (sched *Scheduler) scheduleFrontend(desc *appsapi.Description) ([]*appsapi.FrontendRb, error) {
 	frontendRbs := make([]*appsapi.FrontendRb, 0)
+	var supplierName string
 	if desc.Spec.IsFrontEnd {
 		cdnSuppliers, err2 := sched.localGaiaClient.AppsV1alpha1().CdnSuppliers(common.GaiaFrontendNamespace).
 			List(context.TODO(), metav1.ListOptions{})
 		if err2 != nil {
 			klog.Errorf("failed to get cdn supplier, error==%v", err2)
 			return nil, err2
+		}
+		suppliers, errL := sched.localGaiaClient.AppsV1alpha1().CdnSuppliers(common.GaiaFrontendNamespace).List(
+			context.TODO(), metav1.ListOptions{})
+		if errL != nil || len(suppliers.Items) == 0 {
+			klog.Errorf("failed to list CdnSuppliers or no CdnSupplier existed, Description=%q",
+				klog.KObj(desc))
+			return nil, fmt.Errorf("failed to list CdnSuppliers or no CdnSupplier existed, error=%v", errL)
+		} else {
+			// 仅获取第一个supplier
+			supplierName = suppliers.Items[0].Name
+			// for _, supplier := range suppliers.Items {
+			// 	supplierName = supplier.Name
+			// }
 		}
 
 		frontendRb := appsapi.FrontendRb{
@@ -997,7 +1011,7 @@ func (sched *Scheduler) scheduleFrontend(desc *appsapi.Description) ([]*appsapi.
 				fCom2Rep[fc.ComponentName] = 1
 			}
 			supplier := appsapi.Supplier{
-				SupplierName: "aliyun",
+				SupplierName: supplierName,
 				Replicas:     fCom2Rep,
 			}
 			frontendRb.Suppliers = append(frontendRb.Suppliers, &supplier)

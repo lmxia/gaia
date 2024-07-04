@@ -2,6 +2,7 @@ package frontend
 
 import (
 	"context"
+	"encoding/base64"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -116,7 +117,13 @@ func (c *Controller) cdnAccelerateCreate(frontend *v1alpha1.Frontend, cdnStatus 
 
 func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, domain *string, cdnType *string,
 	sources *string, scope *string, frontend *v1alpha1.Frontend, cdnStatus *string) error {
+	tag0 := &cdn20180510.AddCdnDomainRequestTag{
+		Key:   tea.String(base64.StdEncoding.EncodeToString([]byte((*domain)))),
+		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((*domain)))),
+	}
 	request := &cdn20180510.AddCdnDomainRequest{
+		Tag: []*cdn20180510.AddCdnDomainRequestTag{tag0},
+
 		DomainName: domain,
 		CdnType:    cdnType,
 		Sources:    sources,

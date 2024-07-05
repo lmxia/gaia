@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lmxia/gaia/pkg/controllers/watchdog"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -92,6 +93,7 @@ type ControllerManager struct {
 
 	gaiaInformerFactory gaiainformers.SharedInformerFactory
 	kubeInformerFactory kubeinformers.SharedInformerFactory
+	clusterWatcher      *watchdog.ClusterWatcher
 }
 
 // NewControllerManager returns a new Agent.
@@ -163,6 +165,8 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		klog.Error(rbErr)
 	}
 
+	clusterWatcher := watchdog.NewClusterWatcher(localGaiaInformerFactory, localGaiaClientSet)
+
 	var cronController *cronmaster.Controller
 	var cronErr error
 	if opts.ClusterLevel == clusterLayer {
@@ -199,6 +203,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		rbMerger:            rbMerger,
 		statusManager:       statusManager,
 		frontendController:  frontendController,
+		clusterWatcher:      clusterWatcher,
 	}
 
 	metrics.Register()
@@ -265,6 +270,14 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 							return
 						}
 						controller.rbBinder.RunParentBinder(common.DefaultThreadiness, ctx.Done())
+					}()
+
+					go func() {
+						err := controller.clusterWatcher.Run(ctx.Done())
+						if err != nil {
+							klog.Info("start cluster watchdog failed.")
+							return
+						}
 					}()
 				}()
 

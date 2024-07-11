@@ -1095,7 +1095,7 @@ func (c *Binder) deployFrontendAPP(rb *appsV1alpha1.ResourceBinding, descName st
 
 					_, err := c.localGaiaClient.AppsV1alpha1().Frontends(frontEnd.Namespace).Create(context.TODO(), frontEnd,
 						metav1.CreateOptions{})
-					if err != nil {
+					if err != nil && !apierrors.IsAlreadyExists(err) {
 						klog.ErrorS(err, "failed to create Frontend", "Frontend", klog.KObj(frontEnd),
 							"Description", klog.KObj(desc))
 						allErrs = append(allErrs, err)

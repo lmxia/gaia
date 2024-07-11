@@ -117,13 +117,24 @@ func (c *Controller) cdnAccelerateCreate(frontend *v1alpha1.Frontend, cdnStatus 
 
 func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, domain *string, cdnType *string,
 	sources *string, scope *string, frontend *v1alpha1.Frontend, cdnStatus *string) error {
-	tag0 := &cdn20180510.AddCdnDomainRequestTag{
-		Key:   tea.String(base64.StdEncoding.EncodeToString([]byte((*domain)))),
+	tagDomainName := &cdn20180510.AddCdnDomainRequestTag{
+		Key:   tea.String(common.FrontendAliyunCdnTagDomainName),
 		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((*domain)))),
 	}
+	tagUserID := &cdn20180510.AddCdnDomainRequestTag{
+		Key:   tea.String(common.FrontendAliyunCdnTagUserID),
+		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((common.UserNameLabel)))),
+	}
+	tagComponentName := &cdn20180510.AddCdnDomainRequestTag{
+		Key:   tea.String(common.FrontendAliyunCdnTagComponentName),
+		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((common.GaiaComponentLabel)))),
+	}
+	tagSupplierName := &cdn20180510.AddCdnDomainRequestTag{
+		Key:   tea.String(common.FrontendAliyunCdnTagSupplierName),
+		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((frontend.Spec.Cdn[0].Supplier)))),
+	}
 	request := &cdn20180510.AddCdnDomainRequest{
-		Tag: []*cdn20180510.AddCdnDomainRequestTag{tag0},
-
+		Tag:        []*cdn20180510.AddCdnDomainRequestTag{tagDomainName, tagUserID, tagComponentName, tagSupplierName},
 		DomainName: domain,
 		CdnType:    cdnType,
 		Sources:    sources,

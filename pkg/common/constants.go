@@ -80,19 +80,23 @@ const (
 	HypernodeClusterNodeRole       = "hypernode.cluster.pml.com.cn/node-role"
 	HypernodeClusterNodeRolePublic = "Public"
 
-	FrontendAliyunCdnName            = "aliyun"
-	FrontendAliyunCdnEndpoint        = "cdn.aliyuncs.com"
-	FrontendAliyunFinalizers         = "apps.gaia.io/aliyunfinalizer"
-	FrontendAliyunCdnRegionID        = "cn-hangzhou"
-	FrontendAliyunCdnExist           = true
-	FrontendAliyunCdnNoExist         = false
-	FrontendAliyunDNSCnameExist      = true
-	FrontendAliyunDNSCnameNoExist    = false
-	FrontendAliyunCdnOnlineStatus    = "online"
-	FrontendAliyunCdnConfigureStatus = "configuring"
-	FrontendAliyunCdnVhostKind       = "Vhost"
-	FrontendAliyunCdnVhostAPIVersion = "frontend.pml.com.cn/v1"
-	FrontendAliyunCdnVhostFinalizer  = "apps.gaia.io/vhostfinalizer"
+	FrontendAliyunCdnName             = "aliyun"
+	FrontendAliyunCdnEndpoint         = "cdn.aliyuncs.com"
+	FrontendAliyunFinalizers          = "apps.gaia.io/aliyunfinalizer"
+	FrontendAliyunCdnRegionID         = "cn-hangzhou"
+	FrontendAliyunCdnExist            = true
+	FrontendAliyunCdnNoExist          = false
+	FrontendAliyunDNSCnameExist       = true
+	FrontendAliyunDNSCnameNoExist     = false
+	FrontendAliyunCdnOnlineStatus     = "online"
+	FrontendAliyunCdnConfigureStatus  = "configuring"
+	FrontendAliyunCdnVhostKind        = "Vhost"
+	FrontendAliyunCdnVhostAPIVersion  = "frontend.pml.com.cn/v1"
+	FrontendAliyunCdnVhostFinalizer   = "apps.gaia.io/vhostfinalizer"
+	FrontendAliyunCdnTagUserID        = "userID"
+	FrontendAliyunCdnTagComponentName = "componentName"
+	FrontendAliyunCdnTagSupplierName  = "supplierName"
+	FrontendAliyunCdnTagDomainName    = "domainName"
 
 	FrontendAliyunCdnSleepWait  = 1000
 	FrontendAliyunCdnSleepError = 2000

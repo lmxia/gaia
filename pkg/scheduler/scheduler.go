@@ -336,6 +336,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 
 	desc, err := sched.localDescLister.Descriptions(ns).Get(name)
 	if err != nil {
+		sched.localSchedulingQueue.AddRateLimited(klog.KRef(ns, name).String())
 		utilruntime.HandleError(err)
 		return
 	}

@@ -979,11 +979,8 @@ func (sched *Scheduler) scheduleFrontend(desc *appsapi.Description) ([]*appsapi.
 	frontendRbs := make([]*appsapi.FrontendRb, 0)
 	var supplierName string
 	if desc.Spec.IsFrontEnd {
-		cdnSuppliers, err2 := sched.localGaiaClient.AppsV1alpha1().CdnSuppliers(common.GaiaFrontendNamespace).
-			List(context.TODO(), metav1.ListOptions{})
-		if err2 != nil {
-			klog.Errorf("failed to get cdn supplier, error==%v", err2)
-			return nil, err2
+		if len(desc.Spec.FrontendComponents) == 0 {
+			return frontendRbs, nil
 		}
 		suppliers, errL := sched.localGaiaClient.AppsV1alpha1().CdnSuppliers(common.GaiaFrontendNamespace).List(
 			context.TODO(), metav1.ListOptions{})
@@ -992,31 +989,37 @@ func (sched *Scheduler) scheduleFrontend(desc *appsapi.Description) ([]*appsapi.
 				klog.KObj(desc))
 			return nil, fmt.Errorf("failed to list CdnSuppliers or no CdnSupplier existed, error=%v", errL)
 		} else {
-			// 仅获取第一个supplier
-			supplierName = suppliers.Items[0].Name
-			// for _, supplier := range suppliers.Items {
-			// 	supplierName = supplier.Name
-			// }
+			var supplierNames []string
+			for _, supplier := range suppliers.Items {
+				supplierNames = append(supplierNames, supplier.Name)
+			}
+			for _, fCom := range desc.Spec.FrontendComponents {
+				for _, fCDN := range fCom.Cdn {
+					if !utils.ContainsString(supplierNames, fCDN.Supplier) {
+						klog.Errorf("CDN.Supplier not exists locally, Description.FrontendComponent=%q.%q,"+
+							" CDN.Supplier=%q", desc.Name, fCom.ComponentName, fCDN.Supplier)
+						return nil, fmt.Errorf("CDN.Supplier not exists locally, "+
+							"Description.FrontendComponent=%q.%q, CDN.Supplier=%q",
+							desc.Name, fCom.ComponentName, fCDN.Supplier)
+					}
+				}
+				supplierName = fCom.Cdn[0].Supplier
+			}
 		}
 
 		frontendRb := appsapi.FrontendRb{
 			Suppliers: make([]*appsapi.Supplier, 0),
 		}
-		if len(cdnSuppliers.Items) == 0 {
-			klog.Errorf("no cdn supplier, error==%v", err2)
-			return nil, fmt.Errorf("no cdn supplier in cluster")
-		} else if len(desc.Spec.FrontendComponents) != 0 {
-			fCom2Rep := make(map[string]int32)
-			// 暂时仅支持 多frontComponent, 单个supplier
-			for _, fc := range desc.Spec.FrontendComponents {
-				fCom2Rep[fc.ComponentName] = 1
-			}
-			supplier := appsapi.Supplier{
-				SupplierName: supplierName,
-				Replicas:     fCom2Rep,
-			}
-			frontendRb.Suppliers = append(frontendRb.Suppliers, &supplier)
+		fCom2Rep := make(map[string]int32)
+		// 暂时仅支持 多frontComponent, 单个supplier
+		for _, fc := range desc.Spec.FrontendComponents {
+			fCom2Rep[fc.ComponentName] = 1
 		}
+		supplier := appsapi.Supplier{
+			SupplierName: supplierName,
+			Replicas:     fCom2Rep,
+		}
+		frontendRb.Suppliers = append(frontendRb.Suppliers, &supplier)
 		frontendRbs = append(frontendRbs, &frontendRb)
 	}
 	return frontendRbs, nil

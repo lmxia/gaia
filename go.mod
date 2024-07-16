@@ -20,6 +20,7 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/pkg/errors v0.9.1
+	github.com/dixudx/yacht v0.8.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.37.0
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5

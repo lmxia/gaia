@@ -123,11 +123,11 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 	}
 	tagUserID := &cdn20180510.AddCdnDomainRequestTag{
 		Key:   tea.String(common.FrontendAliyunCdnTagUserID),
-		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((common.UserNameLabel)))),
+		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((frontend.Labels[common.UserNameLabel])))),
 	}
 	tagComponentName := &cdn20180510.AddCdnDomainRequestTag{
 		Key:   tea.String(common.FrontendAliyunCdnTagComponentName),
-		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((common.GaiaComponentLabel)))),
+		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((frontend.Labels[common.GaiaComponentLabel])))),
 	}
 	tagSupplierName := &cdn20180510.AddCdnDomainRequestTag{
 		Key:   tea.String(common.FrontendAliyunCdnTagSupplierName),

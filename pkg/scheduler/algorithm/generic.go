@@ -54,9 +54,10 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 
 	rbsResultFinal := make([]*v1alpha1.ResourceBinding, 0)
 	maxRBNumberString := os.Getenv("MaxRBNumber")
-	maxRBNumber, err := strconv.Atoi(maxRBNumberString)
-	if err != nil {
+	maxRBNumber, errC := strconv.Atoi(maxRBNumberString)
+	if errC != nil {
 		maxRBNumber = 2
+		klog.V(5).Info("MaxRBNumber set default value: 2")
 	}
 
 	// 1. get backup clusters.
@@ -438,8 +439,7 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 
 // findClustersThatPassFilters finds the clusters that fit the filter plugins.
 func (g *genericScheduler) findClustersThatPassFilters(ctx context.Context, fwk framework.Framework,
-	com *v1alpha1.Component, diagnosis framework.Diagnosis,
-	clusters []*clusterapi.ManagedCluster,
+	com *v1alpha1.Component, diagnosis framework.Diagnosis, clusters []*clusterapi.ManagedCluster,
 ) ([]*clusterapi.ManagedCluster, error) {
 	if !fwk.HasFilterPlugins() {
 		return clusters, nil

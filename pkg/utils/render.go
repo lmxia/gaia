@@ -14,6 +14,14 @@ import (
 	known "github.com/lmxia/gaia/pkg/common"
 )
 
+type gpuResource struct {
+	GPUProduct   string `json:"gpuProduct"`
+	GPUCount     int    `json:"gpuCount"`
+	GPUMemory    int    `json:"gpuMemory"`
+	ScheduleType string `json:"scheduleType"`
+	GpuIsolate   bool   `json:"gpuIsolate"`
+}
+
 func HugeComponentToCommanComponent(hugeComponent *appsv1alpha1.HugeComponent) *appsv1alpha1.Component {
 	component := &appsv1alpha1.Component{
 		Name:           hugeComponent.GroupName,
@@ -277,7 +285,10 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition,
 // SchedulePolicyReflect reflect the condition to MatchExpressions according to the different schedule policy
 func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector) *metav1.LabelSelector {
 	var extentStr []string
-	if condition.Object.Type == "label" && condition.Subject.Type == known.TypeComponent {
+	if condition.Subject.Type != known.TypeComponent {
+		return spLevel
+	}
+	if condition.Object.Type == "label" {
 		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
 		_ = json.Unmarshal(condition.Extent, &extentStr)
 		klog.V(5).Infof("after unmarshal,extent is %v", extentStr)
@@ -288,6 +299,40 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 		}
 		spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
 	}
+	if condition.Object.Type == "resources" && condition.Object.Name == "gpuRequest" {
+		var gpuRequest gpuResource
+		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
+		_ = json.Unmarshal(condition.Extent, &gpuRequest)
+		klog.V(5).Infof("after unmarshal,extent is %+v", gpuRequest)
+
+		if gpuRequest.GPUProduct != "" {
+			req := metav1.LabelSelectorRequirement{
+				Key:      known.GPUProductLabel,
+				Operator: metav1.LabelSelectorOperator(condition.Relation),
+				Values:   []string{gpuRequest.GPUProduct},
+			}
+			spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
+		}
+		// 要参与运算
+		// if gpuRequest.GPUCount != 0 {
+		// 	req := metav1.LabelSelectorRequirement{
+		// 		Key:      known.GPUCountLabel,
+		// 		Operator: metav1.labelselectorOp, // Gt
+		// 		Values:   gpuRequest.GPUCount,
+		// 	}
+		// 	spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
+		// }
+		// if gpuRequest.GPUMemory != 0 {
+		// 	req := metav1.LabelSelectorRequirement{
+		// 		Key:      known.GPUMemoryLabel,
+		// 		Operator: metav1.labelselectorOp,
+		// 		Values:   gpuRequest.GPUMemory,
+		// 	}
+		// 	spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
+		// }
+		// add request to template label
+	}
+
 	return spLevel
 }
 

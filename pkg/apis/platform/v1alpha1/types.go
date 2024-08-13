@@ -398,11 +398,12 @@ type Fields struct {
 
 // GetHypernodeLabelsMapFromManagedCluster  returns hypernode labels of the current cluster from the managedCluster
 func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap,
-	runtimeStateMap, snMap, geolocationMap, providers, floatingIPMap map[string]struct{}) {
+	runtimeStateMap, snMap, geolocationMap, providers, floatingIPMap, gpuProductMap map[string]struct{},
+) {
 	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers,
-		floatingIPMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
+		floatingIPMap, gpuProductMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
 		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
-		make(map[string]struct{})
+		make(map[string]struct{}), make(map[string]struct{})
 	var labelValueArray []string
 	clusterLabels := cluster.GetLabels()
 	for labelKey, labelValue := range clusterLabels {
@@ -437,17 +438,19 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 				providers[labelValue] = struct{}{}
 			case strings.HasPrefix(labelKey, ParsedHasFloatingIPKey):
 				floatingIPMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedGPUProductKey):
+				gpuProductMap[labelValue] = struct{}{}
 			}
 		}
 	}
 	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap,
-		providers, floatingIPMap
+		providers, floatingIPMap, gpuProductMap
 }
 
 // GetGaiaLabels return gaia type labels.
 func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap,
-		floatingIPMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
+		floatingIPMap, gpuProductMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
 	clusterLabels := make(map[string][]string, 0)
 
 	// no.1
@@ -498,6 +501,12 @@ func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 		hasFloatingIPs = append(hasFloatingIPs, k)
 	}
 	clusterLabels["has-floating-ip"] = hasFloatingIPs
+	// gpuProduct
+	gpuProducts := make([]string, 0, len(gpuProductMap))
+	for k := range gpuProductMap {
+		gpuProducts = append(gpuProducts, k)
+	}
+	clusterLabels["gpu-product"] = gpuProducts
 
 	return clusterLabels
 }
@@ -511,6 +520,7 @@ var (
 	SNKey             = common.SpecificNodeLabelsKeyPrefix + "SN"
 	NetworkEnvKey     = common.SpecificNodeLabelsKeyPrefix + "SupplierName"
 	HasFloatingIPKey  = common.SpecificNodeLabelsKeyPrefix + "HasFloatingIP"
+	GPUProductKey     = common.SpecificNodeLabelsKeyPrefix + "GPUProduct"
 
 	HypernodeLableKeyList = []string{
 		GeoLocationKey,
@@ -521,6 +531,7 @@ var (
 		SNKey,
 		NetworkEnvKey,
 		HasFloatingIPKey,
+		GPUProductKey,
 	}
 
 	ParsedGeoLocationKey    = common.SpecificNodeLabelsKeyPrefix + "geo-location"
@@ -531,6 +542,7 @@ var (
 	ParsedSNKey             = common.SpecificNodeLabelsKeyPrefix + "sn"
 	ParsedProviderKey       = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
 	ParsedHasFloatingIPKey  = common.SpecificNodeLabelsKeyPrefix + "has-floating-ip"
+	ParsedGPUProductKey     = common.SpecificNodeLabelsKeyPrefix + "gpu-product"
 
 	ParsedHypernodeLableKeyList = []string{
 		ParsedGeoLocationKey,
@@ -541,6 +553,7 @@ var (
 		ParsedSNKey,
 		ParsedProviderKey,
 		ParsedHasFloatingIPKey,
+		ParsedGPUProductKey,
 	}
 
 	HypernodeLableKeyToStandardLabelKey = map[string]string{
@@ -552,5 +565,6 @@ var (
 		SNKey:             ParsedSNKey,
 		NetworkEnvKey:     ParsedProviderKey,
 		HasFloatingIPKey:  ParsedHasFloatingIPKey,
+		GPUProductKey:     ParsedGPUProductKey,
 	}
 )

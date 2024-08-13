@@ -36,8 +36,8 @@ const (
 	RBMergerLabel             = "clusters.gaia.io/merger"
 	CredentialsAuto           = "credentials-auto"
 
-	AppsNameLabel = "apps.gaia.io/description-name"
-	AppFinalizer  = "apps.gaia.io/finalizer"
+	GaiaAppsLabelPrefix = "apps.gaia.io/"
+	AppFinalizer        = "apps.gaia.io/finalizer"
 
 	DefaultClusterStatusCollectFrequency = 20 * time.Second
 	DefaultClusterStatusReportFrequency  = 3 * time.Minute
@@ -97,6 +97,13 @@ const (
 	FrontendAliyunCdnTagComponentName = "componentName"
 	FrontendAliyunCdnTagSupplierName  = "supplierName"
 	FrontendAliyunCdnTagDomainName    = "domainName"
+
+	// GPU Resources
+	GPUProductLabel      = "gpuProduct"
+	GPUCountLabel        = "gpuCount"
+	GPUMemoryLabel       = "gpuMemory"
+	GPUscheduleTypeLabel = "scheduleType"
+	GPUIsolateLabel      = "gpuIsolate"
 
 	FrontendAliyunCdnSleepWait  = 1000
 	FrontendAliyunCdnSleepError = 2000

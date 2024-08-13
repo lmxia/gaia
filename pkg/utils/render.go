@@ -19,7 +19,7 @@ type gpuResource struct {
 	GPUCount     int    `json:"gpuCount"`
 	GPUMemory    int    `json:"gpuMemory"`
 	ScheduleType string `json:"scheduleType"`
-	GpuIsolate   bool   `json:"gpuIsolate"`
+	GPUIsolate   bool   `json:"gpuIsolate"`
 }
 
 func HugeComponentToCommanComponent(hugeComponent *appsv1alpha1.HugeComponent) *appsv1alpha1.Component {
@@ -253,8 +253,11 @@ func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alp
 							MatchExpressions: nil,
 						}
 					}
+					if components[index].Module.Annotations == nil {
+						components[index].Module.Annotations = make(map[string]string)
+					}
 					components[index].SchedulePolicy.Level[spl] = SchedulePolicyReflect(condition,
-						components[index].SchedulePolicy.Level[spl])
+						components[index].SchedulePolicy.Level[spl], components[index].Module.Annotations)
 				}
 			}
 		}
@@ -283,7 +286,8 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition,
 }
 
 // SchedulePolicyReflect reflect the condition to MatchExpressions according to the different schedule policy
-func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector) *metav1.LabelSelector {
+func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector, anno map[string]string,
+) *metav1.LabelSelector {
 	var extentStr []string
 	if condition.Subject.Type != known.TypeComponent {
 		return spLevel
@@ -312,6 +316,7 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 				Values:   []string{gpuRequest.GPUProduct},
 			}
 			spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
+			anno[known.GPUProductLabel] = gpuRequest.GPUProduct
 		}
 		// 要参与运算
 		// if gpuRequest.GPUCount != 0 {

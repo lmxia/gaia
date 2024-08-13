@@ -924,7 +924,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			}
 			dep.Name = comCopy.Name
 			if !delete {
-				dep.Spec.Template = comCopy.Module
+				dep.Spec.Template = getPodTemplate(comCopy.Module)
 				nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
 				dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
@@ -978,6 +978,10 @@ func getTemLabel(com *appsv1alpha1.Component, depLabels map[string]string) map[s
 	}
 
 	return newLabels
+}
+
+func getPodTemplate(model corev1.PodTemplateSpec) corev1.PodTemplateSpec {
+	return model
 }
 
 func addNodeSelector(comCopy *appsv1alpha1.Component, src map[string]string) map[string]string {

@@ -99,7 +99,7 @@ const (
 	FrontendAliyunCdnTagDomainName    = "domainName"
 
 	// GPU Resources
-	GPUProductLabel      = "gpuProduct"
+	GPUProductLabel      = "gpu-product"
 	GPUCountLabel        = "gpuCount"
 	GPUMemoryLabel       = "gpuMemory"
 	GPUscheduleTypeLabel = "scheduleType"

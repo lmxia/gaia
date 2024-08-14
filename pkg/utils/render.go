@@ -257,7 +257,7 @@ func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alp
 						components[index].Module.Annotations = make(map[string]string)
 					}
 					components[index].SchedulePolicy.Level[spl] = SchedulePolicyReflect(condition,
-						components[index].SchedulePolicy.Level[spl], components[index].Module.Annotations)
+						components[index].SchedulePolicy.Level[spl], components[index].Module)
 				}
 			}
 		}
@@ -286,8 +286,8 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition,
 }
 
 // SchedulePolicyReflect reflect the condition to MatchExpressions according to the different schedule policy
-func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector, anno map[string]string,
-) *metav1.LabelSelector {
+func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector,
+	model corev1.PodTemplateSpec) *metav1.LabelSelector {
 	var extentStr []string
 	if condition.Subject.Type != known.TypeComponent {
 		return spLevel
@@ -316,7 +316,12 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 				Values:   []string{gpuRequest.GPUProduct},
 			}
 			spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
-			anno[known.GPUProductLabel] = gpuRequest.GPUProduct
+			model.Annotations[known.SpecificNodeLabelsKeyPrefix+known.GPUProductLabel] = gpuRequest.GPUProduct
+			// multi containers
+			model.Spec.Containers[0].Resources.Requests["nvidia.com/gpu"] =
+				*resource.NewQuantity(int64(gpuRequest.GPUCount), resource.DecimalSI)
+			model.Spec.Containers[0].Resources.Limits["nvidia.com/gpu"] =
+				*resource.NewQuantity(int64(gpuRequest.GPUCount), resource.DecimalSI)
 		}
 		// 要参与运算
 		// if gpuRequest.GPUCount != 0 {

@@ -493,7 +493,10 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		klog.Info("scheduler success just change rb namespace.")
 	} else {
 		scheduleResult, err2 := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
-		if err2 != nil {
+		if err2 != nil || len(scheduleResult.ResourceBindings) == 0 {
+			if err2 == nil {
+				err2 = fmt.Errorf("rbs of scheduleResult is empty, Description==%q", klog.KObj(desc))
+			}
 			sched.recordParentSchedulingFailure(desc, err2, ReasonUnschedulable)
 			desc.Status.Phase = appsapi.DescriptionPhaseFailure
 			desc.Status.Reason = truncateMessage(err2.Error())
@@ -1063,7 +1066,8 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, des
 		_, errCreate := dstClient.AppsV1alpha1().ResourceBindings(dstNS).
 			Create(ctx, rb, metav1.CreateOptions{})
 		if errCreate != nil {
-			klog.Infof("create rb in local to be merged ns error", errCreate)
+			klog.Errorf("failed to create rb to gaia-to-be-merged ns, error=%v, Description=%q",
+				errCreate, descName)
 		} else {
 			klog.InfoS("successfully created rb", "Description", descName, "ResourceBinding",
 				klog.KRef(rb.GetNamespace(), rb.GetName()))

@@ -583,6 +583,9 @@ func (c *Binder) handleLocalResourceBinding(rb *appsV1alpha1.ResourceBinding) er
 
 func (c *Binder) handleParentResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
 	klog.V(5).Infof("handleParentResourceBinding: handle resourceBinding %q ...", klog.KObj(rb))
+	if len(rb.Spec.RbApps) == 0 {
+		return nil
+	}
 	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
 		var clusterName, descNs string
 		var err error

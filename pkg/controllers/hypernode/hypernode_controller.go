@@ -195,7 +195,7 @@ func (c *Controller) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item, so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		klog.Infof("successfully synced Hypernode %q", key)
+		klog.V(5).Infof("successfully synced Hypernode %q", key)
 		return nil
 	}(obj)
 	if err != nil {
@@ -221,7 +221,7 @@ func (c *Controller) sync(key string) error {
 		return err
 	}
 
-	klog.InfoS("Started syncing Hypernode.", "Hypernode", klog.KRef(namespace, name))
+	klog.V(5).InfoS("Started syncing Hypernode.", "Hypernode", klog.KRef(namespace, name))
 	// Get the ClusterRegistrationRequest resource with this name
 	hyperNode, err := c.parentHypernodeLister.Hypernodes(namespace).Get(name)
 	// The ClusterRegistrationRequest resource may no longer exist, in which case we stop processing.
@@ -303,7 +303,7 @@ func (c *Controller) syncHypernode(hyperNode *clusterv1alpha1.Hypernode) error {
 			c.recorder.Event(hyperNode, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 			return errCreate
 		} else {
-			klog.InfoS("this Hypernode not belong to this cluster", "Hypernode", klog.KObj(hyperNode),
+			klog.V(5).InfoS("this Hypernode not belong to this cluster", "Hypernode", klog.KObj(hyperNode),
 				"MyAreaName", hyperNode.Spec.MyAreaName, "SupervisorName", hyperNode.Spec.SupervisorName,
 				"LocalClusterName", c.gaiaClusterName)
 		}

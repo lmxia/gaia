@@ -56,11 +56,12 @@ func NewController(gaiaClient gaiaClientSet.Interface, descInformer appInformers
 	}
 
 	c := &Controller{
-		gaiaClient:      gaiaClient,
-		descLister:      descInformer.Lister(),
-		descSynced:      descInformer.Informer().HasSynced,
-		rbSynced:        rbInformer.Informer().HasSynced,
-		workqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "description"),
+		gaiaClient: gaiaClient,
+		descLister: descInformer.Lister(),
+		descSynced: descInformer.Informer().HasSynced,
+		rbSynced:   rbInformer.Informer().HasSynced,
+		workqueue: workqueue.NewNamedRateLimitingQueue(
+			workqueue.NewItemExponentialFailureRateLimiter(time.Second, 100*time.Second), "description"),
 		syncHandlerFunc: syncHandler,
 	}
 

@@ -153,7 +153,8 @@ func NewController(gaiaClient gaiaClientSet.Interface, informer informers.Resour
 		Lister:     informer.Lister(),
 		Synced:     informer.Informer().HasSynced,
 		workqueue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(), "resource-binding-requests"),
+			workqueue.NewItemExponentialFailureRateLimiter(time.Second, 100*time.Second),
+			"resource-binding-requests"),
 		SyncHandler: syncHandler,
 	}
 

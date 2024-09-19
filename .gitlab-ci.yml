@@ -1,6 +1,6 @@
 variables:
-  VERSION: "v2.1.2"
-  CHARTVERSION: "v2.1.2"
+  VERSION: "v2.1.3"
+  CHARTVERSION: "v2.1.3"
   REGISTRY: "121.40.102.76:30080"
   APPGAIA: "gaia"
   APPGAIASCHEDULER: "gaia-scheduler"

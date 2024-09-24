@@ -155,6 +155,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		}
 
 		if desc.Namespace == common.GaiaReservedNamespace {
+			klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
 			if len(feasibleClusters) == 0 {
 				return result, &framework.FitError{
 					Description:    desc,
@@ -162,8 +163,8 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 					Diagnosis:      diagnosis,
 				}
 			}
-			klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
 		}
+
 		allPlan := nomalizeClusters(feasibleClusters, allClusters)
 		// desc come from reserved namespace, that means no resource bindings
 		if desc.Namespace == common.GaiaReservedNamespace {
@@ -191,6 +192,14 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		} else {
 			for j, rb := range rbs {
 				replicas := getComponentClusterTotal(rb.Spec.RbApps, g.cache.GetSelfClusterName(), comm.Name)
+				if replicas != 0 && len(feasibleClusters) == 0 {
+					klog.V(5).Infof("component:%v feasibleClusters is %+v", comm.Name, feasibleClusters)
+					return result, &framework.FitError{
+						Description:    desc,
+						NumAllClusters: g.cache.NumClusters(),
+						Diagnosis:      diagnosis,
+					}
+				}
 				for k := range spreadLevels {
 					switch comm.Workload.Workloadtype {
 					case v1alpha1.WorkloadTypeDeployment:

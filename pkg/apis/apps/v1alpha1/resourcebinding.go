@@ -1,6 +1,8 @@
 package v1alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -84,9 +86,27 @@ type ResourceBindingStatus struct {
 	// +optional
 	Status StatusRBDeploy `json:"status,omitempty"`
 	// +optional
+	WorkloadStatus []ComStatus `json:"workloadStatus,omitempty"`
+	// +optional
 	Clusters map[string]StatusRBDeploy `json:"clusters,omitempty"`
 	// +optional
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
+}
+
+type ComStatus struct {
+	// +optional
+	ComponentName string       `json:"componentName,omitempty"`
+	Clusters      []ComCluster `json:"clusters,omitempty"`
+}
+
+type ComCluster struct {
+	// +optional
+	ClusterName string `json:"clusterName,omitempty"`
+	DeployMsg   string `json:"deployMsg,omitempty"`
+	// map[podName]status
+	// PodsStatus map[string]string `json:"podsStatus,omitempty"`
+	// map[serviceName]string
+	ServiceIP map[string]string `json:"serviceIP,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -410,14 +410,21 @@ type Fields struct {
 }
 
 // GetHypernodeLabelsMapFromManagedCluster  returns hypernode labels of the current cluster from the managedCluster
-func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnvironmentMap, nodeRoleMap, resFormMap,
-	runtimeStateMap, snMap, geolocationMap, providers, floatingIPMap, gpuProductMap map[string]struct{},
+func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap,
+	providers, floatingIPMap, gpuProductMap, clusterNameMap, internalNetworkCapMap,
+	pricelevelMap map[string]struct{},
 ) {
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providers,
-		floatingIPMap, gpuProductMap = make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
-		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap =
+		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
 		make(map[string]struct{}), make(map[string]struct{})
+	geolocationMap, providers, floatingIPMap, gpuProductMap =
+		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
+		make(map[string]struct{})
+	clusterNameMap, internalNetworkCapMap, pricelevelMap =
+		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
 	var labelValueArray []string
+
 	clusterLabels := cluster.GetLabels()
 	for labelKey, labelValue := range clusterLabels {
 		if strings.HasPrefix(labelKey, common.SpecificNodeLabelsKeyPrefix) {
@@ -453,17 +460,25 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (netEnv
 				floatingIPMap[labelValue] = struct{}{}
 			case strings.HasPrefix(labelKey, ParsedGPUProductKey):
 				gpuProductMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedClusterNameKey):
+				clusterNameMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedInternalNetworkCapKey):
+				internalNetworkCapMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedPricelevelKey):
+				pricelevelMap[labelValue] = struct{}{}
 			}
 		}
 	}
 	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap,
-		providers, floatingIPMap, gpuProductMap
+		providers, floatingIPMap, gpuProductMap, clusterNameMap, internalNetworkCapMap,
+		pricelevelMap
 }
 
 // GetGaiaLabels return gaia type labels.
 func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap,
-		floatingIPMap, gpuProductMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
+		floatingIPMap, gpuProductMap, clusterNameMap, internalNetworkCapMap, pricelevelMap :=
+		cluster.GetHypernodeLabelsMapFromManagedCluster()
 	clusterLabels := make(map[string][]string, 0)
 
 	// no.1
@@ -521,6 +536,25 @@ func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 	}
 	clusterLabels["gpu-product"] = gpuProducts
 
+	// cluster-name
+	clusterNames := make([]string, 0, len(clusterNameMap))
+	for k := range clusterNameMap {
+		clusterNames = append(clusterNames, k)
+	}
+	clusterLabels["cluster-name"] = clusterNames
+	// internal-network-cap
+	internalNetworkCaps := make([]string, 0, len(internalNetworkCapMap))
+	for k := range internalNetworkCapMap {
+		internalNetworkCaps = append(internalNetworkCaps, k)
+	}
+	clusterLabels["internal-network-cap"] = internalNetworkCaps
+	// price-level
+	priceLevels := make([]string, 0, len(pricelevelMap))
+	for k := range pricelevelMap {
+		priceLevels = append(priceLevels, k)
+	}
+	clusterLabels["price-level"] = priceLevels
+
 	return clusterLabels
 }
 
@@ -534,6 +568,10 @@ var (
 	NetworkEnvKey     = common.SpecificNodeLabelsKeyPrefix + "SupplierName"
 	HasFloatingIPKey  = common.SpecificNodeLabelsKeyPrefix + "HasFloatingIP"
 	GPUProductKey     = common.SpecificNodeLabelsKeyPrefix + "GPUProduct"
+	// dsxs
+	ClusterNameKey        = common.SpecificNodeLabelsKeyPrefix + "ClusterName"
+	InternalNetworkCapKey = common.SpecificNodeLabelsKeyPrefix + "InternalNetworkCap"
+	PricelevelKey         = common.SpecificNodeLabelsKeyPrefix + "Pricelevel"
 
 	HypernodeLableKeyList = []string{
 		GeoLocationKey,
@@ -545,17 +583,23 @@ var (
 		NetworkEnvKey,
 		HasFloatingIPKey,
 		GPUProductKey,
+		ClusterNameKey,
+		InternalNetworkCapKey,
+		PricelevelKey,
 	}
 
-	ParsedGeoLocationKey    = common.SpecificNodeLabelsKeyPrefix + "geo-location"
-	ParsedNetEnvironmentKey = common.SpecificNodeLabelsKeyPrefix + "net-environment"
-	ParsedNodeRoleKey       = common.SpecificNodeLabelsKeyPrefix + "node-role"
-	ParsedResFormKey        = common.SpecificNodeLabelsKeyPrefix + "res-form"
-	ParsedRuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "runtime-state"
-	ParsedSNKey             = common.SpecificNodeLabelsKeyPrefix + "sn"
-	ParsedProviderKey       = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
-	ParsedHasFloatingIPKey  = common.SpecificNodeLabelsKeyPrefix + "has-floating-ip"
-	ParsedGPUProductKey     = common.SpecificNodeLabelsKeyPrefix + "gpu-product"
+	ParsedGeoLocationKey        = common.SpecificNodeLabelsKeyPrefix + "geo-location"
+	ParsedNetEnvironmentKey     = common.SpecificNodeLabelsKeyPrefix + "net-environment"
+	ParsedNodeRoleKey           = common.SpecificNodeLabelsKeyPrefix + "node-role"
+	ParsedResFormKey            = common.SpecificNodeLabelsKeyPrefix + "res-form"
+	ParsedRuntimeStateKey       = common.SpecificNodeLabelsKeyPrefix + "runtime-state"
+	ParsedSNKey                 = common.SpecificNodeLabelsKeyPrefix + "sn"
+	ParsedProviderKey           = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
+	ParsedHasFloatingIPKey      = common.SpecificNodeLabelsKeyPrefix + "has-floating-ip"
+	ParsedGPUProductKey         = common.SpecificNodeLabelsKeyPrefix + "gpu-product"
+	ParsedClusterNameKey        = common.SpecificNodeLabelsKeyPrefix + "cluster-name"
+	ParsedInternalNetworkCapKey = common.SpecificNodeLabelsKeyPrefix + "internal-network-cap"
+	ParsedPricelevelKey         = common.SpecificNodeLabelsKeyPrefix + "price-level"
 
 	ParsedHypernodeLableKeyList = []string{
 		ParsedGeoLocationKey,
@@ -570,14 +614,17 @@ var (
 	}
 
 	HypernodeLableKeyToStandardLabelKey = map[string]string{
-		GeoLocationKey:    ParsedGeoLocationKey,
-		NetEnvironmentKey: ParsedNetEnvironmentKey,
-		NodeRoleKey:       ParsedNodeRoleKey,
-		ResFormKey:        ParsedResFormKey,
-		RuntimeStateKey:   ParsedRuntimeStateKey,
-		SNKey:             ParsedSNKey,
-		NetworkEnvKey:     ParsedProviderKey,
-		HasFloatingIPKey:  ParsedHasFloatingIPKey,
-		GPUProductKey:     ParsedGPUProductKey,
+		GeoLocationKey:        ParsedGeoLocationKey,
+		NetEnvironmentKey:     ParsedNetEnvironmentKey,
+		NodeRoleKey:           ParsedNodeRoleKey,
+		ResFormKey:            ParsedResFormKey,
+		RuntimeStateKey:       ParsedRuntimeStateKey,
+		SNKey:                 ParsedSNKey,
+		NetworkEnvKey:         ParsedProviderKey,
+		HasFloatingIPKey:      ParsedHasFloatingIPKey,
+		GPUProductKey:         ParsedGPUProductKey,
+		ClusterNameKey:        ParsedClusterNameKey,
+		InternalNetworkCapKey: ParsedInternalNetworkCapKey,
+		PricelevelKey:         ParsedPricelevelKey,
 	}
 )

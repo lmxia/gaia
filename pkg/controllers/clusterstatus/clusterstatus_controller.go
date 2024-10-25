@@ -295,7 +295,7 @@ func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) ma
 			if labelKey == clusterapi.ParsedSNKey || labelKey == clusterapi.ParsedGeoLocationKey ||
 				labelKey == clusterapi.ParsedProviderKey {
 				nodeLabels[labelKey+"__"+nodeName] = labelValue
-			} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
+			} else if utils.ContainsString(clusterapi.ParsedHypernodeLabelKeyList, labelKey) {
 				if _, ok := nodeLabels[labelKey]; ok {
 					existedLabelValueArray := strings.Split(nodeLabels[labelKey], "__")
 					if !utils.ContainsString(existedLabelValueArray, labelValue) {
@@ -315,18 +315,18 @@ func parseHypernodeLabels(nodeLabels, inLabels map[string]string, nodeName strin
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
 			if labelKey == clusterapi.SNKey || labelKey == clusterapi.GeoLocationKey ||
-				labelKey == clusterapi.NetworkEnvKey {
-				nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]+"__"+nodeName] = labelValue
-			} else if utils.ContainsString(clusterapi.HypernodeLableKeyList, labelKey) {
-				if _, ok := nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]]; ok {
+				labelKey == clusterapi.SupplierNameKey {
+				nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]+"__"+nodeName] = labelValue
+			} else if utils.ContainsString(clusterapi.HypernodeLabelKeyList, labelKey) {
+				if _, ok := nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]]; ok {
 					existedLabelValueArray := strings.Split(
-						nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]], "__")
+						nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]], "__")
 					if !utils.ContainsString(existedLabelValueArray, labelValue) {
-						nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] =
-							nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] + "__" + labelValue
+						nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]] =
+							nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]] + "__" + labelValue
 					}
 				} else {
-					nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] = labelValue
+					nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]] = labelValue
 				}
 			}
 		}
@@ -343,7 +343,7 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 				if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) || strings.HasPrefix(labelKey,
 					clusterapi.ParsedGeoLocationKey) || strings.HasPrefix(labelKey, clusterapi.ParsedProviderKey) {
 					nodeLabels[labelKey] = labelValue
-				} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
+				} else if utils.ContainsString(clusterapi.ParsedHypernodeLabelKeyList, labelKey) {
 					if _, ok := nodeLabels[labelKey]; ok {
 						existedLabelValueArray := strings.Split(nodeLabels[labelKey], "__")
 						if !utils.ContainsString(existedLabelValueArray, labelValue) {
@@ -363,6 +363,7 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 	nodeLabels = make(map[string]string)
 	if c.useHypernodeController {
+		// discard
 		hypernodeList, err := c.hypernodeClient.ClusterV1alpha1().Hypernodes(metav1.NamespaceDefault).
 			List(context.TODO(), metav1.ListOptions{})
 		if err != nil {

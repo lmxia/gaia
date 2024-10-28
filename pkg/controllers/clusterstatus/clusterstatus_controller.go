@@ -282,20 +282,19 @@ func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
 	for _, node := range nodes {
 		// get worker nodes' labels whose "NodeRole" is not "System"
 		if value, ok := node.GetLabels()[clusterapi.ParsedNodeRoleKey]; ok && value != "System" {
-			nodeLabels = parseNodeLabels(nodeLabels, node.GetLabels(), node.GetName())
+			nodeLabels = parseNodeLabels(nodeLabels, node.GetLabels())
 		}
 	}
 	return nodeLabels
 }
 
 // parseNodeLabels returns the nodeLabels that belong to specific string list.
-func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
+func parseNodeLabels(nodeLabels, inLabels map[string]string) map[string]string {
+	sn := inLabels[clusterapi.ParsedSNKey]
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
-			if labelKey == clusterapi.ParsedSNKey || labelKey == clusterapi.ParsedGeoLocationKey ||
-				labelKey == clusterapi.ParsedProviderKey {
-				nodeLabels[labelKey+"__"+nodeName] = labelValue
-			} else if utils.ContainsString(clusterapi.ParsedHypernodeLabelKeyList, labelKey) {
+			if labelKey == clusterapi.ParsedNetEnvironmentKey || labelKey == clusterapi.ParsedNodeRoleKey ||
+				labelKey == clusterapi.ParsedResFormKey || labelKey == clusterapi.ParsedRuntimeStateKey {
 				if _, ok := nodeLabels[labelKey]; ok {
 					existedLabelValueArray := strings.Split(nodeLabels[labelKey], "__")
 					if !utils.ContainsString(existedLabelValueArray, labelValue) {
@@ -304,6 +303,8 @@ func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) ma
 				} else {
 					nodeLabels[labelKey] = labelValue
 				}
+			} else if utils.ContainsString(clusterapi.ParsedHypernodeLabelKeyList, labelKey) {
+				nodeLabels[labelKey+"__"+sn] = labelValue
 			}
 		}
 	}
@@ -311,13 +312,12 @@ func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) ma
 }
 
 // parseHypernodeLabels returns the HypernodeLabels that belong to specific string list.
-func parseHypernodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
+func parseHypernodeLabels(nodeLabels, inLabels map[string]string) map[string]string {
+	sn := inLabels[clusterapi.SNKey]
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
-			if labelKey == clusterapi.SNKey || labelKey == clusterapi.GeoLocationKey ||
-				labelKey == clusterapi.SupplierNameKey {
-				nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]+"__"+nodeName] = labelValue
-			} else if utils.ContainsString(clusterapi.HypernodeLabelKeyList, labelKey) {
+			if labelKey == clusterapi.NetEnvironmentKey || labelKey == clusterapi.NodeRoleKey ||
+				labelKey == clusterapi.ResFormKey || labelKey == clusterapi.RuntimeStateKey {
 				if _, ok := nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]]; ok {
 					existedLabelValueArray := strings.Split(
 						nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]], "__")
@@ -328,6 +328,8 @@ func parseHypernodeLabels(nodeLabels, inLabels map[string]string, nodeName strin
 				} else {
 					nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]] = labelValue
 				}
+			} else if utils.ContainsString(clusterapi.HypernodeLabelKeyList, labelKey) {
+				nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]+"__"+sn] = labelValue
 			}
 		}
 	}
@@ -340,10 +342,8 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 	for _, cluster := range clusters {
 		for labelKey, labelValue := range cluster.GetLabels() {
 			if len(labelValue) > 0 {
-				if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) || strings.HasPrefix(labelKey,
-					clusterapi.ParsedGeoLocationKey) || strings.HasPrefix(labelKey, clusterapi.ParsedProviderKey) {
-					nodeLabels[labelKey] = labelValue
-				} else if utils.ContainsString(clusterapi.ParsedHypernodeLabelKeyList, labelKey) {
+				if labelKey == clusterapi.ParsedNetEnvironmentKey || labelKey == clusterapi.ParsedNodeRoleKey ||
+					labelKey == clusterapi.ParsedResFormKey || labelKey == clusterapi.ParsedRuntimeStateKey {
 					if _, ok := nodeLabels[labelKey]; ok {
 						existedLabelValueArray := strings.Split(nodeLabels[labelKey], "__")
 						if !utils.ContainsString(existedLabelValueArray, labelValue) {
@@ -352,6 +352,8 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 					} else {
 						nodeLabels[labelKey] = labelValue
 					}
+				} else if strings.HasPrefix(labelKey, known.SpecificNodeLabelsKeyPrefix) {
+					nodeLabels[labelKey] = labelValue
 				}
 			}
 		}
@@ -375,7 +377,7 @@ func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 			// only the worker node labels whose "NodeRole" is not "System"
 			if value, ok := hypernode.GetLabels()[clusterapi.NodeRoleKey]; ok && value != "System" {
 				if hypernode.Spec.NodeAreaType == "cluster" {
-					nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())
+					nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels())
 				}
 			}
 		}

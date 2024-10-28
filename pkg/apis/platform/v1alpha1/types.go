@@ -413,7 +413,7 @@ type Fields struct {
 func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (
 	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap,
 	providers, floatingIPMap, gpuProductMap, clusterNameMap, internalNetworkCapMap,
-	pricelevelMap map[string]struct{},
+	pricelevelMap, vpcMap, resTypeMap, supportPublicIPMap, tokenMap map[string]struct{},
 ) {
 	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap =
 		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
@@ -423,6 +423,8 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (
 		make(map[string]struct{})
 	clusterNameMap, internalNetworkCapMap, pricelevelMap =
 		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
+	vpcMap, resTypeMap, supportPublicIPMap, tokenMap = make(map[string]struct{}), make(map[string]struct{}),
+		make(map[string]struct{}), make(map[string]struct{})
 	var labelValueArray []string
 
 	clusterLabels := cluster.GetLabels()
@@ -466,18 +468,27 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (
 				internalNetworkCapMap[labelValue] = struct{}{}
 			case strings.HasPrefix(labelKey, ParsedPricelevelKey):
 				pricelevelMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedVPCKey):
+				vpcMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedResTypeKey):
+				resTypeMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedSupportPublicIPKey):
+				supportPublicIPMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedTokenKey):
+				tokenMap[labelValue] = struct{}{}
 			}
 		}
 	}
 	return netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap,
 		providers, floatingIPMap, gpuProductMap, clusterNameMap, internalNetworkCapMap,
-		pricelevelMap
+		pricelevelMap, vpcMap, resTypeMap, supportPublicIPMap, tokenMap
 }
 
 // GetGaiaLabels return gaia type labels.
 func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap,
-		floatingIPMap, gpuProductMap, clusterNameMap, internalNetworkCapMap, pricelevelMap :=
+		floatingIPMap, gpuProductMap, clusterNameMap, internalNetworkCapMap, pricelevelMap,
+		vpcMap, resTypeMap, supportPublicIPMap, tokenMap :=
 		cluster.GetHypernodeLabelsMapFromManagedCluster()
 	clusterLabels := make(map[string][]string, 0)
 
@@ -554,38 +565,75 @@ func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 		priceLevels = append(priceLevels, k)
 	}
 	clusterLabels["price-level"] = priceLevels
+	// vpc
+	vpc := make([]string, 0, len(vpcMap))
+	for k := range vpcMap {
+		vpc = append(vpc, k)
+	}
+	clusterLabels["vpc"] = vpc
+	// resType
+	resTypes := make([]string, 0, len(resTypeMap))
+	for k := range resTypeMap {
+		resTypes = append(resTypes, k)
+	}
+	clusterLabels["res-type"] = resTypes
+	// support-public-ip
+	supportPublicIP := make([]string, 0, len(supportPublicIPMap))
+	for k := range supportPublicIPMap {
+		supportPublicIP = append(supportPublicIP, k)
+	}
+	clusterLabels["support-public-ip"] = supportPublicIP
+	// token
+	token := make([]string, 0, len(tokenMap))
+	for k := range tokenMap {
+		token = append(token, k)
+	}
+	clusterLabels["token"] = token
 
 	return clusterLabels
 }
 
 var (
-	GeoLocationKey    = common.SpecificNodeLabelsKeyPrefix + "GeoLocation"
-	NetEnvironmentKey = common.SpecificNodeLabelsKeyPrefix + "NetEnvironment"
-	NodeRoleKey       = common.SpecificNodeLabelsKeyPrefix + "NodeRole"
-	ResFormKey        = common.SpecificNodeLabelsKeyPrefix + "ResForm"
-	RuntimeStateKey   = common.SpecificNodeLabelsKeyPrefix + "RuntimeState"
-	SNKey             = common.SpecificNodeLabelsKeyPrefix + "SN"
-	NetworkEnvKey     = common.SpecificNodeLabelsKeyPrefix + "SupplierName"
-	HasFloatingIPKey  = common.SpecificNodeLabelsKeyPrefix + "HasFloatingIP"
-	GPUProductKey     = common.SpecificNodeLabelsKeyPrefix + "GPUProduct"
-	// dsxs
+	GeoLocationKey        = common.SpecificNodeLabelsKeyPrefix + "GeoLocation"
+	NetEnvironmentKey     = common.SpecificNodeLabelsKeyPrefix + "NetEnvironment"
+	NodeRoleKey           = common.SpecificNodeLabelsKeyPrefix + "NodeRole"
+	ResFormKey            = common.SpecificNodeLabelsKeyPrefix + "ResForm"
+	RuntimeStateKey       = common.SpecificNodeLabelsKeyPrefix + "RuntimeState"
+	SNKey                 = common.SpecificNodeLabelsKeyPrefix + "SN"
+	SupplierNameKey       = common.SpecificNodeLabelsKeyPrefix + "SupplierName"
+	FloatingIPKey         = common.SpecificNodeLabelsKeyPrefix + "FloatingIP"
+	HasFloatingIPKey      = common.SpecificNodeLabelsKeyPrefix + "HasFloatingIP"
+	VPCKey                = common.SpecificNodeLabelsKeyPrefix + "VPC"
 	ClusterNameKey        = common.SpecificNodeLabelsKeyPrefix + "ClusterName"
+	GPUProductKey         = common.SpecificNodeLabelsKeyPrefix + "GPUProduct"
+	GPUCountKey           = common.SpecificNodeLabelsKeyPrefix + "GPUCount"
 	InternalNetworkCapKey = common.SpecificNodeLabelsKeyPrefix + "InternalNetworkCap"
 	PricelevelKey         = common.SpecificNodeLabelsKeyPrefix + "Pricelevel"
+	ResNameKey            = common.SpecificNodeLabelsKeyPrefix + "ResName"
+	ResTypeKey            = common.SpecificNodeLabelsKeyPrefix + "ResType"
+	SupportPublicIPKey    = common.SpecificNodeLabelsKeyPrefix + "SupportPublicIP"
+	TokenKey              = common.SpecificNodeLabelsKeyPrefix + "Token"
 
-	HypernodeLableKeyList = []string{
+	HypernodeLabelKeyList = []string{
 		GeoLocationKey,
 		NetEnvironmentKey,
 		NodeRoleKey,
 		ResFormKey,
 		RuntimeStateKey,
 		SNKey,
-		NetworkEnvKey,
+		SupplierNameKey,
+		FloatingIPKey,
 		HasFloatingIPKey,
-		GPUProductKey,
+		VPCKey,
 		ClusterNameKey,
+		GPUProductKey,
+		GPUCountKey,
 		InternalNetworkCapKey,
 		PricelevelKey,
+		ResNameKey,
+		ResTypeKey,
+		SupportPublicIPKey,
+		TokenKey,
 	}
 
 	ParsedGeoLocationKey        = common.SpecificNodeLabelsKeyPrefix + "geo-location"
@@ -595,13 +643,20 @@ var (
 	ParsedRuntimeStateKey       = common.SpecificNodeLabelsKeyPrefix + "runtime-state"
 	ParsedSNKey                 = common.SpecificNodeLabelsKeyPrefix + "sn"
 	ParsedProviderKey           = common.SpecificNodeLabelsKeyPrefix + "supplier-name"
+	ParsedFloatingIPKey         = common.SpecificNodeLabelsKeyPrefix + "floating-ip"
 	ParsedHasFloatingIPKey      = common.SpecificNodeLabelsKeyPrefix + "has-floating-ip"
-	ParsedGPUProductKey         = common.SpecificNodeLabelsKeyPrefix + "gpu-product"
+	ParsedVPCKey                = common.SpecificNodeLabelsKeyPrefix + "vpc"
 	ParsedClusterNameKey        = common.SpecificNodeLabelsKeyPrefix + "cluster-name"
+	ParsedGPUProductKey         = common.SpecificNodeLabelsKeyPrefix + "gpu-product"
+	ParsedGPUCountKey           = common.SpecificNodeLabelsKeyPrefix + "gpu-count"
 	ParsedInternalNetworkCapKey = common.SpecificNodeLabelsKeyPrefix + "internal-network-cap"
 	ParsedPricelevelKey         = common.SpecificNodeLabelsKeyPrefix + "price-level"
+	ParsedResNameKey            = common.SpecificNodeLabelsKeyPrefix + "res-name"
+	ParsedResTypeKey            = common.SpecificNodeLabelsKeyPrefix + "res-type"
+	ParsedSupportPublicIPKey    = common.SpecificNodeLabelsKeyPrefix + "support-public-ip"
+	ParsedTokenKey              = common.SpecificNodeLabelsKeyPrefix + "token"
 
-	ParsedHypernodeLableKeyList = []string{
+	ParsedHypernodeLabelKeyList = []string{
 		ParsedGeoLocationKey,
 		ParsedNetEnvironmentKey,
 		ParsedNodeRoleKey,
@@ -609,22 +664,39 @@ var (
 		ParsedRuntimeStateKey,
 		ParsedSNKey,
 		ParsedProviderKey,
+		ParsedFloatingIPKey,
 		ParsedHasFloatingIPKey,
+		ParsedVPCKey,
+		ParsedClusterNameKey,
 		ParsedGPUProductKey,
+		ParsedGPUCountKey,
+		ParsedInternalNetworkCapKey,
+		ParsedPricelevelKey,
+		ParsedResNameKey,
+		ParsedResTypeKey,
+		ParsedSupportPublicIPKey,
+		ParsedTokenKey,
 	}
 
-	HypernodeLableKeyToStandardLabelKey = map[string]string{
+	HypernodeLabelKeyToStandardLabelKey = map[string]string{
 		GeoLocationKey:        ParsedGeoLocationKey,
 		NetEnvironmentKey:     ParsedNetEnvironmentKey,
 		NodeRoleKey:           ParsedNodeRoleKey,
 		ResFormKey:            ParsedResFormKey,
 		RuntimeStateKey:       ParsedRuntimeStateKey,
 		SNKey:                 ParsedSNKey,
-		NetworkEnvKey:         ParsedProviderKey,
+		SupplierNameKey:       ParsedProviderKey,
+		FloatingIPKey:         ParsedFloatingIPKey,
 		HasFloatingIPKey:      ParsedHasFloatingIPKey,
-		GPUProductKey:         ParsedGPUProductKey,
+		VPCKey:                ParsedVPCKey,
 		ClusterNameKey:        ParsedClusterNameKey,
+		GPUProductKey:         ParsedGPUProductKey,
+		GPUCountKey:           ParsedGPUCountKey,
 		InternalNetworkCapKey: ParsedInternalNetworkCapKey,
 		PricelevelKey:         ParsedPricelevelKey,
+		ResNameKey:            ParsedResNameKey,
+		ResTypeKey:            ParsedResTypeKey,
+		SupportPublicIPKey:    ParsedSupportPublicIPKey,
+		TokenKey:              ParsedTokenKey,
 	}
 )

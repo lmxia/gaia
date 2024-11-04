@@ -113,7 +113,8 @@ func DescToHugeComponents(desc *appsv1alpha1.Description) map[string]*appsv1alph
 
 // DescToComponents reflect a description to Components
 func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1.Component, comLocation map[string]int,
-	affinity []int) {
+	affinity []int,
+) {
 	comLocation = make(map[string]int)
 	components = make([]appsv1alpha1.Component, len(desc.Spec.WorkloadComponents))
 
@@ -224,7 +225,8 @@ func GetWorkloadType(workloadType string) (workload appsv1alpha1.Workload) {
 
 // ParseDeploymentCondition parse desc.Spec.DeploymentCondition
 func ParseDeploymentCondition(deploymentCondition appsv1alpha1.DeploymentCondition, components []appsv1alpha1.Component,
-	comLocation map[string]int, affinity []int) {
+	comLocation map[string]int, affinity []int,
+) {
 	// mandatory
 	ParseCondition(deploymentCondition.Mandatory, appsv1alpha1.SchedulePolicyMandatory,
 		components, comLocation, affinity)
@@ -235,7 +237,8 @@ func ParseDeploymentCondition(deploymentCondition appsv1alpha1.DeploymentConditi
 
 // ParseCondition parse desc.Spec.DeploymentCondition.Mandatory or desc.Spec.DeploymentCondition.BestEffort
 func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alpha1.SchedulePolicyLevel,
-	components []appsv1alpha1.Component, comLocation map[string]int, affinity []int) {
+	components []appsv1alpha1.Component, comLocation map[string]int, affinity []int,
+) {
 	for _, condition := range deploymentConditions {
 		klog.V(5).Info("parse DeploymentConditions")
 
@@ -265,7 +268,8 @@ func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alp
 }
 
 func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition,
-	policy map[string]*appsv1alpha1.SchedulePolicy) {
+	policy map[string]*appsv1alpha1.SchedulePolicy,
+) {
 	for _, condition := range deploymentConditions {
 		klog.V(5).Info("parse DeploymentConditions for group condition")
 
@@ -287,7 +291,8 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition,
 
 // SchedulePolicyReflect reflect the condition to MatchExpressions according to the different schedule policy
 func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector,
-	model corev1.PodTemplateSpec) *metav1.LabelSelector {
+	model corev1.PodTemplateSpec,
+) *metav1.LabelSelector {
 	var extentStr []string
 	if condition.Subject.Type != known.TypeComponent {
 		return spLevel
@@ -363,7 +368,8 @@ func SchedulePolicyGroupReflect(condition appsv1alpha1.Condition, spLevel *metav
 
 // ParseExpectedPerformance parse desc.Spec.ExpectedPerformance
 func ParseExpectedPerformance(ep appsv1alpha1.ExpectedPerformance, components []appsv1alpha1.Component,
-	comLocation map[string]int) {
+	comLocation map[string]int,
+) {
 	// get boundaries map
 	boundaryMap := ParseBoundaries(ep.Boundaries, components, comLocation)
 	// parse HPA or VPA  and then get the threshold
@@ -372,7 +378,8 @@ func ParseExpectedPerformance(ep appsv1alpha1.ExpectedPerformance, components []
 
 // ParseBoundaries returns a map that the key is the boundary name and the value is the boundary itself
 func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1.Component,
-	comLocation map[string]int) map[string]appsv1alpha1.Boundary {
+	comLocation map[string]int,
+) map[string]appsv1alpha1.Boundary {
 	// expectedPerformance.Boundaries.Inner
 	boundaryMap := make(map[string]appsv1alpha1.Boundary)
 	klog.V(6).Infof("start to parse expectedPerformance.Boundaries.Inner:")
@@ -446,7 +453,8 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 
 // ParseMaintenance reflect the boundaries and maintenance's trigger to serverless' threshold.
 func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[string]appsv1alpha1.Boundary,
-	components []appsv1alpha1.Component, comLocation map[string]int) {
+	components []appsv1alpha1.Component, comLocation map[string]int,
+) {
 	// 1. expectedPerformance.Maintenance.HPA
 	threshold := make([]map[string]int32, len(components))
 	for i := range threshold {

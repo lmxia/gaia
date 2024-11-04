@@ -77,7 +77,7 @@ func (c *Controller) cdnAccelerateState(frontend *v1alpha1.Frontend) (bool, *str
 	}()
 
 	if tryErr != nil {
-		var sdkError = &tea.SDKError{}
+		sdkError := &tea.SDKError{}
 		if t, ok := tryErr.(*tea.SDKError); ok {
 			sdkError = t
 		} else {
@@ -116,7 +116,8 @@ func (c *Controller) cdnAccelerateCreate(frontend *v1alpha1.Frontend, cdnStatus 
 }
 
 func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, domain *string, cdnType *string,
-	sources *string, scope *string, frontend *v1alpha1.Frontend, cdnStatus *string) error {
+	sources *string, scope *string, frontend *v1alpha1.Frontend, cdnStatus *string,
+) error {
 	tagDomainName := &cdn20180510.AddCdnDomainRequestTag{
 		Key:   tea.String(common.FrontendAliyunCdnTagDomainName),
 		Value: tea.String(base64.StdEncoding.EncodeToString([]byte((*domain)))),
@@ -194,7 +195,7 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 		return nil
 	}()
 	if tryErr != nil {
-		var error = &tea.SDKError{}
+		error := &tea.SDKError{}
 		if t, ok := tryErr.(*tea.SDKError); ok {
 			error = t
 		} else {
@@ -207,7 +208,8 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 }
 
 func (c *Controller) GetDomainStatus(client *cdn20180510.Client, domain *string) (result *string,
-	cname *string, err error) {
+	cname *string, err error,
+) {
 	request := &cdn20180510.DescribeUserDomainsRequest{
 		DomainName: domain,
 	}
@@ -294,7 +296,7 @@ func (c *Controller) cdnAccelerateRecycle(frontend *v1alpha1.Frontend) error {
 				return nil
 			}()
 			if tryErr != nil {
-				var error = &tea.SDKError{}
+				error := &tea.SDKError{}
 				if t, ok := tryErr.(*tea.SDKError); ok {
 					error = t
 				} else {

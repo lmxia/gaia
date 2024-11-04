@@ -6,7 +6,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 
 	dns "github.com/alibabacloud-go/alidns-20150109/v2/client"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/client"
@@ -27,7 +27,8 @@ func (c *Controller) Init(accessKeyID *string, accessKeySecret *string, regionID
 }
 
 func (c *Controller) DescribeDomainRecords(client *dns.Client, domainName *string,
-	frontend *v1alpha1.Frontend) (bool, error) {
+	frontend *v1alpha1.Frontend,
+) (bool, error) {
 	exit := common.FrontendAliyunDNSCnameNoExist
 	req := &dns.DescribeDomainRecordsRequest{}
 	req.DomainName = domainName
@@ -54,7 +55,7 @@ func (c *Controller) DescribeDomainRecords(client *dns.Client, domainName *strin
 	}()
 
 	if tryErr != nil {
-		var error = &tea.SDKError{}
+		error := &tea.SDKError{}
 		if t, ok := tryErr.(*tea.SDKError); ok {
 			error = t
 		} else {
@@ -66,7 +67,8 @@ func (c *Controller) DescribeDomainRecords(client *dns.Client, domainName *strin
 }
 
 func (c *Controller) AddDomainRecord(client *dns.Client, domainName *string, rr *string, recordType *string,
-	value *string, frontend *v1alpha1.Frontend) error {
+	value *string, frontend *v1alpha1.Frontend,
+) error {
 	req := &dns.AddDomainRecordRequest{}
 	req.DomainName = domainName
 	req.RR = rr
@@ -83,8 +85,10 @@ func (c *Controller) AddDomainRecord(client *dns.Client, domainName *string, rr 
 			return err
 		}
 		if frontend.Labels == nil {
-			frontend.SetLabels(map[string]string{"domainRecordId": *resp.Body.RecordId,
-				"domainCname": frontend.Labels["domainCname"]})
+			frontend.SetLabels(map[string]string{
+				"domainRecordId": *resp.Body.RecordId,
+				"domainCname":    frontend.Labels["domainCname"],
+			})
 		} else {
 			frontend.GetLabels()["domainRecordId"] = *resp.Body.RecordId
 		}
@@ -99,7 +103,7 @@ func (c *Controller) AddDomainRecord(client *dns.Client, domainName *string, rr 
 	}()
 
 	if tryErr != nil {
-		var error = &tea.SDKError{}
+		error := &tea.SDKError{}
 		if t, ok := tryErr.(*tea.SDKError); ok {
 			error = t
 		} else {
@@ -128,7 +132,7 @@ func (c *Controller) DeleteDomainRecord(client *dns.Client, recordID *string) er
 	}()
 
 	if tryErr != nil {
-		var error = &tea.SDKError{}
+		error := &tea.SDKError{}
 		if t, ok := tryErr.(*tea.SDKError); ok {
 			error = t
 		} else {

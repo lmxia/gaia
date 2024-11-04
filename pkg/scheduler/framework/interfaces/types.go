@@ -45,6 +45,7 @@ func (f *FitError) Error() string {
 		sort.Strings(reasonStrings)
 		return reasonStrings
 	}
-	reasonMsg := fmt.Sprintf(NoClusterAvailableMsg+": %v.", f.NumAllClusters, strings.Join(sortReasonsHistogram(), ", "))
+	reasonMsg := fmt.Sprintf(NoClusterAvailableMsg+" ==> %v.", f.NumAllClusters,
+		strings.Join(sortReasonsHistogram(), "; "))
 	return reasonMsg
 }

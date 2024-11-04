@@ -315,7 +315,8 @@ func (m *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding)
 }
 
 func (m *RBMerger) mergeResourceBinding(parentRBName, indexParentRB string, fieldsRBsOfParentRB map[string]*FieldsRBs,
-	rb *appV1alpha1.ResourceBinding) {
+	rb *appV1alpha1.ResourceBinding,
+) {
 	var allChildren [][]*appV1alpha1.ResourceBindingApps
 	if fieldsRbs, ok := fieldsRBsOfParentRB[indexParentRB]; ok {
 		if fieldsRbs.nonZeroClusterNum == len(fieldsRbs.rbsOfFields) {
@@ -330,7 +331,8 @@ func (m *RBMerger) mergeResourceBinding(parentRBName, indexParentRB string, fiel
 }
 
 func (m *RBMerger) getMergedResourceBindings(chanResult chan []*appV1alpha1.ResourceBindingApps,
-	parentRBName string, rb *appV1alpha1.ResourceBinding) {
+	parentRBName string, rb *appV1alpha1.ResourceBinding,
+) {
 	// deploy the Merged ResourceBinding
 	descName := rb.GetLabels()[common.OriginDescriptionNameLabel]
 	desc, err := m.localGaiaClient.AppsV1alpha1().Descriptions(common.GaiaReservedNamespace).Get(context.TODO(),
@@ -363,7 +365,8 @@ func (m *RBMerger) getMergedResourceBindings(chanResult chan []*appV1alpha1.Reso
 						NonZeroClusterNum: rb.Spec.NonZeroClusterNum,
 						ParentRB:          rb.Spec.ParentRB,
 						FrontendRbs: []*appV1alpha1.FrontendRb{
-							frontRbs},
+							frontRbs,
+						},
 						RbApps:          rbN,
 						NetworkPath:     rb.Spec.NetworkPath,
 						StatusScheduler: appV1alpha1.ResourceBindingmerged,
@@ -596,7 +599,8 @@ func (m *RBMerger) deleteFieldDescUID(uid UID, indexParentRB string) {
 }
 
 func (m *RBMerger) createFrontRb(rb *appV1alpha1.ResourceBinding, rbLabels map[string]string, descUID,
-	descName string) error {
+	descName string,
+) error {
 	for indF, frontRbs := range rb.Spec.FrontendRbs {
 		newResultRB := &appV1alpha1.ResourceBinding{
 			ObjectMeta: metaV1.ObjectMeta{
@@ -614,7 +618,8 @@ func (m *RBMerger) createFrontRb(rb *appV1alpha1.ResourceBinding, rbLabels map[s
 			Spec: appV1alpha1.ResourceBindingSpec{
 				AppID: descName,
 				FrontendRbs: []*appV1alpha1.FrontendRb{
-					frontRbs},
+					frontRbs,
+				},
 				StatusScheduler: appV1alpha1.ResourceBindingmerged,
 			},
 		}

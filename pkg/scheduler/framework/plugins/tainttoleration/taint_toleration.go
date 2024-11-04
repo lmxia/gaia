@@ -30,7 +30,8 @@ func (pl *TaintToleration) Name() string {
 
 // Filter invoked at the filter extension point.
 func (pl *TaintToleration) Filter(ctx context.Context, com *v1alpha1.Component,
-	cluster *clusterapi.ManagedCluster) *framework.Status {
+	cluster *clusterapi.ManagedCluster,
+) *framework.Status {
 	if cluster == nil {
 		return framework.AsStatus(fmt.Errorf("invalid cluster"))
 	}
@@ -46,15 +47,40 @@ func (pl *TaintToleration) Filter(ctx context.Context, com *v1alpha1.Component,
 		return nil
 	}
 
-	errReason := fmt.Sprintf("clusters(s) had taint {%s: %s}, that the component didn't tolerate. "+
+	errReason := fmt.Sprintf("clusters(s) had taint {%s: %s}, that the component not tolerate: "+
 		"cluster name is %v, component name is %v",
 		taint.Key, taint.Value, cluster.Name, com.Name)
 	return framework.NewStatus(framework.UnschedulableAndUnresolvable, errReason)
 }
 
+func (pl *TaintToleration) FilterVN(ctx context.Context, com *v1alpha1.Component,
+	node *v1.Node,
+) *framework.Status {
+	if node == nil {
+		return framework.AsStatus(fmt.Errorf("invalid node"))
+	}
+
+	filterPredicate := func(t *v1.Taint) bool {
+		// only interested in NoSchedule and NoExecute taints.
+		return t.Effect == v1.TaintEffectNoSchedule || t.Effect == v1.TaintEffectNoExecute
+	}
+
+	taint, isUntolerated := v1helper.FindMatchingUntoleratedTaint(node.Spec.Taints, com.ClusterTolerations,
+		filterPredicate)
+	if !isUntolerated {
+		return nil
+	}
+
+	errReason := fmt.Sprintf("clusters(s) had taint {%s: %s}, that the component not tolerate, "+
+		"node name is %v, component name is %v",
+		taint.Key, taint.Value, node.Name, com.Name)
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, errReason)
+}
+
 // NormalizeScore invoked after scoring all clusters.
 func (pl *TaintToleration) NormalizeScore(ctx context.Context,
-	scores framework.ResourceBindingScoreList) *framework.Status {
+	scores framework.ResourceBindingScoreList,
+) *framework.Status {
 	return helper.DefaultNormalizeScore(framework.MaxClusterScore, true, scores)
 }
 

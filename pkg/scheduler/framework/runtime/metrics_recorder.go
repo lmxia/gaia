@@ -67,7 +67,8 @@ func newMetricsRecorder(bufferSize int, interval time.Duration) *metricsRecorder
 // observePluginDurationAsync observes the plugin_execution_duration_seconds metric.
 // The metric will be flushed to Prometheus asynchronously.
 func (r *metricsRecorder) observePluginDurationAsync(extensionPoint, pluginName string,
-	status *framework.Status, value float64) {
+	status *framework.Status, value float64,
+) {
 	newMetric := &frameworkMetric{
 		metric:      metrics.PluginExecutionDuration,
 		labelValues: []string{pluginName, extensionPoint, status.Code().String()},

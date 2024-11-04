@@ -425,8 +425,7 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (
 func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap, geolocationMap, providersMap,
 		floatingIPMap, gpuProductMap, clusterNameMap, internalNetworkCapMap, pricelevelMap,
-		vpcMap, resTypeMap, supportPublicIPMap, tokenMap :=
-		cluster.GetHypernodeLabelsMapFromManagedCluster()
+		vpcMap, resTypeMap, supportPublicIPMap, tokenMap := cluster.GetHypernodeLabelsMapFromManagedCluster()
 	clusterLabels := make(map[string][]string, 0)
 
 	// no.1
@@ -528,4 +527,16 @@ func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 	clusterLabels["token"] = token
 
 	return clusterLabels
+}
+
+func GetNodeGaiaLabels(node *corev1.Node) map[string][]string {
+	nodeGaiaLabels := make(map[string][]string)
+	labels := node.GetLabels()
+	for key, value := range labels {
+		if strings.HasPrefix(key, common.SpecificNodeLabelsKeyPrefix) {
+			nodeGaiaLabels[key[len(common.SpecificNodeLabelsKeyPrefix):]] = []string{value}
+		}
+	}
+
+	return nodeGaiaLabels
 }

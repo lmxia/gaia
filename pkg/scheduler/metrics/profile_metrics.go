@@ -3,9 +3,7 @@
 
 package metrics
 
-var (
-	scheduledResult = "scheduled"
-)
+var scheduledResult = "scheduled"
 
 // DescriptionScheduled can record a successful scheduling attempt and the duration
 // since `start`.

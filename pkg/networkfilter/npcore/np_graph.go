@@ -58,7 +58,6 @@ type Domain struct {
 	DomainLinkTree     avl.AvlTree // 树节点结构DomainLink
 	DomainLinkKeyArray []DomainLinkKey
 	// DomainLinkKeyRevision int64  //配置恢复外层需要使用，所以放在外层
-
 }
 
 type DomainLink struct {
@@ -699,15 +698,15 @@ func (domain *Domain) SpfCalcDomainPathForAppConnect(domainLinkKspGraph *DomainL
 	if appLinkAttr.LinkRttAttr.Rtt != 0 {
 		revDelay, err := domain.CalReverseDomainPathMinDelay(domainLinkKspGraph, spfCalcMaxNum, appLinkAttr)
 		if err != nil && appLinkAttr.LinkRttAttr.Mandatory == true {
-		nputil.TraceInfoEnd("No reverse shortest path!")
-		return domainSrPathArray
+			nputil.TraceInfoEnd("No reverse shortest path!")
+			return domainSrPathArray
 		}
 		reverseDelay = revDelay
 	}
 
 	var domainSrPathLeftArray []*DomainSrPath
-	//问了满足BestEffort要求，尽可能把sla/rtt/provider都满足的路径排在前面
-	//1. 查找sla/rtt/provider都满足的路径;  2: 不全部满足，再查看是否满足网络请求设置的mandatory或bestEffort
+	// 问了满足BestEffort要求，尽可能把sla/rtt/provider都满足的路径排在前面
+	// 1. 查找sla/rtt/provider都满足的路径;  2: 不全部满足，再查看是否满足网络请求设置的mandatory或bestEffort
 	for _, bestPath := range bestPathGroups {
 		domainSrPath := domainGraph.DomainSrPathCreateByKspPath(bestPath)
 		if domainSrPath.IsSatisfiedNetworkReq(appLinkAttr, reverseDelay, true) == true {

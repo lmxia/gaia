@@ -742,7 +742,6 @@ func updateRBStatusWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clie
 
 		return false, nil
 	})
-
 	if err != nil {
 		klog.Errorf("failed to update status of resourcebinding %q, err: %v",
 			klog.KRef(rb.Namespace, rb.Name), err)
@@ -1046,7 +1045,8 @@ func (c *Binder) updateSelectedRB(rb *appsV1alpha1.ResourceBinding, clusterName 
 				common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
 				common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
 				common.StatusScheduler:                 string(appsV1alpha1.ResourceBindingmerged),
-			}).String()})
+			}).String(),
+		})
 	if err != nil {
 		klog.Errorf("failed to delete merged rbs in parent cluster %q namespace, err: %v",
 			common.GaiaRBMergedReservedNamespace, err)

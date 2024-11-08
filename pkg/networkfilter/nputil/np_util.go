@@ -26,10 +26,10 @@ const (
 func TraceInfo(inputString string) {
 	LogEnable := os.Getenv("NetFilterLogEnable")
 	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	routineId := GetGIDString()
-	logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + "input:" + inputString)
+		pc, _, _, _ := runtime.Caller(1)
+		funcName := runtime.FuncForPC(pc).Name()
+		routineId := GetGIDString()
+		logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + "input:" + inputString)
 	}
 	return
 }
@@ -37,10 +37,10 @@ func TraceInfo(inputString string) {
 func TraceInfoAlwaysPrint(inputString string) {
 	LogEnable := os.Getenv("NetFilterLogEnable")
 	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "INFO" || LogEnable == "ALL")) {
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	routineId := GetGIDString()
-	logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + "input:" + inputString)
+		pc, _, _, _ := runtime.Caller(1)
+		funcName := runtime.FuncForPC(pc).Name()
+		routineId := GetGIDString()
+		logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + "input:" + inputString)
 	}
 	return
 }
@@ -48,10 +48,10 @@ func TraceInfoAlwaysPrint(inputString string) {
 func TraceInfoBegin(inputString string) {
 	LogEnable := os.Getenv("NetFilterLogEnable")
 	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	routineId := GetGIDString()
-	logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + " Begin. input:" + inputString)
+		pc, _, _, _ := runtime.Caller(1)
+		funcName := runtime.FuncForPC(pc).Name()
+		routineId := GetGIDString()
+		logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + " Begin. input:" + inputString)
 	}
 	return
 }
@@ -59,10 +59,10 @@ func TraceInfoBegin(inputString string) {
 func TraceInfoEnd(inputString string) {
 	LogEnable := os.Getenv("NetFilterLogEnable")
 	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	routineId := GetGIDString()
-	logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + " End input:" + inputString)
+		pc, _, _, _ := runtime.Caller(1)
+		funcName := runtime.FuncForPC(pc).Name()
+		routineId := GetGIDString()
+		logx.Info("routineId:" + routineId + "," + "func:" + funcName + "," + " End input:" + inputString)
 	}
 	return
 }
@@ -70,10 +70,10 @@ func TraceInfoEnd(inputString string) {
 func TraceError(err error) {
 	LogEnable := os.Getenv("NetFilterLogEnable")
 	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	routineId := GetGIDString()
-	logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
+		pc, _, _, _ := runtime.Caller(1)
+		funcName := runtime.FuncForPC(pc).Name()
+		routineId := GetGIDString()
+		logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
 	}
 	return
 }
@@ -81,11 +81,11 @@ func TraceError(err error) {
 func TraceErrorString(errString string) {
 	LogEnable := os.Getenv("NetFilterLogEnable")
 	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
-	err := errors.New(errString)
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	routineId := GetGIDString()
-	logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
+		err := errors.New(errString)
+		pc, _, _, _ := runtime.Caller(1)
+		funcName := runtime.FuncForPC(pc).Name()
+		routineId := GetGIDString()
+		logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
 	}
 	return
 }
@@ -93,11 +93,11 @@ func TraceErrorString(errString string) {
 func TraceErrorWithStack(err error) {
 	LogEnable := os.Getenv("NetFilterLogEnable")
 	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	routineId := GetGIDString()
-	logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
-	logx.Error(string(debug.Stack()))
+		pc, _, _, _ := runtime.Caller(1)
+		funcName := runtime.FuncForPC(pc).Name()
+		routineId := GetGIDString()
+		logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
+		logx.Error(string(debug.Stack()))
 	}
 	return
 }
@@ -105,12 +105,12 @@ func TraceErrorWithStack(err error) {
 func TraceErrorStringWithStack(errString string) {
 	LogEnable := os.Getenv("NetFilterLogEnable")
 	if LogSwitch == "ON" || (len(LogEnable) != 0 && (LogEnable == "ALL")) {
-	err := errors.New(errString)
-	pc, _, _, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-	routineId := GetGIDString()
-	logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
-	logx.Error(string(debug.Stack()))
+		err := errors.New(errString)
+		pc, _, _, _ := runtime.Caller(1)
+		funcName := runtime.FuncForPC(pc).Name()
+		routineId := GetGIDString()
+		logx.Error("routineId:"+routineId+","+"func:"+funcName+","+" err:", err)
+		logx.Error(string(debug.Stack()))
 	}
 	return
 }

@@ -65,6 +65,10 @@ const (
 	UserNameLabel                   = "apps.gaia.io/user.name"
 	ParentRBLabel                   = "apps.gaia.io/ori.parent-rb"
 
+	NetPlanLabel          = "apps.gaia.io/net-plan" // ip or identification
+	IPNetPlan             = "ip"
+	IdentificationNetPlan = "identification"
+
 	NetworkLocationCore = "core"
 	NodeResourceForm    = "pool"
 
@@ -107,11 +111,14 @@ const (
 
 	FrontendAliyunCdnSleepWait  = 1000
 	FrontendAliyunCdnSleepError = 2000
+
+	RBKind         = "ResourceBinding"
+	GaiaAPIVersion = "apps.gaia.io/v1alpha1"
 )
 
 // lease lock
 const (
-	DefaultLeaseDuration = 80 * time.Second
+	DefaultLeaseDuration = 800 * time.Second
 	DefaultRenewDeadline = 70 * time.Second
 	// DefaultRetryPeriod means the default retry period
 	DefaultRetryPeriod = 15 * time.Second

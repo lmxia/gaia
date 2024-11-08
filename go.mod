@@ -20,7 +20,6 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/lestrrat-go/file-rotatelogs v2.4.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/dixudx/yacht v0.8.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.37.0
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
@@ -39,11 +38,9 @@ require (
 	k8s.io/code-generator v0.23.5
 	k8s.io/component-base v0.26.1
 	k8s.io/component-helpers v0.23.5
-	k8s.io/klog v1.0.0
 	k8s.io/klog/v2 v2.80.1
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
 	sigs.k8s.io/yaml v1.3.0
-
 )
 
 require (
@@ -137,7 +134,6 @@ require (
 )
 
 replace (
-	github.com/spf13/afero => github.com/spf13/afero v1.5.1
 	go.opentelemetry.io/contrib => go.opentelemetry.io/contrib v0.20.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc => go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.20.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.20.0

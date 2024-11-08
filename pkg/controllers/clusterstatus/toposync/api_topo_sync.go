@@ -41,7 +41,8 @@ type TopoSyncAPIService service
 //
 // @return Topos
 func (a *TopoSyncAPIService) TopoSync(ctx context.Context, hyperTopoSync clusterapi.Fields) (clusterapi.Topos,
-	*http.Response, error) {
+	*http.Response, error,
+) {
 	var (
 		localVarHTTPMethod  = strings.ToUpper("Get")
 		localVarPostBody    interface{}

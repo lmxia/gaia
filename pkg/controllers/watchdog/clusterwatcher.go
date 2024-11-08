@@ -27,7 +27,8 @@ type ClusterWatcher struct {
 }
 
 func NewClusterWatcher(gaiaFactory externalversions.SharedInformerFactory,
-	client gaiaclientset.Interface) *ClusterWatcher {
+	client gaiaclientset.Interface,
+) *ClusterWatcher {
 	clusterWatcher := &ClusterWatcher{
 		managedClusterLister: gaiaFactory.Platform().V1alpha1().ManagedClusters().Lister(),
 		gaiaClient:           client,
@@ -57,7 +58,8 @@ func (c *ClusterWatcher) Run(stopCh <-chan struct{}) error {
 }
 
 func (c *ClusterWatcher) checkAndMarkNotReady(lister listerv1alpha1.ManagedClusterLister,
-	client gaiaclientset.Interface) {
+	client gaiaclientset.Interface,
+) {
 	clusterList, err := lister.List(labels.Everything())
 	if err != nil {
 		klog.Infof("Error watching ManagedCluster: %v\n", err)

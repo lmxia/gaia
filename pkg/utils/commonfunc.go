@@ -72,7 +72,8 @@ func GetLocalClusterName(localkubeclient *kubernetes.Clientset) (string, string,
 }
 
 func NewParentConfig(ctx context.Context, kubeclient *kubernetes.Clientset,
-	gaiaclient *gaiaClientSet.Clientset) *rest.Config {
+	gaiaclient *gaiaClientSet.Clientset,
+) *rest.Config {
 	var parentKubeConfig *rest.Config
 	// wait until stopCh is closed or request is approved
 	waitingCtx, cancel := context.WithCancel(ctx)
@@ -109,7 +110,8 @@ func NewParentConfig(ctx context.Context, kubeclient *kubernetes.Clientset,
 
 func SetParentClient(localKubeClient *kubernetes.Clientset,
 	localGaiaClient *gaiaClientSet.Clientset) (*gaiaClientSet.Clientset, dynamic.Interface,
-	externalInformers.SharedInformerFactory) {
+	externalInformers.SharedInformerFactory,
+) {
 	parentKubeConfig := NewParentConfig(context.TODO(), localKubeClient, localGaiaClient)
 	if parentKubeConfig != nil {
 		parentGaiaClient := gaiaClientSet.NewForConfigOrDie(parentKubeConfig)

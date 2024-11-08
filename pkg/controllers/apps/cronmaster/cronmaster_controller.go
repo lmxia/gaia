@@ -261,7 +261,6 @@ func (c *Controller) updateCronMasterStatus(cron *appsV1alpha1.CronMaster) (*app
 		}
 		return updateErr
 	})
-
 	if err != nil {
 		klog.Errorf("Failed to update status for CronMaster %q, resourceVersion==%q, error==%v",
 			klog.KObj(cron), cron.ResourceVersion, err)
@@ -1202,7 +1201,8 @@ func (c *Controller) handleStartAndStop(cron *appsV1alpha1.CronMaster, resource 
 }
 
 func (c *Controller) handleCron(cron *appsV1alpha1.CronMaster, resource *unstructured.Unstructured, kind string,
-	now time.Time) (*appsV1alpha1.CronMaster, *time.Duration, error) {
+	now time.Time,
+) (*appsV1alpha1.CronMaster, *time.Duration, error) {
 	scheduledTime, isStart, err := getCronNextScheduleTime(cron, now)
 	if err != nil {
 		klog.ErrorS(err, "invalid schedule", "CronMaster",

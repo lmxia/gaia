@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	coreV1 "k8s.io/api/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 
@@ -144,6 +145,7 @@ type FilterPlugin interface {
 	// For the cluster being evaluated, Filter plugins should look at the passed
 	// cluster's information (e.g., subscriptions considered to be running on the cluster).
 	Filter(ctx context.Context, com *appsapi.Component, cluster *clusterapi.ManagedCluster) *Status
+	FilterVN(ctx context.Context, com *appsapi.Component, node *coreV1.Node) *Status
 }
 
 // PostFilterPlugin is an interface for "PostFilter" plugins. These plugins are called
@@ -176,6 +178,7 @@ type PreScorePlugin interface {
 	// passed the filtering phase. All prescore plugins must return success or
 	// the subscription will be rejected
 	PreScore(ctx context.Context, sub *appsapi.Component, clusters []*clusterapi.ManagedCluster) *Status
+	PreScoreVN(ctx context.Context, sub *appsapi.Component, nodes []*coreV1.Node) *Status
 }
 
 // ScoreExtensions is an interface for Score extended functionality.
@@ -196,7 +199,8 @@ type ScorePlugin interface {
 	// the subscription will be rejected.
 	Score(ctx context.Context, description *appsapi.Description, sub *appsapi.ResourceBinding,
 		clusters []*clusterapi.ManagedCluster) (int64, *Status)
-
+	ScoreVN(ctx context.Context, description *appsapi.Description, sub *appsapi.ResourceBinding,
+		nodes []*coreV1.Node) (int64, *Status)
 	// ScoreExtensions returns a ScoreExtensions interface if it implements one, or nil if not.
 	ScoreExtensions() ScoreExtensions
 }
@@ -280,4 +284,19 @@ type PluginsRunner interface {
 	// RunFilterPlugins runs the set of configured Filter plugins for subscription on
 	// the given cluster.
 	RunFilterPlugins(context.Context, *appsapi.Component, *clusterapi.ManagedCluster) PluginToStatus
+
+	// RunPreScorePluginsVN runs the set of configured PreScore plugins. If any
+	// of these plugins returns any status other than "Success", the given subscription is rejected.
+	RunPreScorePluginsVN(context.Context, *appsapi.Component, []*coreV1.Node) *Status
+
+	// RunScorePluginsVN runs the set of configured Score plugins. It returns a map that
+	// stores for each Score plugin name the corresponding ResourceBindingScoreList(s).
+	// It also returns *Status, which is set to non-success if any of the plugins returns
+	// a non-success status.
+	RunScorePluginsVN(context.Context, *appsapi.Description, []*appsapi.ResourceBinding,
+		[]*coreV1.Node) (PluginToRBScores, *Status)
+
+	// RunFilterPluginsVN runs the set of configured Filter plugins for subscription on
+	// the given cluster.
+	RunFilterPluginsVN(context.Context, *appsapi.Component, *coreV1.Node) PluginToStatus
 }

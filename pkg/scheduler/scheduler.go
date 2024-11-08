@@ -23,6 +23,7 @@ import (
 	apirequest "k8s.io/apiserver/pkg/endpoints/request"
 	genericfilters "k8s.io/apiserver/pkg/server/filters"
 	"k8s.io/apiserver/pkg/server/mux"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -68,6 +69,7 @@ type Scheduler struct {
 	localGaiaClient                *gaiaClientSet.Clientset
 	localNamespacedInformerFactory gaiainformers.SharedInformerFactory // namespaced
 	localGaiaAllFactory            gaiainformers.SharedInformerFactory // all ns
+	localKubeInformerFactory       informers.SharedInformerFactory
 	localDescLister                listner.DescriptionLister
 	selfClusterName                string // this cluster name
 
@@ -107,7 +109,8 @@ type Scheduler struct {
 
 // NewSchedule returns a new Scheduler.
 func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.Options) (
-	*schedulerserverconfig.CompletedConfig, *Scheduler, error) {
+	*schedulerserverconfig.CompletedConfig, *Scheduler, error,
+) {
 	if errs := opts.Validate(); len(errs) > 0 {
 		return nil, nil, utilerrors.NewAggregate(errs)
 	}
@@ -135,6 +138,7 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 	childKubeClientSet := kubernetes.NewForConfigOrDie(childKubeConfig)
 	childGaiaClientSet := gaiaClientSet.NewForConfigOrDie(childKubeConfig)
 
+	localKubeInformerFactory := informers.NewSharedInformerFactory(childKubeClientSet, common.DefaultResync)
 	localAllGaiaInformerFactory := gaiainformers.NewSharedInformerFactory(childGaiaClientSet, common.DefaultResync)
 	localSuperKubeConfig := NewLocalSuperKubeConfig(ctx, childKubeConfig.Host, childKubeClientSet)
 
@@ -148,16 +152,14 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 	recorder := broadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "gaia-scheduler"})
 
 	schedulerCache := schedulercache.New(localAllGaiaInformerFactory.Platform().V1alpha1().ManagedClusters().Lister(),
-		childGaiaClientSet)
-	if err != nil {
-		return nil, nil, err
-	}
+		localKubeInformerFactory.Core().V1().Nodes().Lister(), childGaiaClientSet, childKubeClientSet)
 
 	sched := &Scheduler{
-		localGaiaClient:     childGaiaClientSet,
-		localGaiaAllFactory: localAllGaiaInformerFactory,
-		localDescLister:     localAllGaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister(),
-		childKubeClientSet:  childKubeClientSet,
+		localGaiaClient:          childGaiaClientSet,
+		localKubeInformerFactory: localKubeInformerFactory,
+		localGaiaAllFactory:      localAllGaiaInformerFactory,
+		localDescLister:          localAllGaiaInformerFactory.Apps().V1alpha1().Descriptions().Lister(),
+		childKubeClientSet:       childKubeClientSet,
 
 		// dynamicClient:              dynamicClient,
 		registry:                   plugins.NewInTreeRegistry(),
@@ -226,6 +228,9 @@ func (sched *Scheduler) Run(cxt context.Context, cc *schedulerserverconfig.Compl
 				go func() {
 					wait.UntilWithContext(ctx, sched.RunParentReScheduler, 0)
 				}()
+				sched.localKubeInformerFactory.Core().V1().Nodes().Informer()
+				sched.localKubeInformerFactory.Start(ctx.Done())
+				sched.localKubeInformerFactory.WaitForCacheSync(ctx.Done())
 				wait.UntilWithContext(ctx, sched.RunParentScheduler, 0)
 			},
 			OnStoppedLeading: func() {
@@ -271,7 +276,8 @@ func newMetricsHandler() http.Handler {
 }
 
 func newLeaderElectionConfigWithDefaultValue(identity string, clientset kubernetes.Interface,
-	callbacks leaderelection.LeaderCallbacks) *leaderelection.LeaderElectionConfig {
+	callbacks leaderelection.LeaderCallbacks,
+) *leaderelection.LeaderElectionConfig {
 	return &leaderelection.LeaderElectionConfig{
 		Lock: &resourcelock.LeaseLock{
 			LeaseMeta: metav1.ObjectMeta{
@@ -486,11 +492,27 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	// get mcls
 	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx,
 		metav1.ListOptions{})
-	if len(mcls.Items) == 0 {
-		// there is no child clusters. no need to schedule just transfer.
-		transferRB(sched.parentGaiaClient, sched.localGaiaClient, sched.dedicatedNamespace,
-			common.GaiaRSToBeMergedReservedNamespace, desc.Name, rbs, ctx)
-		klog.Info("scheduler success just change rb namespace.")
+	descLabels := desc.GetLabels()
+	if len(mcls.Items) == 0 && descLabels[common.NetPlanLabel] == common.IPNetPlan {
+		// IP net plan:  Schedule to vn
+		scheduleResult, errVN := sched.scheduleAlgorithm.ScheduleVN(schedulingCycleCtx, sched.framework, rbs, desc)
+		if errVN != nil || len(scheduleResult.ResourceBindings) == 0 {
+			if errVN == nil {
+				errVN = fmt.Errorf("rbs of scheduleResult is empty, Description==%q", klog.KObj(desc))
+			}
+			sched.recordParentSchedulingFailure(desc, errVN, ReasonUnschedulable)
+			desc.Status.Phase = appsapi.DescriptionPhaseFailure
+			desc.Status.Reason = truncateMessage(errVN.Error())
+			errU := utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
+			if errU != nil {
+				klog.Info("failed to update status of description's status phase: %v/%v, "+
+					"err is ", desc.Namespace, desc.Name, errU)
+			}
+			klog.Warningf("scheduler failed:  %v", errVN)
+			return
+		}
+		transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
+			common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
 	} else {
 		scheduleResult, err2 := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
 		if err2 != nil || len(scheduleResult.ResourceBindings) == 0 {
@@ -500,18 +522,38 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 			sched.recordParentSchedulingFailure(desc, err2, ReasonUnschedulable)
 			desc.Status.Phase = appsapi.DescriptionPhaseFailure
 			desc.Status.Reason = truncateMessage(err2.Error())
-			err2 = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
-			if err2 != nil {
+			errU := utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
+			if errU != nil {
 				klog.Info("failed to update status of description's status phase: %v/%v, "+
-					"err is ", desc.Namespace, desc.Name, err2)
+					"err is ", desc.Namespace, desc.Name, errU)
 			}
 			klog.Warningf("scheduler failed %v", err2)
 			return
 		}
 
-		// only one time.
-		transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
-			common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
+		if descLabels[common.NetPlanLabel] != common.IPNetPlan {
+			transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
+				common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
+		} else {
+			for _, itemCluster := range mcls.Items {
+				for rbIndex, itemRb := range scheduleResult.ResourceBindings {
+					if has := hasReplicasInCluster(itemRb.Spec.RbApps, itemCluster.Name); has {
+						itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
+						itemRb.Namespace = itemCluster.Namespace
+						itemRb.Spec.TotalPeer = getTotal(itemRb.Spec.TotalPeer, len(scheduleResult.ResourceBindings))
+						itemRb.Spec.NonZeroClusterNum = countNonZeroClusterNumforRB(itemRb)
+						_, err2 := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
+							Create(ctx, itemRb, metav1.CreateOptions{})
+						if err2 != nil {
+							klog.Infof("scheduler success, but some rb not created success %v", err2)
+						} else {
+							klog.InfoS("successfully created rb", "Description", desc.GetName(),
+								"ResourceBinding", klog.KRef(itemRb.GetNamespace(), itemRb.GetName()))
+						}
+					}
+				}
+			}
+		}
 		for _, itemCluster := range mcls.Items {
 			skipDescCreate := true
 			for _, itemRb := range scheduleResult.ResourceBindings {
@@ -538,7 +580,8 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labels.Set{
 				common.GaiaDescriptionLabel: desc.Name,
-			}).String()})
+			}).String(),
+		})
 	klog.Info("i have tried to delete rbs in parent cluster")
 	if err != nil {
 		klog.Errorf("failed to delete rbs in parent namespace %s, related to desc %s, err: %v", desc.Namespace,
@@ -554,7 +597,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	sched.parentSchedulingQueue.Forget(key)
 	metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 	metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
-	klog.Info("scheduler success")
+	klog.Info("scheduler success. Description==", klog.KObj(desc))
 }
 
 // RunParentReScheduler run reschedule in agent cluster.
@@ -944,8 +987,8 @@ func (sched *Scheduler) createFrontRBLocal(desc *appsapi.Description, rbs []*app
 			StatusScheduler: appsapi.ResourceBindingMerging,
 		},
 	}
-	frontRB.Kind = "ResourceBinding"
-	frontRB.APIVersion = "apps.gaia.io/v1alpha1"
+	frontRB.Kind = common.RBKind
+	frontRB.APIVersion = common.GaiaAPIVersion
 
 	_, err := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
 		Create(context.TODO(), frontRB, metav1.CreateOptions{})
@@ -1048,7 +1091,8 @@ func getTotal(spec, lenResult int) int {
 
 // transfer from src to dst
 func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, descName string,
-	rbs []*appsapi.ResourceBinding, ctx context.Context) {
+	rbs []*appsapi.ResourceBinding, ctx context.Context,
+) {
 	for _, item := range rbs {
 		rb := &appsapi.ResourceBinding{}
 		rb.Name = item.Name
@@ -1081,7 +1125,7 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, des
 				}).String()})
 		klog.Info("i have try to delete rbs in parent cluster")
 		if err != nil {
-			klog.Infof("faild to delete rbs in parent cluster", err)
+			klog.Infof("failed to delete rbs in parent cluster", err)
 		}
 	}
 }

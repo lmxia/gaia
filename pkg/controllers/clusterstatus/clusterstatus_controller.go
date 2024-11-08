@@ -56,7 +56,8 @@ type Controller struct {
 func NewController(ctx context.Context, apiserverURL, clusterName string,
 	managedCluster *clusterapi.ManagedClusterOptions, kubeClient kubernetes.Interface,
 	gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset, collectingPeriod time.Duration,
-	heartbeatFrequency time.Duration) *Controller {
+	heartbeatFrequency time.Duration,
+) *Controller {
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, known.DefaultResync)
 	// add informers
 	kubeInformerFactory.Core().V1().Nodes().Informer()
@@ -437,7 +438,8 @@ func getNodeResource(nodes []*corev1.Node) (capacity, allocatable, available cor
 
 // getManagedClusterResource gets the node capacity of all managedClusters and their allocatable resources
 func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (capacity, allocatable,
-	available corev1.ResourceList) {
+	available corev1.ResourceList,
+) {
 	capacity, allocatable, available = make(map[corev1.ResourceName]resource.Quantity),
 		make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
 	var capacityCPU, capacityMem, allocatableCPU, allocatableMem, availableCPU, availableMem resource.Quantity

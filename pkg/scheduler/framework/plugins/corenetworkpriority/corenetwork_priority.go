@@ -3,6 +3,7 @@ package corenetworkpriority
 import (
 	"context"
 
+	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
@@ -40,6 +41,17 @@ func (pl *CoreNetworkPriority) Score(ctx context.Context, _ *v1alpha1.Descriptio
 	}
 
 	return calculateScore(0, rb.Spec.RbApps, clusterMap), nil
+}
+
+func (pl *CoreNetworkPriority) ScoreVN(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding,
+	nodes []*coreV1.Node,
+) (int64, *framework.Status) {
+	nodeMap := make(map[string]*coreV1.Node, 0)
+	for _, node := range nodes {
+		nodeMap[node.Name] = node
+	}
+
+	return calculateScoreVN(0, rb.Spec.RbApps, nodeMap), nil
 }
 
 // ScoreExtensions of the Score plugin.

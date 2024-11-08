@@ -352,7 +352,8 @@ func (c *Controller) SetHypernodeController(selfClusterName *string, parentKubeC
 }
 
 func (c *Controller) SetParentClient(parentKubeConfig *rest.Config) (*gaiaClientSet.Clientset,
-	gaiaInformers.SharedInformerFactory) {
+	gaiaInformers.SharedInformerFactory,
+) {
 	if parentKubeConfig != nil {
 		parentGaiaClient := gaiaClientSet.NewForConfigOrDie(parentKubeConfig)
 		parentDefaultGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient,

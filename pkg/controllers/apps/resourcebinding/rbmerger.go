@@ -170,15 +170,61 @@ func (m *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding
 			klog.KObj(rb), rb.Status.Status)
 		return nil
 	}
+	rbLabels := rb.GetLabels()
 
-	// level field
-	if m.parentGaiaClient != nil && len(clusters.Items) != 0 {
+	if rbLabels[common.NetPlanLabel] == common.IPNetPlan {
+		if len(clusters.Items) == 0 {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+
+			uid := rbLabels[common.OriginDescriptionUIDLabel]
+			indexParentRB := uid + "-" + rb.Spec.ParentRB
+			if !utils.ContainsString(m.parentRBsOfDescUID[UID(uid)], indexParentRB) {
+				m.parentRBsOfDescUID[UID(uid)] = append(m.parentRBsOfDescUID[UID(uid)], indexParentRB)
+			}
+			if m.clustersRBsOfOneFieldRB[indexParentRB] == nil {
+				m.clustersRBsOfOneFieldRB[indexParentRB] = &ClustersRBs{}
+			}
+			for _, fieRB := range rb.Spec.RbApps {
+				for _, clusterRB := range fieRB.Children {
+					if clusterRB.Children != nil {
+						m.clustersRBsOfOneFieldRB[indexParentRB].Lock()
+						m.clustersRBsOfOneFieldRB[indexParentRB].rbNames =
+							append(m.clustersRBsOfOneFieldRB[indexParentRB].rbNames, rb.Name)
+						m.clustersRBsOfOneFieldRB[indexParentRB].rbsOfParentRB =
+							append(m.clustersRBsOfOneFieldRB[indexParentRB].rbsOfParentRB, clusterRB)
+						m.clustersRBsOfOneFieldRB[indexParentRB].Unlock()
+					}
+				}
+			}
+
+			if m.canCreateCollectedRBs(rb, indexParentRB) {
+				if m.createCollectedRBs(context.TODO(), rb, rbLabels, indexParentRB) {
+					err = m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
+						DeleteCollection(context.TODO(), metaV1.DeleteOptions{},
+							metaV1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+								common.OriginDescriptionNameLabel:      rbLabels[common.OriginDescriptionNameLabel],
+								common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
+								common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
+								common.ParentRBLabel:                   rbLabels[common.ParentRBLabel],
+							}).String()})
+					if err != nil {
+						klog.Errorf("failed to delete rbs in %s, error==%v", common.GaiaRSToBeMergedReservedNamespace, err)
+						return err
+					}
+					m.deleteFieldDescUID(UID(uid), indexParentRB)
+				}
+			}
+		} else {
+			m.mu.Lock()
+			defer m.mu.Unlock()
+		}
+	} else if m.parentGaiaClient != nil && len(clusters.Items) != 0 {
 		m.mu.Lock()
 		defer m.mu.Unlock()
-		rbLabels := rb.GetLabels()
+
 		uid := rbLabels[common.OriginDescriptionUIDLabel]
 		indexParentRB := uid + "-" + rb.Spec.ParentRB
-
 		if !utils.ContainsString(m.parentRBsOfDescUID[UID(uid)], indexParentRB) {
 			m.parentRBsOfDescUID[UID(uid)] = append(m.parentRBsOfDescUID[UID(uid)], indexParentRB)
 		}

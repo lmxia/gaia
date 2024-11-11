@@ -118,7 +118,7 @@ const (
 
 // lease lock
 const (
-	DefaultLeaseDuration = 800 * time.Second
+	DefaultLeaseDuration = 80 * time.Second
 	DefaultRenewDeadline = 70 * time.Second
 	// DefaultRetryPeriod means the default retry period
 	DefaultRetryPeriod = 15 * time.Second

@@ -346,7 +346,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 		utilruntime.HandleError(err)
 		return
 	}
-	klog.InfoS("Attempting to schedule description", "description", klog.KObj(desc))
+	klog.InfoS("local-scheduler: Attempting to schedule description", "description", klog.KObj(desc))
 
 	// Synchronously attempt to find a fit for the description.
 	start := time.Now()
@@ -476,7 +476,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		utilruntime.HandleError(err)
 		return
 	}
-	klog.InfoS("Attempting to schedule description", "description", klog.KObj(desc))
+	klog.InfoS("parent-scheduler: Attempting to schedule description", "description", klog.KObj(desc))
 
 	// Synchronously attempt to find a fit for the description.
 	start := time.Now()
@@ -493,26 +493,29 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 	mcls, _ := sched.localGaiaClient.PlatformV1alpha1().ManagedClusters(corev1.NamespaceAll).List(ctx,
 		metav1.ListOptions{})
 	descLabels := desc.GetLabels()
-	if len(mcls.Items) == 0 && descLabels[common.NetPlanLabel] == common.IPNetPlan {
-		// IP net plan:  Schedule to vn
-		scheduleResult, errVN := sched.scheduleAlgorithm.ScheduleVN(schedulingCycleCtx, sched.framework, rbs, desc)
-		if errVN != nil || len(scheduleResult.ResourceBindings) == 0 {
-			if errVN == nil {
-				errVN = fmt.Errorf("rbs of scheduleResult is empty, Description==%q", klog.KObj(desc))
+	if len(mcls.Items) == 0 {
+		if descLabels[common.NetPlanLabel] == common.IPNetPlan {
+			scheduleResult, errVN := sched.scheduleAlgorithm.ScheduleVN(schedulingCycleCtx, sched.framework, rbs, desc)
+			if errVN != nil || len(scheduleResult.ResourceBindings) == 0 {
+				if errVN == nil {
+					errVN = fmt.Errorf("rbs of scheduleResult is empty, Description==%q", klog.KObj(desc))
+				}
+				sched.recordParentSchedulingFailure(desc, errVN, ReasonUnschedulable)
+				desc.Status.Phase = appsapi.DescriptionPhaseFailure
+				desc.Status.Reason = truncateMessage(errVN.Error())
+				errU := utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
+				if errU != nil {
+					klog.Info("failed to update status of description's status phase: %v/%v, "+
+						"err is ", desc.Namespace, desc.Name, errU)
+				}
+				klog.Warningf("scheduler failed:  %v", errVN)
+				return
 			}
-			sched.recordParentSchedulingFailure(desc, errVN, ReasonUnschedulable)
-			desc.Status.Phase = appsapi.DescriptionPhaseFailure
-			desc.Status.Reason = truncateMessage(errVN.Error())
-			errU := utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
-			if errU != nil {
-				klog.Info("failed to update status of description's status phase: %v/%v, "+
-					"err is ", desc.Namespace, desc.Name, errU)
-			}
-			klog.Warningf("scheduler failed:  %v", errVN)
+			transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
+				common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
+		} else {
 			return
 		}
-		transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
-			common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
 	} else {
 		scheduleResult, err2 := sched.scheduleAlgorithm.Schedule(schedulingCycleCtx, sched.framework, rbs, desc)
 		if err2 != nil || len(scheduleResult.ResourceBindings) == 0 {

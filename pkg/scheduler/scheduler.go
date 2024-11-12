@@ -536,9 +536,9 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 				common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
 		} else {
 			for _, itemCluster := range mcls.Items {
-				for rbIndex, itemRb := range scheduleResult.ResourceBindings {
+				for _, itemRb := range scheduleResult.ResourceBindings {
 					if has := hasReplicasInCluster(itemRb.Spec.RbApps, itemCluster.Name); has {
-						itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
+						// itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 						itemRb.Namespace = itemCluster.Namespace
 						itemRb.Spec.TotalPeer = getTotal(itemRb.Spec.TotalPeer, len(scheduleResult.ResourceBindings))
 						itemRb.Spec.NonZeroClusterNum = countNonZeroClusterNumforRB(itemRb)

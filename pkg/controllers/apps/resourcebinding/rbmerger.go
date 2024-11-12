@@ -268,12 +268,6 @@ func (m *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding
 			}
 
 			if m.canDeleteDescUID(descUID, rb.Spec.TotalPeer) {
-				klog.V(5).Infof("handleToLocalResourceBinding: begin to post description(%q) and resourceBindings"+
-					" to HyperOM, target Server: %q", descName, m.postURL)
-				postErr := m.postMergedRBs(descName)
-				if postErr != nil {
-					return postErr
-				}
 				err = m.localGaiaClient.AppsV1alpha1().ResourceBindings(common.GaiaRSToBeMergedReservedNamespace).
 					DeleteCollection(context.TODO(), metaV1.DeleteOptions{},
 						metaV1.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{

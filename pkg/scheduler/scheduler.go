@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 
@@ -414,11 +415,15 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 				} else {
 					continue
 				}
-
+				totalPeer := getTotal(itemRb.Spec.TotalPeer, len(scheduleResult.ResourceBindings))
 				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 				itemRb.Namespace = itemCluster.Namespace
-				itemRb.Spec.TotalPeer = getTotal(itemRb.Spec.TotalPeer, len(scheduleResult.ResourceBindings))
-				itemRb.Spec.NonZeroClusterNum = countNonZeroClusterNumforRB(itemRb)
+				itemRb.Spec.TotalPeer = totalPeer
+				itemRb.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(itemRb)
+				lbs := itemRb.GetLabels()
+				lbs[common.GlobalRBNameLabel] = itemRb.Name
+				lbs[common.NonZeroClusterNumGlobal] = strconv.Itoa(itemRb.Spec.NonZeroClusterNum)
+				lbs[common.TotalPeerGlobalRB] = strconv.Itoa(totalPeer)
 				_, err2 := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 					Create(ctx, itemRb, metav1.CreateOptions{})
 				if err2 != nil {
@@ -511,7 +516,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 				klog.Warningf("scheduler failed:  %v", errVN)
 				return
 			}
-			transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
+			transferRB(nil, sched.localGaiaClient, common.ClusterLayer, sched.dedicatedNamespace,
 				common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
 		} else {
 			return
@@ -535,7 +540,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 		}
 
 		if descLabels[common.NetPlanLabel] != common.IPNetPlan {
-			transferRB(nil, sched.localGaiaClient, sched.dedicatedNamespace,
+			transferRB(nil, sched.localGaiaClient, common.FieldLayer, sched.dedicatedNamespace,
 				common.GaiaRSToBeMergedReservedNamespace, desc.Name, scheduleResult.ResourceBindings, ctx)
 		} else {
 			for _, itemCluster := range mcls.Items {
@@ -544,7 +549,12 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 						// itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 						itemRb.Namespace = itemCluster.Namespace
 						itemRb.Spec.TotalPeer = getTotal(itemRb.Spec.TotalPeer, len(scheduleResult.ResourceBindings))
-						itemRb.Spec.NonZeroClusterNum = countNonZeroClusterNumforRB(itemRb)
+						itemRb.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(itemRb)
+						lbs := itemRb.GetLabels()
+						lbs[common.FieldRBNameLabel] = itemRb.Name
+						lbs[common.NonZeroClusterNumField] = strconv.Itoa(itemRb.Spec.NonZeroClusterNum)
+						lbs[common.TotalPeerFieldRB] = strconv.Itoa(itemRb.Spec.TotalPeer)
+
 						_, err2 := sched.localGaiaClient.AppsV1alpha1().ResourceBindings(itemCluster.Namespace).
 							Create(ctx, itemRb, metav1.CreateOptions{})
 						if err2 != nil {
@@ -1093,14 +1103,24 @@ func getTotal(spec, lenResult int) int {
 }
 
 // transfer from src to dst
-func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, srcNS, dstNS, descName string,
+func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, level, srcNS, dstNS, descName string,
 	rbs []*appsapi.ResourceBinding, ctx context.Context,
 ) {
 	for _, item := range rbs {
 		rb := &appsapi.ResourceBinding{}
 		rb.Name = item.Name
 		rb.Namespace = dstNS
-		rb.Labels = item.Labels
+		lbs := item.GetLabels()
+		if level == common.FieldLayer {
+			lbs[common.FieldRBNameLabel] = rb.Name
+			lbs[common.NonZeroClusterNumField] = strconv.Itoa(item.Spec.NonZeroClusterNum)
+			lbs[common.TotalPeerFieldRB] = strconv.Itoa(item.Spec.TotalPeer)
+		} else if level == common.ClusterLayer {
+			lbs[common.ClusterRBNameLabel] = rb.Name
+			lbs[common.NonZeroClusterNumCluster] = strconv.Itoa(item.Spec.NonZeroClusterNum)
+			lbs[common.TotalPeerClusterRB] = strconv.Itoa(item.Spec.TotalPeer)
+		}
+		rb.Labels = lbs
 		rb.Spec = appsapi.ResourceBindingSpec{
 			AppID:             item.Spec.AppID,
 			ParentRB:          item.Spec.ParentRB,
@@ -1152,29 +1172,4 @@ func hasReplicasInCluster(bindingApps []*appsapi.ResourceBindingApps, clusterNam
 		}
 	}
 	return false
-}
-
-func countNonZeroClusterNumforRB(binding *appsapi.ResourceBinding) int {
-	nonZeroCount := 0
-	for _, rbApp := range binding.Spec.RbApps {
-		for _, v := range rbApp.Replicas {
-			if v > 0 {
-				nonZeroCount += 1
-				break
-			}
-		}
-
-		if rbApp.Children != nil && len(rbApp.Children) > 0 {
-			nonZeroCount = 0
-			for _, child := range rbApp.Children {
-				for _, v := range child.Replicas {
-					if v > 0 {
-						nonZeroCount += 1
-						break
-					}
-				}
-			}
-		}
-	}
-	return nonZeroCount
 }

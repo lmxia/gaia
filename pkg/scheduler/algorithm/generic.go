@@ -254,6 +254,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 		for i, rbOld := range rbs {
 			rbsResult := make([]*v1alpha1.ResourceBinding, 0)
 			rbForrb := spawnResourceBindings(allResultWithRB[i], allClusters, desc, components, affinity)
+			totalPeer := getTotalPeer(len(rbForrb), maxRBNumber)
 			for j := range rbForrb {
 				subRBApps := make([]*v1alpha1.ResourceBindingApps, 0)
 				for _, rbapp := range rbOld.Spec.RbApps {
@@ -272,24 +273,24 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						}
 					}
 				}
-				rbLabels := rbForrb[j].GetLabels()
-				rbLabels[common.TotalPeerOfParentRB] = fmt.Sprintf("%d", rbOld.Spec.TotalPeer)
-				rbLabels[common.ParentRBLabel] = rbOld.Name
+
+				rbLabels := rbOld.GetLabels()
+				rbLabels[common.ParentRBNameLabel] = rbOld.Name
 				rbNew := &v1alpha1.ResourceBinding{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:   fmt.Sprintf("%s-%d", rbOld.Name, rbIndex),
 						Labels: rbLabels,
 					},
 					Spec: v1alpha1.ResourceBindingSpec{
-						AppID:             desc.Name,
-						NonZeroClusterNum: rbOld.Spec.NonZeroClusterNum,
-						ParentRB:          rbOld.Name,
-						FrontendRbs:       rbOld.Spec.FrontendRbs,
-						RbApps:            subRBApps,
-						TotalPeer:         getTotalPeer(len(rbForrb), maxRBNumber),
-						NetworkPath:       rbOld.Spec.NetworkPath,
+						AppID:       desc.Name,
+						ParentRB:    rbOld.Name,
+						FrontendRbs: rbOld.Spec.FrontendRbs,
+						RbApps:      subRBApps,
+						TotalPeer:   totalPeer,
+						NetworkPath: rbOld.Spec.NetworkPath,
 					},
 				}
+				rbNew.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(rbNew)
 				rbNew.Kind = common.RBKind
 				rbNew.APIVersion = common.GaiaAPIVersion
 				rbIndex += 1
@@ -861,24 +862,23 @@ func (g *genericScheduler) ScheduleVN(ctx context.Context, fwk framework.Framewo
 					}
 				}
 			}
-			rbLabels := rbForrb[j].GetLabels()
-			rbLabels[common.TotalPeerOfParentRB] = fmt.Sprintf("%d", rbOld.Spec.TotalPeer)
-			rbLabels[common.ParentRBLabel] = rbOld.Name
+			rbLabels := rbOld.GetLabels()
+			rbLabels[common.ParentRBNameLabel] = rbOld.Name
 			rbNew := &v1alpha1.ResourceBinding{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   fmt.Sprintf("%s-%d", rbOld.Name, rbIndex),
 					Labels: rbLabels,
 				},
 				Spec: v1alpha1.ResourceBindingSpec{
-					AppID:             desc.Name,
-					NonZeroClusterNum: rbOld.Spec.NonZeroClusterNum,
-					ParentRB:          rbOld.Name,
-					FrontendRbs:       rbOld.Spec.FrontendRbs,
-					RbApps:            newRBApps,
-					TotalPeer:         getTotalPeer(len(rbForrb), maxRBNumber),
-					NetworkPath:       rbOld.Spec.NetworkPath,
+					AppID:       desc.Name,
+					ParentRB:    rbOld.Name,
+					FrontendRbs: rbOld.Spec.FrontendRbs,
+					RbApps:      newRBApps,
+					TotalPeer:   getTotalPeer(len(rbForrb), maxRBNumber),
+					NetworkPath: rbOld.Spec.NetworkPath,
 				},
 			}
+			rbNew.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(rbNew)
 			rbNew.Kind = common.RBKind
 			rbNew.APIVersion = common.GaiaAPIVersion
 			rbIndex += 1

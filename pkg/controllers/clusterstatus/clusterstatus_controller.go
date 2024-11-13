@@ -377,7 +377,7 @@ func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 			// get hypernodes' labels that are in Cluster level
 			// only the worker node labels whose "NodeRole" is not "System"
 			if value, ok := hypernode.GetLabels()[clusterapi.NodeRoleKey]; ok && value != "System" {
-				if hypernode.Spec.NodeAreaType == "cluster" {
+				if hypernode.Spec.NodeAreaType == known.ClusterLayer {
 					nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels())
 				}
 			}

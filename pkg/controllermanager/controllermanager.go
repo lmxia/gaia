@@ -51,12 +51,6 @@ import (
 	"github.com/lmxia/gaia/pkg/utils"
 )
 
-const (
-	clusterLayer = "cluster"
-	fieldLayer   = "field"
-	globalLayer  = "global"
-)
-
 type ControllerManager struct {
 	ctx context.Context
 
@@ -170,7 +164,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 
 	var cronController *cronmaster.Controller
 	var cronErr error
-	if opts.ClusterLevel == clusterLayer {
+	if opts.ClusterLevel == common.ClusterLayer {
 		cronController, cronErr = cronmaster.NewController(localGaiaClientSet, localKubeClientSet,
 			localGaiaInformerFactory, localKubeInformerFactory, localKubeConfig)
 		if cronErr != nil {
@@ -180,7 +174,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 
 	var frontendController *frontend.Controller
 	var frontendErr error
-	if opts.ClusterLevel == globalLayer {
+	if opts.ClusterLevel == common.GlobalLayer {
 		frontendController, frontendErr = frontend.NewController(localGaiaClientSet, localGaiaInformerFactory,
 			vhostClientSet, aliyunSourceSite)
 		if frontendErr != nil {
@@ -295,12 +289,12 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 				}()
 
 				// 6. start local cronmaster controller
-				if controller.ClusterLevel == clusterLayer {
+				if controller.ClusterLevel == common.ClusterLayer {
 					go controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
 				}
 
 				// 7. start frontend cdn accelerate controller
-				if controller.ClusterLevel == globalLayer {
+				if controller.ClusterLevel == common.GlobalLayer {
 					go controller.frontendController.Run(common.DefaultThreadiness, ctx.Done())
 				}
 

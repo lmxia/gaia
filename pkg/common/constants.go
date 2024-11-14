@@ -56,15 +56,6 @@ const (
 	// current cluster
 	PrometheusURLPrefix = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090"
 
-	// description labels on rb
-	GaiaDescriptionLabel            = "apps.gaia.io/description"
-	GaiaComponentLabel              = "apps.gaia.io/component"
-	OriginDescriptionNameLabel      = "apps.gaia.io/ori.desc.name"
-	OriginDescriptionNamespaceLabel = "apps.gaia.io/ori.desc.namespace"
-	OriginDescriptionUIDLabel       = "apps.gaia.io/ori.desc.uid"
-	UserNameLabel                   = "apps.gaia.io/user.name"
-	ParentRBLabel                   = "apps.gaia.io/ori.parent-rb"
-
 	NetPlanLabel          = "apps.gaia.io/net-plan" // ip or identification
 	IPNetPlan             = "ip"
 	IdentificationNetPlan = "identification"
@@ -114,6 +105,10 @@ const (
 
 	RBKind         = "ResourceBinding"
 	GaiaAPIVersion = "apps.gaia.io/v1alpha1"
+
+	ClusterLayer = "cluster"
+	FieldLayer   = "field"
+	GlobalLayer  = "global"
 )
 
 // lease lock

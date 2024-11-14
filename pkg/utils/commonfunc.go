@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
+	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -183,4 +184,29 @@ func GetNonzeroRequestForResource(resource corev1.ResourceName, requests *corev1
 	default:
 		return 0
 	}
+}
+
+func CountNonZeroClusterNumForRB(binding *appsapi.ResourceBinding) int {
+	nonZeroCount := 0
+	for _, rbApp := range binding.Spec.RbApps {
+		for _, v := range rbApp.Replicas {
+			if v > 0 {
+				nonZeroCount += 1
+				break
+			}
+		}
+
+		if rbApp.Children != nil && len(rbApp.Children) > 0 {
+			nonZeroCount = 0
+			for _, child := range rbApp.Children {
+				for _, v := range child.Replicas {
+					if v > 0 {
+						nonZeroCount += 1
+						break
+					}
+				}
+			}
+		}
+	}
+	return nonZeroCount
 }

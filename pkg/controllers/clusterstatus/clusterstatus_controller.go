@@ -114,6 +114,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	var nodeStatistics clusterapi.NodeStatistics
 	var capacity, allocatable, available corev1.ResourceList
 	var topoInfo clusterapi.Topo
+	var nodesAllRes map[string]clusterapi.NodeResources
 	if len(clusters) == 0 {
 		klog.V(7).Info("no joined clusters, collecting cluster resources...")
 		nodes, err2 := c.nodeLister.List(labels.Everything())
@@ -126,12 +127,14 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 			capacity, allocatable, available = getNodeResource(nodes)
 		} else if c.managedClusterSource == known.ManagedClusterSourceFromPrometheus {
 			capacity, allocatable, available = getNodeResourceFromPrometheus(c.promURLPrefix)
+			nodesAllRes = getEachNodeResourceFromPrometheus(c.promURLPrefix, nodes)
 		}
 	} else {
 		klog.V(7).Info("collecting ManagedCluster status...")
 
 		nodeStatistics = getManagedClusterNodeStatistics(clusters)
 		capacity, allocatable, available = getManagedClusterResource(clusters)
+		nodesAllRes = getManagedClusterAllResource(clusters)
 
 		selfClusterName, _, errClusterName := utils.GetLocalClusterName(c.kubeClient.(*kubernetes.Clientset))
 		if errClusterName != nil {
@@ -164,6 +167,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	status.Allocatable = allocatable
 	status.Capacity = capacity
 	status.Available = available
+	status.NodesResources = nodesAllRes
 	status.HeartbeatFrequencySeconds = utilpointer.Int64(int64(c.heartbeatFrequency.Seconds()))
 	status.Conditions = []metav1.Condition{c.getCondition(status)}
 	status.TopologyInfo = topoInfo
@@ -460,6 +464,18 @@ func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (capacity,
 	return
 }
 
+func getManagedClusterAllResource(clusters []*clusterapi.ManagedCluster) map[string]clusterapi.NodeResources {
+	allNodeResourcesMap := make(map[string]clusterapi.NodeResources)
+	for _, cluster := range clusters {
+		for k, v := range cluster.Status.NodesResources {
+			allNodeResourcesMap[k] = v
+		}
+		// maps.Copy(allNodeResourcesMap, cluster.Status.NodesResources)
+	}
+
+	return allNodeResourcesMap
+}
+
 // getNodeCondition returns the specified condition from node's status
 // Copied from k8s.io/kubernetes/pkg/controller/util/node/controller_utils.go and make some modifications
 func getNodeCondition(status *corev1.NodeStatus, conditionType corev1.NodeConditionType) (int, *corev1.NodeCondition) {
@@ -521,6 +537,59 @@ func getNodeResourceFromPrometheus(promPreURL string) (capacity, allocatable, av
 	available[corev1.ResourceMemory] = availableMem
 
 	return capacity, allocatable, available
+}
+
+// getEachNodeResourceFromPrometheus returns the cpu, gpu, memory resources from Prometheus in the cluster
+func getEachNodeResourceFromPrometheus(promPreURL string, nodes []*corev1.Node) map[string]clusterapi.NodeResources {
+	QueryMetricSet, ClusterMetricList, err := utils.InitConfig(known.MetricConfigMapNodeAbsFilePath)
+	if err != nil || len(ClusterMetricList) != 4 {
+		klog.Warningf("Wrong metrics config or The length of ClusterMetricList not 4, err: %v", err)
+		return nil
+	}
+
+	// var entityNodeRes clusterapi.NodeResources
+	nodeResourcesMap := make(map[string]clusterapi.NodeResources)
+	for _, node := range nodes {
+		if utils.IsSystemNode(node) {
+			continue
+		}
+		var nodeResource clusterapi.NodeResources
+		var valueList [4]string
+		var capacityCPU, capacityMem, availableCPU, availableMem resource.Quantity
+		nodeResource.ClusterName = utils.GetNodeClusterName(node)
+		sn := utils.GetNodeSNID(node)
+		for index, metric := range ClusterMetricList[:4] {
+			metric = strings.ReplaceAll(metric, "XXX", sn)
+			result, err2 := utils.GetDataFromPrometheus(promPreURL, QueryMetricSet[metric])
+			if err2 == nil {
+				if len(result.(model.Vector)) == 0 {
+					klog.Warningf("Query from prometheus successfully, but the result is a null array.")
+					valueList[index] = "0"
+				} else {
+					valueList[index] = result.(model.Vector)[0].Value.String()
+				}
+			} else {
+				valueList[index] = "0"
+			}
+		}
+		capacityCPU.Add(resource.MustParse(valueList[0]))
+		capacityMem.Add(resource.MustParse(valueList[1] + "Ki"))
+		availableCPU.Add(resource.MustParse(getSubStringWithSpecifiedDecimalPlace(valueList[2], 3)))
+		availableMem.Add(resource.MustParse(valueList[3] + "Ki"))
+
+		// todo: Judge whether it is an entity node
+
+		nodeResource.Capacity[corev1.ResourceCPU] = capacityCPU
+		nodeResource.Capacity[corev1.ResourceMemory] = capacityMem
+		nodeResource.Available[corev1.ResourceCPU] = availableCPU
+		nodeResource.Available[corev1.ResourceMemory] = availableMem
+
+		// todo: get gpu resource
+
+		nodeResourcesMap[sn] = nodeResource
+	}
+
+	return nodeResourcesMap
 }
 
 // getSubStringWithSpecifiedDecimalPlace returns a sub string based on the specified number of decimal places

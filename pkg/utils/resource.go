@@ -5,9 +5,11 @@ import (
 	"strings"
 	"time"
 
+	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	"github.com/prometheus/client_golang/api"
 	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -50,4 +52,20 @@ func GetSubStringWithSpecifiedDecimalPlace(inputString string, m int) string {
 		return inputString
 	}
 	return newString[0] + "." + newString[1][:m]
+}
+
+// GetNodeSNID return nodeID/resID from nodeLabels
+func GetNodeSNID(node *corev1.Node) string {
+	return node.GetLabels()[platformapi.ParsedSNKey]
+}
+
+// GetNodeClusterName return clusterName from nodeLabels
+func GetNodeClusterName(node *corev1.Node) string {
+	return node.GetLabels()[platformapi.ParsedClusterNameKey]
+}
+
+// IsSystemNode return clusterName from nodeLabels
+func IsSystemNode(node *corev1.Node) bool {
+	return node.GetLabels()[platformapi.ParsedNodeRoleKey] == "System" ||
+		node.GetLabels()[platformapi.ParsedNodeRoleKey] == "system"
 }

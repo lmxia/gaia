@@ -95,8 +95,9 @@ type ManagedClusterStatus struct {
 	// +optional
 	Available corev1.ResourceList `json:"available,omitempty"`
 
+	// NodesResources map[nodeID]NodeResources
 	// +optional
-	GPUs []*GPUResources `json:"gpus,omitempty"`
+	NodesResources map[string]NodeResources `json:"nodesResources,omitempty"`
 
 	// ClusterCIDR is the CIDR range of the cluster
 	// +optional
@@ -135,14 +136,16 @@ type ManagedClusterList struct {
 	Items           []ManagedCluster `json:"items"`
 }
 
-type GPUResources struct {
+type NodeResources struct {
 	// +optional
 	ClusterName string `json:"clusterName,omitempty"`
 	// +optional
-	Available map[string]int `json:"available,omitempty"`
-	Capacity  map[string]int `json:"capacity,omitempty"`
+	Capacity corev1.ResourceList `json:"capacity,omitempty"`
 	// +optional
-	Children []*GPUResources `json:"children,omitempty"`
+	Available corev1.ResourceList `json:"available,omitempty"`
+	// +optional
+	CapacityGPU  map[string]int `json:"capacityGPU,omitempty"`
+	AvailableGPU map[string]int `json:"availableGPU,omitempty"`
 }
 
 type NodeStatistics struct {

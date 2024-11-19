@@ -34,4 +34,11 @@ const (
 	NonZeroClusterNumGlobal  = "apps.gaia.io/global-non-zero-cluster-num"
 	NonZeroClusterNumField   = "apps.gaia.io/field-non-zero-cluster-num"
 	NonZeroClusterNumCluster = "apps.gaia.io/cluster-non-zero-cluster-num"
+
+	// GPU Resources
+	GPUProductLabel = "gpu-product"
+	// GPUCountLabel        = "gpuCount"
+	// GPUMemoryLabel       = "gpuMemory"
+	// GPUscheduleTypeLabel = "scheduleType"
+	// GPUIsolateLabel      = "gpuIsolate"
 )

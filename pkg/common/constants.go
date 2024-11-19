@@ -71,6 +71,7 @@ const (
 
 	MetricConfigMapAbsFilePath             = "/etc/config/gaia-prometheus_metrics.conf"
 	ServiceMaintenanceConfigMapAbsFilePath = "/etc/config/service-maintenance-prometheus_metrics.conf"
+	MetricConfigMapNodeAbsFilePath         = "/etc/config/gaia-prometheus_node_metrics.conf"
 
 	HypernodeClusterNodeRole       = "hypernode.cluster.pml.com.cn/node-role"
 	HypernodeClusterNodeRolePublic = "Public"

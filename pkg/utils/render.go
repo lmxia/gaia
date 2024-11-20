@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +16,8 @@ import (
 )
 
 type gpuResource struct {
+	ContainerName string `json:"containerName"`
+	// IsInitContainer bool   `json:"isInitContainer"`
 	GPUProduct   string `json:"gpuProduct"`
 	GPUCount     int    `json:"gpuCount"`
 	GPUMemory    int    `json:"gpuMemory"`
@@ -309,45 +312,37 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 		spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
 	}
 	if condition.Object.Type == "resources" && condition.Object.Name == "gpuRequest" {
-		var gpuRequest gpuResource
+		var gpuRequests []gpuResource
+		cNameGPUMap := make(map[string]gpuResource)
 		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
-		_ = json.Unmarshal(condition.Extent, &gpuRequest)
-		klog.V(5).Infof("after unmarshal,extent is %+v", gpuRequest)
-
-		if gpuRequest.GPUProduct != "" {
-			req := metav1.LabelSelectorRequirement{
-				Key:      known.GPUProductLabel,
-				Operator: metav1.LabelSelectorOperator(condition.Relation),
-				Values:   []string{gpuRequest.GPUProduct},
-			}
-			spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
-			model.Annotations[known.SpecificNodeLabelsKeyPrefix+known.GPUProductLabel] = gpuRequest.GPUProduct
-			// multi containers
-			model.Spec.Containers[0].Resources.Requests["nvidia.com/gpu"] =
-				*resource.NewQuantity(int64(gpuRequest.GPUCount), resource.DecimalSI)
-			model.Spec.Containers[0].Resources.Limits["nvidia.com/gpu"] =
-				*resource.NewQuantity(int64(gpuRequest.GPUCount), resource.DecimalSI)
+		_ = json.Unmarshal(condition.Extent, &gpuRequests)
+		klog.V(5).Infof("after unmarshal,extent is %+v", gpuRequests)
+		if len(gpuRequests) == 0 {
+			return spLevel
 		}
-		// 要参与运算
-		// if gpuRequest.GPUCount != 0 {
-		// 	req := metav1.LabelSelectorRequirement{
-		// 		Key:      known.GPUCountLabel,
-		// 		Operator: metav1.labelselectorOp, // Gt
-		// 		Values:   gpuRequest.GPUCount,
-		// 	}
-		// 	spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
-		// }
-		// if gpuRequest.GPUMemory != 0 {
-		// 	req := metav1.LabelSelectorRequirement{
-		// 		Key:      known.GPUMemoryLabel,
-		// 		Operator: metav1.labelselectorOp,
-		// 		Values:   gpuRequest.GPUMemory,
-		// 	}
-		// 	spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
-		// }
-		// add request to template label
-	}
+		for _, gpuReq := range gpuRequests {
+			cNameGPUMap[gpuReq.ContainerName] = gpuReq
+		}
 
+		for _, container := range model.Spec.Containers {
+			if gpuR, ok := cNameGPUMap[container.Name]; ok {
+				if gpuR.GPUProduct != "" {
+					req := metav1.LabelSelectorRequirement{
+						Key:      known.GPUProductLabel,
+						Operator: metav1.LabelSelectorOperator(condition.Relation),
+						Values:   []string{gpuR.GPUProduct},
+					}
+					spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
+					model.Annotations[platformapi.ParsedGPUProductKey+container.Name] = gpuR.GPUProduct
+					// multi containers
+					container.Resources.Requests["nvidia.com/gpu"] =
+						*resource.NewQuantity(int64(gpuR.GPUCount), resource.DecimalSI)
+					container.Resources.Limits["nvidia.com/gpu"] =
+						*resource.NewQuantity(int64(gpuR.GPUCount), resource.DecimalSI)
+				}
+			}
+		}
+	}
 	return spLevel
 }
 

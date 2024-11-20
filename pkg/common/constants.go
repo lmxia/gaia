@@ -94,13 +94,6 @@ const (
 	FrontendAliyunCdnTagSupplierName  = "supplierName"
 	FrontendAliyunCdnTagDomainName    = "domainName"
 
-	// GPU Resources
-	GPUProductLabel      = "gpu-product"
-	GPUCountLabel        = "gpuCount"
-	GPUMemoryLabel       = "gpuMemory"
-	GPUscheduleTypeLabel = "scheduleType"
-	GPUIsolateLabel      = "gpuIsolate"
-
 	FrontendAliyunCdnSleepWait  = 1000
 	FrontendAliyunCdnSleepError = 2000
 

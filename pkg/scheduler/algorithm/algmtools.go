@@ -46,8 +46,8 @@ func scheduleWorkloadVNode(cpu int64, mem int64, nodes []*coreV1.Node, diagnosis
 	return result, total
 }
 
-func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster, diagnosis interfaces.Diagnosis,
-	comName string,
+func scheduleWorkload(cpu int64, mem int64, gpuReqMap map[string]int, clusters []*v1alpha1.ManagedCluster,
+	diagnosis interfaces.Diagnosis, comName string,
 ) ([]*framework.ClusterInfo, int64) {
 	result := make([]*framework.ClusterInfo, 0)
 	total := int64(0)
@@ -55,7 +55,7 @@ func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster,
 		clusterInfo := &framework.ClusterInfo{
 			Cluster: cluster,
 		}
-		clusterCapacity := clusterInfo.CalculateCapacity(cpu, mem)
+		clusterCapacity := clusterInfo.CalculateCapacity(cpu, mem, gpuReqMap)
 		if clusterCapacity == 0 {
 			diagnosis.ClusterToStatusMap[cluster.Name] = interfaces.NewStatus(interfaces.Error, fmt.Sprintf(
 				"cluster(s) has not enough resources: nodeName=%v, componentName=%v",

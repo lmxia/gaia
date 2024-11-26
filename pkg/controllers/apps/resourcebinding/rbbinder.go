@@ -599,100 +599,205 @@ func (c *Binder) handleParentResourceBinding(rb *appsV1alpha1.ResourceBinding) e
 		}
 		descriptionName := rb.GetLabels()[common.GaiaDescriptionLabel]
 
-		createRB := false
-		if len(rb.Spec.RbApps) > 0 {
-			for _, rba := range rb.Spec.RbApps {
-				if len(rba.Children) > 0 {
+		if rb.Labels[common.NetPlanLabel] == common.IPNetPlan {
+			return c.handleParentRBIP(rb, descNs, descriptionName, clusterName)
+		} else {
+			return c.handleParentRBID(rb, descNs, descriptionName, clusterName)
+		}
+	}
+
+	return nil
+}
+func (c *Binder) handleParentRBIP(rb *appsV1alpha1.ResourceBinding, descNs, descName, clusterName string) error {
+	createRB := false
+	if len(rb.Spec.RbApps) > 0 {
+		for _, rba := range rb.Spec.RbApps {
+			for _, rbb := range rba.Children {
+				if len(rbb.Children) > 0 {
 					createRB = true
 					break
 				}
 			}
 		}
+	}
 
-		if rb.DeletionTimestamp == nil {
-			if createRB {
-				nwr, newErr := utils.GetNetworkRequirement(context.TODO(), c.parentDynamicClient, c.restMapper, descriptionName,
-					common.GaiaReservedNamespace)
-				if newErr != nil {
-					klog.Infof("nwr error===%v \n", newErr)
-					nwr = nil
-				}
-				return utils.ApplyResourceBinding(context.TODO(), c.localDynamicClient, c.restMapper, rb, clusterName,
-					descriptionName, c.networkBindURL, nwr)
-			} else {
-				desc, errDesc := c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descriptionName,
-					metav1.GetOptions{})
-				if errDesc != nil {
-					klog.Errorf("handleParentResourceBinding: failed get parent Description %s/%s, error==%v",
-						descNs, descriptionName, errDesc)
-					return errDesc
-				}
+	if rb.DeletionTimestamp == nil {
+		if createRB {
+			nwr, newErr := utils.GetNetworkRequirement(context.TODO(), c.parentDynamicClient, c.restMapper, descName,
+				common.GaiaReservedNamespace)
+			if newErr != nil {
+				klog.Infof("nwr error===%v \n", newErr)
+				nwr = nil
+			}
+			return utils.ApplyResourceBinding(context.TODO(), c.localDynamicClient, c.restMapper, rb, clusterName,
+				descName, c.networkBindURL, nwr)
+		} else {
+			desc, errDesc := c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descName,
+				metav1.GetOptions{})
+			if errDesc != nil {
+				klog.Errorf("handleParentResourceBinding: failed get parent Description %s/%s, error==%v",
+					descNs, descName, errDesc)
+				return errDesc
+			}
 
-				nodes, err := c.localNodeLister.List(labels.Everything())
-				if err != nil {
-					klog.Errorf("handleParentResourceBinding: failed to list nodes, Description=%s/%s, error==%v",
-						descNs, descriptionName, err)
-					return err
-				}
-				// format desc to components
-				components, _, _ := utils.DescToComponents(desc)
-				// need schedule across clusters
-				err = utils.ApplyRBWorkloads(context.TODO(), c.localGaiaClient, c.parentGaiaClient,
-					c.localDynamicClient, rb, nodes, desc, components,
-					c.restMapper, clusterName, c.promURLPrefix)
-				if err != nil {
-					return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
-				}
+			nodes, err := c.localNodeLister.List(labels.Everything())
+			if err != nil {
+				klog.Errorf("handleParentResourceBinding: failed to list nodes, Description=%s/%s, error==%v",
+					descNs, descName, err)
+				return err
+			}
+			// format desc to components
+			components, _, _ := utils.DescToComponents(desc)
+			// need schedule across clusters
+			err = utils.ApplyRBWorkloadsIP(context.TODO(), c.localGaiaClient, c.parentGaiaClient,
+				c.localDynamicClient, rb, nodes, desc, components,
+				c.restMapper, clusterName, c.promURLPrefix)
+			if err != nil {
+				return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
+			}
+		}
+	} else {
+		if createRB {
+			err := c.offloadLocalResourceBindingsByRB(rb)
+			if err != nil {
+				return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ",
+					rb.Name, err)
+			}
+			if len(rb.Spec.NetworkPath) > 0 && len(c.networkBindURL) > 0 {
+				klog.V(2).Infof("networkBindURL is %q", c.networkBindURL)
+				utils.PostNetworkRequest(c.networkBindURL, descName, "delete", rb.Spec.NetworkPath[0])
 			}
 		} else {
-			if createRB {
-				err := c.offloadLocalResourceBindingsByRB(rb)
-				if err != nil {
-					return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ",
-						rb.Name, err)
-				}
-				if len(rb.Spec.NetworkPath) > 0 && len(c.networkBindURL) > 0 {
-					klog.V(2).Infof("networkBindURL is %q", c.networkBindURL)
-					utils.PostNetworkRequest(c.networkBindURL, descriptionName, "delete", rb.Spec.NetworkPath[0])
-				}
-			} else {
-				err := utils.OffloadRBWorkloads(context.TODO(), c.localDynamicClient, c.restMapper, rb.GetLabels())
-				if err != nil {
-					return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ",
-						rb.Name, err)
-				}
+			err := utils.OffloadRBWorkloads(context.TODO(), c.localDynamicClient, c.restMapper, rb.GetLabels())
+			if err != nil {
+				return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ",
+					rb.Name, err)
 			}
+		}
 
-			// delete rb
-			if rb.Namespace == common.GaiaRBMergedReservedNamespace {
-				// remove RbApp of this cluster/field
-				var newRbApps []*appsV1alpha1.ResourceBindingApps
-				for _, rbApp := range rb.Spec.RbApps {
-					if rbApp.ClusterName == clusterName {
-						continue
-					}
-					newRbApps = append(newRbApps, rbApp)
+		// delete rb
+		if rb.Namespace == common.GaiaRBMergedReservedNamespace {
+			// remove RbApp of this cluster/field
+			var newRbApps []*appsV1alpha1.ResourceBindingApps
+			for _, rbApp := range rb.Spec.RbApps {
+				if rbApp.ClusterName == clusterName {
+					continue
 				}
-				rb.Spec.RbApps = newRbApps
-				rbCopy := rb.DeepCopy()
-				if len(rbCopy.Spec.RbApps) == 0 && len(rbCopy.Spec.FrontendRbs) == 0 {
-					// remove finalizers
-					rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
+				newRbApps = append(newRbApps, rbApp)
+			}
+			rb.Spec.RbApps = newRbApps
+			rbCopy := rb.DeepCopy()
+			if len(rbCopy.Spec.RbApps) == 0 && len(rbCopy.Spec.FrontendRbs) == 0 {
+				// remove finalizers
+				rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
+			}
+			if _, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(
+				context.TODO(), rbCopy, metav1.UpdateOptions{}); err != nil {
+				if apierrors.IsNotFound(err) {
+					return nil
 				}
-				if _, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(
-					context.TODO(), rbCopy, metav1.UpdateOptions{}); err != nil {
-					if apierrors.IsNotFound(err) {
-						return nil
-					}
-					klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s "+
-						"from ResourceBinding %s: %v",
-						common.AppFinalizer, klog.KObj(rb), err))
-					return err
-				}
+				klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s "+
+					"from ResourceBinding %s: %v",
+					common.AppFinalizer, klog.KObj(rb), err))
+				return err
+			}
+		}
+	}
+	return nil
+}
+func (c *Binder) handleParentRBID(rb *appsV1alpha1.ResourceBinding, descNs, descName, clusterName string) error {
+	createRB := false
+	if len(rb.Spec.RbApps) > 0 {
+		for _, rba := range rb.Spec.RbApps {
+			if len(rba.Children) > 0 {
+				createRB = true
+				break
 			}
 		}
 	}
 
+	if rb.DeletionTimestamp == nil {
+		if createRB {
+			nwr, newErr := utils.GetNetworkRequirement(context.TODO(), c.parentDynamicClient, c.restMapper, descName,
+				common.GaiaReservedNamespace)
+			if newErr != nil {
+				klog.Infof("nwr error===%v \n", newErr)
+				nwr = nil
+			}
+			return utils.ApplyResourceBinding(context.TODO(), c.localDynamicClient, c.restMapper, rb, clusterName,
+				descName, c.networkBindURL, nwr)
+		} else {
+			desc, errDesc := c.parentGaiaClient.AppsV1alpha1().Descriptions(descNs).Get(context.TODO(), descName,
+				metav1.GetOptions{})
+			if errDesc != nil {
+				klog.Errorf("handleParentResourceBinding: failed get parent Description %s/%s, error==%v",
+					descNs, descName, errDesc)
+				return errDesc
+			}
+
+			nodes, err := c.localNodeLister.List(labels.Everything())
+			if err != nil {
+				klog.Errorf("handleParentResourceBinding: failed to list nodes, Description=%s/%s, error==%v",
+					descNs, descName, err)
+				return err
+			}
+			// format desc to components
+			components, _, _ := utils.DescToComponents(desc)
+			// need schedule across clusters
+			err = utils.ApplyRBWorkloads(context.TODO(), c.localGaiaClient, c.parentGaiaClient,
+				c.localDynamicClient, rb, nodes, desc, components,
+				c.restMapper, clusterName, c.promURLPrefix)
+			if err != nil {
+				return fmt.Errorf("handle ParentResourceBinding local apply workloads(components) failed")
+			}
+		}
+	} else {
+		if createRB {
+			err := c.offloadLocalResourceBindingsByRB(rb)
+			if err != nil {
+				return fmt.Errorf("fail to offload local ResourceBinding by parent ResourceBinding %q: %v ",
+					rb.Name, err)
+			}
+			if len(rb.Spec.NetworkPath) > 0 && len(c.networkBindURL) > 0 {
+				klog.V(2).Infof("networkBindURL is %q", c.networkBindURL)
+				utils.PostNetworkRequest(c.networkBindURL, descName, "delete", rb.Spec.NetworkPath[0])
+			}
+		} else {
+			err := utils.OffloadRBWorkloads(context.TODO(), c.localDynamicClient, c.restMapper, rb.GetLabels())
+			if err != nil {
+				return fmt.Errorf("fail to offload workloads of parent ResourceBinding %q: %v ",
+					rb.Name, err)
+			}
+		}
+
+		// delete rb
+		if rb.Namespace == common.GaiaRBMergedReservedNamespace {
+			// remove RbApp of this cluster/field
+			var newRbApps []*appsV1alpha1.ResourceBindingApps
+			for _, rbApp := range rb.Spec.RbApps {
+				if rbApp.ClusterName == clusterName {
+					continue
+				}
+				newRbApps = append(newRbApps, rbApp)
+			}
+			rb.Spec.RbApps = newRbApps
+			rbCopy := rb.DeepCopy()
+			if len(rbCopy.Spec.RbApps) == 0 && len(rbCopy.Spec.FrontendRbs) == 0 {
+				// remove finalizers
+				rbCopy.Finalizers = utils.RemoveString(rbCopy.Finalizers, common.AppFinalizer)
+			}
+			if _, err := c.parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Update(
+				context.TODO(), rbCopy, metav1.UpdateOptions{}); err != nil {
+				if apierrors.IsNotFound(err) {
+					return nil
+				}
+				klog.WarningDepth(4, fmt.Sprintf("failed to remove finalizer %s "+
+					"from ResourceBinding %s: %v",
+					common.AppFinalizer, klog.KObj(rb), err))
+				return err
+			}
+		}
+	}
 	return nil
 }
 

@@ -71,7 +71,8 @@ func NewController(clusternetClient gaiaClientSet.Interface,
 		clusternetClient: clusternetClient,
 		rbsLister:        rbsInformer.Lister(),
 		rbsSynced:        rbsInformer.Informer().HasSynced,
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
+		workqueue: workqueue.NewNamedRateLimitingQueue(
+			workqueue.NewItemExponentialFailureRateLimiter(time.Second, 100*time.Second),
 			"resource-bindings-to-merge"),
 		SyncHandler: syncHandler,
 	}

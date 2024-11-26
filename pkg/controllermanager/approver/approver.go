@@ -62,7 +62,8 @@ type CRRApprover struct {
 // NewCRRApprover returns a new CRRApprover for ClusterRegistrationRequest.
 func NewCRRApprover(localkubeclient *kubernetes.Clientset, localgaiaclient *gaiaClientSet.Clientset,
 	localKubeConfig *rest.Config, gaiaInformerFactory externalInformers.SharedInformerFactory,
-	kubeInformerFactory kubeInformers.SharedInformerFactory) (*CRRApprover, error) {
+	kubeInformerFactory kubeInformers.SharedInformerFactory,
+) (*CRRApprover, error) {
 	localdynamicClient, err := dynamic.NewForConfig(localKubeConfig)
 	if err != nil {
 		return nil, err
@@ -363,7 +364,8 @@ func (crrApprover *CRRApprover) handleClusterRR(crr *platformv1alpha1.ClusterReg
 }
 
 func (crrApprover *CRRApprover) createNamespaceForChildClusterIfNeeded(clusterID types.UID, clusterNamePrefix,
-	clusterName string) (*corev1.Namespace, error) {
+	clusterName string,
+) (*corev1.Namespace, error) {
 	// checks for an existed dedicated namespace for child cluster
 	// the clusterName here may vary, we use clusterID as the identifier
 	namespaces, err := crrApprover.nsLister.List(labels.SelectorFromSet(labels.Set{
@@ -452,7 +454,8 @@ func (crrApprover *CRRApprover) createManagedClusterIfNeeded(namespace, clusterN
 }
 
 func (crrApprover *CRRApprover) createServiceAccountIfNeeded(namespace, clusterName string,
-	clusterID types.UID) (*corev1.ServiceAccount, error) {
+	clusterID types.UID,
+) (*corev1.ServiceAccount, error) {
 	// checks for an existed dedicated service account created for child cluster to access parent cluster
 	// the clusterName here may vary, we use clusterID as the identifier
 	sas, err := crrApprover.saLister.List(labels.SelectorFromSet(labels.Set{
@@ -509,7 +512,8 @@ func (crrApprover *CRRApprover) createServiceAccountIfNeeded(namespace, clusterN
 }
 
 func (crrApprover *CRRApprover) bindingClusterRolesIfNeeded(serviceAccountName, serivceAccountNamespace string,
-	clusterID types.UID) error {
+	clusterID types.UID,
+) error {
 	var allErrs []error
 	wg := sync.WaitGroup{}
 

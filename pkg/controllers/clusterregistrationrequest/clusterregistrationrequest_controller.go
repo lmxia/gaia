@@ -235,7 +235,8 @@ func (c *Controller) syncHandler(key string) error {
 }
 
 func (c *Controller) UpdateCRRStatus(crr *clusterapi.ClusterRegistrationRequest,
-	status *clusterapi.ClusterRegistrationRequestStatus) error {
+	status *clusterapi.ClusterRegistrationRequestStatus,
+) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance

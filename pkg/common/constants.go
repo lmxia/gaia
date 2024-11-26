@@ -36,8 +36,8 @@ const (
 	RBMergerLabel             = "clusters.gaia.io/merger"
 	CredentialsAuto           = "credentials-auto"
 
-	AppsNameLabel = "apps.gaia.io/description-name"
-	AppFinalizer  = "apps.gaia.io/finalizer"
+	GaiaAppsLabelPrefix = "apps.gaia.io/"
+	AppFinalizer        = "apps.gaia.io/finalizer"
 
 	DefaultClusterStatusCollectFrequency = 20 * time.Second
 	DefaultClusterStatusReportFrequency  = 3 * time.Minute
@@ -56,14 +56,9 @@ const (
 	// current cluster
 	PrometheusURLPrefix = "http://prometheus-kube-prometheus-hypermoni.hypermonitor.svc:9090"
 
-	// description labels on rb
-	GaiaDescriptionLabel            = "apps.gaia.io/description"
-	GaiaComponentLabel              = "apps.gaia.io/component"
-	OriginDescriptionNameLabel      = "apps.gaia.io/ori.desc.name"
-	OriginDescriptionNamespaceLabel = "apps.gaia.io/ori.desc.namespace"
-	OriginDescriptionUIDLabel       = "apps.gaia.io/ori.desc.uid"
-	UserNameLabel                   = "apps.gaia.io/user.name"
-	ParentRBLabel                   = "apps.gaia.io/ori.parent-rb"
+	NetPlanLabel          = "apps.gaia.io/net-plan" // ip or identification
+	IPNetPlan             = "ip"
+	IdentificationNetPlan = "identification"
 
 	NetworkLocationCore = "core"
 	NodeResourceForm    = "pool"
@@ -76,6 +71,7 @@ const (
 
 	MetricConfigMapAbsFilePath             = "/etc/config/gaia-prometheus_metrics.conf"
 	ServiceMaintenanceConfigMapAbsFilePath = "/etc/config/service-maintenance-prometheus_metrics.conf"
+	MetricConfigMapNodeAbsFilePath         = "/etc/config/gaia-prometheus_node_metrics.conf"
 
 	HypernodeClusterNodeRole       = "hypernode.cluster.pml.com.cn/node-role"
 	HypernodeClusterNodeRolePublic = "Public"
@@ -100,14 +96,21 @@ const (
 
 	FrontendAliyunCdnSleepWait  = 1000
 	FrontendAliyunCdnSleepError = 2000
+
+	RBKind         = "ResourceBinding"
+	GaiaAPIVersion = "apps.gaia.io/v1alpha1"
+
+	ClusterLayer = "cluster"
+	FieldLayer   = "field"
+	GlobalLayer  = "global"
 )
 
 // lease lock
 const (
-	DefaultLeaseDuration = 80 * time.Second
-	DefaultRenewDeadline = 70 * time.Second
+	DefaultLeaseDuration = 60 * time.Second
+	DefaultRenewDeadline = 50 * time.Second
 	// DefaultRetryPeriod means the default retry period
-	DefaultRetryPeriod = 15 * time.Second
+	DefaultRetryPeriod = 10 * time.Second
 	// DefaultResync means the default resync time
 	DefaultResync      = time.Hour * 12
 	DefaultThreadiness = 2

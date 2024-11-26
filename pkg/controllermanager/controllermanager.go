@@ -51,12 +51,6 @@ import (
 	"github.com/lmxia/gaia/pkg/utils"
 )
 
-const (
-	clusterLayer = "cluster"
-	fieldLayer   = "field"
-	globalLayer  = "global"
-)
-
 type ControllerManager struct {
 	ctx context.Context
 
@@ -99,7 +93,8 @@ type ControllerManager struct {
 // NewControllerManager returns a new Agent.
 func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostName, networkBindURL,
 	aliyunSourceSite string, managedCluster *platformv1alpha1.ManagedClusterOptions, opts *option.Options) (
-	*gaiaconfig.CompletedConfig, *ControllerManager, error) {
+	*gaiaconfig.CompletedConfig, *ControllerManager, error,
+) {
 	if errs := opts.Validate(); len(errs) > 0 {
 		return nil, nil, utilerrors.NewAggregate(errs)
 	}
@@ -169,7 +164,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 
 	var cronController *cronmaster.Controller
 	var cronErr error
-	if opts.ClusterLevel == clusterLayer {
+	if opts.ClusterLevel == common.ClusterLayer {
 		cronController, cronErr = cronmaster.NewController(localGaiaClientSet, localKubeClientSet,
 			localGaiaInformerFactory, localKubeInformerFactory, localKubeConfig)
 		if cronErr != nil {
@@ -179,7 +174,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 
 	var frontendController *frontend.Controller
 	var frontendErr error
-	if opts.ClusterLevel == globalLayer {
+	if opts.ClusterLevel == common.GlobalLayer {
 		frontendController, frontendErr = frontend.NewController(localGaiaClientSet, localGaiaInformerFactory,
 			vhostClientSet, aliyunSourceSite)
 		if frontendErr != nil {
@@ -294,12 +289,12 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 				}()
 
 				// 6. start local cronmaster controller
-				if controller.ClusterLevel == clusterLayer {
+				if controller.ClusterLevel == common.ClusterLayer {
 					go controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
 				}
 
 				// 7. start frontend cdn accelerate controller
-				if controller.ClusterLevel == globalLayer {
+				if controller.ClusterLevel == common.GlobalLayer {
 					go controller.frontendController.Run(common.DefaultThreadiness, ctx.Done())
 				}
 
@@ -329,7 +324,8 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 }
 
 func newLeaderElectionConfigWithDefaultValue(identity string, clientset kubernetes.Interface,
-	callbacks leaderelection.LeaderCallbacks) *leaderelection.LeaderElectionConfig {
+	callbacks leaderelection.LeaderCallbacks,
+) *leaderelection.LeaderElectionConfig {
 	return &leaderelection.LeaderElectionConfig{
 		Lock: &resourcelock.LeaseLock{
 			LeaseMeta: metav1.ObjectMeta{
@@ -427,7 +423,8 @@ func (controller *ControllerManager) registerSelfCluster(ctx context.Context) {
 }
 
 func (controller *ControllerManager) getClusterID(ctx context.Context, childClientSet kubernetes.Interface) (
-	types.UID, error) {
+	types.UID, error,
+) {
 	lease, err := childClientSet.CoordinationV1().Leases(common.GaiaSystemNamespace).Get(ctx,
 		common.GaiaControllerLeaseName, metav1.GetOptions{})
 	if err != nil {
@@ -439,7 +436,8 @@ func (controller *ControllerManager) getClusterID(ctx context.Context, childClie
 }
 
 func (controller *ControllerManager) bootstrapClusterRegistrationIfNeeded(ctx context.Context,
-	target *platformv1alpha1.Target) error {
+	target *platformv1alpha1.Target,
+) error {
 	klog.Infof("try to bootstrap cluster registration if needed")
 
 	clientConfig, err := controller.getBootstrapKubeConfigForParentCluster(target)
@@ -471,7 +469,8 @@ func (controller *ControllerManager) bootstrapClusterRegistrationIfNeeded(ctx co
 }
 
 func (controller *ControllerManager) getBootstrapKubeConfigForParentCluster(target *platformv1alpha1.Target) (
-	*rest.Config, error) {
+	*rest.Config, error,
+) {
 	if controller.parentKubeConfig != nil {
 		return controller.parentKubeConfig, nil
 	}
@@ -487,7 +486,8 @@ func (controller *ControllerManager) getBootstrapKubeConfigForParentCluster(targ
 }
 
 func (controller *ControllerManager) waitingForApproval(ctx context.Context, client gaiaclientset.Interface,
-	target *platformv1alpha1.Target) error {
+	target *platformv1alpha1.Target,
+) error {
 	var crr *platformv1alpha1.ClusterRegistrationRequest
 	var err error
 
@@ -537,7 +537,8 @@ func (controller *ControllerManager) waitingForApproval(ctx context.Context, cli
 }
 
 func (controller *ControllerManager) storeParentClusterCredentials(crr *platformv1alpha1.ClusterRegistrationRequest,
-	clusterName string, target *platformv1alpha1.Target) {
+	clusterName string, target *platformv1alpha1.Target,
+) {
 	klog.V(4).Infof("store parent cluster credentials to secret for later use")
 	secretCtx, cancel := context.WithCancel(controller.ctx)
 	defer cancel()
@@ -581,7 +582,8 @@ func (controller *ControllerManager) storeParentClusterCredentials(crr *platform
 }
 
 func newClusterRegistrationRequest(clusterID types.UID, clusterNamePrefix, clusterName,
-	clusterLabels string) *platformv1alpha1.ClusterRegistrationRequest {
+	clusterLabels string,
+) *platformv1alpha1.ClusterRegistrationRequest {
 	return &platformv1alpha1.ClusterRegistrationRequest{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: generateClusterRegistrationRequestName(clusterID, clusterNamePrefix),

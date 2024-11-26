@@ -56,7 +56,8 @@ type Controller struct {
 func NewController(ctx context.Context, apiserverURL, clusterName string,
 	managedCluster *clusterapi.ManagedClusterOptions, kubeClient kubernetes.Interface,
 	gaiaClient *gaiaclientset.Clientset, hypernodeClient *hypernodeclientset.Clientset, collectingPeriod time.Duration,
-	heartbeatFrequency time.Duration) *Controller {
+	heartbeatFrequency time.Duration,
+) *Controller {
 	kubeInformerFactory := informers.NewSharedInformerFactory(kubeClient, known.DefaultResync)
 	// add informers
 	kubeInformerFactory.Core().V1().Nodes().Informer()
@@ -113,6 +114,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	var nodeStatistics clusterapi.NodeStatistics
 	var capacity, allocatable, available corev1.ResourceList
 	var topoInfo clusterapi.Topo
+	var nodesAllRes map[string]clusterapi.NodeResources
 	if len(clusters) == 0 {
 		klog.V(7).Info("no joined clusters, collecting cluster resources...")
 		nodes, err2 := c.nodeLister.List(labels.Everything())
@@ -125,12 +127,14 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 			capacity, allocatable, available = getNodeResource(nodes)
 		} else if c.managedClusterSource == known.ManagedClusterSourceFromPrometheus {
 			capacity, allocatable, available = getNodeResourceFromPrometheus(c.promURLPrefix)
+			nodesAllRes = getEachNodeResourceFromPrometheus(c.promURLPrefix, nodes)
 		}
 	} else {
 		klog.V(7).Info("collecting ManagedCluster status...")
 
 		nodeStatistics = getManagedClusterNodeStatistics(clusters)
 		capacity, allocatable, available = getManagedClusterResource(clusters)
+		nodesAllRes = getManagedClusterAllResource(clusters)
 
 		selfClusterName, _, errClusterName := utils.GetLocalClusterName(c.kubeClient.(*kubernetes.Clientset))
 		if errClusterName != nil {
@@ -163,6 +167,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	status.Allocatable = allocatable
 	status.Capacity = capacity
 	status.Available = available
+	status.NodesResources = nodesAllRes
 	status.HeartbeatFrequencySeconds = utilpointer.Int64(int64(c.heartbeatFrequency.Seconds()))
 	status.Conditions = []metav1.Condition{c.getCondition(status)}
 	status.TopologyInfo = topoInfo
@@ -282,20 +287,19 @@ func getNodeLabels(nodes []*corev1.Node) (nodeLabels map[string]string) {
 	for _, node := range nodes {
 		// get worker nodes' labels whose "NodeRole" is not "System"
 		if value, ok := node.GetLabels()[clusterapi.ParsedNodeRoleKey]; ok && value != "System" {
-			nodeLabels = parseNodeLabels(nodeLabels, node.GetLabels(), node.GetName())
+			nodeLabels = parseNodeLabels(nodeLabels, node.GetLabels())
 		}
 	}
 	return nodeLabels
 }
 
 // parseNodeLabels returns the nodeLabels that belong to specific string list.
-func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
+func parseNodeLabels(nodeLabels, inLabels map[string]string) map[string]string {
+	sn := inLabels[clusterapi.ParsedSNKey]
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
-			if labelKey == clusterapi.ParsedSNKey || labelKey == clusterapi.ParsedGeoLocationKey ||
-				labelKey == clusterapi.ParsedProviderKey {
-				nodeLabels[labelKey+"__"+nodeName] = labelValue
-			} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
+			if labelKey == clusterapi.ParsedNetEnvironmentKey || labelKey == clusterapi.ParsedNodeRoleKey ||
+				labelKey == clusterapi.ParsedResFormKey || labelKey == clusterapi.ParsedRuntimeStateKey {
 				if _, ok := nodeLabels[labelKey]; ok {
 					existedLabelValueArray := strings.Split(nodeLabels[labelKey], "__")
 					if !utils.ContainsString(existedLabelValueArray, labelValue) {
@@ -304,6 +308,8 @@ func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) ma
 				} else {
 					nodeLabels[labelKey] = labelValue
 				}
+			} else if utils.ContainsString(clusterapi.ParsedHypernodeLabelKeyList, labelKey) {
+				nodeLabels[labelKey+"__"+sn] = labelValue
 			}
 		}
 	}
@@ -311,23 +317,24 @@ func parseNodeLabels(nodeLabels, inLabels map[string]string, nodeName string) ma
 }
 
 // parseHypernodeLabels returns the HypernodeLabels that belong to specific string list.
-func parseHypernodeLabels(nodeLabels, inLabels map[string]string, nodeName string) map[string]string {
+func parseHypernodeLabels(nodeLabels, inLabels map[string]string) map[string]string {
+	sn := inLabels[clusterapi.SNKey]
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
-			if labelKey == clusterapi.SNKey || labelKey == clusterapi.GeoLocationKey ||
-				labelKey == clusterapi.NetworkEnvKey {
-				nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]+"__"+nodeName] = labelValue
-			} else if utils.ContainsString(clusterapi.HypernodeLableKeyList, labelKey) {
-				if _, ok := nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]]; ok {
+			if labelKey == clusterapi.NetEnvironmentKey || labelKey == clusterapi.NodeRoleKey ||
+				labelKey == clusterapi.ResFormKey || labelKey == clusterapi.RuntimeStateKey {
+				if _, ok := nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]]; ok {
 					existedLabelValueArray := strings.Split(
-						nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]], "__")
+						nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]], "__")
 					if !utils.ContainsString(existedLabelValueArray, labelValue) {
-						nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] =
-							nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] + "__" + labelValue
+						nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]] =
+							nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]] + "__" + labelValue
 					}
 				} else {
-					nodeLabels[clusterapi.HypernodeLableKeyToStandardLabelKey[labelKey]] = labelValue
+					nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]] = labelValue
 				}
+			} else if utils.ContainsString(clusterapi.HypernodeLabelKeyList, labelKey) {
+				nodeLabels[clusterapi.HypernodeLabelKeyToStandardLabelKey[labelKey]+"__"+sn] = labelValue
 			}
 		}
 	}
@@ -340,10 +347,8 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 	for _, cluster := range clusters {
 		for labelKey, labelValue := range cluster.GetLabels() {
 			if len(labelValue) > 0 {
-				if strings.HasPrefix(labelKey, clusterapi.ParsedSNKey) || strings.HasPrefix(labelKey,
-					clusterapi.ParsedGeoLocationKey) || strings.HasPrefix(labelKey, clusterapi.ParsedProviderKey) {
-					nodeLabels[labelKey] = labelValue
-				} else if utils.ContainsString(clusterapi.ParsedHypernodeLableKeyList, labelKey) {
+				if labelKey == clusterapi.ParsedNetEnvironmentKey || labelKey == clusterapi.ParsedNodeRoleKey ||
+					labelKey == clusterapi.ParsedResFormKey || labelKey == clusterapi.ParsedRuntimeStateKey {
 					if _, ok := nodeLabels[labelKey]; ok {
 						existedLabelValueArray := strings.Split(nodeLabels[labelKey], "__")
 						if !utils.ContainsString(existedLabelValueArray, labelValue) {
@@ -352,6 +357,8 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 					} else {
 						nodeLabels[labelKey] = labelValue
 					}
+				} else if strings.HasPrefix(labelKey, known.SpecificNodeLabelsKeyPrefix) {
+					nodeLabels[labelKey] = labelValue
 				}
 			}
 		}
@@ -363,6 +370,7 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 	nodeLabels = make(map[string]string)
 	if c.useHypernodeController {
+		// discard
 		hypernodeList, err := c.hypernodeClient.ClusterV1alpha1().Hypernodes(metav1.NamespaceDefault).
 			List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
@@ -373,8 +381,8 @@ func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 			// get hypernodes' labels that are in Cluster level
 			// only the worker node labels whose "NodeRole" is not "System"
 			if value, ok := hypernode.GetLabels()[clusterapi.NodeRoleKey]; ok && value != "System" {
-				if hypernode.Spec.NodeAreaType == "cluster" {
-					nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels(), hypernode.GetName())
+				if hypernode.Spec.NodeAreaType == known.ClusterLayer {
+					nodeLabels = parseHypernodeLabels(nodeLabels, hypernode.GetLabels())
 				}
 			}
 		}
@@ -434,7 +442,8 @@ func getNodeResource(nodes []*corev1.Node) (capacity, allocatable, available cor
 
 // getManagedClusterResource gets the node capacity of all managedClusters and their allocatable resources
 func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (capacity, allocatable,
-	available corev1.ResourceList) {
+	available corev1.ResourceList,
+) {
 	capacity, allocatable, available = make(map[corev1.ResourceName]resource.Quantity),
 		make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity)
 	var capacityCPU, capacityMem, allocatableCPU, allocatableMem, availableCPU, availableMem resource.Quantity
@@ -453,6 +462,18 @@ func getManagedClusterResource(clusters []*clusterapi.ManagedCluster) (capacity,
 	available[corev1.ResourceCPU] = availableCPU
 	available[corev1.ResourceMemory] = availableMem
 	return
+}
+
+func getManagedClusterAllResource(clusters []*clusterapi.ManagedCluster) map[string]clusterapi.NodeResources {
+	allNodeResourcesMap := make(map[string]clusterapi.NodeResources)
+	for _, cluster := range clusters {
+		for k, v := range cluster.Status.NodesResources {
+			allNodeResourcesMap[k] = v
+		}
+		// maps.Copy(allNodeResourcesMap, cluster.Status.NodesResources)
+	}
+
+	return allNodeResourcesMap
 }
 
 // getNodeCondition returns the specified condition from node's status
@@ -516,6 +537,59 @@ func getNodeResourceFromPrometheus(promPreURL string) (capacity, allocatable, av
 	available[corev1.ResourceMemory] = availableMem
 
 	return capacity, allocatable, available
+}
+
+// getEachNodeResourceFromPrometheus returns the cpu, gpu, memory resources from Prometheus in the cluster
+func getEachNodeResourceFromPrometheus(promPreURL string, nodes []*corev1.Node) map[string]clusterapi.NodeResources {
+	QueryMetricSet, ClusterMetricList, err := utils.InitConfig(known.MetricConfigMapNodeAbsFilePath)
+	if err != nil || len(ClusterMetricList) != 4 {
+		klog.Warningf("Wrong metrics config or The length of ClusterMetricList not 4, err: %v", err)
+		return nil
+	}
+
+	// var entityNodeRes clusterapi.NodeResources
+	nodeResourcesMap := make(map[string]clusterapi.NodeResources)
+	for _, node := range nodes {
+		if utils.IsSystemNode(node) {
+			continue
+		}
+		var nodeResource clusterapi.NodeResources
+		var valueList [4]string
+		var capacityCPU, capacityMem, availableCPU, availableMem resource.Quantity
+		nodeResource.ClusterName = utils.GetNodeClusterName(node)
+		sn := utils.GetNodeSNID(node)
+		for index, metric := range ClusterMetricList[:4] {
+			metric = strings.ReplaceAll(metric, "XXX", sn)
+			result, err2 := utils.GetDataFromPrometheus(promPreURL, QueryMetricSet[metric])
+			if err2 == nil {
+				if len(result.(model.Vector)) == 0 {
+					klog.Warningf("Query from prometheus successfully, but the result is a null array.")
+					valueList[index] = "0"
+				} else {
+					valueList[index] = result.(model.Vector)[0].Value.String()
+				}
+			} else {
+				valueList[index] = "0"
+			}
+		}
+		capacityCPU.Add(resource.MustParse(valueList[0]))
+		capacityMem.Add(resource.MustParse(valueList[1] + "Ki"))
+		availableCPU.Add(resource.MustParse(getSubStringWithSpecifiedDecimalPlace(valueList[2], 3)))
+		availableMem.Add(resource.MustParse(valueList[3] + "Ki"))
+
+		// todo: Judge whether it is an entity node
+
+		nodeResource.Capacity[corev1.ResourceCPU] = capacityCPU
+		nodeResource.Capacity[corev1.ResourceMemory] = capacityMem
+		nodeResource.Available[corev1.ResourceCPU] = availableCPU
+		nodeResource.Available[corev1.ResourceMemory] = availableMem
+
+		// todo: get gpu resource
+
+		nodeResourcesMap[sn] = nodeResource
+	}
+
+	return nodeResourcesMap
 }
 
 // getSubStringWithSpecifiedDecimalPlace returns a sub string based on the specified number of decimal places

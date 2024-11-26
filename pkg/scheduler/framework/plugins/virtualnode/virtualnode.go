@@ -3,6 +3,7 @@ package virtualnode
 import (
 	"context"
 
+	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
@@ -30,13 +31,25 @@ func (v *VirtualNode) NormalizeScore(ctx context.Context, scores framework.Resou
 }
 
 func (v *VirtualNode) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding,
-	clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
+	clusters []*clusterapi.ManagedCluster,
+) (int64, *framework.Status) {
 	clusterMap := make(map[string]*clusterapi.ManagedCluster, 0)
 	for _, cluster := range clusters {
 		clusterMap[cluster.Name] = cluster
 	}
 
 	return calculateScore(0, rb.Spec.RbApps, clusterMap), nil
+}
+
+func (v *VirtualNode) ScoreVN(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding,
+	nodes []*coreV1.Node,
+) (int64, *framework.Status) {
+	nodeMap := make(map[string]*coreV1.Node, 0)
+	for _, cluster := range nodes {
+		nodeMap[cluster.Name] = cluster
+	}
+
+	return calculateScoreVN(0, rb.Spec.RbApps, nodeMap), nil
 }
 
 // ScoreExtensions of the Score plugin.

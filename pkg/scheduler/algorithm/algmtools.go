@@ -12,6 +12,7 @@ import (
 	"strconv"
 
 	"gonum.org/v1/gonum/mat"
+	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 
@@ -22,7 +23,31 @@ import (
 	"github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 )
 
-func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster, diagnosis interfaces.Diagnosis,
+func scheduleWorkloadVNode(cpu int64, mem int64, nodes []*coreV1.Node, diagnosis interfaces.Diagnosis, comName string,
+) ([]*framework.NodeInfo, int64) {
+	result := make([]*framework.NodeInfo, 0)
+	total := int64(0)
+	for _, node := range nodes {
+		nodeInfo := &framework.NodeInfo{
+			Node: node,
+		}
+		nodeCapacity := nodeInfo.CalculateCapacity(cpu, mem)
+		if nodeCapacity == 0 {
+			diagnosis.ClusterToStatusMap[node.Name] = interfaces.NewStatus(interfaces.Error, fmt.Sprintf(
+				"cluster(s) has not enough resources: nodeName=%v, componentName=%v",
+				node.Name, comName))
+			diagnosis.UnschedulablePlugins.Insert("filtered node==" + node.Name + " has resource limit")
+			continue
+		}
+		nodeInfo.Total = nodeCapacity
+		total += nodeCapacity
+		result = append(result, nodeInfo)
+	}
+	return result, total
+}
+
+func scheduleWorkload(cpu int64, mem int64, gpuReqMap map[string]int, clusters []*v1alpha1.ManagedCluster,
+	diagnosis interfaces.Diagnosis, comName string,
 ) ([]*framework.ClusterInfo, int64) {
 	result := make([]*framework.ClusterInfo, 0)
 	total := int64(0)
@@ -30,9 +55,12 @@ func scheduleWorkload(cpu int64, mem int64, clusters []*v1alpha1.ManagedCluster,
 		clusterInfo := &framework.ClusterInfo{
 			Cluster: cluster,
 		}
-		clusterCapacity := clusterInfo.CalculateCapacity(cpu, mem)
+		clusterCapacity := clusterInfo.CalculateCapacity(cpu, mem, gpuReqMap)
 		if clusterCapacity == 0 {
-			diagnosis.UnschedulablePlugins.Insert("filtered cluster ", cluster.Name, " has resource limit")
+			diagnosis.ClusterToStatusMap[cluster.Name] = interfaces.NewStatus(interfaces.Error, fmt.Sprintf(
+				"cluster(s) has not enough resources: nodeName=%v, componentName=%v",
+				cluster.Name, comName))
+			diagnosis.UnschedulablePlugins.Insert("filtered cluster==" + cluster.Name + " has resource limit")
 			continue
 		}
 		clusterInfo.Total = clusterCapacity
@@ -77,8 +105,61 @@ func spawnResourceBindings(ins [][]mat.Matrix, allClusters []*v1alpha1.ManagedCl
 					RbApps: spawnResourceBindingApps(item, allClusters, components),
 				},
 			}
-			rb.Kind = "ResourceBinding"
-			rb.APIVersion = "apps.gaia.io/v1alpha1"
+			rb.Kind = common.RBKind
+			rb.APIVersion = common.GaiaAPIVersion
+			if checkContainMatrix(matResult, item) {
+				continue
+			}
+			rbIndex += 1
+			matResult = append(matResult, item)
+			result = append(result, rb)
+			// TODO only return top 10 rbs. not so random
+			// TODO change me!!!
+			if rbIndex == 5 {
+				return result
+			}
+		}
+	}
+	return result
+}
+
+// spawn a brank new resourcebindings on multi spread level.
+func spawnResourceBindingsVN(ins [][]mat.Matrix, allNodes []*coreV1.Node, desc *appv1alpha1.Description,
+	components []appv1alpha1.Component, affinity []int,
+) []*appv1alpha1.ResourceBinding {
+	result := make([]*appv1alpha1.ResourceBinding, 0)
+	matResult := make([]mat.Matrix, 0)
+	rbIndex := 0
+	rbLabels := FillRBLabels(desc)
+	rbLabels[common.GaiaDescriptionLabel] = desc.Name
+	for _, items := range ins {
+		indexMatrix, err := makeResourceBindingMatrix(items)
+		if err != nil {
+			// leave this matrix alone.
+			continue
+		}
+		for _, item := range indexMatrix {
+			// check whether every item fit the affinity condition
+			if !checkAffinityCondition(item, affinity) {
+				continue
+			}
+
+			if !checkAGroupValid(item, components) {
+				continue
+			}
+
+			rb := &appv1alpha1.ResourceBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex),
+					Labels: rbLabels,
+				},
+				Spec: appv1alpha1.ResourceBindingSpec{
+					AppID:  desc.Name,
+					RbApps: spawnResourceBindingAppsVN(item, allNodes, components),
+				},
+			}
+			rb.Kind = common.RBKind
+			rb.APIVersion = common.GaiaAPIVersion
 			if checkContainMatrix(matResult, item) {
 				continue
 			}
@@ -270,6 +351,29 @@ func spawnResourceBindingApps(mat mat.Matrix, allClusters []*v1alpha1.ManagedClu
 	return rbapps
 }
 
+func spawnResourceBindingAppsVN(mat mat.Matrix, allNodes []*coreV1.Node,
+	components []appv1alpha1.Component,
+) []*appv1alpha1.ResourceBindingApps {
+	matR, matC := mat.Dims()
+	chosenMat := chosenOneInArrowVN(mat, allNodes)
+	rbapps := make([]*appv1alpha1.ResourceBindingApps, len(allNodes))
+	for i, item := range allNodes {
+		rbapps[i] = &appv1alpha1.ResourceBindingApps{
+			ClusterName: item.Name,
+			Replicas:    make(map[string]int32),
+			ChosenOne:   make(map[string]int32),
+		}
+	}
+
+	for i := 0; i < matR; i++ {
+		for j := 0; j < matC; j++ {
+			rbapps[j].Replicas[components[i].Name] = int32(mat.At(i, j))
+			rbapps[j].ChosenOne[components[i].Name] = int32(chosenMat.At(i, j))
+		}
+	}
+	return rbapps
+}
+
 // makeUserAPPPlan return userapp plan, only one replicas needed.
 func makeUserAPPPlan(capability []*framework.ClusterInfo) mat.Matrix {
 	result := mat.NewDense(1, len(capability), nil)
@@ -405,9 +509,113 @@ func makeUniqeDeployPlans(capability []*framework.ClusterInfo, componentTotal, s
 	}
 }
 
+// makeDeployPlans make plans for specific component
+func makeUniqueDeployPlansVN(capability []*framework.NodeInfo, componentTotal, spreadOver int64) mat.Matrix {
+	// 稍显突兀
+	maxRBPerComponentString := os.Getenv("MaxRBPerComponent")
+	maxRBNumber, err := strconv.Atoi(maxRBPerComponentString)
+	if err != nil {
+		maxRBNumber = 2
+	}
+
+	if componentTotal == 0 {
+		result := mat.NewDense(1, len(capability), nil)
+		result.Zero()
+		return result
+	}
+	// 1. check param,
+	if int(spreadOver) >= len(capability) {
+		result := mat.NewDense(1, len(capability), nil)
+		result.SetRow(0, planVN(capability, componentTotal))
+		return result
+	} else {
+		temResult := make([][]float64, 0)
+		// 2. get 2 plans
+		allCombile := GetClusterCombosVN(capability, int(spreadOver))
+		planNums := 0
+		for _, clusterPlan := range allCombile {
+			availableCountForThisPlan := int64(0)
+			randomCapacity := make([]*framework.NodeInfo, len(capability))
+			for i, item := range capability {
+				if ifItemInTheArrayVN(clusterPlan, item) {
+					randomCapacity[i] = item
+					availableCountForThisPlan += item.Total
+				} else {
+					randomCapacity[i] = nil
+				}
+			}
+			// we get a unavailable plan
+			if availableCountForThisPlan < componentTotal {
+				continue
+			} else {
+				r := planVN(randomCapacity, componentTotal)
+				temResult = append(temResult, r)
+				planNums += 1
+			}
+			if planNums >= maxRBNumber {
+				break
+			}
+		}
+		result := mat.NewDense(len(temResult), len(capability), nil)
+		for i, item := range temResult {
+			result.SetRow(i, item)
+		}
+		return result
+	}
+}
+
+// makeServelessPlan return serverless plan
+func makeServelessPlanVN(capability []*framework.NodeInfo, replicas int64) mat.Matrix {
+	result := mat.NewDense(1, len(capability), nil)
+	if replicas > 0 {
+		numResult := make([]float64, len(capability))
+		for i, item := range capability {
+			// resource is enough so, this check is unnecessary.
+			if item.Total > 0 {
+				numResult[i] = 1
+			} else {
+				numResult[i] = 0
+			}
+		}
+		result.SetRow(0, numResult)
+	} else {
+		result.Zero()
+	}
+	return result
+}
+
+// makeUserAPPPlan return userapp plan, only one replicas needed.
+func makeUserAPPPlanVN(capability []*framework.NodeInfo) mat.Matrix {
+	result := mat.NewDense(1, len(capability), nil)
+	numResult := make([]float64, len(capability))
+	success := false
+	for i, item := range capability {
+		if item.Total > 0 {
+			numResult[i] = 1
+			success = true
+			break
+		}
+	}
+	if success {
+		result.SetRow(0, numResult)
+	} else {
+		result.Zero()
+	}
+	return result
+}
+
 func ifItemInTheArray(clusters []*framework.ClusterInfo, cluster *framework.ClusterInfo) bool {
 	for _, item := range clusters {
 		if item == cluster {
+			return true
+		}
+	}
+	return false
+}
+
+func ifItemInTheArrayVN(nodes []*framework.NodeInfo, node *framework.NodeInfo) bool {
+	for _, item := range nodes {
+		if item == node {
 			return true
 		}
 	}
@@ -482,6 +690,46 @@ func getComponentClusterTotal(rbApps []*appv1alpha1.ResourceBindingApps, cluster
 
 // plan https://www.jianshu.com/p/12b89147993c
 func plan(weight []*framework.ClusterInfo, request int64) []float64 {
+	sum := int64(0)
+	finalAssign := make([]float64, 0)
+	targetF := make([]float64, 0)
+	totalFirstAssign := float64(0)
+
+	for _, weight := range weight {
+		if weight != nil {
+			sum += weight.Total
+		}
+	}
+
+	for _, weight := range weight {
+		currentTotal := int64(0)
+		if weight != nil {
+			currentTotal = weight.Total
+		}
+		currentPercent := float64(currentTotal) / float64(sum)
+		currentAssign := currentPercent * float64(request)
+		currentFinalAssign := math.Floor(currentAssign)
+		totalFirstAssign += currentFinalAssign
+		if currentTotal != 0 {
+			targetF = append(targetF, float64(sum)/float64(request)*(1+
+				(currentAssign-math.Floor(currentAssign))/math.Floor(currentAssign)))
+		} else {
+			targetF = append(targetF, float64(0))
+		}
+
+		finalAssign = append(finalAssign, currentFinalAssign)
+	}
+	// f=np.sum(arr)/n*(1+(arg-np.floor(arg))/np.floor(arg))
+	unassginLeft := request - int64(totalFirstAssign)
+	ord := ArgsortNew(targetF)
+	for i := 0; i < int(unassginLeft); i++ {
+		finalAssign[ord[len(ord)-i-1]] += 1
+	}
+	return finalAssign
+}
+
+// plan https://www.jianshu.com/p/12b89147993c
+func planVN(weight []*framework.NodeInfo, request int64) []float64 {
 	sum := int64(0)
 	finalAssign := make([]float64, 0)
 	targetF := make([]float64, 0)
@@ -627,6 +875,26 @@ func GetCombosHelper(set []*framework.ClusterInfo, depth int, start int, prefix 
 	}
 }
 
+func GetClusterCombosVN(set []*framework.NodeInfo, depth int) [][]*framework.NodeInfo {
+	initPrefix := make([]*framework.NodeInfo, 0)
+	return GetCombosHelperVN(set, depth, 0, initPrefix, [][]*framework.NodeInfo{})
+}
+
+func GetCombosHelperVN(set []*framework.NodeInfo, depth int, start int, prefix []*framework.NodeInfo,
+	accum [][]*framework.NodeInfo,
+) [][]*framework.NodeInfo {
+	if depth == 0 {
+		return append(accum, prefix)
+	} else {
+		for i := start; i <= len(set)-depth; i++ {
+			if set[i].Total != 0 {
+				accum = GetCombosHelperVN(set, depth-1, i+1, append(prefix, set[i]), accum)
+			}
+		}
+		return accum
+	}
+}
+
 // if mat in matrices
 func checkContainMatrix(matrices []mat.Matrix, matix mat.Matrix) bool {
 	for _, item := range matrices {
@@ -684,6 +952,54 @@ func chosenOneInArrow(in mat.Matrix, clusters []*v1alpha1.ManagedCluster) mat.Ma
 		out.SetRow(i, dense)
 	}
 	return out
+}
+
+func chosenOneInArrowVN(in mat.Matrix, nodes []*coreV1.Node) mat.Matrix {
+	aR, aC := in.Dims()
+	out := mat.NewDense(aR, aC, nil)
+	for i := 0; i < aR; i++ {
+		row := mat.DenseCopyOf(in).RawRowView(i)
+		dense := randowChoseOneGreateThanZeroVN(row, nodes)
+		out.SetRow(i, dense)
+	}
+	return out
+}
+
+func randowChoseOneGreateThanZeroVN(in []float64, nodes []*coreV1.Node) []float64 {
+	indexArrow := make([]int, 0)
+	truePositiveIndices := []int{}
+	// init zero dense
+	denseOut := mat.NewDense(1, len(in), nil)
+	denseOut.Zero()
+	for i, item := range in {
+		if item > 0 {
+			indexArrow = append(indexArrow, i)
+			if val, ok := nodes[i].GetLabels()[common.YuanLaoClusterLabel]; !ok || val != "no" {
+				truePositiveIndices = append(truePositiveIndices, i)
+			}
+		}
+	}
+	if len(indexArrow) == 0 {
+		return denseOut.RawRowView(0)
+	}
+
+	// 存在, 即没有污点，又符合标签的集群
+	if len(truePositiveIndices) > 0 {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(truePositiveIndices))))
+		if err != nil {
+			klog.Info("random error...")
+		}
+		indexChosen := truePositiveIndices[n.Int64()]
+		denseOut.Set(0, indexChosen, 1)
+	} else {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(indexArrow))))
+		if err != nil {
+			klog.Info("random error...")
+		}
+		indexChosen := indexArrow[n.Int64()]
+		denseOut.Set(0, indexChosen, 1)
+	}
+	return denseOut.RawRowView(0)
 }
 
 // checkAffinityCondition return whether one mat.Matrix fit the affinity conditions

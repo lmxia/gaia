@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,6 +14,16 @@ import (
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
 )
+
+type gpuResource struct {
+	ContainerName string `json:"containerName"`
+	// IsInitContainer bool   `json:"isInitContainer"`
+	GPUProduct   string `json:"gpuProduct"`
+	GPUCount     int    `json:"gpuCount"`
+	GPUMemory    int    `json:"gpuMemory"`
+	ScheduleType string `json:"scheduleType"`
+	GPUIsolate   bool   `json:"gpuIsolate"`
+}
 
 func HugeComponentToCommanComponent(hugeComponent *appsv1alpha1.HugeComponent) *appsv1alpha1.Component {
 	component := &appsv1alpha1.Component{
@@ -105,7 +116,8 @@ func DescToHugeComponents(desc *appsv1alpha1.Description) map[string]*appsv1alph
 
 // DescToComponents reflect a description to Components
 func DescToComponents(desc *appsv1alpha1.Description) (components []appsv1alpha1.Component, comLocation map[string]int,
-	affinity []int) {
+	affinity []int,
+) {
 	comLocation = make(map[string]int)
 	components = make([]appsv1alpha1.Component, len(desc.Spec.WorkloadComponents))
 
@@ -216,7 +228,8 @@ func GetWorkloadType(workloadType string) (workload appsv1alpha1.Workload) {
 
 // ParseDeploymentCondition parse desc.Spec.DeploymentCondition
 func ParseDeploymentCondition(deploymentCondition appsv1alpha1.DeploymentCondition, components []appsv1alpha1.Component,
-	comLocation map[string]int, affinity []int) {
+	comLocation map[string]int, affinity []int,
+) {
 	// mandatory
 	ParseCondition(deploymentCondition.Mandatory, appsv1alpha1.SchedulePolicyMandatory,
 		components, comLocation, affinity)
@@ -227,7 +240,8 @@ func ParseDeploymentCondition(deploymentCondition appsv1alpha1.DeploymentConditi
 
 // ParseCondition parse desc.Spec.DeploymentCondition.Mandatory or desc.Spec.DeploymentCondition.BestEffort
 func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alpha1.SchedulePolicyLevel,
-	components []appsv1alpha1.Component, comLocation map[string]int, affinity []int) {
+	components []appsv1alpha1.Component, comLocation map[string]int, affinity []int,
+) {
 	for _, condition := range deploymentConditions {
 		klog.V(5).Info("parse DeploymentConditions")
 
@@ -245,8 +259,11 @@ func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alp
 							MatchExpressions: nil,
 						}
 					}
+					if components[index].Module.Annotations == nil {
+						components[index].Module.Annotations = make(map[string]string)
+					}
 					components[index].SchedulePolicy.Level[spl] = SchedulePolicyReflect(condition,
-						components[index].SchedulePolicy.Level[spl])
+						components[index].SchedulePolicy.Level[spl], components[index].Module)
 				}
 			}
 		}
@@ -254,7 +271,8 @@ func ParseCondition(deploymentConditions []appsv1alpha1.Condition, spl appsv1alp
 }
 
 func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition,
-	policy map[string]*appsv1alpha1.SchedulePolicy) {
+	policy map[string]*appsv1alpha1.SchedulePolicy,
+) {
 	for _, condition := range deploymentConditions {
 		klog.V(5).Info("parse DeploymentConditions for group condition")
 
@@ -275,9 +293,14 @@ func ParseGroupCondition(deploymentConditions []appsv1alpha1.Condition,
 }
 
 // SchedulePolicyReflect reflect the condition to MatchExpressions according to the different schedule policy
-func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector) *metav1.LabelSelector {
+func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.LabelSelector,
+	model corev1.PodTemplateSpec,
+) *metav1.LabelSelector {
 	var extentStr []string
-	if condition.Object.Type == "label" && condition.Subject.Type == known.TypeComponent {
+	if condition.Subject.Type != known.TypeComponent {
+		return spLevel
+	}
+	if condition.Object.Type == "label" {
 		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
 		_ = json.Unmarshal(condition.Extent, &extentStr)
 		klog.V(5).Infof("after unmarshal,extent is %v", extentStr)
@@ -287,6 +310,38 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 			Values:   extentStr,
 		}
 		spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
+	}
+	if condition.Object.Type == "resources" && condition.Object.Name == "gpuRequest" {
+		var gpuRequests []gpuResource
+		cNameGPUMap := make(map[string]gpuResource)
+		klog.V(5).Infof("%v: its condition is %v", condition.Subject.Name, condition.Extent)
+		_ = json.Unmarshal(condition.Extent, &gpuRequests)
+		klog.V(5).Infof("after unmarshal,extent is %+v", gpuRequests)
+		if len(gpuRequests) == 0 {
+			return spLevel
+		}
+		for _, gpuReq := range gpuRequests {
+			cNameGPUMap[gpuReq.ContainerName] = gpuReq
+		}
+
+		for _, container := range model.Spec.Containers {
+			if gpuR, ok := cNameGPUMap[container.Name]; ok {
+				if gpuR.GPUProduct != "" {
+					req := metav1.LabelSelectorRequirement{
+						Key:      known.GPUProductLabel,
+						Operator: metav1.LabelSelectorOperator(condition.Relation),
+						Values:   []string{gpuR.GPUProduct},
+					}
+					spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
+					model.Annotations[platformapi.ParsedGPUProductKey+container.Name] = gpuR.GPUProduct
+					// multi containers
+					container.Resources.Requests["nvidia.com/gpu"] =
+						*resource.NewQuantity(int64(gpuR.GPUCount), resource.DecimalSI)
+					container.Resources.Limits["nvidia.com/gpu"] =
+						*resource.NewQuantity(int64(gpuR.GPUCount), resource.DecimalSI)
+				}
+			}
+		}
 	}
 	return spLevel
 }
@@ -308,7 +363,8 @@ func SchedulePolicyGroupReflect(condition appsv1alpha1.Condition, spLevel *metav
 
 // ParseExpectedPerformance parse desc.Spec.ExpectedPerformance
 func ParseExpectedPerformance(ep appsv1alpha1.ExpectedPerformance, components []appsv1alpha1.Component,
-	comLocation map[string]int) {
+	comLocation map[string]int,
+) {
 	// get boundaries map
 	boundaryMap := ParseBoundaries(ep.Boundaries, components, comLocation)
 	// parse HPA or VPA  and then get the threshold
@@ -317,7 +373,8 @@ func ParseExpectedPerformance(ep appsv1alpha1.ExpectedPerformance, components []
 
 // ParseBoundaries returns a map that the key is the boundary name and the value is the boundary itself
 func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1.Component,
-	comLocation map[string]int) map[string]appsv1alpha1.Boundary {
+	comLocation map[string]int,
+) map[string]appsv1alpha1.Boundary {
 	// expectedPerformance.Boundaries.Inner
 	boundaryMap := make(map[string]appsv1alpha1.Boundary)
 	klog.V(6).Infof("start to parse expectedPerformance.Boundaries.Inner:")
@@ -391,7 +448,8 @@ func ParseBoundaries(boundary appsv1alpha1.Boundaries, components []appsv1alpha1
 
 // ParseMaintenance reflect the boundaries and maintenance's trigger to serverless' threshold.
 func ParseMaintenance(maintenance appsv1alpha1.Maintenance, boundaryMap map[string]appsv1alpha1.Boundary,
-	components []appsv1alpha1.Component, comLocation map[string]int) {
+	components []appsv1alpha1.Component, comLocation map[string]int,
+) {
 	// 1. expectedPerformance.Maintenance.HPA
 	threshold := make([]map[string]int32, len(components))
 	for i := range threshold {

@@ -404,6 +404,7 @@ func GetDomainNameByDomainId(domainId uint32) string {
 	nputil.TraceInfoEnd("")
 	return baseDomain.BaseDomainDbV.DomainName
 }
+
 func GetIspNameByDomainId(domainId uint32) string {
 	nputil.TraceInfoBegin("")
 

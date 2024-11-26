@@ -267,7 +267,8 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 				known.OriginDescriptionNameLabel:      rbLabel[known.OriginDescriptionNameLabel],
 				known.OriginDescriptionNamespaceLabel: rbLabel[known.OriginDescriptionNamespaceLabel],
 				known.OriginDescriptionUIDLabel:       rbLabel[known.OriginDescriptionUIDLabel],
-			}).String()})
+			}).String(),
+		})
 		if err != nil {
 			klog.Warningf("failed to list resources of %q, error==%v", gvk.String(), err)
 			return err
@@ -316,7 +317,8 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *gaiaClientSet.Clientset,
 	localDynamicClient dynamic.Interface, rb *appsv1alpha1.ResourceBinding, nodes []*corev1.Node,
 	desc *appsv1alpha1.Description, components []appsv1alpha1.Component, discoveryRESTMapper meta.RESTMapper,
-	clusterName, promURLPrefix string) error {
+	clusterName, promURLPrefix string,
+) error {
 	var allErrs []error
 	var vpcResourceSli vpcResourceSlice
 	group2VPC := make(map[string]string)
@@ -474,7 +476,6 @@ func updateRBStatusWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clie
 
 		return false, nil
 	})
-
 	if err != nil {
 		klog.Errorf("failed to update status of resourcebinding %q, err: %v",
 			klog.KRef(rb.Namespace, rb.Name), err)
@@ -495,7 +496,7 @@ func getVPCForGroup(group2HugeCom map[string]*appsv1alpha1.HugeComponent, nodes 
 		if len(vpcLabel) != 0 {
 			cpu := vpc2CPU[vpcLabel]
 			mem := vpc2Mem[vpcLabel]
-			availableCPU, availableMem := getNodeResFromProm(node, promURLPrefix)
+			availableCPU, availableMem := GetNodeResFromProm(node, promURLPrefix)
 			cpu.Add(availableCPU)
 			mem.Add(availableMem)
 
@@ -521,7 +522,7 @@ func getVPCForGroup(group2HugeCom map[string]*appsv1alpha1.HugeComponent, nodes 
 	}
 }
 
-func getNodeResFromProm(node *corev1.Node, promURLPrefix string) (cpu, mem resource.Quantity) {
+func GetNodeResFromProm(node *corev1.Node, promURLPrefix string) (cpu, mem resource.Quantity) {
 	var valueList [2]string
 	query := [2]string{
 		fmt.Sprintf("sum(system_cpu_utilization{node_name=%q,state=\"idle\"})", node.GetLabels()["kubernetes.io/hostname"]),
@@ -596,8 +597,8 @@ func ApplyResourceBinding(ctx context.Context, localDynamicClient dynamic.Interf
 			newChildren := cutZeroChildren(rbApp.Children)
 			newRB := &appsv1alpha1.ResourceBinding{
 				TypeMeta: metav1.TypeMeta{
-					Kind:       "ResourceBinding",
-					APIVersion: "apps.gaia.io/v1alpha1",
+					Kind:       known.RBKind,
+					APIVersion: known.GaiaAPIVersion,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   rb.Name,
@@ -924,7 +925,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			}
 			dep.Name = comCopy.Name
 			if !delete {
-				dep.Spec.Template = comCopy.Module
+				dep.Spec.Template = getPodTemplate(comCopy.Module)
 				nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
 				dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
@@ -978,6 +979,10 @@ func getTemLabel(com *appsv1alpha1.Component, depLabels map[string]string) map[s
 	}
 
 	return newLabels
+}
+
+func getPodTemplate(model corev1.PodTemplateSpec) corev1.PodTemplateSpec {
+	return model
 }
 
 func addNodeSelector(comCopy *appsv1alpha1.Component, src map[string]string) map[string]string {
@@ -1169,7 +1174,8 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 
 func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string,
-	delete bool) (*unstructured.Unstructured, error) {
+	delete bool,
+) (*unstructured.Unstructured, error) {
 	cronUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -1272,7 +1278,8 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 }
 
 func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName,
-	descName string, group2VPC, descLabels map[string]string, delete bool) (*unstructured.Unstructured, error) {
+	descName string, group2VPC, descLabels map[string]string, delete bool,
+) (*unstructured.Unstructured, error) {
 	serUnstructured := &unstructured.Unstructured{}
 	var err error
 	comCopy := com.DeepCopy()
@@ -1425,7 +1432,8 @@ func NeedBindNetworkInCluster(rbApps []*appsv1alpha1.ResourceBindingApps, cluste
 }
 
 func CreateRBtoParentWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clientset, namespace string,
-	rb *appsv1alpha1.ResourceBinding) {
+	rb *appsv1alpha1.ResourceBinding,
+) {
 	var lastError error
 	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
 		_, err := gaiaClient.AppsV1alpha1().ResourceBindings(namespace).Create(context.TODO(), rb,

@@ -153,7 +153,8 @@ func NewController(gaiaClient gaiaClientSet.Interface, informer informers.Resour
 		Lister:     informer.Lister(),
 		Synced:     informer.Informer().HasSynced,
 		workqueue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.DefaultControllerRateLimiter(), "resource-binding-requests"),
+			workqueue.NewItemExponentialFailureRateLimiter(time.Second, 100*time.Second),
+			"resource-binding-requests"),
 		SyncHandler: syncHandler,
 	}
 
@@ -583,6 +584,9 @@ func (c *Binder) handleLocalResourceBinding(rb *appsV1alpha1.ResourceBinding) er
 
 func (c *Binder) handleParentResourceBinding(rb *appsV1alpha1.ResourceBinding) error {
 	klog.V(5).Infof("handleParentResourceBinding: handle resourceBinding %q ...", klog.KObj(rb))
+	if len(rb.Spec.RbApps) == 0 {
+		return nil
+	}
 	if rb.Spec.StatusScheduler == appsV1alpha1.ResourceBindingSelected {
 		var clusterName, descNs string
 		var err error
@@ -738,7 +742,6 @@ func updateRBStatusWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clie
 
 		return false, nil
 	})
-
 	if err != nil {
 		klog.Errorf("failed to update status of resourcebinding %q, err: %v",
 			klog.KRef(rb.Namespace, rb.Name), err)
@@ -1042,7 +1045,8 @@ func (c *Binder) updateSelectedRB(rb *appsV1alpha1.ResourceBinding, clusterName 
 				common.OriginDescriptionNamespaceLabel: rbLabels[common.OriginDescriptionNamespaceLabel],
 				common.OriginDescriptionUIDLabel:       rbLabels[common.OriginDescriptionUIDLabel],
 				common.StatusScheduler:                 string(appsV1alpha1.ResourceBindingmerged),
-			}).String()})
+			}).String(),
+		})
 	if err != nil {
 		klog.Errorf("failed to delete merged rbs in parent cluster %q namespace, err: %v",
 			common.GaiaRBMergedReservedNamespace, err)

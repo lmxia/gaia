@@ -3,9 +3,13 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"sort"
 
+	appsapi "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,7 +76,8 @@ func GetLocalClusterName(localkubeclient *kubernetes.Clientset) (string, string,
 }
 
 func NewParentConfig(ctx context.Context, kubeclient *kubernetes.Clientset,
-	gaiaclient *gaiaClientSet.Clientset) *rest.Config {
+	gaiaclient *gaiaClientSet.Clientset,
+) *rest.Config {
 	var parentKubeConfig *rest.Config
 	// wait until stopCh is closed or request is approved
 	waitingCtx, cancel := context.WithCancel(ctx)
@@ -109,7 +114,8 @@ func NewParentConfig(ctx context.Context, kubeclient *kubernetes.Clientset,
 
 func SetParentClient(localKubeClient *kubernetes.Clientset,
 	localGaiaClient *gaiaClientSet.Clientset) (*gaiaClientSet.Clientset, dynamic.Interface,
-	externalInformers.SharedInformerFactory) {
+	externalInformers.SharedInformerFactory,
+) {
 	parentKubeConfig := NewParentConfig(context.TODO(), localKubeClient, localGaiaClient)
 	if parentKubeConfig != nil {
 		parentGaiaClient := gaiaClientSet.NewForConfigOrDie(parentKubeConfig)
@@ -149,6 +155,18 @@ func CalculateResource(templateSpec corev1.PodTemplateSpec) (non0CPU int64, non0
 	return
 }
 
+func CalculateGPU(templateSpec corev1.PodTemplateSpec) map[string]int {
+	gpuMap := make(map[string]int)
+	for i := range templateSpec.Spec.Containers {
+		gpuProduct := templateSpec.Annotations[platformapi.ParsedGPUProductKey+templateSpec.Spec.Containers[i].Name]
+		count := templateSpec.Spec.Containers[i].Resources.Limits.Name(
+			"nvidia.com/gpu", resource.DecimalSI).Value()
+		gpuMap[gpuProduct] = int(count)
+	}
+
+	return gpuMap
+}
+
 // GetNonzeroRequests returns the default cpu and memory resource request if none is found or
 // what is provided on the request.
 func GetNonzeroRequests(requests *corev1.ResourceList) (int64, int64) {
@@ -181,4 +199,45 @@ func GetNonzeroRequestForResource(resource corev1.ResourceName, requests *corev1
 	default:
 		return 0
 	}
+}
+
+func CountNonZeroClusterNumForRB(binding *appsapi.ResourceBinding) int {
+	nonZeroCount := 0
+	for _, rbApp := range binding.Spec.RbApps {
+		for _, v := range rbApp.Replicas {
+			if v > 0 {
+				nonZeroCount += 1
+				break
+			}
+		}
+
+		if rbApp.Children != nil && len(rbApp.Children) > 0 {
+			nonZeroCount = 0
+			for _, child := range rbApp.Children {
+				for _, v := range child.Replicas {
+					if v > 0 {
+						nonZeroCount += 1
+						break
+					}
+				}
+			}
+		}
+	}
+	return nonZeroCount
+}
+
+func MaxInSliceUsingSort(s []int) int {
+	if len(s) == 0 {
+		return 0
+	}
+	sort.Ints(s)
+	return s[len(s)-1]
+}
+
+func MinInSliceUsingSort(s []int) int {
+	if len(s) == 0 {
+		return 0
+	}
+	sort.Ints(s)
+	return s[0]
 }

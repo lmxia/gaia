@@ -11,6 +11,7 @@ import (
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/helper"
 	gaiaLabels "github.com/lmxia/gaia/pkg/scheduler/framework/plugins/label/labels"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/plugins/names"
+	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/selection"
@@ -54,6 +55,31 @@ func (pl *ClusterAffinity) Filter(ctx context.Context, com *v1alpha1.Component,
 		cluster.Name, com.Name, gaiaSelector))
 }
 
+func (pl *ClusterAffinity) FilterVN(ctx context.Context, com *v1alpha1.Component,
+	node *coreV1.Node,
+) *framework.Status {
+	if node == nil {
+		return framework.AsStatus(fmt.Errorf("label invalid node "))
+	}
+	if com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory] == nil {
+		// The component doesn't have any scheduling conditions.
+		return nil
+	}
+	nodeLabels := clusterapi.GetNodeGaiaLabels(node)
+	gaiaSelector, err := LabelSelectorAsSelector(com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory])
+	if err != nil {
+		return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf(
+			"can't change gaia schedule policy to label selector %v, component name is %v",
+			com.SchedulePolicy.Level[v1alpha1.SchedulePolicyMandatory], err))
+	}
+	if gaiaSelector.Matches(gaiaLabels.Set(nodeLabels)) {
+		return nil
+	}
+	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf(
+		"cluster(s) has no label fit for this com: nodeName=%v, componentName=%v `Selector` is %+v",
+		node.Name, com.Name, gaiaSelector))
+}
+
 // NormalizeScore invoked after scoring all clusters.
 func (pl *ClusterAffinity) NormalizeScore(ctx context.Context,
 	scores framework.ResourceBindingScoreList,
@@ -62,7 +88,8 @@ func (pl *ClusterAffinity) NormalizeScore(ctx context.Context,
 }
 
 func (pl *ClusterAffinity) Score(ctx context.Context, _ *v1alpha1.Description, rb *v1alpha1.ResourceBinding,
-	clusters []*clusterapi.ManagedCluster) (int64, *framework.Status) {
+	clusters []*clusterapi.ManagedCluster,
+) (int64, *framework.Status) {
 	clusterMap := make(map[string]*clusterapi.ManagedCluster, 0)
 	for _, cluster := range clusters {
 		clusterMap[cluster.Name] = cluster
@@ -77,11 +104,12 @@ func (pl *ClusterAffinity) ScoreExtensions() framework.ScoreExtensions {
 }
 
 func calculateScore(score int64, apps []*v1alpha1.ResourceBindingApps,
-	clusterMap map[string]*clusterapi.ManagedCluster) int64 {
+	clusterMap map[string]*clusterapi.ManagedCluster,
+) int64 {
 	for _, item := range apps {
 		cluster := clusterMap[item.ClusterName]
 		if cluster != nil && cluster.GetLabels() != nil {
-			netenviroments, _, _, _, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
+			netenviroments, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ := cluster.GetHypernodeLabelsMapFromManagedCluster()
 			if _, exist := netenviroments[common.NetworkLocationCore]; exist {
 				for _, v := range item.Replicas {
 					score += int64(v)

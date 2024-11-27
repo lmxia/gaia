@@ -158,10 +158,12 @@ func CalculateResource(templateSpec corev1.PodTemplateSpec) (non0CPU int64, non0
 func CalculateGPU(templateSpec corev1.PodTemplateSpec) map[string]int {
 	gpuMap := make(map[string]int)
 	for i := range templateSpec.Spec.Containers {
-		gpuProduct := templateSpec.Annotations[platformapi.ParsedGPUProductKey+templateSpec.Spec.Containers[i].Name]
-		count := templateSpec.Spec.Containers[i].Resources.Limits.Name(
-			"nvidia.com/gpu", resource.DecimalSI).Value()
-		gpuMap[gpuProduct] = int(count)
+		if gpuProduct, ok := templateSpec.Annotations[platformapi.ParsedGPUProductKey+
+			templateSpec.Spec.Containers[i].Name]; ok {
+			count := templateSpec.Spec.Containers[i].Resources.Limits.Name(
+				"nvidia.com/gpu", resource.DecimalSI).Value()
+			gpuMap[gpuProduct] = int(count)
+		}
 	}
 
 	return gpuMap

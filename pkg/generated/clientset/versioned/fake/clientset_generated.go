@@ -26,6 +26,8 @@ import (
 	fakeclusterv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/cluster/v1alpha1/fake"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1"
 	fakeplatformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1/fake"
+	servicev1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/service/v1alpha1"
+	fakeservicev1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/service/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -96,4 +98,9 @@ func (c *Clientset) ClusterV1alpha1() clusterv1alpha1.ClusterV1alpha1Interface {
 // PlatformV1alpha1 retrieves the PlatformV1alpha1Client
 func (c *Clientset) PlatformV1alpha1() platformv1alpha1.PlatformV1alpha1Interface {
 	return &fakeplatformv1alpha1.FakePlatformV1alpha1{Fake: &c.Fake}
+}
+
+// ServiceV1alpha1 retrieves the ServiceV1alpha1Client
+func (c *Clientset) ServiceV1alpha1() servicev1alpha1.ServiceV1alpha1Interface {
+	return &fakeservicev1alpha1.FakeServiceV1alpha1{Fake: &c.Fake}
 }

@@ -27,7 +27,7 @@ echo $SCRIPT_ROOT
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 bash "${CODEGEN_PKG}"/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/lmxia/gaia/pkg/generated github.com/lmxia/gaia/pkg/apis \
-  "platform:v1alpha1 apps:v1alpha1 cluster:v1alpha1" \
+  "platform:v1alpha1 apps:v1alpha1 cluster:v1alpha1 service:v1alpha1" \
   --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
 

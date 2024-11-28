@@ -24,6 +24,7 @@ import (
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
 	clusterv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/cluster/v1alpha1"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1"
+	servicev1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/service/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -34,6 +35,7 @@ type Interface interface {
 	AppsV1alpha1() appsv1alpha1.AppsV1alpha1Interface
 	ClusterV1alpha1() clusterv1alpha1.ClusterV1alpha1Interface
 	PlatformV1alpha1() platformv1alpha1.PlatformV1alpha1Interface
+	ServiceV1alpha1() servicev1alpha1.ServiceV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
@@ -43,6 +45,7 @@ type Clientset struct {
 	appsV1alpha1     *appsv1alpha1.AppsV1alpha1Client
 	clusterV1alpha1  *clusterv1alpha1.ClusterV1alpha1Client
 	platformV1alpha1 *platformv1alpha1.PlatformV1alpha1Client
+	serviceV1alpha1  *servicev1alpha1.ServiceV1alpha1Client
 }
 
 // AppsV1alpha1 retrieves the AppsV1alpha1Client
@@ -58,6 +61,11 @@ func (c *Clientset) ClusterV1alpha1() clusterv1alpha1.ClusterV1alpha1Interface {
 // PlatformV1alpha1 retrieves the PlatformV1alpha1Client
 func (c *Clientset) PlatformV1alpha1() platformv1alpha1.PlatformV1alpha1Interface {
 	return c.platformV1alpha1
+}
+
+// ServiceV1alpha1 retrieves the ServiceV1alpha1Client
+func (c *Clientset) ServiceV1alpha1() servicev1alpha1.ServiceV1alpha1Interface {
+	return c.serviceV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -93,6 +101,10 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	if err != nil {
 		return nil, err
 	}
+	cs.serviceV1alpha1, err = servicev1alpha1.NewForConfig(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfig(&configShallowCopy)
 	if err != nil {
@@ -108,6 +120,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 	cs.appsV1alpha1 = appsv1alpha1.NewForConfigOrDie(c)
 	cs.clusterV1alpha1 = clusterv1alpha1.NewForConfigOrDie(c)
 	cs.platformV1alpha1 = platformv1alpha1.NewForConfigOrDie(c)
+	cs.serviceV1alpha1 = servicev1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -119,6 +132,7 @@ func New(c rest.Interface) *Clientset {
 	cs.appsV1alpha1 = appsv1alpha1.New(c)
 	cs.clusterV1alpha1 = clusterv1alpha1.New(c)
 	cs.platformV1alpha1 = platformv1alpha1.New(c)
+	cs.serviceV1alpha1 = servicev1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

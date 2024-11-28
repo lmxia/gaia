@@ -1,3 +1,5 @@
 /cmd/bin
 .idea/*
 /vendor
+.DS_Store
+**/.DS_Store

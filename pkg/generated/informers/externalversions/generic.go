@@ -24,6 +24,7 @@ import (
 	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	clusterv1alpha1 "github.com/lmxia/gaia/pkg/apis/cluster/v1alpha1"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	servicev1alpha1 "github.com/lmxia/gaia/pkg/apis/service/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -81,6 +82,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().ManagedClusters().Informer()}, nil
 	case platformv1alpha1.SchemeGroupVersion.WithResource("targets"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Platform().V1alpha1().Targets().Informer()}, nil
+
+		// Group=service.gaia.io, Version=v1alpha1
+	case servicev1alpha1.SchemeGroupVersion.WithResource("hyperlabels"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Service().V1alpha1().HyperLabels().Informer()}, nil
 
 	}
 

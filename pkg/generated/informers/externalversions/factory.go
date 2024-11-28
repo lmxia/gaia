@@ -28,6 +28,7 @@ import (
 	cluster "github.com/lmxia/gaia/pkg/generated/informers/externalversions/cluster"
 	internalinterfaces "github.com/lmxia/gaia/pkg/generated/informers/externalversions/internalinterfaces"
 	platform "github.com/lmxia/gaia/pkg/generated/informers/externalversions/platform"
+	service "github.com/lmxia/gaia/pkg/generated/informers/externalversions/service"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -177,6 +178,7 @@ type SharedInformerFactory interface {
 	Apps() apps.Interface
 	Cluster() cluster.Interface
 	Platform() platform.Interface
+	Service() service.Interface
 }
 
 func (f *sharedInformerFactory) Apps() apps.Interface {
@@ -189,4 +191,8 @@ func (f *sharedInformerFactory) Cluster() cluster.Interface {
 
 func (f *sharedInformerFactory) Platform() platform.Interface {
 	return platform.New(f, f.namespace, f.tweakListOptions)
+}
+
+func (f *sharedInformerFactory) Service() service.Interface {
+	return service.New(f, f.namespace, f.tweakListOptions)
 }

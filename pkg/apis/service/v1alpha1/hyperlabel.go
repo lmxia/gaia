@@ -19,9 +19,10 @@ type HyperLabel struct {
 	Status HyperLabelStatus `json:"status,omitempty"`
 }
 
+// HyperLabelItem describe one component, may have many ExposeType: ceni public, use 2 item describe
 type HyperLabelItem struct {
 	ExposeType string   `json:"exposeType"`
-	VNList     []string `json:"vnList,omitempty"`
+	VNList     []string `json:"vnList,omitempty"` // sn
 	// +optional ceniip should be related to vnlist one by one.
 	CeniIPList    []string `json:"ceniIPList,omitempty"`
 	ComponentName string   `json:"componentName"`

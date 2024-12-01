@@ -489,8 +489,10 @@ func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 
 	if len(allErrs) > 0 {
 		err := utilerrors.NewAggregate(allErrs)
-		klog.Errorf("AssembledServerlessStructureIP error: %v", err)
-		return unstructureds, err
+		if err != nil {
+			klog.Errorf("AssembledServerlessStructureIP error: %v", err)
+			return unstructureds, err
+		}
 	}
 	return unstructureds, nil
 }

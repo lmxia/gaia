@@ -956,11 +956,11 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 
 func addLabels(com *appsv1alpha1.Component, descLabels map[string]string, descName string) map[string]string {
 	newLabels := map[string]string{
-		known.GaiaDescriptionLabel:            descName,
-		known.GaiaComponentLabel:              com.Name,
-		known.OriginDescriptionNameLabel:      descLabels[known.OriginDescriptionNameLabel],
-		known.OriginDescriptionNamespaceLabel: descLabels[known.OriginDescriptionNamespaceLabel],
-		known.OriginDescriptionUIDLabel:       descLabels[known.OriginDescriptionUIDLabel],
+		known.GaiaDescriptionLabel: descName,
+		known.GaiaComponentLabel:   com.Name,
+	}
+	for key, value := range descLabels {
+		newLabels[key] = value
 	}
 	if descLabels[known.UserNameLabel] != "" {
 		newLabels[known.UserNameLabel] = descLabels[known.UserNameLabel]

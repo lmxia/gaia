@@ -612,11 +612,14 @@ func (c *Binder) handleParentRBIP(rb *appsV1alpha1.ResourceBinding, descNs, desc
 	createRB := false
 	if len(rb.Spec.RbApps) > 0 {
 		for _, rba := range rb.Spec.RbApps {
-			for _, rbb := range rba.Children {
-				if len(rbb.Children) > 0 {
-					createRB = true
-					break
+			if rba.ClusterName == clusterName {
+				for _, rbb := range rba.Children {
+					if len(rbb.Children) > 0 {
+						createRB = true
+						break
+					}
 				}
+				break
 			}
 		}
 	}

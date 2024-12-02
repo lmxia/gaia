@@ -522,13 +522,17 @@ func getVPCForGroup(group2HugeCom map[string]*appsv1alpha1.HugeComponent, nodes 
 	}
 }
 
+// todo use getEachNodeResourceFromPrometheus
 func GetNodeResFromProm(node *corev1.Node, promURLPrefix string) (cpu, mem resource.Quantity) {
 	var valueList [2]string
 	query := [2]string{
-		fmt.Sprintf("sum(system_cpu_utilization{node_name=%q,state=\"idle\"})", node.GetLabels()["kubernetes.io/hostname"]),
+		fmt.Sprintf("system_cpu_utilization{node_name=%q,state=\"idle\"}", node.GetLabels()["kubernetes.io/hostname"]),
 		fmt.Sprintf("sum(system_memory_usage{node_name=%q} and (system_memory_usage{state=\"buffered\"} "+
 			"or system_memory_usage{state=\"free\"} or system_memory_usage{state=\"cached\"}))/1024",
 			node.GetLabels()["kubernetes.io/hostname"]),
+		// fmt.Sprintf("system_cpu_utilization{node_name=%q,state=\"idle\"}", node.GetLabels()["kubernetes.io/hostname"]),
+		// fmt.Sprintf("system_memory_usage{node_name=%q, state=\"free\"}",
+		// 	node.GetLabels()["kubernetes.io/hostname"]),
 	}
 
 	for index, q := range query {
@@ -548,6 +552,56 @@ func GetNodeResFromProm(node *corev1.Node, promURLPrefix string) (cpu, mem resou
 	return resource.MustParse(GetSubStringWithSpecifiedDecimalPlace(valueList[0], 3)),
 		resource.MustParse(valueList[1] + "Ki")
 }
+
+// // getEachNodeResourceFromPrometheus returns the cpu, gpu, memory resources from Prometheus in the cluster
+// func getEachNodeResourceFromPrometheus(node *corev1.Node, promPreURL string) (cpu, mem resource.Quantity) {
+// 	QueryMetricSet, ClusterMetricList, err := InitConfig(known.MetricConfigMapNodeAbsFilePath)
+// 	if err != nil || len(ClusterMetricList) != 4 {
+// 		klog.Warningf("Wrong metrics config or The length of ClusterMetricList not 4, err: %v", err)
+// 		return
+// 	}
+//
+// 	var valueList [4]string
+// 	var availableCPU, availableMem resource.Quantity
+// 	// sn := GetNodeSNID(node)
+// 	sn := GetNodeName(node)
+// 	for index, metric := range ClusterMetricList[2:4] {
+// 		metric = strings.ReplaceAll(metric, "XXX", sn) // use node name
+// 		result, err2 := GetDataFromPrometheus(promPreURL, QueryMetricSet[metric])
+// 		if err2 == nil {
+// 			if len(result.(model.Vector)) == 0 {
+// 				klog.Warningf("Query from prometheus successfully, but the result is a null array.")
+// 				valueList[index] = "0"
+// 			} else {
+// 				valueList[index] = result.(model.Vector)[0].Value.String()
+// 			}
+// 		} else {
+// 			valueList[index] = "0"
+// 		}
+// 	}
+//
+// 	availableCPU.Add(resource.MustParse(getSubStringWithSpecifiedDecimalPlaceVN(valueList[2], 3)))
+// 	availableMem.Add(resource.MustParse(valueList[3] + "Ki"))
+//
+// 	// todo: get gpu resource
+//
+// 	return availableCPU, availableMem
+// }
+
+// getSubStringWithSpecifiedDecimalPlace returns a sub string based on the specified number of decimal places
+// func getSubStringWithSpecifiedDecimalPlaceVN(inputString string, m int) string {
+// 	if inputString == "" {
+// 		return ""
+// 	}
+// 	if m >= len(inputString) {
+// 		return inputString
+// 	}
+// 	newString := strings.Split(inputString, ".")
+// 	if len(newString) < 2 || m >= len(newString[1]) {
+// 		return inputString
+// 	}
+// 	return newString[0] + "." + newString[1][:m]
+// }
 
 func getFitVPC(com *appsv1alpha1.HugeComponent, sli *vpcResourceSlice) (int, error) {
 	sort.Sort(sort.Reverse(sli))

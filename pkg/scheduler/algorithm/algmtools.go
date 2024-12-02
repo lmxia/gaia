@@ -58,7 +58,7 @@ func scheduleWorkload(cpu int64, mem int64, gpuReqMap map[string]int, clusters [
 		clusterCapacity := clusterInfo.CalculateCapacity(cpu, mem, gpuReqMap)
 		if clusterCapacity == 0 {
 			diagnosis.ClusterToStatusMap[cluster.Name] = interfaces.NewStatus(interfaces.Error, fmt.Sprintf(
-				"cluster(s) has not enough resources: nodeName=%v, componentName=%v",
+				"cluster(s) has not enough resources: clusterName=%v, componentName=%v",
 				cluster.Name, comName))
 			diagnosis.UnschedulablePlugins.Insert("filtered cluster==" + cluster.Name + " has resource limit")
 			continue
@@ -358,8 +358,12 @@ func spawnResourceBindingAppsVN(mat mat.Matrix, allNodes []*coreV1.Node,
 	chosenMat := chosenOneInArrowVN(mat, allNodes)
 	rbapps := make([]*appv1alpha1.ResourceBindingApps, len(allNodes))
 	for i, item := range allNodes {
+		sn := item.Labels[v1alpha1.ParsedSNKey]
+		if sn == "" {
+			klog.Warningf("spawnResourceBindingAppsVN: node's sn is empty, nodeName=%q", item.Name)
+		}
 		rbapps[i] = &appv1alpha1.ResourceBindingApps{
-			ClusterName: item.Name,
+			ClusterName: sn,
 			Replicas:    make(map[string]int32),
 			ChosenOne:   make(map[string]int32),
 		}

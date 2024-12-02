@@ -242,8 +242,10 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 	}
 	if len(allErrs) > 0 {
 		err := utilerrors.NewAggregate(allErrs)
-		klog.Errorf("AssembledCronDeploymentStructureIP error: %v", err)
-		return unstructureds, err
+		if err != nil {
+			klog.Errorf("AssembledCronDeploymentStructureIP error: %v", err)
+			return unstructureds, err
+		}
 	}
 
 	return unstructureds, nil
@@ -303,8 +305,10 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 
 	if len(allErrs) > 0 {
 		err := utilerrors.NewAggregate(allErrs)
-		klog.Errorf("AssembledDeploymentStructureIP error: %v", err)
-		return unstructureds, err
+		if err != nil {
+			klog.Errorf("AssembledDeploymentStructureIP error: %v", err)
+			return unstructureds, err
+		}
 	}
 	return unstructureds, nil
 }
@@ -414,8 +418,10 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 	}
 	if len(allErrs) > 0 {
 		err := utilerrors.NewAggregate(allErrs)
-		klog.Errorf("AssembledCronServerlessStructureIP error: %v", err)
-		return unstructureds, err
+		if err != nil {
+			klog.Errorf("AssembledCronServerlessStructureIP error: %v", err)
+			return unstructureds, err
+		}
 	}
 
 	return unstructureds, nil

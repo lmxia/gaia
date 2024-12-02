@@ -276,7 +276,7 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 					} else {
 						dep.Namespace = metav1.NamespaceDefault
 					}
-					dep.Name = comCopy.Name
+					dep.Name = comCopy.Name + "-" + strconv.Itoa(depIndex)
 					if !delete {
 						dep.Spec.Template = getPodTemplate(comCopy.Module)
 						nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
@@ -499,7 +499,7 @@ func AddNodeAffinityIP(nodeAffinity *corev1.Affinity, nodeNames []string) *corev
 	if len(nodeNames) > 0 {
 		nodeSelectorTermSNs := corev1.NodeSelectorTerm{
 			MatchExpressions: []corev1.NodeSelectorRequirement{{
-				Key:      v1alpha1.ParsedResNameKey, // todo: to resid ==> sn
+				Key:      v1alpha1.ParsedSNKey,
 				Operator: corev1.NodeSelectorOpIn,
 				Values:   nodeNames,
 			}},

@@ -59,6 +59,10 @@ func GetNodeSNID(node *corev1.Node) string {
 	return node.GetLabels()[platformapi.ParsedSNKey]
 }
 
+func GetNodeName(node *corev1.Node) string {
+	return node.GetLabels()[platformapi.ParsedResNameKey]
+}
+
 // GetNodeClusterName return clusterName from nodeLabels
 func GetNodeClusterName(node *corev1.Node) string {
 	return node.GetLabels()[platformapi.ParsedClusterNameKey]

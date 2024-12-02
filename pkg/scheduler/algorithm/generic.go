@@ -615,7 +615,11 @@ func (g *genericScheduler) findNodesThatFitComponent(ctx context.Context, fwk fr
 	}
 
 	var allNodes []*coreV1.Node
-	mergedSelector := &metav1.LabelSelector{}
+	mergedSelector := &metav1.LabelSelector{
+		MatchExpressions: []metav1.LabelSelectorRequirement{
+			0: {Key: clusterapi.ParsedNodeRoleKey, Operator: "NotIn", Values: []string{"System"}},
+		},
+	}
 	nodes, err := g.cache.ListNodes(mergedSelector)
 	if err != nil {
 		return nil, diagnosis, err

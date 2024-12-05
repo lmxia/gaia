@@ -341,10 +341,10 @@ func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *ga
 			var errDep error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
 				unStructure, errDep = AssembledCronDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false)
+					group2VPC, descLabels, false, nodes)
 			} else {
 				unStructure, errDep = AssembledDeploymentStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false)
+					group2VPC, descLabels, false, nodes)
 			}
 			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
@@ -365,10 +365,10 @@ func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *ga
 			var errSer error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
 				unStructure, errSer = AssembledCronServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false)
+					group2VPC, descLabels, false, nodes)
 			} else {
 				unStructure, errSer = AssembledServerlessStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false)
+					group2VPC, descLabels, false, nodes)
 			}
 			if errSer != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
@@ -386,7 +386,7 @@ func ApplyRBWorkloads(ctx context.Context, localGaiaClient, parentGaiaClient *ga
 			}(unStructure)
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
 			unStructure, errDep := AssembledDaemonSetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
-				group2VPC, descLabels, false)
+				group2VPC, descLabels, false, nodes)
 			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
@@ -774,7 +774,7 @@ func PostNetworkRequest(url, descriptionName, operate string, path []byte) {
 }
 
 func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
-	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool,
+	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
 ) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
@@ -802,7 +802,7 @@ func AssembledDaemonSetStructure(com *appsv1alpha1.Component, rbApps []*appsv1al
 
 				if !delete {
 					ds.Spec.Template = comCopy.Module
-					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 					ds.Spec.Template.Spec.Affinity = nodeAffinity
 					ds.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy, ds.Spec.Template.Spec.NodeSelector)
 
@@ -876,7 +876,7 @@ func AssembledUserAppStructure(com *appsv1alpha1.Component, rbApps []*appsv1alph
 	return depUnstructured, nil
 }
 
-func AddNodeAffinity(com *appsv1alpha1.Component, group2VPC map[string]string) *corev1.Affinity {
+func AddNodeAffinity(com *appsv1alpha1.Component, group2VPC map[string]string, nodes []*corev1.Node) *corev1.Affinity {
 	nodeAffinity := &corev1.Affinity{
 		NodeAffinity: &corev1.NodeAffinity{
 			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.PreferredSchedulingTerm{{
@@ -941,17 +941,40 @@ func AddNodeAffinity(com *appsv1alpha1.Component, group2VPC map[string]string) *
 				nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
 					[]corev1.NodeSelectorTerm{}
 			}
-			nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
-				append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
-					nodeSelectorTerms...)
+
+			// gpu-product --> resName
+			var newExpressions []corev1.NodeSelectorRequirement
+			for _, expression := range nodeSelectorTerms[0].MatchExpressions {
+				if expression.Key == v1alpha1.ParsedGPUProductKey {
+					var resNames []string
+					for _, node := range nodes {
+						if _, ok := node.Labels[v1alpha1.ParsedGPUCountKey+expression.Values[0]]; ok {
+							resNames = append(resNames, node.Labels[v1alpha1.ParsedResNameKey])
+						}
+					}
+
+					req := corev1.NodeSelectorRequirement{
+						Key:      v1alpha1.ParsedResNameKey,
+						Operator: expression.Operator,
+						Values:   resNames,
+					}
+					newExpressions = append(newExpressions, req)
+					continue
+				}
+				newExpressions = append(newExpressions, expression)
+			}
+			nodeSelectorTerms[0].MatchExpressions = newExpressions
 		}
+		nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms =
+			append(nodeAffinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms,
+				nodeSelectorTerms...)
 	}
 
 	return nodeAffinity
 }
 
 func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName,
-	descName string, group2VPC, descLabels map[string]string, delete bool,
+	descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
 ) (*unstructured.Unstructured, error) {
 	depUnstructured := &unstructured.Unstructured{}
 	var err error
@@ -980,7 +1003,7 @@ func AssembledDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 			dep.Name = comCopy.Name
 			if !delete {
 				dep.Spec.Template = getPodTemplate(comCopy.Module)
-				nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
+				nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 				dep.Spec.Template.Spec.Affinity = nodeAffinity
 				dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
 					dep.Spec.Template.Spec.NodeSelector)
@@ -1136,7 +1159,7 @@ func setNodeSelectorTerms(matchExpressions []metav1.LabelSelectorRequirement) []
 }
 
 func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
-	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool,
+	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
 ) (*unstructured.Unstructured, error) {
 	cronUnstructured := &unstructured.Unstructured{}
 	var err error
@@ -1190,7 +1213,7 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 					}
 					dep.Name = comCopy.Name
 					dep.Spec.Template = comCopy.Module
-					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 					dep.Spec.Template.Spec.Affinity = nodeAffinity
 					dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
 						dep.Spec.Template.Spec.NodeSelector)
@@ -1227,8 +1250,7 @@ func AssembledCronDeploymentStructure(com *appsv1alpha1.Component, rbApps []*app
 }
 
 func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
-	clusterName, descName string, group2VPC, descLabels map[string]string,
-	delete bool,
+	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
 ) (*unstructured.Unstructured, error) {
 	cronUnstructured := &unstructured.Unstructured{}
 	var err error
@@ -1292,7 +1314,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 							TraitServerless: comCopy.Workload.TraitServerless,
 						},
 					}
-					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
 					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy,
 						ser.Spec.Module.Spec.NodeSelector)
@@ -1332,7 +1354,7 @@ func AssembledCronServerlessStructure(com *appsv1alpha1.Component, rbApps []*app
 }
 
 func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps, clusterName,
-	descName string, group2VPC, descLabels map[string]string, delete bool,
+	descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
 ) (*unstructured.Unstructured, error) {
 	serUnstructured := &unstructured.Unstructured{}
 	var err error
@@ -1370,7 +1392,7 @@ func AssembledServerlessStructure(com *appsv1alpha1.Component, rbApps []*appsv1a
 							TraitServerless: comCopy.Workload.TraitServerless,
 						},
 					}
-					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
 					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy, ser.Spec.Module.Spec.NodeSelector)
 					// add  env variables log needed

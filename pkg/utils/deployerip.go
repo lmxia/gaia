@@ -49,10 +49,10 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 			var errDep error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
 				unStructures, errDep = AssembledCronDeploymentStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false)
+					group2VPC, descLabels, false, nodes)
 			} else {
 				unStructures, errDep = AssembledDeploymentStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false)
+					group2VPC, descLabels, false, nodes)
 			}
 
 			for _, unStructure := range unStructures {
@@ -76,10 +76,10 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 			var errSer error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
 				unStructures, errSer = AssembledCronServerlessStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false)
+					group2VPC, descLabels, false, nodes)
 			} else {
 				unStructures, errSer = AssembledServerlessStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false)
+					group2VPC, descLabels, false, nodes)
 			}
 			for _, unStructure := range unStructures {
 				if errSer != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
@@ -99,7 +99,7 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 			}
 		case appsv1alpha1.WorkloadTypeAffinityDaemon:
 			unStructure, errDep := AssembledDaemonSetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
-				group2VPC, descLabels, false)
+				group2VPC, descLabels, false, nodes)
 			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
 				continue
 			}
@@ -154,7 +154,7 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 }
 
 func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
-	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool,
+	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -210,7 +210,7 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 						}
 						dep.Name = cron.Name
 						dep.Spec.Template = comCopy.Module
-						nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
+						nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 						nodeAffinity = AddNodeAffinityIP(nodeAffinity, []string{nodeRB.ClusterName})
 						dep.Spec.Template.Spec.Affinity = nodeAffinity
 						dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
@@ -252,7 +252,7 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 }
 
 func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
-	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool,
+	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -281,7 +281,7 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 					dep.Name = comCopy.Name + "-" + strconv.Itoa(depIndex)
 					if !delete {
 						dep.Spec.Template = getPodTemplate(comCopy.Module)
-						nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
+						nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 						nodeAffinity = AddNodeAffinityIP(nodeAffinity, []string{nodeRB.ClusterName})
 						dep.Spec.Template.Spec.Affinity = nodeAffinity
 						dep.Spec.Template.Spec.NodeSelector = addNodeSelector(comCopy,
@@ -314,8 +314,7 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 }
 
 func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
-	clusterName, descName string, group2VPC, descLabels map[string]string,
-	delete bool,
+	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -385,7 +384,7 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 							TraitServerless: comCopy.Workload.TraitServerless,
 						},
 					}
-					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 					nodeAffinity = AddNodeAffinityIP(nodeAffinity, nodeNames)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
 					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy,
@@ -428,7 +427,7 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 }
 
 func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
-	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool,
+	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -471,7 +470,7 @@ func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 							TraitServerless: comCopy.Workload.TraitServerless,
 						},
 					}
-					nodeAffinity := AddNodeAffinity(comCopy, group2VPC)
+					nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 					nodeAffinity = AddNodeAffinityIP(nodeAffinity, nodeNames)
 					ser.Spec.Module.Spec.Affinity = nodeAffinity
 					ser.Spec.Module.Spec.NodeSelector = addNodeSelector(comCopy, ser.Spec.Module.Spec.NodeSelector)

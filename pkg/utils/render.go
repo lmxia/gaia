@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
 
 	platformapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
@@ -320,20 +321,20 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 		if len(gpuRequests) == 0 {
 			return spLevel
 		}
+
 		for _, gpuReq := range gpuRequests {
 			cNameGPUMap[gpuReq.ContainerName] = gpuReq
 		}
-
 		for _, container := range model.Spec.Containers {
 			if gpuR, ok := cNameGPUMap[container.Name]; ok {
 				if gpuR.GPUProduct != "" {
-					req := metav1.LabelSelectorRequirement{
-						Key:      known.GPUProductLabel,
-						Operator: metav1.LabelSelectorOperator(condition.Relation),
-						Values:   []string{gpuR.GPUProduct},
-					}
-					spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
-					model.Annotations[platformapi.ParsedGPUProductKey+container.Name] = gpuR.GPUProduct
+					// req := metav1.LabelSelectorRequirement{
+					//	Key:      known.GPUProductLabel,
+					//	Operator: metav1.LabelSelectorOperator(condition.Relation),
+					//	Values:   []string{gpuR.GPUProduct},
+					// }
+					// spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
+					model.Annotations[platformapi.ParsedGPUProductKey+container.Name] = strconv.Itoa(gpuR.GPUCount)
 					// multi containers
 					container.Resources.Requests["nvidia.com/gpu"] =
 						*resource.NewQuantity(int64(gpuR.GPUCount), resource.DecimalSI)
@@ -342,6 +343,13 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 				}
 			}
 		}
+		req := metav1.LabelSelectorRequirement{
+			Key:      known.GPUProductLabel,
+			Operator: metav1.LabelSelectorOperator(condition.Relation),
+			Values:   []string{gpuRequests[0].GPUProduct},
+		}
+		model.Annotations[platformapi.ParsedGPUProductKey] = gpuRequests[0].GPUProduct
+		spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
 	}
 	return spLevel
 }

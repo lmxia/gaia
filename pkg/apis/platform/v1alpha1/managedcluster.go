@@ -136,8 +136,8 @@ type ManagedClusterList struct {
 	Items           []ManagedCluster `json:"items"`
 }
 
+// +optional
 type NodeResources struct {
-	// +optional
 	ClusterName string `json:"clusterName,omitempty"`
 	// +optional
 	Capacity corev1.ResourceList `json:"capacity,omitempty"`
@@ -254,7 +254,7 @@ var (
 	VPCKey                = common.SpecificNodeLabelsKeyPrefix + "VPC"
 	ClusterNameKey        = common.SpecificNodeLabelsKeyPrefix + "ClusterName"
 	GPUProductKey         = common.SpecificNodeLabelsKeyPrefix + "GPUProduct"
-	GPUCountKey           = common.SpecificNodeLabelsKeyPrefix + "GPUCount"
+	GPUCountKey           = common.SpecificNodeLabelsKeyPrefix + "GPUCount__"
 	InternalNetworkCapKey = common.SpecificNodeLabelsKeyPrefix + "InternalNetworkCap"
 	PricelevelKey         = common.SpecificNodeLabelsKeyPrefix + "Pricelevel"
 	ResNameKey            = common.SpecificNodeLabelsKeyPrefix + "ResName"
@@ -296,7 +296,7 @@ var (
 	ParsedVPCKey                = common.SpecificNodeLabelsKeyPrefix + "vpc"
 	ParsedClusterNameKey        = common.SpecificNodeLabelsKeyPrefix + "cluster-name"
 	ParsedGPUProductKey         = common.SpecificNodeLabelsKeyPrefix + "gpu-product"
-	ParsedGPUCountKey           = common.SpecificNodeLabelsKeyPrefix + "gpu-count"
+	ParsedGPUCountKey           = common.SpecificNodeLabelsKeyPrefix + "gpu-count__"
 	ParsedInternalNetworkCapKey = common.SpecificNodeLabelsKeyPrefix + "internal-network-cap"
 	ParsedPricelevelKey         = common.SpecificNodeLabelsKeyPrefix + "price-level"
 	ParsedResNameKey            = common.SpecificNodeLabelsKeyPrefix + "res-name"
@@ -315,6 +315,7 @@ var (
 		ParsedFloatingIPKey,
 		ParsedHasFloatingIPKey,
 		ParsedVPCKey,
+
 		ParsedClusterNameKey,
 		ParsedGPUProductKey,
 		ParsedGPUCountKey,
@@ -400,8 +401,9 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (
 				providers[labelValue] = struct{}{}
 			case strings.HasPrefix(labelKey, ParsedHasFloatingIPKey):
 				floatingIPMap[labelValue] = struct{}{}
-			case strings.HasPrefix(labelKey, ParsedGPUProductKey):
-				gpuProductMap[labelValue] = struct{}{}
+			case strings.HasPrefix(labelKey, ParsedGPUCountKey):
+				gpu := labelKey[len(ParsedGPUCountKey):]
+				gpuProductMap[gpu] = struct{}{}
 			case strings.HasPrefix(labelKey, ParsedClusterNameKey):
 				clusterNameMap[labelValue] = struct{}{}
 			case strings.HasPrefix(labelKey, ParsedInternalNetworkCapKey):
@@ -535,11 +537,19 @@ func (cluster *ManagedCluster) GetGaiaLabels() map[string][]string {
 func GetNodeGaiaLabels(node *corev1.Node) map[string][]string {
 	nodeGaiaLabels := make(map[string][]string)
 	labels := node.GetLabels()
+	var gpuProducts []string
 	for key, value := range labels {
 		if strings.HasPrefix(key, common.SpecificNodeLabelsKeyPrefix) {
+			if strings.HasPrefix(key, ParsedGPUCountKey) {
+				gpu := key[len(ParsedGPUCountKey):]
+				gpuProducts = append(gpuProducts, gpu)
+				continue
+			}
+
 			nodeGaiaLabels[key[len(common.SpecificNodeLabelsKeyPrefix):]] = []string{value}
 		}
 	}
+	nodeGaiaLabels["gpu-product"] = gpuProducts
 
 	return nodeGaiaLabels
 }

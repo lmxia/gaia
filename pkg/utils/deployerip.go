@@ -181,6 +181,7 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 						cron.Namespace = metav1.NamespaceDefault
 					}
 					cron.Name = comCopy.Name + "-" + strconv.Itoa(depIndex)
+					newLabels["apps.gaia.io/component-deploy-name"] = cron.Name
 
 					if !delete {
 						cron.Spec = appsv1alpha1.CronMasterSpec{
@@ -279,6 +280,8 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 						dep.Namespace = metav1.NamespaceDefault
 					}
 					dep.Name = comCopy.Name + "-" + strconv.Itoa(depIndex)
+					newLabels["apps.gaia.io/component-deploy-name"] = dep.Name
+
 					if !delete {
 						dep.Spec.Template = getPodTemplate(comCopy.Module)
 						nodeAffinity := AddNodeAffinity(comCopy, group2VPC)

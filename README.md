@@ -20,7 +20,7 @@ common:
   mcSource: prometheus
   # Prometheus address of the current cluster
   promUrlPrefix: "http://prometheus-kube-prometheus-hypermoni.hypermonitor:9090"
-  useHypernodeController: true
+  useHypernodeController: false
   topoSyncBaseUrl: "http://ssiexpose.synccontroller.svc:8080"
   networkBindUrl: http://nbi.domain1.svc.cluster.local/v1.0/network/scheme        # only on field level
   resourceBindingMergePostURL: http://192.168.101.73:37100/api/server/preScheduleSchemeReceiver

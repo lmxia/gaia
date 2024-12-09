@@ -158,11 +158,10 @@ func CalculateResource(templateSpec corev1.PodTemplateSpec) (non0CPU int64, non0
 func CalculateGPU(templateSpec corev1.PodTemplateSpec) map[string]int {
 	gpuMap := make(map[string]int)
 	for i := range templateSpec.Spec.Containers {
-		if gpuProduct, ok := templateSpec.Annotations[platformapi.ParsedGPUProductKey+
-			templateSpec.Spec.Containers[i].Name]; ok {
+		if gpuProduct, ok := templateSpec.Annotations[platformapi.ParsedGPUProductKey]; ok {
 			count := templateSpec.Spec.Containers[i].Resources.Limits.Name(
 				"nvidia.com/gpu", resource.DecimalSI).Value()
-			gpuMap[gpuProduct] = int(count)
+			gpuMap[gpuProduct] += int(count)
 		}
 	}
 
@@ -242,4 +241,19 @@ func MinInSliceUsingSort(s []int) int {
 	}
 	sort.Ints(s)
 	return s[0]
+}
+
+func InterSection(s1, s2 []string) []string {
+	m := make(map[string]bool)
+	var result []string
+	for _, v := range s1 {
+		m[v] = true
+	}
+	for _, v := range s2 {
+		if m[v] {
+			result = append(result, v)
+			m[v] = false // 标记已使用，避免重复添加
+		}
+	}
+	return result
 }

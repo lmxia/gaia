@@ -3,6 +3,7 @@ package clusterstatus
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -125,6 +126,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 		nodeStatistics = getNodeStatistics(nodes)
 		if c.managedClusterSource == known.ManagedClusterSourceFromInformer {
 			capacity, allocatable, available = getNodeResource(nodes)
+			nodesAllRes = getEachNodeResourceFromPrometheus("", nodes)
 		} else if c.managedClusterSource == known.ManagedClusterSourceFromPrometheus {
 			capacity, allocatable, available = getNodeResourceFromPrometheus(c.promURLPrefix)
 			nodesAllRes = getEachNodeResourceFromPrometheus(c.promURLPrefix, nodes)
@@ -298,6 +300,19 @@ func parseNodeLabels(nodeLabels, inLabels map[string]string) map[string]string {
 	sn := inLabels[clusterapi.ParsedSNKey]
 	for labelKey, labelValue := range inLabels {
 		if len(labelValue) > 0 {
+			if strings.HasPrefix(labelKey, clusterapi.ParsedGPUCountKey) {
+				if val, ok := nodeLabels[labelKey]; ok {
+					oriNum, err := strconv.Atoi(labelValue)
+					valNum, err2 := strconv.Atoi(val)
+					if err != nil || err2 != nil {
+						klog.Errorf("failed to get gpuCount, gpu-product==%q, Error==%v+%v", labelKey, err, err2)
+					} else {
+						nodeLabels[labelKey] = strconv.Itoa(oriNum + valNum)
+					}
+				} else {
+					nodeLabels[labelKey] = labelValue
+				}
+			}
 			if labelKey == clusterapi.ParsedNetEnvironmentKey || labelKey == clusterapi.ParsedNodeRoleKey ||
 				labelKey == clusterapi.ParsedResFormKey || labelKey == clusterapi.ParsedRuntimeStateKey {
 				if _, ok := nodeLabels[labelKey]; ok {
@@ -347,6 +362,17 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 	for _, cluster := range clusters {
 		for labelKey, labelValue := range cluster.GetLabels() {
 			if len(labelValue) > 0 {
+				if strings.HasPrefix(labelKey, clusterapi.ParsedGPUCountKey) {
+					if val, ok := nodeLabels[labelKey]; ok {
+						oriNum, err := strconv.Atoi(labelValue)
+						valNum, err2 := strconv.Atoi(val)
+						if err != nil || err2 != nil {
+							klog.Errorf("failed to get gpuCount, gpu-product==%q, Error==%v+%v", labelKey, err, err2)
+						} else {
+							nodeLabels[labelKey] = strconv.Itoa(oriNum + valNum)
+						}
+					}
+				}
 				if labelKey == clusterapi.ParsedNetEnvironmentKey || labelKey == clusterapi.ParsedNodeRoleKey ||
 					labelKey == clusterapi.ParsedResFormKey || labelKey == clusterapi.ParsedRuntimeStateKey {
 					if _, ok := nodeLabels[labelKey]; ok {
@@ -363,7 +389,7 @@ func getClusterLabels(clusters []*clusterapi.ManagedCluster) (nodeLabels map[str
 			}
 		}
 	}
-	return
+	return nodeLabels
 }
 
 // GetManagedClusterLabels returns the specified node labels for the clusters
@@ -541,26 +567,35 @@ func getNodeResourceFromPrometheus(promPreURL string) (capacity, allocatable, av
 
 // getEachNodeResourceFromPrometheus returns the cpu, gpu, memory resources from Prometheus in the cluster
 func getEachNodeResourceFromPrometheus(promPreURL string, nodes []*corev1.Node) map[string]clusterapi.NodeResources {
-	QueryMetricSet, ClusterMetricList, err := utils.InitConfig(known.MetricConfigMapNodeAbsFilePath)
-	if err != nil || len(ClusterMetricList) != 4 {
+	// var entityNodeRes clusterapi.NodeResources
+	nodeResourcesMap := make(map[string]clusterapi.NodeResources)
+	if promPreURL == "" {
+		var nodeResource clusterapi.NodeResources
+		for _, node := range nodes {
+			sn := utils.GetNodeSNID(node)
+			nodeResourcesMap[sn] = nodeResource
+		}
+		klog.Errorf("cat not getEachNodeResourceFromPrometheus, mcSource of gaia should be prometheus")
+		return nodeResourcesMap
+	}
+
+	QueryMetricSet, metricKeyList, err := utils.InitConfig(known.MetricConfigMapNodeAbsFilePath)
+	if err != nil || len(metricKeyList) < 5 {
 		klog.Warningf("Wrong metrics config or The length of ClusterMetricList not 4, err: %v", err)
 		return nil
 	}
-
-	// var entityNodeRes clusterapi.NodeResources
-	nodeResourcesMap := make(map[string]clusterapi.NodeResources)
 	for _, node := range nodes {
 		if utils.IsSystemNode(node) {
 			continue
 		}
 		var nodeResource clusterapi.NodeResources
 		var valueList [4]string
-		var capacityCPU, capacityMem, availableCPU, availableMem resource.Quantity
 		nodeResource.ClusterName = utils.GetNodeClusterName(node)
 		sn := utils.GetNodeSNID(node)
-		for index, metric := range ClusterMetricList[:4] {
-			metric = strings.ReplaceAll(metric, "XXX", sn)
-			result, err2 := utils.GetDataFromPrometheus(promPreURL, QueryMetricSet[metric])
+		for index, metric := range metricKeyList[:4] {
+			queryStr := QueryMetricSet[metric]
+			queryStr = strings.ReplaceAll(queryStr, "XXX", sn)
+			result, err2 := utils.GetDataFromPrometheus(promPreURL, queryStr)
 			if err2 == nil {
 				if len(result.(model.Vector)) == 0 {
 					klog.Warningf("Query from prometheus successfully, but the result is a null array.")
@@ -572,20 +607,49 @@ func getEachNodeResourceFromPrometheus(promPreURL string, nodes []*corev1.Node) 
 				valueList[index] = "0"
 			}
 		}
-		capacityCPU.Add(resource.MustParse(valueList[0]))
-		capacityMem.Add(resource.MustParse(valueList[1] + "Ki"))
-		availableCPU.Add(resource.MustParse(getSubStringWithSpecifiedDecimalPlace(valueList[2], 3)))
-		availableMem.Add(resource.MustParse(valueList[3] + "Ki"))
 
 		// todo: Judge whether it is an entity node
+		nodeResource.Capacity, nodeResource.Available, nodeResource.AvailableGPU =
+			make(map[corev1.ResourceName]resource.Quantity), make(map[corev1.ResourceName]resource.Quantity),
+			make(map[string]int)
+		nodeResource.Capacity[corev1.ResourceCPU] = resource.MustParse(valueList[0])
+		nodeResource.Capacity[corev1.ResourceMemory] = resource.MustParse(valueList[1] + "Ki")
+		nodeResource.Available[corev1.ResourceCPU] = resource.MustParse(getSubStringWithSpecifiedDecimalPlace(
+			valueList[2], 3))
+		nodeResource.Available[corev1.ResourceMemory] = resource.MustParse(valueList[3] + "Ki")
 
-		nodeResource.Capacity[corev1.ResourceCPU] = capacityCPU
-		nodeResource.Capacity[corev1.ResourceMemory] = capacityMem
-		nodeResource.Available[corev1.ResourceCPU] = availableCPU
-		nodeResource.Available[corev1.ResourceMemory] = availableMem
-
-		// todo: get gpu resource
-
+		// get gpu resource
+		gpuMap := make(map[string]int)
+		for labelKey := range node.GetLabels() {
+			if strings.HasPrefix(labelKey, clusterapi.ParsedGPUCountKey) {
+				gpuProduct := labelKey[len(clusterapi.ParsedGPUCountKey):]
+				if len(gpuProduct) > 0 {
+					queryStr := QueryMetricSet[metricKeyList[4]]
+					queryStr = strings.ReplaceAll(queryStr, "XXX", sn)
+					queryStr = strings.ReplaceAll(queryStr, "GPU_PRODUCT", gpuProduct)
+					result, err2 := utils.GetDataFromPrometheus(promPreURL, queryStr)
+					if err2 == nil {
+						if len(result.(model.Vector)) == 0 {
+							klog.Warningf("Query from prometheus successfully, but the result is a null array.")
+							gpuMap[gpuProduct] = 0
+						} else {
+							countStr := result.(model.Vector)[0].Value.String()
+							count, errC := strconv.Atoi(countStr)
+							if errC != nil {
+								klog.Errorf("failed to get gpuCount, gpu-product==%q, Error==%v", gpuProduct, errC)
+							} else {
+								klog.V(2).Infof("node==%q get GPU:gpuCount==%q:%q",
+									node.GetName(), gpuProduct, count)
+								gpuMap[gpuProduct] = count
+							}
+						}
+					} else {
+						gpuMap[gpuProduct] = 0
+					}
+				}
+			}
+		}
+		nodeResource.AvailableGPU = gpuMap
 		nodeResourcesMap[sn] = nodeResource
 	}
 

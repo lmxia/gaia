@@ -48,11 +48,14 @@ func NewController(gaiaClient gaiaClientSet.Interface, gaiaInformerFactory gaiaI
 		aliyunSourceSite:   aliyunSourceSite,
 	}
 	// frontend events handler
-	frontendInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := frontendInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.addFrontend,
 		UpdateFunc: c.updateFrontend,
 		DeleteFunc: c.enqueueForDelete,
 	})
+	if err != nil {
+		return nil, err
+	}
 	return c, nil
 }
 

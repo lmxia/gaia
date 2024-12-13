@@ -159,11 +159,14 @@ func NewController(gaiaClient gaiaClientSet.Interface, informer informers.Resour
 	}
 
 	// Manage the addition/update of self cluster's ResourceBinding requests in gaia-push-reserved namespace
-	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.addRB,
 		UpdateFunc: c.updateRB,
 		DeleteFunc: c.deleteRB,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }
@@ -608,6 +611,7 @@ func (c *Binder) handleParentResourceBinding(rb *appsV1alpha1.ResourceBinding) e
 
 	return nil
 }
+
 func (c *Binder) handleParentRBIP(rb *appsV1alpha1.ResourceBinding, descNs, descName, clusterName string) error {
 	createRB := false
 	if len(rb.Spec.RbApps) > 0 {
@@ -708,6 +712,7 @@ func (c *Binder) handleParentRBIP(rb *appsV1alpha1.ResourceBinding, descNs, desc
 	}
 	return nil
 }
+
 func (c *Binder) handleParentRBID(rb *appsV1alpha1.ResourceBinding, descNs, descName, clusterName string) error {
 	createRB := false
 	if len(rb.Spec.RbApps) > 0 {
@@ -818,7 +823,7 @@ func updateRBStatusWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clie
 	rb *appsV1alpha1.ResourceBinding, condition metav1.Condition, clusterName string,
 ) error {
 	rb = rb.DeepCopy()
-	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func(ctx context.Context) (bool, error) {
 		rb.Status.Conditions = append(rb.Status.Conditions, condition)
 		if rb.Status.Clusters == nil {
 			rb.Status.Clusters = make(map[string]appsV1alpha1.StatusRBDeploy)

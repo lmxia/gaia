@@ -21,7 +21,7 @@ func EnsureClusterRole(ctx context.Context, clusterRole v1.ClusterRole, client *
 ) error {
 	klog.V(5).Infof("ensure ClusterRole %s...", clusterRole.Name)
 	var lastError error
-	err := wait.ExponentialBackoffWithContext(ctx, backoff, func() (bool, error) {
+	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
 		_, lastError = client.RbacV1().ClusterRoles().Create(ctx, &clusterRole, metav1.CreateOptions{})
 		if lastError == nil {
 			// success on the creating
@@ -58,7 +58,7 @@ func EnsureClusterRoleBinding(ctx context.Context, clusterRolebinding v1.Cluster
 ) error {
 	klog.V(5).Infof("ensure ClusterRoleBinding %s...", clusterRolebinding.Name)
 	var lastError error
-	err := wait.ExponentialBackoffWithContext(ctx, backoff, func() (bool, error) {
+	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
 		_, lastError = client.RbacV1().ClusterRoleBindings().Create(ctx, &clusterRolebinding, metav1.CreateOptions{})
 		if lastError == nil {
 			// success on the creating
@@ -93,7 +93,7 @@ func EnsureClusterRoleBinding(ctx context.Context, clusterRolebinding v1.Cluster
 func EnsureRole(ctx context.Context, role v1.Role, client *kubernetes.Clientset, backoff wait.Backoff) error {
 	klog.V(5).Infof("ensure Role %s...", klog.KObj(&role).String())
 	var lastError error
-	err := wait.ExponentialBackoffWithContext(ctx, backoff, func() (bool, error) {
+	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (bool, error) {
 		_, lastError = client.RbacV1().Roles(role.Namespace).Create(ctx, &role, metav1.CreateOptions{})
 		if lastError == nil {
 			// success on the creating
@@ -130,7 +130,7 @@ func EnsureRoleBinding(ctx context.Context, rolebinding v1.RoleBinding, client *
 ) error {
 	klog.V(5).Infof("ensure RoleBinding %s...", klog.KObj(&rolebinding).String())
 	var lastError error
-	err := wait.ExponentialBackoffWithContext(ctx, backoff, func() (done bool, err error) {
+	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(ctx context.Context) (done bool, err error) {
 		_, lastError = client.RbacV1().RoleBindings(rolebinding.Namespace).Create(ctx, &rolebinding, metav1.CreateOptions{})
 		if lastError == nil {
 			// success on the creating

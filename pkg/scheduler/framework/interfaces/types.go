@@ -13,7 +13,7 @@ import (
 // Diagnosis records the details to diagnose a scheduling failure.
 type Diagnosis struct {
 	ClusterToStatusMap   ClusterToStatusMap
-	UnschedulablePlugins sets.String
+	UnschedulablePlugins sets.Set[string]
 }
 
 // FitError describes a fit error of a subscription.

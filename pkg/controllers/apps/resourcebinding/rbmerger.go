@@ -316,7 +316,8 @@ func (m *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding
 							common.ParentRBNameLabel:               rbLabels[common.ParentRBNameLabel],
 						}).String()})
 				if err != nil {
-					klog.Errorf("failed to delete rbs in %s, error==%v", common.GaiaRSToBeMergedReservedNamespace, err)
+					klog.Errorf("failed to delete rbs in %s, error==%v",
+						common.GaiaRSToBeMergedReservedNamespace, err)
 					return err
 				}
 				m.deleteFieldDescUID(UID(descUID), indexParentRB)
@@ -771,7 +772,8 @@ func (m *RBMerger) createFrontRb(rb *appV1alpha1.ResourceBinding, rbLabels map[s
 }
 
 func (m *RBMerger) pushMergedResourceBindings(chanResult chan []*appV1alpha1.ResourceBindingApps, parentRBName string,
-	rb *appV1alpha1.ResourceBinding) {
+	rb *appV1alpha1.ResourceBinding,
+) {
 	rbLabels := rb.GetLabels()
 	descName := rbLabels[common.OriginDescriptionNameLabel]
 	var rbApps []*appV1alpha1.ResourceBindingApps

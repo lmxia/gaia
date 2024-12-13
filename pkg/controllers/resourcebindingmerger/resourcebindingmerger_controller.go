@@ -78,11 +78,14 @@ func NewController(clusternetClient gaiaClientSet.Interface,
 	}
 
 	// Manage the addition/update of cluster registration requests
-	rbsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := rbsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.addRB,
 		UpdateFunc: c.updateRB,
 		DeleteFunc: c.deleteRB,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }

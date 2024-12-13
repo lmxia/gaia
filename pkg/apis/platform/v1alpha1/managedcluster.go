@@ -356,16 +356,14 @@ func (cluster *ManagedCluster) GetHypernodeLabelsMapFromManagedCluster() (
 	providers, floatingIPMap, gpuProductMap, clusterNameMap, internalNetworkCapMap,
 	pricelevelMap, vpcMap, resTypeMap, supportPublicIPMap, tokenMap map[string]struct{},
 ) {
-	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap =
-		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
-		make(map[string]struct{}), make(map[string]struct{})
-	geolocationMap, providers, floatingIPMap, gpuProductMap =
-		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}),
-		make(map[string]struct{})
-	clusterNameMap, internalNetworkCapMap, pricelevelMap =
+	netEnvironmentMap, nodeRoleMap, resFormMap, runtimeStateMap, snMap = make(map[string]struct{}),
+		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
+	geolocationMap, providers, floatingIPMap, gpuProductMap = make(map[string]struct{}),
 		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
-	vpcMap, resTypeMap, supportPublicIPMap, tokenMap = make(map[string]struct{}), make(map[string]struct{}),
+	clusterNameMap, internalNetworkCapMap, pricelevelMap = make(map[string]struct{}),
 		make(map[string]struct{}), make(map[string]struct{})
+	vpcMap, resTypeMap, supportPublicIPMap, tokenMap = make(map[string]struct{}),
+		make(map[string]struct{}), make(map[string]struct{}), make(map[string]struct{})
 	var labelValueArray []string
 
 	clusterLabels := cluster.GetLabels()

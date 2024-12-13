@@ -66,14 +66,14 @@ func NewController(gaiaClient gaiaClientSet.Interface, descInformer appInformers
 	}
 
 	// Manage the addition/update of cluster ResourceBinding requests
-	descInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := descInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.addDescription,
 		UpdateFunc: c.updateDescription,
 		DeleteFunc: c.deleteDescription,
 	})
-	// rbInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-	// 	DeleteFunc: c.deleteRB,
-	// })
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }

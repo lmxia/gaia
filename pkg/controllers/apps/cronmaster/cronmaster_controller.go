@@ -6,33 +6,32 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/lmxia/gaia/pkg/utils"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/types"
-	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/client-go/restmapper"
-	"k8s.io/client-go/util/retry"
-
-	appsV1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog/v2"
-
-	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
-	gaiaInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
-	applisters "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	kubeInformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	k8slisters "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/klog/v2"
+
+	appsV1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	gaiaInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	applisters "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
+	"github.com/lmxia/gaia/pkg/utils"
 )
 
 var (
@@ -87,7 +86,7 @@ func NewController(gaiaClient gaiaClientSet.Interface, kubeClient kubernetes.Int
 	}
 
 	// cronMaster events handler
-	cronInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err = cronInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			c.enqueueController(obj)
 		},
@@ -96,6 +95,9 @@ func NewController(gaiaClient gaiaClientSet.Interface, kubeClient kubernetes.Int
 			c.enqueueController(obj)
 		},
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }

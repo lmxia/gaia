@@ -37,7 +37,7 @@ const (
 // frameworkImpl is the component responsible for initializing and running scheduler
 // plugins.
 type frameworkImpl struct {
-	scorePluginWeight map[string]int
+	scorePluginWeight map[string]int32
 	preFilterPlugins  []framework.PreFilterPlugin
 	filterPlugins     []framework.FilterPlugin
 	postFilterPlugins []framework.PostFilterPlugin
@@ -154,7 +154,7 @@ func NewFramework(r Registry, plugins *schedulerapis.Plugins, opts ...Option) (f
 	}
 
 	f := &frameworkImpl{
-		scorePluginWeight: make(map[string]int),
+		scorePluginWeight: make(map[string]int32),
 		clientSet:         options.clientSet,
 		kubeConfig:        options.kubeConfig,
 		eventRecorder:     options.eventRecorder,
@@ -191,7 +191,7 @@ func NewFramework(r Registry, plugins *schedulerapis.Plugins, opts ...Option) (f
 		if scorePlugin.Weight == 0 {
 			return nil, fmt.Errorf("score plugin %q is not configured with weight", scorePlugin.Name)
 		}
-		f.scorePluginWeight[scorePlugin.Name] = int(scorePlugin.Weight)
+		f.scorePluginWeight[scorePlugin.Name] = scorePlugin.Weight
 	}
 
 	return f, nil
@@ -495,7 +495,7 @@ func (f *frameworkImpl) ListPlugins() *schedulerapis.Plugins {
 			p := schedulerapis.Plugin{Name: name}
 			if extName == "ScorePlugin" {
 				// Weights apply only to score plugins.
-				p.Weight = int32(f.scorePluginWeight[name])
+				p.Weight = f.scorePluginWeight[name]
 			}
 			cfgs = append(cfgs, p)
 		}

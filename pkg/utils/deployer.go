@@ -52,7 +52,7 @@ func DeleteResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interfac
 	deletePropagationBackground := metav1.DeletePropagationBackground
 
 	var lastError error
-	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func(ctx context.Context) (bool, error) {
 		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(),
 			resource.GroupVersionKind().Version)
 		if err != nil {
@@ -153,7 +153,7 @@ func ApplyResourceWithRetry(ctx context.Context, dynamicClient dynamic.Interface
 	resource.SetUID("")
 
 	var lastError error
-	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func(ctx context.Context) (bool, error) {
 		restMapping, err := restMapper.RESTMapping(resource.GroupVersionKind().GroupKind(),
 			resource.GroupVersionKind().Version)
 		if err != nil {
@@ -444,7 +444,7 @@ func updateRBStatusWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Clie
 	rb *appsv1alpha1.ResourceBinding, condition metav1.Condition, clusterName string,
 ) error {
 	rb = rb.DeepCopy()
-	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func(ctx context.Context) (bool, error) {
 		rb.Status.Conditions = append(rb.Status.Conditions, condition)
 		if rb.Status.Clusters == nil {
 			rb.Status.Clusters = make(map[string]appsv1alpha1.StatusRBDeploy)
@@ -675,7 +675,7 @@ func ApplyResourceBinding(ctx context.Context, localDynamicClient dynamic.Interf
 			}
 			rbUnstructured, errDep := ObjectConvertToUnstructured(newRB)
 			if errDep != nil || rbUnstructured == nil {
-				msg := fmt.Sprintf("apply RB in field %s failed to unmarshal resource: %v", newRB.ClusterName, errDep)
+				msg := fmt.Sprintf("apply RB in field %s failed to unmarshal resource: %v", newRB.Name, errDep)
 				klog.ErrorDepth(5, msg)
 				allErrs = append(allErrs, errDep)
 				continue
@@ -1511,7 +1511,7 @@ func CreateRBtoParentWithRetry(ctx context.Context, gaiaClient *gaiaClientSet.Cl
 	rb *appsv1alpha1.ResourceBinding,
 ) {
 	var lastError error
-	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func() (bool, error) {
+	err := wait.ExponentialBackoffWithContext(ctx, retry.DefaultBackoff, func(ctx context.Context) (bool, error) {
 		_, err := gaiaClient.AppsV1alpha1().ResourceBindings(namespace).Create(context.TODO(), rb,
 			metav1.CreateOptions{})
 		if err == nil {

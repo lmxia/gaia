@@ -341,11 +341,14 @@ func (c *Controller) SetHypernodeController(selfClusterName *string, parentKubeC
 		c.parentHypernodeSynced = parentHypernodeInformer.Informer().HasSynced
 		c.defaultHypernodeInformerFactory = parentDefaultGaiaInformerFactory
 
-		parentHypernodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		_, err := parentHypernodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc:    c.addHypernode,
 			UpdateFunc: c.updateHypernode,
 			DeleteFunc: c.deleteHypernode,
 		})
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 	return fmt.Errorf("failed to set Hypernode Controller for parent cluster")

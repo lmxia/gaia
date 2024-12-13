@@ -435,7 +435,7 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 ) ([]*framework2.ClusterInfo, framework.Diagnosis, error) {
 	diagnosis := framework.Diagnosis{
 		ClusterToStatusMap:   make(framework.ClusterToStatusMap),
-		UnschedulablePlugins: sets.NewString(),
+		UnschedulablePlugins: sets.Set[string]{},
 	}
 
 	var allClusters []*clusterapi.ManagedCluster
@@ -611,7 +611,7 @@ func (g *genericScheduler) findNodesThatFitComponent(ctx context.Context, fwk fr
 ) ([]*framework2.NodeInfo, framework.Diagnosis, error) {
 	diagnosis := framework.Diagnosis{
 		ClusterToStatusMap:   make(framework.ClusterToStatusMap),
-		UnschedulablePlugins: sets.NewString(),
+		UnschedulablePlugins: sets.Set[string]{},
 	}
 
 	var allNodes []*coreV1.Node

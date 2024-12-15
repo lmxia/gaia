@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	"github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	servicev1alpha1 "github.com/lmxia/gaia/pkg/apis/service/v1alpha1"
 	known "github.com/lmxia/gaia/pkg/common"
 	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	appsv1 "k8s.io/api/apps/v1"
@@ -40,6 +42,7 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 		getVPCForGroup(group2HugeCom, nodes, vpcResourceSli, group2VPC, promURLPrefix)
 	}
 
+	hyperNets := getEncodeNetworkPath(rb.Spec.NetworkPath)
 	errCh := make(chan error, len(comToBeApply))
 	for _, com := range comToBeApply {
 		com := com
@@ -49,10 +52,10 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 			var errDep error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
 				unStructures, errDep = AssembledCronDeploymentStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false, nodes)
+					group2VPC, descLabels, false, nodes, hyperNets)
 			} else {
 				unStructures, errDep = AssembledDeploymentStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false, nodes)
+					group2VPC, descLabels, false, nodes, hyperNets)
 			}
 
 			for _, unStructure := range unStructures {
@@ -76,10 +79,10 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 			var errSer error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
 				unStructures, errSer = AssembledCronServerlessStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false, nodes)
+					group2VPC, descLabels, false, nodes, hyperNets)
 			} else {
 				unStructures, errSer = AssembledServerlessStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false, nodes)
+					group2VPC, descLabels, false, nodes, hyperNets)
 			}
 			for _, unStructure := range unStructures {
 				if errSer != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
@@ -97,37 +100,6 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 					}
 				}(unStructure)
 			}
-		case appsv1alpha1.WorkloadTypeAffinityDaemon:
-			unStructure, errDep := AssembledDaemonSetStructure(&com, rb.Spec.RbApps, clusterName, desc.Name,
-				group2VPC, descLabels, false, nodes)
-			if errDep != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
-				continue
-			}
-			wg.Add(1)
-			go func(un *unstructured.Unstructured) {
-				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, un)
-				if retryErr != nil {
-					klog.Infof("applyRBWorkloads WorkloadTypeAffinityDaemon name==%s err===%v \n", un.GetName(), retryErr)
-					errCh <- retryErr
-					return
-				}
-			}(unStructure)
-		case appsv1alpha1.WorkloadTypeUserApp:
-			unStructure, errUserAPP := AssembledUserAppStructure(&com, rb.Spec.RbApps, clusterName, desc.Name, descLabels, false)
-			if errUserAPP != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
-				continue
-			}
-			wg.Add(1)
-			go func(unStructure *unstructured.Unstructured) {
-				defer wg.Done()
-				retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, unStructure)
-				if retryErr != nil {
-					klog.Infof("applyRBWorkloads userApp name==%s err===%v \n", unStructure.GetName(), retryErr)
-					errCh <- retryErr
-					return
-				}
-			}(unStructure)
 		}
 	}
 
@@ -153,8 +125,64 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 	return err
 }
 
+func getEncodeNetworkPath(path [][]byte) []appsv1alpha1.HyperLabelNetItem {
+	var hyperLabelNets []appsv1alpha1.HyperLabelNetItem
+	if len(path) == 0 {
+		return hyperLabelNets
+	}
+	for _, oneNetPath := range path {
+		decodedLabelNet, err := base64.StdEncoding.DecodeString(string(oneNetPath))
+		if err != nil {
+			klog.Errorf("failed to decode networkPath==%q, error==%v", oneNetPath, err)
+			return nil
+		}
+		var LabelNet appsv1alpha1.HyperLabelNetItem
+		err = json.Unmarshal(decodedLabelNet, &LabelNet)
+		if err != nil {
+			klog.Errorf("failed to unmarshal netowrkPath to json, networkPath==%q, error==%v", oneNetPath, err)
+			return nil
+		}
+		klog.Infof("decode networkPath to hyperLabel: %+v", LabelNet)
+		hyperLabelNets = append(hyperLabelNets, LabelNet)
+	}
+	return hyperLabelNets
+}
+
+func AssembleHyperLabelService(com *appsv1alpha1.Component, hyperNets []appsv1alpha1.HyperLabelNetItem,
+	descLabels map[string]string, descName string,
+) (*unstructured.Unstructured, error) {
+	var hyperLabelItems []servicev1alpha1.HyperLabelItem
+	for _, netLabel := range hyperNets {
+		if netLabel.ComponentName == com.Name {
+			hyperLabelItems = append(hyperLabelItems, servicev1alpha1.HyperLabelItem{
+				ExposeType:    netLabel.ExposeType,
+				VNList:        netLabel.VNList,
+				CeniIPList:    netLabel.CeniIPList,
+				ComponentName: netLabel.ComponentName,
+				FQDNCENI:      netLabel.FQDNCENI,
+				FQDNPublic:    netLabel.FQDNPublic,
+				Ports:         netLabel.Ports,
+			})
+		}
+	}
+
+	hyperLabel := servicev1alpha1.HyperLabel{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "HyperLabel",
+			APIVersion: "service.gaia.io/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: addLabels(com.DeepCopy(), descLabels, descName),
+		},
+		Spec: hyperLabelItems,
+	}
+
+	return ObjectConvertToUnstructured(&hyperLabel)
+}
+
 func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
+	hyperNets []appsv1alpha1.HyperLabelNetItem,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -238,6 +266,14 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 					depIndex++
 				}
 			}
+			if len(unstructureds) > 0 && len(hyperNets) > 0 {
+				svcUnstructured, errS := AssembleHyperLabelService(comCopy, hyperNets, descLabels, descName)
+				if errS != nil {
+					allErrs = append(allErrs, errS)
+				} else if svcUnstructured != nil {
+					unstructureds = append(unstructureds, svcUnstructured)
+				}
+			}
 			break
 		}
 	}
@@ -254,6 +290,7 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 
 func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
+	hyperNets []appsv1alpha1.HyperLabelNetItem,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -302,6 +339,14 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 					depIndex++
 				}
 			}
+			if len(unstructureds) > 0 && len(hyperNets) > 0 {
+				svcUnstructured, errS := AssembleHyperLabelService(comCopy, hyperNets, descLabels, descName)
+				if errS != nil {
+					allErrs = append(allErrs, errS)
+				} else if svcUnstructured != nil {
+					unstructureds = append(unstructureds, svcUnstructured)
+				}
+			}
 			break
 		}
 	}
@@ -318,6 +363,7 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 
 func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
+	hyperNets []appsv1alpha1.HyperLabelNetItem,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -415,6 +461,14 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 				unstructureds = append(unstructureds, cronUnstructured)
 				allErrs = append(allErrs, err)
 			}
+			if len(unstructureds) > 0 && len(hyperNets) > 0 {
+				svcUnstructured, errS := AssembleHyperLabelService(comCopy, hyperNets, descLabels, descName)
+				if errS != nil {
+					allErrs = append(allErrs, errS)
+				} else if svcUnstructured != nil {
+					unstructureds = append(unstructureds, svcUnstructured)
+				}
+			}
 			break
 		}
 	}
@@ -431,6 +485,7 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 
 func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
+	hyperNets []appsv1alpha1.HyperLabelNetItem,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -490,6 +545,14 @@ func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 				serUnstructured, err := ObjectConvertToUnstructured(ser)
 				unstructureds = append(unstructureds, serUnstructured)
 				allErrs = append(allErrs, err)
+			}
+			if len(unstructureds) > 0 && len(hyperNets) > 0 {
+				svcUnstructured, errS := AssembleHyperLabelService(comCopy, hyperNets, descLabels, descName)
+				if errS != nil {
+					allErrs = append(allErrs, errS)
+				} else if svcUnstructured != nil {
+					unstructureds = append(unstructureds, svcUnstructured)
+				}
 			}
 			break
 		}

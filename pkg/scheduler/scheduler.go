@@ -156,6 +156,7 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 		localKubeInformerFactory.Core().V1().Nodes().Lister(), childGaiaClientSet, childKubeClientSet)
 
 	sched := &Scheduler{
+		Identity:                 identity,
 		localGaiaClient:          childGaiaClientSet,
 		localKubeInformerFactory: localKubeInformerFactory,
 		localGaiaAllFactory:      localAllGaiaInformerFactory,

@@ -42,7 +42,8 @@ const (
 
 type HyperLabelStatus struct {
 	// +optional
-	Status StatusDeploy `json:"status,omitempty"`
+	Status       StatusDeploy                 `json:"status,omitempty"`
+	PublicIPInfo map[string]map[string]string `json:"info,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -336,10 +336,8 @@ func SchedulePolicyReflect(condition appsv1alpha1.Condition, spLevel *metav1.Lab
 					// spLevel.MatchExpressions = append(spLevel.MatchExpressions, req)
 					model.Annotations[platformapi.ParsedGPUProductKey+container.Name] = strconv.Itoa(gpuR.GPUCount)
 					// multi containers
-					container.Resources.Requests["nvidia.com/gpu"] =
-						*resource.NewQuantity(int64(gpuR.GPUCount), resource.DecimalSI)
-					container.Resources.Limits["nvidia.com/gpu"] =
-						*resource.NewQuantity(int64(gpuR.GPUCount), resource.DecimalSI)
+					container.Resources.Requests["nvidia.com/gpu"] = *resource.NewQuantity(int64(gpuR.GPUCount), resource.DecimalSI)
+					container.Resources.Limits["nvidia.com/gpu"] = *resource.NewQuantity(int64(gpuR.GPUCount), resource.DecimalSI)
 				}
 			}
 		}

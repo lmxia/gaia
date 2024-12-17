@@ -212,7 +212,7 @@ func CountNonZeroClusterNumForRB(binding *appsapi.ResourceBinding) int {
 			}
 		}
 
-		if rbApp.Children != nil && len(rbApp.Children) > 0 {
+		if len(rbApp.Children) > 0 {
 			nonZeroCount = 0
 			for _, child := range rbApp.Children {
 				for _, v := range child.Replicas {

@@ -63,11 +63,14 @@ func NewController(gaiaClient gaiaClientSet.Interface,
 	}
 
 	// Manage the addition/update of cluster registration requests
-	crrsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := crrsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.addCRR,
 		UpdateFunc: c.updateCRR,
 		DeleteFunc: c.deleteCRR,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }

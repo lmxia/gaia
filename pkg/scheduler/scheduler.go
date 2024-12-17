@@ -217,7 +217,7 @@ func (sched *Scheduler) Run(cxt context.Context, cc *schedulerserverconfig.Compl
 					handler := buildHandlerChain(newMetricsHandler(), cc.Authentication.Authenticator,
 						cc.Authorization.Authorizer)
 					klog.Info("Starting gaia-scheduler metrics server...")
-					if _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
+					if _, _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
 						klog.Infof("failed to start metrics server: %v", err)
 					}
 				}
@@ -255,7 +255,7 @@ func buildHandlerChain(handler http.Handler, authn authenticator.Request, authz 
 	failedHandler := genericapifilters.Unauthorized(scheme.Codecs)
 
 	handler = genericapifilters.WithAuthorization(handler, authz, scheme.Codecs)
-	handler = genericapifilters.WithAuthentication(handler, authn, failedHandler, nil)
+	handler = genericapifilters.WithAuthentication(handler, authn, failedHandler, nil, nil)
 	handler = genericapifilters.WithRequestInfo(handler, requestInfoResolver)
 	handler = genericapifilters.WithCacheControl(handler)
 	handler = genericfilters.WithHTTPLogging(handler)
@@ -798,7 +798,7 @@ func (sched *Scheduler) recordParentReSchedulingFailure(sub *appsapi.Description
 // addLocalAllEventHandlers is a helper function used in Scheduler
 // to add event handlers for various local informers.
 func (sched *Scheduler) addLocalAllEventHandlers() {
-	sched.localNamespacedInformerFactory.Apps().V1alpha1().Descriptions().Informer().
+	_, err := sched.localNamespacedInformerFactory.Apps().V1alpha1().Descriptions().Informer().
 		AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
@@ -857,12 +857,15 @@ func (sched *Scheduler) addLocalAllEventHandlers() {
 				},
 			},
 		})
+	if err != nil {
+		return
+	}
 }
 
 // addParentAllEventHandlers is a helper function used in Scheduler
 // to add event handlers for various parent informers.
 func (sched *Scheduler) addParentAllEventHandlers() {
-	sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(
+	_, err := sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
@@ -920,9 +923,12 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 				},
 			},
 		})
+	if err != nil {
+		return
+	}
 
 	// config reschedule handlers.
-	sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(
+	_, err = sched.parentInformerFactory.Apps().V1alpha1().Descriptions().Informer().AddEventHandler(
 		cache.FilteringResourceEventHandler{
 			FilterFunc: func(obj interface{}) bool {
 				switch t := obj.(type) {
@@ -978,6 +984,9 @@ func (sched *Scheduler) addParentAllEventHandlers() {
 				},
 			},
 		})
+	if err != nil {
+		return
+	}
 }
 
 func (sched *Scheduler) createFrontRBLocal(desc *appsapi.Description, rbs []*appsapi.FrontendRb) error {
@@ -1165,7 +1174,7 @@ func hasReplicasInCluster(bindingApps []*appsapi.ResourceBindingApps, clusterNam
 			// maybe we can early stop once confirm false.
 			return false
 		}
-		if rbApp.Children != nil && len(rbApp.Children) > 0 {
+		if len(rbApp.Children) > 0 {
 			if subContain := hasReplicasInCluster(rbApp.Children, clusterName); subContain {
 				return true
 			}

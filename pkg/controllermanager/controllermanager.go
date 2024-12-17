@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lmxia/gaia/pkg/controllers/watchdog"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -45,7 +44,9 @@ import (
 	"github.com/lmxia/gaia/pkg/controllers/apps/cronmaster"
 	"github.com/lmxia/gaia/pkg/controllers/apps/frontend"
 	"github.com/lmxia/gaia/pkg/controllers/apps/resourcebinding"
+	"github.com/lmxia/gaia/pkg/controllers/hyperlabel"
 	"github.com/lmxia/gaia/pkg/controllers/hypernode"
+	"github.com/lmxia/gaia/pkg/controllers/watchdog"
 	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	gaiainformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
 	"github.com/lmxia/gaia/pkg/utils"
@@ -85,9 +86,10 @@ type ControllerManager struct {
 	cronController      *cronmaster.Controller
 	frontendController  *frontend.Controller
 
-	gaiaInformerFactory gaiainformers.SharedInformerFactory
-	kubeInformerFactory kubeinformers.SharedInformerFactory
-	clusterWatcher      *watchdog.ClusterWatcher
+	gaiaInformerFactory  gaiainformers.SharedInformerFactory
+	kubeInformerFactory  kubeinformers.SharedInformerFactory
+	clusterWatcher       *watchdog.ClusterWatcher
+	hyperlabelController *hyperlabel.HyperLabelController
 }
 
 // NewControllerManager returns a new Agent.
@@ -163,6 +165,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	clusterWatcher := watchdog.NewClusterWatcher(localGaiaInformerFactory, localGaiaClientSet)
 
 	var cronController *cronmaster.Controller
+	var hyperlabelController *hyperlabel.HyperLabelController
 	var cronErr error
 	if opts.ClusterLevel == common.ClusterLayer {
 		cronController, cronErr = cronmaster.NewController(localGaiaClientSet, localKubeClientSet,
@@ -170,6 +173,9 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		if cronErr != nil {
 			klog.Error(cronErr)
 		}
+
+		hyperlabelController = hyperlabel.NewHyperLabelController(localKubeClientSet, localGaiaClientSet,
+			localKubeInformerFactory, localGaiaInformerFactory)
 	}
 
 	var frontendController *frontend.Controller
@@ -183,22 +189,23 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	}
 
 	agent := &ControllerManager{
-		ctx:                 ctx,
-		Identity:            identity,
-		ClusterHostName:     clusterHostName,
-		ClusterLevel:        opts.ClusterLevel,
-		localKubeClientSet:  localKubeClientSet,
-		localGaiaClientSet:  localGaiaClientSet,
-		gaiaInformerFactory: localGaiaInformerFactory,
-		kubeInformerFactory: localKubeInformerFactory,
-		cronController:      cronController,
-		crrApprover:         approver,
-		hyperNodeController: hyperController,
-		rbBinder:            binder,
-		rbMerger:            rbMerger,
-		statusManager:       statusManager,
-		frontendController:  frontendController,
-		clusterWatcher:      clusterWatcher,
+		ctx:                  ctx,
+		Identity:             identity,
+		ClusterHostName:      clusterHostName,
+		ClusterLevel:         opts.ClusterLevel,
+		localKubeClientSet:   localKubeClientSet,
+		localGaiaClientSet:   localGaiaClientSet,
+		gaiaInformerFactory:  localGaiaInformerFactory,
+		kubeInformerFactory:  localKubeInformerFactory,
+		cronController:       cronController,
+		hyperlabelController: hyperlabelController,
+		crrApprover:          approver,
+		hyperNodeController:  hyperController,
+		rbBinder:             binder,
+		rbMerger:             rbMerger,
+		statusManager:        statusManager,
+		frontendController:   frontendController,
+		clusterWatcher:       clusterWatcher,
 	}
 
 	metrics.Register()
@@ -291,6 +298,7 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 				// 6. start local cronmaster controller
 				if controller.ClusterLevel == common.ClusterLayer {
 					go controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
+					go controller.hyperlabelController.Run(common.DefaultThreadiness, ctx.Done())
 				}
 
 				// 7. start frontend cdn accelerate controller
@@ -303,7 +311,7 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 					handler := buildHandlerChain(newMetricsHandler(), cc.Authentication.Authenticator,
 						cc.Authorization.Authorizer)
 					klog.Info("Starting gaia-controllers metrics server...")
-					if _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
+					if _, _, err := cc.SecureServing.Serve(handler, 0, ctx.Done()); err != nil {
 						klog.Infof("failed to start metrics server: %v", err)
 					}
 				}
@@ -649,7 +657,7 @@ func buildHandlerChain(handler http.Handler, authn authenticator.Request, authz 
 	failedHandler := genericapifilters.Unauthorized(scheme.Codecs)
 
 	handler = genericapifilters.WithAuthorization(handler, authz, scheme.Codecs)
-	handler = genericapifilters.WithAuthentication(handler, authn, failedHandler, nil)
+	handler = genericapifilters.WithAuthentication(handler, authn, failedHandler, nil, nil)
 	handler = genericapifilters.WithRequestInfo(handler, requestInfoResolver)
 	handler = genericapifilters.WithCacheControl(handler)
 	handler = genericfilters.WithHTTPLogging(handler)

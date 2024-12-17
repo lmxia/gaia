@@ -124,3 +124,37 @@ const (
 	// copied from k8s.io/kubernetes/pkg/apis/core/validation/events.go
 	NoteLengthLimit = 1024
 )
+
+const (
+	ServiceManagedByLabel = "service.gaia.io/managedby"
+	ServiceCreatedByLabel = "service.gaia.io/createdby"
+
+	ServiceOwnerByLabel = "service.gaia.io/ownby"
+	ServicelessOwner    = "serverless"
+
+	HyperLabelName = "hyperLabelName"
+
+	ExposeTypeCENI      = "ceni"
+	ExposeTypePublic    = "public"
+	VirtualClusterIPKey = "services.gaia.io/clusterip"
+)
+
+const (
+	CletName = "clet"
+
+	MonitorNamespaces           = "hypermonitor"
+	GaiaRelatedNamespaces       = "gaia-"
+	KubeSystemRelatedNamespaces = "kube-"
+)
+
+// fields should be ignored when compared
+const (
+	MetaGeneration      = "/metadata/generation"
+	CreationTimestamp   = "/metadata/creationTimestamp"
+	ManagedFields       = "/metadata/managedFields"
+	MetaUID             = "/metadata/uid"
+	MetaSelflink        = "/metadata/selfLink"
+	MetaResourceVersion = "/metadata/resourceVersion"
+
+	SectionStatus = "/status"
+)

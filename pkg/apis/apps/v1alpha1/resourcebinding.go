@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -169,4 +170,18 @@ type ComDataVolume struct {
 	ExpectedDuration   string `json:"expectedDuration,omitempty"`
 	SplitShellLocation string `json:"SplitShellLocation,omitempty"`
 	SourceSplitCount   int    `json:"sourceSplitCount,omitempty"`
+}
+
+type HyperLabelNetItem struct {
+	ComponentName string `json:"componentName"`
+
+	ExposeType string   `json:"exposeType"`
+	VNList     []string `json:"vnList,omitempty"` // sn
+	// +optional ceniip should be related to vnlist one by one.
+	CeniIPList []string `json:"ceniIPList,omitempty"`
+	// +optional
+	FQDNCENI string `json:"fqdnCeni,omitempty"`
+	// +optional
+	FQDNPublic string               `json:"fqdnPublic,omitempty"`
+	Ports      []coreV1.ServicePort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"port"`
 }

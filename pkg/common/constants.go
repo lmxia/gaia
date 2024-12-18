@@ -38,6 +38,7 @@ const (
 
 	GaiaAppsLabelPrefix = "apps.gaia.io/"
 	AppFinalizer        = "apps.gaia.io/finalizer"
+	HyperLabelFinalizer = "service.gaia.io/finalizer"
 
 	DefaultClusterStatusCollectFrequency = 20 * time.Second
 	DefaultClusterStatusReportFrequency  = 3 * time.Minute
@@ -126,12 +127,18 @@ const (
 )
 
 const (
+	// component name
+	ServiceComponentName = "service.gaia.io/componentName"
+
+	// vn
 	ServiceManagedByLabel = "service.gaia.io/managedby"
 	ServiceCreatedByLabel = "service.gaia.io/createdby"
 
+	// 类型。serverless 还是 非serverless
 	ServiceOwnerByLabel = "service.gaia.io/ownby"
 	ServicelessOwner    = "serverless"
 
+	// hyperlabel 名字，需要打到service里
 	HyperLabelName = "hyperLabelName"
 
 	ExposeTypeCENI      = "ceni"

@@ -26,6 +26,7 @@ type HyperLabelItem struct {
 	// +optional ceniip should be related to vnlist one by one.
 	CeniIPList    []string `json:"ceniIPList,omitempty"`
 	ComponentName string   `json:"componentName"`
+	Namespace     string   `json:"namespace"`
 	// +optional
 	FQDNCENI string `json:"fqdnCeni,omitempty"`
 	// +optional

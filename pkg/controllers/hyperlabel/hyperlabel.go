@@ -61,10 +61,69 @@ func (r *HyperLabelController) Handle(obj interface{}) (requeueAfter *time.Durat
 		}
 		return &d, err
 	}
+
+	hlTerminating := hyperlabel.DeletionTimestamp != nil
+
+	// 有没有fininalzer
+	if !utils.ContainsString(hyperlabel.Finalizers, common.HyperLabelFinalizer) && !hlTerminating {
+		hyperlabel.Finalizers = append(hyperlabel.Finalizers, common.HyperLabelFinalizer)
+		hyperlabel, err = r.localGaiaClientSet.ServiceV1alpha1().HyperLabels(namespace).Update(context.TODO(),
+			hyperlabel, metav1.UpdateOptions{})
+		if err != nil {
+			return &d, err
+		}
+	}
+
+	// 要删除了，清理掉所有related-service
+	if hlTerminating {
+		klog.V(4).Infof("hyperlabel will be deleted so we will recycle svcs %s/%s",
+			hyperlabel.Namespace, hyperlabel.Name)
+		var serviceList *v1.ServiceList
+		if serviceList, err = r.master.CoreV1().Services(metav1.NamespaceAll).List(ctx, metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(labels.Set{
+				common.HyperLabelName: hyperlabel.Name,
+			}).String(),
+		}); err == nil {
+			var allErrs []error
+			wg := sync.WaitGroup{}
+			wg.Add(len(serviceList.Items))
+			errCh := make(chan error, len(serviceList.Items))
+			for _, service := range serviceList.Items {
+				go func(svc v1.Service) {
+					defer wg.Done()
+					err = r.master.CoreV1().Services(svc.Namespace).Delete(ctx, svc.Name, metav1.DeleteOptions{})
+					if err != nil {
+						errCh <- err
+					}
+				}(service)
+			}
+			wg.Wait()
+			close(errCh)
+
+			for err = range errCh {
+				allErrs = append(allErrs, err)
+			}
+			if len(allErrs) > 0 {
+				err = utilerrors.NewAggregate(allErrs)
+				return &d, err
+			} else {
+				hyperlabel.Finalizers = utils.RemoveString(hyperlabel.Finalizers, common.HyperLabelFinalizer)
+				_, err = r.localGaiaClientSet.ServiceV1alpha1().HyperLabels(namespace).Update(context.TODO(),
+					hyperlabel, metav1.UpdateOptions{})
+				if err != nil {
+					return &d, err
+				}
+				return nil, nil
+			}
+		}
+	}
+
 	if hyperlabel.Status.PublicIPInfo == nil {
 		hyperlabel.Status.PublicIPInfo = make(map[string]map[string]string)
 	}
-
+	srcHyperLabelStatus := new(v1alpha1.HyperLabelStatus)
+	// 不可以直接对指针类型的map进行赋值
+	hyperlabel.Status.DeepCopyInto(srcHyperLabelStatus)
 	for index := range hyperlabel.Spec {
 		hyperlabelItem := &hyperlabel.Spec[index]
 		err = r.deriveServiceFromHyperlabelItem(hyperlabelItem, hyperlabel)
@@ -72,12 +131,12 @@ func (r *HyperLabelController) Handle(obj interface{}) (requeueAfter *time.Durat
 			return &d, err
 		}
 	}
-
-	_, err = r.localGaiaClientSet.ServiceV1alpha1().HyperLabels(hyperlabel.Namespace).UpdateStatus(ctx, hyperlabel,
-		metav1.UpdateOptions{})
-	if err != nil {
-		klog.Errorf("Update hyperlabel for %s/%s faile for %s", namespace, name, err)
-		return nil, err
+	if !reflect.DeepEqual(srcHyperLabelStatus, hyperlabel.Status) {
+		err = utils.UpdateHyperLabelStatus(r.localGaiaClientSet, r.hyperlabelLister, hyperlabel)
+		if err != nil {
+			klog.Errorf("failed to update hyperlabel status: %v", err)
+			return nil, err
+		}
 	}
 	return nil, nil
 }
@@ -98,10 +157,21 @@ func NewHyperLabelController(master kubernetes.Interface, localGaiaClientSet *ga
 		localGaiaClientSet: localGaiaClientSet,
 	}
 	// add event handler for ServiceImport
-	yachtController := yacht.NewController("clientservice").
+	yachtController := yacht.NewController("hyperlabel controller").
 		WithCacheSynced(hyperlabelInformer.Informer().HasSynced, serviceInformer.Informer().HasSynced).
-		WithHandlerFunc(hyperLabelController.Handle)
-
+		WithHandlerFunc(hyperLabelController.Handle).WithEnqueueFilterFunc(
+		func(oldObj, newObj interface{}) (bool, error) {
+			// 我们的informer factory 不是指定namespace的，故此在这里顾虑到可能非指定namesapce下的资源。
+			var targertHyperLabel *v1alpha1.HyperLabel
+			if newObj == nil {
+				// Delete
+				targertHyperLabel = oldObj.(*v1alpha1.HyperLabel)
+			} else {
+				// Add or Update
+				targertHyperLabel = newObj.(*v1alpha1.HyperLabel)
+			}
+			return targertHyperLabel.Namespace == common.GaiaRBMergedReservedNamespace, nil
+		})
 	_, err := hyperlabelInformer.Informer().AddEventHandler(yachtController.DefaultResourceEventHandlerFuncs())
 	if err != nil {
 		return nil
@@ -117,18 +187,24 @@ func NewHyperLabelController(master kubernetes.Interface, localGaiaClientSet *ga
 				svc := obj.(*v1.Service)
 				if se, err2 := getHyperlabelFromService(svc, hyperlabelLister); err2 == nil {
 					yachtController.Enqueue(se)
+				} else {
+					klog.V(4).Infof("can't find hyperlabel for this svc %s/%s...", svc.Namespace, svc.Name)
 				}
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				svc := newObj.(*v1.Service)
 				if se, err2 := getHyperlabelFromService(svc, hyperlabelLister); err2 == nil {
 					yachtController.Enqueue(se)
+				} else {
+					klog.V(4).Infof("can't find hyperlabel for this svc %s/%s...", svc.Namespace, svc.Name)
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				svc := obj.(*v1.Service)
 				if se, err2 := getHyperlabelFromService(svc, hyperlabelLister); err2 == nil {
 					yachtController.Enqueue(se)
+				} else {
+					klog.V(4).Infof("can't find hyperlabel for this svc %s/%s...", svc.Namespace, svc.Name)
 				}
 			},
 		},
@@ -142,8 +218,8 @@ func NewHyperLabelController(master kubernetes.Interface, localGaiaClientSet *ga
 }
 
 func getHyperlabelFromService(svc *v1.Service, listner gaiav1alpha1.HyperLabelLister) (*v1alpha1.HyperLabel, error) {
-	if name, exit := svc.Annotations[common.HyperLabelName]; exit {
-		if hyperlabel, err := listner.HyperLabels(svc.Namespace).Get(name); err == nil {
+	if name, exit := svc.Labels[common.HyperLabelName]; exit {
+		if hyperlabel, err := listner.HyperLabels(common.GaiaRBMergedReservedNamespace).Get(name); err == nil {
 			return hyperlabel, nil
 		}
 	}
@@ -181,17 +257,24 @@ func (r *HyperLabelController) deriveServiceFromHyperlabelItem(hyperLabelItem *v
 	for vnIndex, vnName := range hyperLabelItem.VNList {
 		newDerivedService := &v1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: hyperLabel.Namespace,
+				Namespace: hyperLabelItem.Namespace,
 				Name:      GenerateDerivedServiceName(hyperLabelItem.ComponentName, vnName),
 				Labels: map[string]string{
+					// 这个label的目的是为了一把过滤出所有的service
+					common.HyperLabelName:        hyperLabel.Name,
+					common.ServiceComponentName:  hyperLabelItem.ComponentName,
 					common.ServiceManagedByLabel: vnName,
-					common.HyperLabelName:        hyperLabelItem.ComponentName,
 				},
 			},
 			Spec: v1.ServiceSpec{
 				// 必须是loadbalancer
 				Type:  v1.ServiceTypeLoadBalancer,
 				Ports: hyperLabelItem.Ports,
+				Selector: map[string]string{
+					// 一个hyperlabel的名字，必须和蓝图一样，这是很合理的。
+					common.GaiaDescriptionLabel: hyperLabel.Name,
+					common.GaiaComponentLabel:   hyperLabelItem.ComponentName,
+				},
 			},
 		}
 		if hyperLabelItem.ExposeType == common.ExposeTypeCENI {
@@ -200,13 +283,13 @@ func (r *HyperLabelController) deriveServiceFromHyperlabelItem(hyperLabelItem *v
 		allNeedService = append(allNeedService, newDerivedService)
 	}
 
-	serviceList, err := r.serviceListner.Services(hyperLabel.Namespace).List(
+	serviceList, err := r.serviceListner.Services(hyperLabelItem.Namespace).List(
 		labels.SelectorFromSet(labels.Set{
-			common.ServiceManagedByLabel: hyperLabelItem.ComponentName,
+			common.ServiceComponentName: hyperLabelItem.ComponentName,
 		}))
 	if err != nil {
 		klog.Errorf("List derived service for hyperlabel(%s/%s) failed, Error: %v",
-			hyperLabel.Namespace, hyperLabelItem.ComponentName, err)
+			hyperLabelItem.Namespace, hyperLabelItem.ComponentName, err)
 		return err
 	}
 
@@ -233,27 +316,44 @@ func (r *HyperLabelController) deriveServiceFromHyperlabelItem(hyperLabelItem *v
 	for _, item := range allNeedService {
 		wg.Add(1)
 		srcService := item
-		go func(svcName string, svc *v1.Service) {
+		go func(svc *v1.Service) {
 			defer wg.Done()
-			dstService := dstServiceMap[svcName]
-			// 如果 spec 完全没变，去获得dstService然后更新hyperlabel的status
-			if dstService != nil && reflect.DeepEqual(svc.Spec, dstService.Spec) {
-				vnName, ips := utils.GetLoadbalancerIP(dstService)
-				if len(ips) > 0 {
-					// 更新一下hyperlabel的status，然后处理下一个
-					// 这里并发修改，需要加锁
-					r.Lock()
-					hyperLabel.Status.PublicIPInfo[hyperLabelItem.ComponentName][vnName] = ips[0]
-					r.Unlock()
+			dstService := dstServiceMap[svc.Name]
+			if dstService != nil {
+				// 仅仅允许修改协议和端口号
+				dstPorts := make([]v1.ServicePort, 0)
+				scrPorts := make([]v1.ServicePort, 0)
+				for _, port := range dstService.Spec.Ports {
+					dstPorts = append(dstPorts, v1.ServicePort{
+						Protocol: port.Protocol,
+						Port:     port.Port,
+					})
 				}
-				return
+				for _, port := range svc.Spec.Ports {
+					scrPorts = append(scrPorts, v1.ServicePort{
+						Protocol: port.Protocol,
+						Port:     port.Port,
+					})
+				}
+				// 如果 spec 完全没变，去获得dstService然后更新hyperlabel的status
+				if reflect.DeepEqual(scrPorts, dstPorts) {
+					vnName, ips := utils.GetLoadbalancerIP(dstService)
+					if len(ips) > 0 {
+						// 更新一下hyperlabel的status，然后处理下一个
+						// 这里并发修改，需要加锁
+						r.Lock()
+						hyperLabel.Status.PublicIPInfo[hyperLabelItem.ComponentName][vnName] = ips[0]
+						r.Unlock()
+					}
+					return
+				}
 			} else {
 				if err = utils.ApplyServiceWithRetry(r.master, svc); err != nil {
 					errCh <- err
 					klog.Infof("svc %s sync err: %s", svc.Name, err)
 				}
 			}
-		}(srcService.Name, srcService)
+		}(srcService)
 	}
 	wg.Wait()
 	// collect errors
@@ -264,12 +364,12 @@ func (r *HyperLabelController) deriveServiceFromHyperlabelItem(hyperLabelItem *v
 	if len(allErrs) > 0 {
 		reason := utilerrors.NewAggregate(allErrs).Error()
 		msg := fmt.Sprintf("failed to sync service of hyperlabel %s/%s: %s",
-			hyperLabel.Namespace, hyperLabelItem.ComponentName, reason)
+			hyperLabelItem.Namespace, hyperLabelItem.ComponentName, reason)
 		klog.ErrorDepth(5, msg)
 		return err
 	}
 	klog.Infof("hyperlabelitem %s/%s has been synced successfully",
-		hyperLabel.Namespace, hyperLabelItem.ComponentName)
+		hyperLabelItem.Namespace, hyperLabelItem.ComponentName)
 	return nil
 }
 

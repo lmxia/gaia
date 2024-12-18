@@ -1,0 +1,50 @@
+apiVersion: service.gaia.io/v1alpha1
+kind: HyperLabel
+metadata:
+  name: lmxia-test-1
+  namespace: gaia-merged
+spec:
+  - exposeType: public
+    componentName: nginx
+    namespace: default
+    fqdnPublic: hello-world.arservice.cloud
+    ports:
+      - protocol: TCP
+        port: 80
+        targetPort: 80
+    vnList:
+      - vn2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-app
+      apps.gaia.io/component: nginx
+      apps.gaia.io/description: lmxia-test-1
+  template:
+    metadata:
+      labels:
+        app: my-app
+        apps.gaia.io/component: nginx
+        apps.gaia.io/description: lmxia-test-1
+    spec:
+      nodeName: vn2
+      containers:
+        - name: nginx
+          image: registry.cn-shanghai.aliyuncs.com/eci_open/nginx:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 512Mi

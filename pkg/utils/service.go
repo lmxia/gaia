@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lmxia/gaia/pkg/apis/service/v1alpha1"
+	gaiaclientset "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	v1alpha2 "github.com/lmxia/gaia/pkg/generated/listers/service/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -107,6 +110,26 @@ func RemoveNonexistentService(targetClient kubernetes.Interface, srcServiceMap m
 		}
 	}
 	return nil
+}
+
+func UpdateHyperLabelStatus(client *gaiaclientset.Clientset, hyperLabelLister v1alpha2.HyperLabelLister,
+	hyperlabel *v1alpha1.HyperLabel) error {
+	klog.V(5).Infof("try to update hyperlabel %q status", hyperlabel.Name)
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		_, err := client.ServiceV1alpha1().HyperLabels(hyperlabel.Namespace).UpdateStatus(
+			context.TODO(), hyperlabel, metav1.UpdateOptions{})
+		if err == nil {
+			return nil
+		}
+
+		hyperlabelNewed, errGet := hyperLabelLister.HyperLabels(hyperlabel.Namespace).Get(hyperlabel.Name)
+		if errGet == nil {
+			hyperlabel = hyperlabelNewed.DeepCopy()
+		} else {
+			utilruntime.HandleError(fmt.Errorf("error get updated %q from lister: %v", hyperlabel.Name, errGet))
+		}
+		return err
+	})
 }
 
 // current is deployed resource, modified is changed resource.

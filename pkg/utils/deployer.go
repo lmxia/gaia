@@ -526,13 +526,10 @@ func getVPCForGroup(group2HugeCom map[string]*appsv1alpha1.HugeComponent, nodes 
 func GetNodeResFromProm(node *corev1.Node, promURLPrefix string) (cpu, mem resource.Quantity) {
 	var valueList [2]string
 	query := [2]string{
-		fmt.Sprintf("system_cpu_utilization{node_name=%q,state=\"idle\"}", node.GetLabels()["kubernetes.io/hostname"]),
-		fmt.Sprintf("sum(system_memory_usage{node_name=%q} and (system_memory_usage{state=\"buffered\"} "+
+		fmt.Sprintf("system_cpu_utilization{sn=%q,state=\"idle\"}", GetNodeSNID(node)),
+		fmt.Sprintf("sum(system_memory_usage{sn=%q} and (system_memory_usage{state=\"buffered\"} "+
 			"or system_memory_usage{state=\"free\"} or system_memory_usage{state=\"cached\"}))/1024",
-			node.GetLabels()["kubernetes.io/hostname"]),
-		// fmt.Sprintf("system_cpu_utilization{node_name=%q,state=\"idle\"}", node.GetLabels()["kubernetes.io/hostname"]),
-		// fmt.Sprintf("system_memory_usage{node_name=%q, state=\"free\"}",
-		// 	node.GetLabels()["kubernetes.io/hostname"]),
+			GetNodeSNID(node)),
 	}
 
 	for index, q := range query {

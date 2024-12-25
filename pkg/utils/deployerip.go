@@ -2,10 +2,10 @@ package utils
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 
 	lmmserverless "github.com/SUMMERLm/serverless/api/v1"
@@ -42,7 +42,8 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 		getVPCForGroup(group2HugeCom, nodes, vpcResourceSli, group2VPC, promURLPrefix)
 	}
 
-	hyperNets := getEncodeNetworkPath(rb.Spec.NetworkPath)
+	hyperNets := getDecodeNetworkPath(rb.Spec.NetworkPath)
+	hyperDataVolumes := getDecodeStoragePath(rb.Spec.StoragePath)
 	errCh := make(chan error, len(comToBeApply))
 	for _, com := range comToBeApply {
 		com := com
@@ -52,10 +53,10 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 			var errDep error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
 				unStructures, errDep = AssembledCronDeploymentStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false, nodes, hyperNets)
+					group2VPC, descLabels, false, nodes, hyperNets, hyperDataVolumes)
 			} else {
 				unStructures, errDep = AssembledDeploymentStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false, nodes, hyperNets)
+					group2VPC, descLabels, false, nodes, hyperNets, hyperDataVolumes)
 			}
 
 			for _, unStructure := range unStructures {
@@ -79,10 +80,10 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 			var errSer error
 			if com.Schedule != (appsv1alpha1.SchedulerConfig{}) {
 				unStructures, errSer = AssembledCronServerlessStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false, nodes, hyperNets)
+					group2VPC, descLabels, false, nodes, hyperNets, hyperDataVolumes)
 			} else {
 				unStructures, errSer = AssembledServerlessStructureIP(&com, rb.Spec.RbApps, clusterName, desc.Name,
-					group2VPC, descLabels, false, nodes, hyperNets)
+					group2VPC, descLabels, false, nodes, hyperNets, hyperDataVolumes)
 			}
 			for _, unStructure := range unStructures {
 				if errSer != nil || unStructure == nil || unStructure.Object == nil || len(unStructure.GetName()) == 0 {
@@ -125,19 +126,33 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 	return err
 }
 
-func getEncodeNetworkPath(path [][]byte) []appsv1alpha1.HyperLabelNetItem {
+func getDecodeStoragePath(storages [][]byte) []appsv1alpha1.ComDataVolume {
+	var hyperDataVolumes []appsv1alpha1.ComDataVolume
+	if len(storages) == 0 {
+		return hyperDataVolumes
+	}
+	for _, storageByte := range storages {
+		klog.V(5).Infof("storageByte: %v", storageByte)
+		var comStorage appsv1alpha1.ComDataVolume
+		err := json.Unmarshal(storageByte, &comStorage)
+		if err != nil {
+			klog.Errorf("failed to unmarshal storagePath to json, storagePath==%q, error==%v", storageByte, err)
+			return nil
+		}
+		klog.Infof("decode storagePath to storageVolume %+v", comStorage)
+		hyperDataVolumes = append(hyperDataVolumes, comStorage)
+	}
+	return hyperDataVolumes
+}
+
+func getDecodeNetworkPath(path [][]byte) []appsv1alpha1.HyperLabelNetItem {
 	var hyperLabelNets []appsv1alpha1.HyperLabelNetItem
 	if len(path) == 0 {
 		return hyperLabelNets
 	}
 	for _, oneNetPath := range path {
-		decodedLabelNet, err := base64.StdEncoding.DecodeString(string(oneNetPath))
-		if err != nil {
-			klog.Errorf("failed to decode networkPath==%q, error==%v", oneNetPath, err)
-			return nil
-		}
 		var LabelNet appsv1alpha1.HyperLabelNetItem
-		err = json.Unmarshal(decodedLabelNet, &LabelNet)
+		err := json.Unmarshal(oneNetPath, &LabelNet)
 		if err != nil {
 			klog.Errorf("failed to unmarshal netowrkPath to json, networkPath==%q, error==%v", oneNetPath, err)
 			return nil
@@ -182,7 +197,7 @@ func AssembleHyperLabelService(com *appsv1alpha1.Component, hyperNets []appsv1al
 
 func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
-	hyperNets []appsv1alpha1.HyperLabelNetItem,
+	hyperNets []appsv1alpha1.HyperLabelNetItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -212,6 +227,11 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 					newLabels["apps.gaia.io/component-deploy-name"] = cron.Name
 
 					if !delete {
+						for _, comVolume := range hyperDataVolumes {
+							if comVolume.ComponentName == comCopy.Name {
+								comCopy.Module = InsertVolume(comCopy.Module, comVolume)
+							}
+						}
 						cron.Spec = appsv1alpha1.CronMasterSpec{
 							Schedule: comCopy.Schedule,
 							Resource: appsv1alpha1.ReferenceResource{
@@ -290,7 +310,7 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 
 func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
-	hyperNets []appsv1alpha1.HyperLabelNetItem,
+	hyperNets []appsv1alpha1.HyperLabelNetItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -320,6 +340,11 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 					newLabels["apps.gaia.io/component-deploy-name"] = dep.Name
 
 					if !delete {
+						for _, comVolume := range hyperDataVolumes {
+							if comVolume.ComponentName == comCopy.Name {
+								comCopy.Module = InsertVolume(comCopy.Module, comVolume)
+							}
+						}
 						dep.Spec.Template = getPodTemplate(comCopy.Module)
 						nodeAffinity := AddNodeAffinity(comCopy, group2VPC, nodes)
 						nodeAffinity = AddNodeAffinityIP(nodeAffinity, []string{nodeRB.ClusterName})
@@ -363,7 +388,7 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 
 func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
-	hyperNets []appsv1alpha1.HyperLabelNetItem,
+	hyperNets []appsv1alpha1.HyperLabelNetItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -396,6 +421,11 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 				cron.Name = comCopy.Name
 
 				if !delete {
+					for _, comVolume := range hyperDataVolumes {
+						if comVolume.ComponentName == comCopy.Name {
+							comCopy.Module = InsertVolume(comCopy.Module, comVolume)
+						}
+					}
 					cron.Spec = appsv1alpha1.CronMasterSpec{
 						Schedule: comCopy.Schedule,
 						Resource: appsv1alpha1.ReferenceResource{
@@ -485,7 +515,7 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 
 func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
-	hyperNets []appsv1alpha1.HyperLabelNetItem,
+	hyperNets []appsv1alpha1.HyperLabelNetItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -518,6 +548,11 @@ func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 				ser.Name = comCopy.Name
 
 				if !delete {
+					for _, comVolume := range hyperDataVolumes {
+						if comVolume.ComponentName == comCopy.Name {
+							comCopy.Module = InsertVolume(comCopy.Module, comVolume)
+						}
+					}
 					ser.Spec = lmmserverless.ServerlessSpec{
 						Namespace:   comCopy.Namespace,
 						Name:        comCopy.Name,
@@ -590,4 +625,49 @@ func AddNodeAffinityIP(nodeAffinity *corev1.Affinity, nodeNames []string) *corev
 		return nodeAffinity
 	}
 	return nodeAffinity
+}
+
+func InsertVolume(module corev1.PodTemplateSpec, comVolume appsv1alpha1.ComDataVolume) corev1.PodTemplateSpec {
+	var hyperVolumes []corev1.Volume
+	for _, hyperVolume := range comVolume.Volumes {
+		if strings.ToLower(hyperVolume.Type) == "nfs" {
+			volume := corev1.Volume{
+				Name: hyperVolume.Name,
+				VolumeSource: corev1.VolumeSource{
+					NFS: &corev1.NFSVolumeSource{
+						Server:   hyperVolume.Server,
+						Path:     hyperVolume.Path,
+						ReadOnly: hyperVolume.ReadOnly,
+					},
+				},
+			}
+			hyperVolumes = append(hyperVolumes, volume)
+		} else if strings.ToLower(hyperVolume.Type) == "object-storage" {
+			for index := range module.Spec.Containers {
+				if module.Spec.Containers[index].Name == hyperVolume.Name {
+					module.Spec.Containers[index].Env = append(module.Spec.Containers[index].Env, []corev1.EnvVar{
+						{
+							Name:  "ACCESS_KEY_ID",
+							Value: hyperVolume.AccessKeyID,
+						},
+						{
+							Name:  "ACCESS_KEY_SECRET",
+							Value: hyperVolume.AccessKeySecret,
+						},
+						{
+							Name:  "BUCKET_NAME",
+							Value: hyperVolume.BucketName,
+						},
+						{
+							Name:  "ENDPOINT",
+							Value: hyperVolume.EndPoint,
+						},
+					}...)
+				}
+			}
+		}
+	}
+
+	module.Spec.Volumes = append(module.Spec.Volumes, hyperVolumes...)
+	return module
 }

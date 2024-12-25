@@ -665,6 +665,7 @@ func ApplyResourceBinding(ctx context.Context, localDynamicClient dynamic.Interf
 					ParentRB:        rb.Name,
 					RbApps:          newChildren,
 					NetworkPath:     rb.Spec.NetworkPath,
+					StoragePath:     rb.Spec.StoragePath,
 				},
 			}
 			if len(rb.Namespace) > 0 {

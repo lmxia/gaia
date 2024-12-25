@@ -121,55 +121,28 @@ type ResourceBindingList struct {
 	Items           []ResourceBinding `json:"items"`
 }
 
-// PlanMsg 任务下发描述
-type PlanMsg struct {
-	TaskName string         `json:"taskName"`
-	ResId    string         `json:"resId"` //nolint:stylecheck
-	Replicas map[string]int `json:"replicas"`
-
-	NetworkDesc []ComNetworkDesc `json:"NetworkDesc,omitempty"`
-	StorageDesc []ComStorageDesc `json:"storageDesc,omitempty"`
-}
-
-type ComNetworkDesc struct {
-	NetType string `json:"netType,omitempty"` // ceni public local
-	Fqdn    string `json:"fqdn,omitempty"`
-	IPs     OneIPs `json:"ips,omitempty"`
-}
-
-type OneIPs struct {
-	Protocol string `json:"protocol,omitempty"`
-	IP       string `json:"ip,omitempty"`
-	Port     string `json:"port,omitempty"`
-}
-
-type ComStorageDesc struct {
-	Image      ComImage      `json:"image,omitempty"`
-	DataVolume ComDataVolume `json:"dataVolume,omitempty"`
-}
-
-type ComImage struct {
-	ContainerName      string `json:"containerName,omitempty"`
-	SourceDataPath     string `json:"sourceDataPath,omitempty"`
-	TargetResource     string `json:"targetResource,omitempty"`
-	TargetResourcePath string `json:"targetResourcePath,omitempty"`
-	ExpectedDuration   string `json:"expectedDuration,omitempty"`
-}
-
 // ComDataVolume describe data volume
 type ComDataVolume struct {
-	// read write
-	Mode           string `json:"mode,omitempty"`
-	Parameter      string `json:"parameter,omitempty"` // todo 这个参数是啥
-	SourceDataPath string `json:"SourceDataPath,omitempty"`
-	// 搬运任务目的地址
-	TargetResource string `json:"targetResource,omitempty"`
-	// 搬运任务目的路径
-	TargetResourcePath string `json:"targetResourcePath,omitempty"`
+	ComponentName string         `json:"componentName,omitempty"`
+	Volumes       []CustomVolume `json:"volumes,omitempty"`
+}
 
-	ExpectedDuration   string `json:"expectedDuration,omitempty"`
-	SplitShellLocation string `json:"SplitShellLocation,omitempty"`
-	SourceSplitCount   int    `json:"sourceSplitCount,omitempty"`
+type CustomVolume struct {
+	// ContainerName string `json:"containerName,omitempty"`
+
+	// NFS
+	Name     string `json:"name,omitempty"`
+	Path     string `json:"path,omitempty"`
+	ReadOnly bool   `json:"readOnly,omitempty"`
+	Server   string `json:"server,omitempty"`
+
+	// object-storage
+	AccessKeyID     string `json:"accessKeyID,omitempty"`
+	AccessKeySecret string `json:"accessKeySecret,omitempty"`
+	BucketName      string `json:"bucketName,omitempty"`
+	EndPoint        string `json:"endPoint,omitempty"`
+
+	Type string `json:"type,omitempty"`
 }
 
 type HyperLabelNetItem struct {

@@ -20,6 +20,7 @@ import (
 	kubeInformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
@@ -39,6 +40,8 @@ type HyperLabelController struct {
 	hyperlabelLister   gaiav1alpha1.HyperLabelLister
 	serviceListner     corelisters.ServiceLister
 	localGaiaClientSet *gaiaclientset.Clientset
+	parentGaiaClient   *gaiaclientset.Clientset
+
 	sync.Mutex
 }
 
@@ -135,6 +138,12 @@ func (r *HyperLabelController) Handle(obj interface{}) (requeueAfter *time.Durat
 		err = utils.UpdateHyperLabelStatus(r.localGaiaClientSet, r.hyperlabelLister, hyperlabel)
 		if err != nil {
 			klog.Errorf("failed to update hyperlabel status: %v", err)
+			return nil, err
+		}
+
+		err = utils.UpdateResourceBindingHyperLabel(r.parentGaiaClient, hyperlabel)
+		if err != nil {
+			klog.Errorf("failed to update resourcebinding hyperlabel: %v", err)
 			return nil, err
 		}
 	}
@@ -379,4 +388,8 @@ func GenerateDerivedServiceName(componentName, vnName string) string {
 	hash.Write([]byte(vnName))
 	hashName := strings.ToLower(base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString(hash.Sum(nil)))[:10]
 	return fmt.Sprintf("%s-%s", componentName, hashName)
+}
+
+func (r *HyperLabelController) SetParentGaiaClient(parentDedicatedKubeConfig *rest.Config) {
+	r.parentGaiaClient = gaiaclientset.NewForConfigOrDie(parentDedicatedKubeConfig)
 }

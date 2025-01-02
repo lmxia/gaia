@@ -132,6 +132,28 @@ func UpdateHyperLabelStatus(client *gaiaclientset.Clientset, hyperLabelLister v1
 	})
 }
 
+func UpdateResourceBindingHyperLabel(client *gaiaclientset.Clientset, hyperlabel *v1alpha1.HyperLabel) error {
+	rb, err := client.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).Get(context.TODO(),
+		hyperlabel.Name, metav1.GetOptions{})
+	if err != nil {
+		klog.Errorf("failed to get rb: %v", err)
+		return err
+	}
+	ipInfo, err := json.Marshal(hyperlabel.Status.PublicIPInfo)
+	if err != nil {
+		klog.Errorf("failed to marshal ipInfo: %v", err)
+		return err
+	}
+	rb.Status.ServiceIPInfo = ipInfo
+	err = UpdateReouceBingdingStatus(client, rb)
+	if err != nil {
+		klog.Errorf("failed to update rb status: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 // current is deployed resource, modified is changed resource.
 // ignoreAdd is true if you want to ignore add action.
 // The function will return the bool value to indicate whether to sync back the current object.

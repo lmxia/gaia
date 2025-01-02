@@ -298,6 +298,7 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 				// 6. start local cronmaster controller
 				if controller.ClusterLevel == common.ClusterLayer {
 					go controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
+					controller.hyperlabelController.SetParentGaiaClient(controller.parentKubeConfig)
 					go controller.hyperlabelController.Run(common.DefaultThreadiness, ctx.Done())
 				}
 

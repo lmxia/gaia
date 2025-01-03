@@ -273,16 +273,15 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 						}
 						controller.rbBinder.RunParentBinder(common.DefaultThreadiness, ctx.Done())
 					}()
-
-					go func() {
-						err := controller.clusterWatcher.Run(ctx.Done())
-						if err != nil {
-							klog.Info("start cluster watchdog failed.")
-							return
-						}
-					}()
 				}()
 
+				go func() {
+					err := controller.clusterWatcher.Run(ctx.Done())
+					if err != nil {
+						klog.Info("start cluster watchdog failed.")
+						return
+					}
+				}()
 				// 4. start local Merger Controller in global level
 				go controller.rbMerger.RunToLocalResourceBindingMerger(common.DefaultThreadiness, ctx.Done())
 

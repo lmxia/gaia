@@ -116,7 +116,7 @@ const (
 	DefaultResync      = time.Hour * 12
 	DefaultThreadiness = 2
 
-	WatcherCheckPeriod = 5 * time.Second
+	WatcherCheckPeriod = 30 * time.Second
 	WatcherTimeOut     = 120 * time.Second
 )
 

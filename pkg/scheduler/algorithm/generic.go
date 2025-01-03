@@ -476,7 +476,7 @@ func (g *genericScheduler) findClustersThatFitComponent(ctx context.Context, fwk
 	// aggregate all container resource
 	non0CPU, non0MEM, _ := utils.CalculateResource(comm.Module)
 	gpuReqMap := utils.CalculateGPU(comm.Module)
-	result, _ := scheduleWorkload(non0CPU, non0MEM, gpuReqMap, feasibleClusters, diagnosis, comm.Name)
+	result, _ := scheduleWorkload(comm, non0CPU, non0MEM, gpuReqMap, feasibleClusters, diagnosis)
 
 	return result, diagnosis, nil
 }

@@ -19,11 +19,16 @@ import (
 
 type ClusterWatcher struct {
 	// 存储上次更新时间
-	lastUpdateTimes      map[string]metav1.Time
+	lastUpdateTimes      map[string]OfflineCount
 	clusterSynced        cache.InformerSynced
 	managedClusterLister listerv1alpha1.ManagedClusterLister
 	sync.Mutex
 	gaiaClient gaiaclientset.Interface
+}
+
+type OfflineCount struct {
+	lastUpdateTime metav1.Time
+	offlineCount   int64
 }
 
 func NewClusterWatcher(gaiaFactory externalversions.SharedInformerFactory,
@@ -33,13 +38,14 @@ func NewClusterWatcher(gaiaFactory externalversions.SharedInformerFactory,
 		managedClusterLister: gaiaFactory.Platform().V1alpha1().ManagedClusters().Lister(),
 		gaiaClient:           client,
 		clusterSynced:        gaiaFactory.Platform().V1alpha1().ManagedClusters().Informer().HasSynced,
-		lastUpdateTimes:      make(map[string]metav1.Time),
+		lastUpdateTimes:      make(map[string]OfflineCount),
 	}
 
 	return clusterWatcher
 }
 
 func (c *ClusterWatcher) Run(stopCh <-chan struct{}) error {
+	klog.Infof("Starting ClusterWatcher")
 	// 定期检查 ManagedClusters 对象
 	ticker := time.NewTicker(common.WatcherCheckPeriod)
 	defer ticker.Stop()
@@ -58,8 +64,7 @@ func (c *ClusterWatcher) Run(stopCh <-chan struct{}) error {
 }
 
 func (c *ClusterWatcher) checkAndMarkNotReady(lister listerv1alpha1.ManagedClusterLister,
-	client gaiaclientset.Interface,
-) {
+	client gaiaclientset.Interface) {
 	clusterList, err := lister.List(labels.Everything())
 	if err != nil {
 		klog.Infof("Error watching ManagedCluster: %v\n", err)
@@ -67,22 +72,40 @@ func (c *ClusterWatcher) checkAndMarkNotReady(lister listerv1alpha1.ManagedClust
 	}
 
 	for _, cluster := range clusterList {
+		if !cluster.Status.Livez {
+			continue
+		}
+
 		clusterName := cluster.GetName()
 		updateTime := cluster.Status.LastObservedTime
 
-		// 保存当前的 LastUpdateTime
+		// 检查是否超时  保存当前的 LastUpdateTime
 		c.Lock()
 		if prevUpdateTime, found := c.lastUpdateTimes[clusterName]; found {
-			if prevUpdateTime.Time.Before(updateTime.Time) {
-				c.lastUpdateTimes[clusterName] = updateTime
+			if prevUpdateTime.lastUpdateTime.Time.Before(updateTime.Time) {
+				c.lastUpdateTimes[clusterName] = OfflineCount{
+					lastUpdateTime: updateTime,
+					offlineCount:   0,
+				}
+			} else {
+				c.lastUpdateTimes[clusterName] = OfflineCount{
+					lastUpdateTime: updateTime,
+					offlineCount:   prevUpdateTime.offlineCount + 1,
+				}
 			}
 		} else {
-			c.lastUpdateTimes[clusterName] = updateTime
+			c.lastUpdateTimes[clusterName] = OfflineCount{
+				lastUpdateTime: updateTime,
+				offlineCount:   0,
+			}
 		}
 		c.Unlock()
+
+		klog.V(5).Infof("Cluster %s last update time: %v, currentTime: %v, offlineCount: %d\n",
+			clusterName, updateTime, time.Now(), c.lastUpdateTimes[clusterName].offlineCount)
 		// 检查是否超时
-		if time.Since(c.lastUpdateTimes[clusterName].Time) > 30*time.Second && !cluster.Status.Livez {
-			fmt.Printf("Cluster %s has not been updated for more than 30 seconds, marking as NotReady\n",
+		if c.lastUpdateTimes[clusterName].offlineCount >= 10 && cluster.Status.Livez {
+			klog.Warningf("Cluster %s has not been updated for more than 5 minutes, marking as NotReady\n",
 				clusterName)
 
 			// 更新状态为 NotReady
@@ -90,7 +113,7 @@ func (c *ClusterWatcher) checkAndMarkNotReady(lister listerv1alpha1.ManagedClust
 			_, err := client.PlatformV1alpha1().ManagedClusters(cluster.Namespace).UpdateStatus(context.TODO(),
 				cluster, metav1.UpdateOptions{})
 			if err != nil {
-				fmt.Printf("Error updating status for cluster %s: %v\n", clusterName, err)
+				klog.Errorf("Error updating status for cluster %s: %v\n", clusterName, err)
 			}
 		}
 	}

@@ -46,8 +46,8 @@ func scheduleWorkloadVNode(cpu int64, mem int64, nodes []*coreV1.Node, diagnosis
 	return result, total
 }
 
-func scheduleWorkload(cpu int64, mem int64, gpuReqMap map[string]int, clusters []*v1alpha1.ManagedCluster,
-	diagnosis interfaces.Diagnosis, comName string,
+func scheduleWorkload(com *appv1alpha1.Component, cpu int64, mem int64, gpuReqMap map[string]int,
+	clusters []*v1alpha1.ManagedCluster, diagnosis interfaces.Diagnosis,
 ) ([]*framework.ClusterInfo, int64) {
 	result := make([]*framework.ClusterInfo, 0)
 	total := int64(0)
@@ -55,11 +55,25 @@ func scheduleWorkload(cpu int64, mem int64, gpuReqMap map[string]int, clusters [
 		clusterInfo := &framework.ClusterInfo{
 			Cluster: cluster,
 		}
-		clusterCapacity := clusterInfo.CalculateCapacity(cpu, mem, gpuReqMap)
+		if !clusterInfo.Cluster.Status.Livez {
+			diagnosis.ClusterToStatusMap[cluster.Name] = interfaces.NewStatus(interfaces.Error, fmt.Sprintf(
+				"cluster(s) is offline: clusterName=%v, componentName=%v",
+				cluster.Name, com.Name))
+			diagnosis.UnschedulablePlugins.Insert("filtered cluster ", cluster.Name, " is offline")
+			continue
+		}
+
+		var clusterCapacity int64
+		if com.Workload.Workloadtype == appv1alpha1.WorkloadTypeDeployment {
+			replicas := com.Workload.TraitDeployment.Replicas
+			clusterCapacity = clusterInfo.CalculateCapacity(cpu*int64(replicas), mem*int64(replicas), gpuReqMap)
+		} else {
+			clusterCapacity = clusterInfo.CalculateCapacity(cpu, mem, gpuReqMap)
+		}
 		if clusterCapacity == 0 {
 			diagnosis.ClusterToStatusMap[cluster.Name] = interfaces.NewStatus(interfaces.Error, fmt.Sprintf(
 				"cluster(s) has not enough resources: clusterName=%v, componentName=%v",
-				cluster.Name, comName))
+				cluster.Name, com.Name))
 			diagnosis.UnschedulablePlugins.Insert("filtered cluster==" + cluster.Name + " has resource limit")
 			continue
 		}

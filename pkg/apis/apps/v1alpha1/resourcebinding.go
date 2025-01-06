@@ -1,7 +1,6 @@
 package v1alpha1
 
 import (
-	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -88,7 +87,9 @@ type ResourceBindingStatus struct {
 	// +optional
 	Status StatusRBDeploy `json:"status,omitempty"`
 	// +optional
-	WorkloadStatus []ComStatus `json:"workloadStatus,omitempty"`
+	ServiceIPInfo []byte `json:"serviceIPInfo,omitempty"`
+	// +optional
+	WorkloadStatus [][]byte `json:"workloadStatus,omitempty"`
 	// +optional
 	Clusters map[string]StatusRBDeploy `json:"clusters,omitempty"`
 	// +optional
@@ -105,10 +106,6 @@ type ComCluster struct {
 	// +optional
 	ClusterName string `json:"clusterName,omitempty"`
 	DeployMsg   string `json:"deployMsg,omitempty"`
-	// map[podName]status
-	// PodsStatus map[string]string `json:"podsStatus,omitempty"`
-	// map[serviceName]string
-	ServiceIP map[string]string `json:"serviceIP,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -129,6 +126,7 @@ type ComDataVolume struct {
 
 type CustomVolume struct {
 	// ContainerName string `json:"containerName,omitempty"`
+	ResID []string `json:"resId,omitempty"`
 
 	// NFS
 	Name     string `json:"name,omitempty"`
@@ -143,18 +141,4 @@ type CustomVolume struct {
 	EndPoint        string `json:"endPoint,omitempty"`
 
 	Type string `json:"type,omitempty"`
-}
-
-type HyperLabelNetItem struct {
-	ComponentName string `json:"componentName"`
-
-	ExposeType string   `json:"exposeType"`
-	VNList     []string `json:"vnList,omitempty"` // sn
-	// +optional ceniip should be related to vnlist one by one.
-	CeniIPList []string `json:"ceniIPList,omitempty"`
-	// +optional
-	FQDNCENI string `json:"fqdnCeni,omitempty"`
-	// +optional
-	FQDNPublic string               `json:"fqdnPublic,omitempty"`
-	Ports      []coreV1.ServicePort `json:"ports,omitempty" patchStrategy:"merge" patchMergeKey:"port"`
 }

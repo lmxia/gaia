@@ -103,6 +103,24 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 			}
 		}
 	}
+	if len(hyperNets) != 0 {
+		hyperlabeUn, err := AssembleHyperLabelService(hyperNets, descLabels, desc.Name)
+		if err != nil {
+			klog.Errorf("failed to assemble hyperlabel service, err: %v", err)
+			return err
+		}
+		wg.Add(1)
+		go func(un *unstructured.Unstructured) {
+			defer wg.Done()
+			retryErr := ApplyResourceWithRetry(ctx, localDynamicClient, discoveryRESTMapper, un)
+			if retryErr != nil {
+				klog.Infof("applyRBWorkloads HyperLabel name==%q err===%v \n",
+					klog.KRef(un.GetNamespace(), un.GetName()), retryErr)
+				errCh <- retryErr
+				return
+			}
+		}(hyperlabeUn)
+	}
 
 	wg.Wait()
 	close(errCh)
@@ -145,13 +163,13 @@ func getDecodeStoragePath(storages [][]byte) []appsv1alpha1.ComDataVolume {
 	return hyperDataVolumes
 }
 
-func getDecodeNetworkPath(path [][]byte) []appsv1alpha1.HyperLabelNetItem {
-	var hyperLabelNets []appsv1alpha1.HyperLabelNetItem
+func getDecodeNetworkPath(path [][]byte) []servicev1alpha1.HyperLabelItem {
+	var hyperLabelNets []servicev1alpha1.HyperLabelItem
 	if len(path) == 0 {
 		return hyperLabelNets
 	}
 	for _, oneNetPath := range path {
-		var LabelNet appsv1alpha1.HyperLabelNetItem
+		var LabelNet servicev1alpha1.HyperLabelItem
 		err := json.Unmarshal(oneNetPath, &LabelNet)
 		if err != nil {
 			klog.Errorf("failed to unmarshal netowrkPath to json, networkPath==%q, error==%v", oneNetPath, err)
@@ -163,22 +181,21 @@ func getDecodeNetworkPath(path [][]byte) []appsv1alpha1.HyperLabelNetItem {
 	return hyperLabelNets
 }
 
-func AssembleHyperLabelService(com *appsv1alpha1.Component, hyperNets []appsv1alpha1.HyperLabelNetItem,
-	descLabels map[string]string, descName string,
+func AssembleHyperLabelService(hyperNets []servicev1alpha1.HyperLabelItem, descLabels map[string]string,
+	descName string,
 ) (*unstructured.Unstructured, error) {
 	var hyperLabelItems []servicev1alpha1.HyperLabelItem
 	for _, netLabel := range hyperNets {
-		if netLabel.ComponentName == com.Name {
-			hyperLabelItems = append(hyperLabelItems, servicev1alpha1.HyperLabelItem{
-				ExposeType:    netLabel.ExposeType,
-				VNList:        netLabel.VNList,
-				CeniIPList:    netLabel.CeniIPList,
-				ComponentName: netLabel.ComponentName,
-				FQDNCENI:      netLabel.FQDNCENI,
-				FQDNPublic:    netLabel.FQDNPublic,
-				Ports:         netLabel.Ports,
-			})
-		}
+		hyperLabelItems = append(hyperLabelItems, servicev1alpha1.HyperLabelItem{
+			ExposeType:    netLabel.ExposeType,
+			VNList:        netLabel.VNList,
+			CeniIPList:    netLabel.CeniIPList,
+			ComponentName: netLabel.ComponentName,
+			Namespace:     netLabel.Namespace,
+			FQDNCENI:      netLabel.FQDNCENI,
+			FQDNPublic:    netLabel.FQDNPublic,
+			Ports:         netLabel.Ports,
+		})
 	}
 
 	hyperLabel := servicev1alpha1.HyperLabel{
@@ -187,17 +204,19 @@ func AssembleHyperLabelService(com *appsv1alpha1.Component, hyperNets []appsv1al
 			APIVersion: "service.gaia.io/v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: addLabels(com.DeepCopy(), descLabels, descName),
+			Labels: descLabels,
 		},
 		Spec: hyperLabelItems,
 	}
+	hyperLabel.Name = descName
+	hyperLabel.Namespace = known.GaiaRBMergedReservedNamespace
 
 	return ObjectConvertToUnstructured(&hyperLabel)
 }
 
 func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
-	hyperNets []appsv1alpha1.HyperLabelNetItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
+	hyperNets []servicev1alpha1.HyperLabelItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -287,11 +306,10 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 				}
 			}
 			if len(unstructureds) > 0 && len(hyperNets) > 0 {
-				svcUnstructured, errS := AssembleHyperLabelService(comCopy, hyperNets, descLabels, descName)
-				if errS != nil {
-					allErrs = append(allErrs, errS)
-				} else if svcUnstructured != nil {
-					unstructureds = append(unstructureds, svcUnstructured)
+				for index := range hyperNets {
+					if hyperNets[index].ComponentName == comCopy.Name {
+						hyperNets[index].Namespace = comCopy.Namespace
+					}
 				}
 			}
 			break
@@ -310,7 +328,7 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 
 func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
-	hyperNets []appsv1alpha1.HyperLabelNetItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
+	hyperNets []servicev1alpha1.HyperLabelItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -365,11 +383,10 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 				}
 			}
 			if len(unstructureds) > 0 && len(hyperNets) > 0 {
-				svcUnstructured, errS := AssembleHyperLabelService(comCopy, hyperNets, descLabels, descName)
-				if errS != nil {
-					allErrs = append(allErrs, errS)
-				} else if svcUnstructured != nil {
-					unstructureds = append(unstructureds, svcUnstructured)
+				for index := range hyperNets {
+					if hyperNets[index].ComponentName == comCopy.Name {
+						hyperNets[index].Namespace = comCopy.Namespace
+					}
 				}
 			}
 			break
@@ -388,7 +405,7 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 
 func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
-	hyperNets []appsv1alpha1.HyperLabelNetItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
+	hyperNets []servicev1alpha1.HyperLabelItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -492,11 +509,10 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 				allErrs = append(allErrs, err)
 			}
 			if len(unstructureds) > 0 && len(hyperNets) > 0 {
-				svcUnstructured, errS := AssembleHyperLabelService(comCopy, hyperNets, descLabels, descName)
-				if errS != nil {
-					allErrs = append(allErrs, errS)
-				} else if svcUnstructured != nil {
-					unstructureds = append(unstructureds, svcUnstructured)
+				for index := range hyperNets {
+					if hyperNets[index].ComponentName == comCopy.Name {
+						hyperNets[index].Namespace = comCopy.Namespace
+					}
 				}
 			}
 			break
@@ -515,7 +531,7 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 
 func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
 	clusterName, descName string, group2VPC, descLabels map[string]string, delete bool, nodes []*corev1.Node,
-	hyperNets []appsv1alpha1.HyperLabelNetItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
+	hyperNets []servicev1alpha1.HyperLabelItem, hyperDataVolumes []appsv1alpha1.ComDataVolume,
 ) ([]*unstructured.Unstructured, error) {
 	var unstructureds []*unstructured.Unstructured
 	var allErrs []error
@@ -582,11 +598,10 @@ func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 				allErrs = append(allErrs, err)
 			}
 			if len(unstructureds) > 0 && len(hyperNets) > 0 {
-				svcUnstructured, errS := AssembleHyperLabelService(comCopy, hyperNets, descLabels, descName)
-				if errS != nil {
-					allErrs = append(allErrs, errS)
-				} else if svcUnstructured != nil {
-					unstructureds = append(unstructureds, svcUnstructured)
+				for index := range hyperNets {
+					if hyperNets[index].ComponentName == comCopy.Name {
+						hyperNets[index].Namespace = comCopy.Namespace
+					}
 				}
 			}
 			break

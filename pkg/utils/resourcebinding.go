@@ -26,7 +26,7 @@ func UpdateReouceBingdingStatus(client *gaiaclientset.Clientset, rb *v1alpha1.Re
 		if errGet == nil {
 			rb = hyperlabelNewed.DeepCopy()
 		} else {
-			utilruntime.HandleError(fmt.Errorf("error get updated %q from lister: %v", rb.Name, errGet))
+			utilruntime.HandleError(fmt.Errorf("error get updated %q from lister, error: %v", rb.Name, errGet))
 		}
 		return err
 	})

@@ -308,7 +308,7 @@ func (c *Controller) syncHypernode(hyperNode *clusterv1alpha1.Hypernode) error {
 				"LocalClusterName", c.gaiaClusterName)
 		}
 		return nil
-	case err != nil:
+	case !apierrors.IsNotFound(err):
 		klog.Errorf("failed to get Hypernode, Hypernode==%q, error==%v", klog.KObj(hyperNode), err)
 		return err
 	}

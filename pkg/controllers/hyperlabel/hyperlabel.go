@@ -392,5 +392,8 @@ func GenerateDerivedServiceName(componentName, vnName string) string {
 }
 
 func (r *HyperLabelController) SetParentGaiaClient(parentDedicatedKubeConfig *rest.Config) {
-	r.parentGaiaClient = gaiaclientset.NewForConfigOrDie(parentDedicatedKubeConfig)
+	parentGaiaClient, _ := utils.SetParentClientAndInformer(parentDedicatedKubeConfig)
+	if parentGaiaClient != nil {
+		r.parentGaiaClient = parentGaiaClient
+	}
 }

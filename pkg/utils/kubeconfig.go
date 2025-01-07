@@ -4,6 +4,10 @@ package utils
 import (
 	"fmt"
 
+	known "github.com/lmxia/gaia/pkg/common"
+	gaiaClientSet "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
+	gaiaInformers "github.com/lmxia/gaia/pkg/generated/informers/externalversions"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -88,4 +92,17 @@ func applyDefaultRateLimiter(config *rest.Config, flowRate int) *rest.Config {
 	config.Burst = rest.DefaultBurst * flowRate
 
 	return config
+}
+
+func SetParentClientAndInformer(parentKubeConfig *rest.Config) (*gaiaClientSet.Clientset,
+	gaiaInformers.SharedInformerFactory,
+) {
+	if parentKubeConfig != nil {
+		parentGaiaClient := gaiaClientSet.NewForConfigOrDie(parentKubeConfig)
+		parentDefaultGaiaInformerFactory := gaiaInformers.NewSharedInformerFactoryWithOptions(parentGaiaClient,
+			known.DefaultResync, gaiaInformers.WithNamespace(metav1.NamespaceDefault))
+
+		return parentGaiaClient, parentDefaultGaiaInformerFactory
+	}
+	return nil, nil
 }

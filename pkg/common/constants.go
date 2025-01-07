@@ -42,6 +42,8 @@ const (
 
 	DefaultClusterStatusCollectFrequency = 20 * time.Second
 	DefaultClusterStatusReportFrequency  = 3 * time.Minute
+
+	DefaultAppStatusCollectFrequency = 10 * time.Second
 	// max length for clustername
 	ClusterNameMaxLength = 30
 	// default length for random uid

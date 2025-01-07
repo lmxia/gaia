@@ -41,6 +41,7 @@ import (
 	"github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/controllermanager/approver"
 	"github.com/lmxia/gaia/pkg/controllermanager/metrics"
+	"github.com/lmxia/gaia/pkg/controllers/apps/appstatus"
 	"github.com/lmxia/gaia/pkg/controllers/apps/cronmaster"
 	"github.com/lmxia/gaia/pkg/controllers/apps/frontend"
 	"github.com/lmxia/gaia/pkg/controllers/apps/resourcebinding"
@@ -79,6 +80,7 @@ type ControllerManager struct {
 
 	// report cluster status
 	statusManager       *Manager
+	appStatusController *appstatus.StatusController
 	crrApprover         *approver.CRRApprover
 	hyperNodeController *hypernode.Controller
 	rbBinder            *resourcebinding.Binder
@@ -150,6 +152,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 	}
 	statusManager := NewStatusManager(ctx, localKubeConfig.Host, clusterHostName, managedCluster, localKubeClientSet,
 		localGaiaClientSet, hypernodeClientSet)
+	appStatusController := appstatus.NewStatusController(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory)
 	hyperController := hypernode.NewController(localKubeClientSet, localGaiaClientSet, localGaiaInformerFactory)
 
 	rbMerger, err := resourcebinding.NewMerger(localKubeClientSet, localGaiaClientSet)
@@ -206,6 +209,7 @@ func NewControllerManager(ctx context.Context, childKubeConfigFile, clusterHostN
 		statusManager:        statusManager,
 		frontendController:   frontendController,
 		clusterWatcher:       clusterWatcher,
+		appStatusController:  appStatusController,
 	}
 
 	metrics.Register()
@@ -242,7 +246,6 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 						controller.statusManager.Run(ctx, controller.parentKubeConfig, controller.DedicatedNamespace,
 							controller.ClusterID)
 					}, time.Duration(0))
-
 					// 3.3 Hypernode transfers node information from the parent cluster to the current cluster.
 					go func() {
 						err := controller.hyperNodeController.SetHypernodeController(controller.GaiaClusterName,
@@ -273,6 +276,15 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 						}
 						controller.rbBinder.RunParentBinder(common.DefaultThreadiness, ctx.Done())
 					}()
+
+					// 3.6. start local cronmaster controller
+					if controller.ClusterLevel == common.ClusterLayer {
+						go controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
+						controller.hyperlabelController.SetParentGaiaClient(controller.parentKubeConfig)
+						go controller.hyperlabelController.Run(common.DefaultThreadiness, ctx.Done())
+					}
+
+					go controller.appStatusController.Run(ctx, controller.parentKubeConfig)
 				}()
 
 				go func() {
@@ -293,13 +305,6 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 					}
 					controller.rbBinder.RunLocalBinder(common.DefaultThreadiness, ctx.Done())
 				}()
-
-				// 6. start local cronmaster controller
-				if controller.ClusterLevel == common.ClusterLayer {
-					go controller.cronController.Run(common.DefaultThreadiness, ctx.Done())
-					controller.hyperlabelController.SetParentGaiaClient(controller.parentKubeConfig)
-					go controller.hyperlabelController.Run(common.DefaultThreadiness, ctx.Done())
-				}
 
 				// 7. start frontend cdn accelerate controller
 				if controller.ClusterLevel == common.GlobalLayer {

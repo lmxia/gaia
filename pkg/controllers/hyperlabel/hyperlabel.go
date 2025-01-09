@@ -287,6 +287,7 @@ func (r *HyperLabelController) deriveServiceFromHyperlabelItem(hyperLabelItem *v
 			},
 		}
 		if hyperLabelItem.ExposeType == common.ExposeTypeCENI {
+			newDerivedService.Annotations = make(map[string]string)
 			newDerivedService.Annotations[common.VirtualClusterIPKey] = hyperLabelItem.CeniIPList[vnIndex]
 		}
 		allNeedService = append(allNeedService, newDerivedService)

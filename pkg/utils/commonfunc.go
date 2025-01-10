@@ -112,9 +112,8 @@ func NewParentConfig(ctx context.Context, kubeclient *kubernetes.Clientset,
 	return parentKubeConfig
 }
 
-func SetParentClient(localKubeClient *kubernetes.Clientset,
-	localGaiaClient *gaiaClientSet.Clientset) (*gaiaClientSet.Clientset, dynamic.Interface,
-	externalInformers.SharedInformerFactory,
+func SetParentClient(localKubeClient *kubernetes.Clientset, localGaiaClient *gaiaClientSet.Clientset) (
+	*gaiaClientSet.Clientset, dynamic.Interface, externalInformers.SharedInformerFactory,
 ) {
 	parentKubeConfig := NewParentConfig(context.TODO(), localKubeClient, localGaiaClient)
 	if parentKubeConfig != nil {

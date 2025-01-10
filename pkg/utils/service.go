@@ -133,6 +133,10 @@ func UpdateHyperLabelStatus(client *gaiaclientset.Clientset, hyperLabelLister v1
 }
 
 func UpdateResourceBindingHyperLabel(client *gaiaclientset.Clientset, hyperlabel *v1alpha1.HyperLabel) error {
+	if client == nil {
+		klog.Error("client is nil, skip update resourcebinding %q status", hyperlabel.Name)
+		return fmt.Errorf("client is nil, skip update resourcebinding %q status", hyperlabel.Name)
+	}
 	rb, err := client.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).Get(context.TODO(),
 		hyperlabel.Name, metav1.GetOptions{})
 	if err != nil {

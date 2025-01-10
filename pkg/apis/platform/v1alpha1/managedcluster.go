@@ -19,6 +19,7 @@ import (
 // +kubebuilder:printcolumn:name="CLUSTER ID",type=string,JSONPath=`.spec.clusterId`,description="Unique id for cluster"
 // +kubebuilder:printcolumn:name="KUBERNETES",type=string,JSONPath=".status.k8sVersion"
 // +kubebuilder:printcolumn:name="READYZ",type=string,JSONPath=".status.readyz"
+// +kubebuilder:printcolumn:name="LIVEZ",type="string",JSONPath=".status.livez"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ManagedCluster is the Schema for the managedclusters API

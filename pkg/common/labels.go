@@ -18,6 +18,7 @@ const (
 	OriginDescriptionNameLabel      = "apps.gaia.io/ori.desc.name"
 	OriginDescriptionNamespaceLabel = "apps.gaia.io/ori.desc.namespace"
 	OriginDescriptionUIDLabel       = "apps.gaia.io/ori.desc.uid"
+	OriginResourceBindingNameLabel  = "apps.gaia.io/ori.rb.name"
 	UserNameLabel                   = "apps.gaia.io/user.name"
 
 	ParentRBNameLabel  = "apps.gaia.io/parent-rb-name"

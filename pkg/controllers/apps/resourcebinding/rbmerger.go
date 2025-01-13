@@ -220,7 +220,10 @@ func (m *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding
 			m.mu.Lock()
 			defer m.mu.Unlock()
 			indexFieldRB := descUID + "-" + rb.Name
-			indexParentRB := descUID + "-" + rb.Spec.ParentRB
+			parentRB := rbLabels[common.GlobalRBNameLabel]
+			rbLabels[common.ParentRBNameLabel] = parentRB
+			indexParentRB := descUID + "-" + parentRB
+
 			// clustersRBsOfOneFieldRB: map[descUID-RBName]*ClustersRBs  down 1level
 			if m.clustersRBsOfOneFieldRB[indexFieldRB] == nil {
 				m.clustersRBsOfOneFieldRB[indexFieldRB] = &ClustersRBs{}
@@ -261,7 +264,7 @@ func (m *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding
 				if !utils.ContainsString(m.parentRBsOfDescUID[UID(descUID)], indexParentRB) {
 					m.parentRBsOfDescUID[UID(descUID)] = append(m.parentRBsOfDescUID[UID(descUID)], indexParentRB)
 				}
-				m.mergeResourceBinding(rb.Spec.ParentRB, indexParentRB, m.fieldsRBOfOneParentRB, rb)
+				m.mergeResourceBinding(parentRB, indexParentRB, m.fieldsRBOfOneParentRB, rb)
 			} else {
 				klog.InfoS("handleToLocalResourceBinding: already handled", "ResourceBinding",
 					klog.KObj(rb).String())
@@ -437,6 +440,7 @@ func (m *RBMerger) mergeResourceBinding(parentRBName, indexParentRB string, fiel
 			// deploy the Merged ResourceBinding
 			if m.parentGaiaClient != nil {
 				m.pushMergedResourceBindings(resultCh, parentRBName, rb)
+				return
 			}
 			m.getMergedResourceBindings(resultCh, parentRBName, rb)
 		}
@@ -775,6 +779,7 @@ func (m *RBMerger) pushMergedResourceBindings(chanResult chan []*appV1alpha1.Res
 	rb *appV1alpha1.ResourceBinding,
 ) {
 	rbLabels := rb.GetLabels()
+	rbLabels[common.ParentRBNameLabel] = parentRBName
 	descName := rbLabels[common.OriginDescriptionNameLabel]
 	var rbApps []*appV1alpha1.ResourceBindingApps
 	var fieldRB *appV1alpha1.ResourceBindingApps
@@ -813,7 +818,7 @@ func (m *RBMerger) pushMergedResourceBindings(chanResult chan []*appV1alpha1.Res
 		Spec: appV1alpha1.ResourceBindingSpec{
 			AppID:             descName,
 			NonZeroClusterNum: nonZeroClusterNum,
-			ParentRB:          rb.Spec.ParentRB,
+			ParentRB:          parentRBName,
 			FrontendRbs:       rb.Spec.FrontendRbs,
 			RbApps:            rbApps,
 			NetworkPath:       rb.Spec.NetworkPath,

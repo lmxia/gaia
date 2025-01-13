@@ -252,9 +252,10 @@ func OffloadRBWorkloads(ctx context.Context, dynamicClient dynamic.Interface, re
 		affinityDaemonGVK = schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "DaemonSet"}
 		cronGVK           = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "CronMaster"}
 		userAppGVK        = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "UserAPP"}
+		hyperLabelGVK     = schema.GroupVersionKind{Group: "service.gaia.io", Version: "v1alpha1", Kind: "HyperLabel"}
 	)
 	gvkSli := []schema.GroupVersionKind{
-		serverlessGVK, deployGVK, affinityDaemonGVK, cronGVK, userAppGVK,
+		serverlessGVK, deployGVK, affinityDaemonGVK, cronGVK, userAppGVK, hyperLabelGVK,
 	}
 	for _, gvk := range gvkSli {
 		restMapping, err := restMapper.RESTMapping(gvk.GroupKind(), gvk.Version)
@@ -552,19 +553,19 @@ func GetNodeResFromProm(node *corev1.Node, promURLPrefix string) (cpu, mem resou
 
 // // getEachNodeResourceFromPrometheus returns the cpu, gpu, memory resources from Prometheus in the cluster
 // func getEachNodeResourceFromPrometheus(node *corev1.Node, promPreURL string) (cpu, mem resource.Quantity) {
-// 	QueryMetricSet, ClusterMetricList, err := InitConfig(known.MetricConfigMapNodeAbsFilePath)
-// 	if err != nil || len(ClusterMetricList) != 4 {
-// 		klog.Warningf("Wrong metrics config or The length of ClusterMetricList not 4, err: %v", err)
-// 		return
-// 	}
-//
 // 	var valueList [4]string
 // 	var availableCPU, availableMem resource.Quantity
+
+// 	queryMetricSet, nodeMetricList, err := InitConfig(known.MetricConfigMapNodeAbsFilePath)
+// 	if err != nil || len(nodeMetricList) < 4 {
+// 		klog.Warningf("Wrong metrics config or The length of ClusterMetricList not 4, err: %v", err)
+// 		return availableCPU, availableMem
+// 	}
 // 	// sn := GetNodeSNID(node)
 // 	sn := GetNodeName(node)
-// 	for index, metric := range ClusterMetricList[2:4] {
+// 	for index, metric := range nodeMetricList[2:4] {
 // 		metric = strings.ReplaceAll(metric, "XXX", sn) // use node name
-// 		result, err2 := GetDataFromPrometheus(promPreURL, QueryMetricSet[metric])
+// 		result, err2 := GetDataFromPrometheus(promPreURL, queryMetricSet[metric])
 // 		if err2 == nil {
 // 			if len(result.(model.Vector)) == 0 {
 // 				klog.Warningf("Query from prometheus successfully, but the result is a null array.")
@@ -576,16 +577,16 @@ func GetNodeResFromProm(node *corev1.Node, promURLPrefix string) (cpu, mem resou
 // 			valueList[index] = "0"
 // 		}
 // 	}
-//
+
 // 	availableCPU.Add(resource.MustParse(getSubStringWithSpecifiedDecimalPlaceVN(valueList[2], 3)))
 // 	availableMem.Add(resource.MustParse(valueList[3] + "Ki"))
-//
+
 // 	// todo: get gpu resource
-//
+
 // 	return availableCPU, availableMem
 // }
 
-// getSubStringWithSpecifiedDecimalPlace returns a sub string based on the specified number of decimal places
+// // getSubStringWithSpecifiedDecimalPlace returns a sub string based on the specified number of decimal places
 // func getSubStringWithSpecifiedDecimalPlaceVN(inputString string, m int) string {
 // 	if inputString == "" {
 // 		return ""

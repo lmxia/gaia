@@ -92,6 +92,10 @@ func (s *StatusController) Run(ctx context.Context, parentKubeConfig *rest.Confi
 
 func (r *RBController) Run(ctx context.Context, parentGaiaClient *gaiaClientSet.Clientset) {
 	klog.Infof("starting resource-binding-status-controller to report status...")
+	if parentGaiaClient == nil {
+		klog.Errorf("Failed to get parent gaia client")
+		return
+	}
 	r.parentGaiaClient = parentGaiaClient
 	if !cache.WaitForCacheSync(ctx.Done(), r.rbsSynced) {
 		return
@@ -101,6 +105,7 @@ func (r *RBController) Run(ctx context.Context, parentGaiaClient *gaiaClientSet.
 }
 
 func (r *RBController) collectResourceBindingStatus(ctx context.Context) {
+	klog.V(5).Infof("start to collect resource binding status")
 	rbs, err := r.rbsLister.ResourceBindings(common.GaiaRBMergedReservedNamespace).List(labels.Everything())
 	if err != nil {
 		klog.Errorf("Failed to list resource bindings: %v", err)
@@ -108,7 +113,8 @@ func (r *RBController) collectResourceBindingStatus(ctx context.Context) {
 	}
 
 	for _, rb := range rbs {
-		parentRB, err := r.gaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Get(ctx, rb.Name, metav1.GetOptions{})
+		parentRB, err := r.parentGaiaClient.AppsV1alpha1().ResourceBindings(rb.Namespace).Get(ctx,
+			rb.Name, metav1.GetOptions{})
 		if err != nil {
 			klog.Errorf("Failed to get parent resource binding: %s, error==%v", rb.GetName(), err)
 			continue
@@ -124,11 +130,12 @@ func (r *RBController) collectResourceBindingStatus(ctx context.Context) {
 			klog.Errorf("Failed to update parent resource binding status: %v", err)
 		}
 	}
+	klog.V(5).Infof("end to update collected resource binding status")
 }
 
 func getNewServiceIPInfo(localInfo, parentInfo []byte) ([]byte, error) {
-	if len(localInfo) == 0 {
-		return parentInfo, nil
+	if len(parentInfo) == 0 {
+		return localInfo, nil
 	}
 
 	var newInfo []byte

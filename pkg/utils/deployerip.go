@@ -104,7 +104,7 @@ func ApplyRBWorkloadsIP(ctx context.Context, localGaiaClient, parentGaiaClient *
 		}
 	}
 	if len(hyperNets) != 0 {
-		hyperlabeUn, err := AssembleHyperLabelService(hyperNets, descLabels, desc.Name)
+		hyperlabeUn, err := AssembleHyperLabelService(hyperNets, descLabels, desc.Name, rb.Name)
 		if err != nil {
 			klog.Errorf("failed to assemble hyperlabel service, err: %v", err)
 			return err
@@ -182,7 +182,7 @@ func getDecodeNetworkPath(path [][]byte) []servicev1alpha1.HyperLabelItem {
 }
 
 func AssembleHyperLabelService(hyperNets []servicev1alpha1.HyperLabelItem, descLabels map[string]string,
-	descName string,
+	descName, rbName string,
 ) (*unstructured.Unstructured, error) {
 	var hyperLabelItems []servicev1alpha1.HyperLabelItem
 	for _, netLabel := range hyperNets {
@@ -198,6 +198,7 @@ func AssembleHyperLabelService(hyperNets []servicev1alpha1.HyperLabelItem, descL
 		})
 	}
 
+	descLabels[known.OriginResourceBindingNameLabel] = rbName
 	hyperLabel := servicev1alpha1.HyperLabel{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "HyperLabel",
@@ -309,6 +310,7 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 				for index := range hyperNets {
 					if hyperNets[index].ComponentName == comCopy.Name {
 						hyperNets[index].Namespace = comCopy.Namespace
+						hyperNets[index].VNList = GetNodeNameFromNodeList(hyperNets[index].VNList, nodes)
 					}
 				}
 			}
@@ -324,6 +326,26 @@ func AssembledCronDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*a
 	}
 
 	return unstructureds, nil
+}
+
+func GetNodeNameFromNodeList(s []string, nodes []*corev1.Node) []string {
+	var nodeNames []string
+	for i := range s {
+		hasResName := false
+		for _, node := range nodes {
+			labels := node.GetLabels()
+			if s[i] == labels[v1alpha1.ParsedSNKey] {
+				hasResName = true
+				nodeNames = append(nodeNames, labels[v1alpha1.ParsedResNameKey])
+				break
+			}
+		}
+		if !hasResName {
+			klog.Errorf("GetNodeNameFromNodeList error: %v", s[i])
+			nodeNames = append(nodeNames, s[i])
+		}
+	}
+	return nodeNames
 }
 
 func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv1alpha1.ResourceBindingApps,
@@ -386,6 +408,7 @@ func AssembledDeploymentStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 				for index := range hyperNets {
 					if hyperNets[index].ComponentName == comCopy.Name {
 						hyperNets[index].Namespace = comCopy.Namespace
+						hyperNets[index].VNList = GetNodeNameFromNodeList(hyperNets[index].VNList, nodes)
 					}
 				}
 			}
@@ -512,6 +535,7 @@ func AssembledCronServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*a
 				for index := range hyperNets {
 					if hyperNets[index].ComponentName == comCopy.Name {
 						hyperNets[index].Namespace = comCopy.Namespace
+						hyperNets[index].VNList = GetNodeNameFromNodeList(hyperNets[index].VNList, nodes)
 					}
 				}
 			}
@@ -601,6 +625,7 @@ func AssembledServerlessStructureIP(com *appsv1alpha1.Component, rbApps []*appsv
 				for index := range hyperNets {
 					if hyperNets[index].ComponentName == comCopy.Name {
 						hyperNets[index].Namespace = comCopy.Namespace
+						hyperNets[index].VNList = GetNodeNameFromNodeList(hyperNets[index].VNList, nodes)
 					}
 				}
 			}

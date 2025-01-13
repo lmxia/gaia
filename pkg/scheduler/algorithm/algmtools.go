@@ -23,7 +23,8 @@ import (
 	"github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
 )
 
-func scheduleWorkloadVNode(cpu int64, mem int64, nodes []*coreV1.Node, diagnosis interfaces.Diagnosis, comName string,
+func scheduleWorkloadVNode(com *appv1alpha1.Component, cpu int64, mem int64,
+	nodes []*coreV1.Node, diagnosis interfaces.Diagnosis,
 ) ([]*framework.NodeInfo, int64) {
 	result := make([]*framework.NodeInfo, 0)
 	total := int64(0)
@@ -31,11 +32,20 @@ func scheduleWorkloadVNode(cpu int64, mem int64, nodes []*coreV1.Node, diagnosis
 		nodeInfo := &framework.NodeInfo{
 			Node: node,
 		}
-		nodeCapacity := nodeInfo.CalculateCapacity(cpu, mem)
+		// todo: judge node is livez
+
+		var nodeCapacity int64
+		if com.Workload.Workloadtype == appv1alpha1.WorkloadTypeDeployment {
+			replicas := com.Workload.TraitDeployment.Replicas
+			nodeCapacity = nodeInfo.CalculateCapacity(cpu*int64(replicas), mem*int64(replicas))
+		} else {
+			nodeCapacity = nodeInfo.CalculateCapacity(cpu, mem)
+		}
+
 		if nodeCapacity == 0 {
 			diagnosis.ClusterToStatusMap[node.Name] = interfaces.NewStatus(interfaces.Error, fmt.Sprintf(
 				"cluster(s) has not enough resources: nodeName=%v, componentName=%v",
-				node.Name, comName))
+				node.Name, com.Name))
 			diagnosis.UnschedulablePlugins.Insert("filtered node==" + node.Name + " has resource limit")
 			continue
 		}

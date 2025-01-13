@@ -132,7 +132,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 			nodesAllRes = getEachNodeResourceFromPrometheus(c.promURLPrefix, nodes)
 		}
 	} else {
-		klog.V(7).Info("collecting ManagedCluster status...")
+		klog.V(5).Info("collecting ManagedCluster status...")
 
 		nodeStatistics = getManagedClusterNodeStatistics(clusters)
 		capacity, allocatable, available = getManagedClusterResource(clusters)
@@ -598,7 +598,8 @@ func getEachNodeResourceFromPrometheus(promPreURL string, nodes []*corev1.Node) 
 			result, err2 := utils.GetDataFromPrometheus(promPreURL, queryStr)
 			if err2 == nil {
 				if len(result.(model.Vector)) == 0 {
-					klog.Warningf("Query from prometheus successfully, but the result is a null array.")
+					klog.V(2).Infof("Query %s from prometheus successfully, but the result is a null array, nodeName==%q",
+						metric, node.GetName())
 					valueList[index] = "0"
 				} else {
 					valueList[index] = result.(model.Vector)[0].Value.String()
@@ -638,7 +639,7 @@ func getEachNodeResourceFromPrometheus(promPreURL string, nodes []*corev1.Node) 
 							if errC != nil {
 								klog.Errorf("failed to get gpuCount, gpu-product==%q, Error==%v", gpuProduct, errC)
 							} else {
-								klog.V(2).Infof("node==%q get GPU:gpuCount==%q:%q",
+								klog.V(2).Infof("node==%q get GPU:gpuCount==%q:%d",
 									node.GetName(), gpuProduct, count)
 								gpuMap[gpuProduct] = count
 							}

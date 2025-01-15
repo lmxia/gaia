@@ -186,6 +186,9 @@ func AssembleHyperLabelService(hyperNets []servicev1alpha1.HyperLabelItem, descL
 ) (*unstructured.Unstructured, error) {
 	var hyperLabelItems []servicev1alpha1.HyperLabelItem
 	for _, netLabel := range hyperNets {
+		if netLabel.Namespace == "" {
+			continue
+		}
 		hyperLabelItems = append(hyperLabelItems, servicev1alpha1.HyperLabelItem{
 			ExposeType:    netLabel.ExposeType,
 			VNList:        netLabel.VNList,
@@ -682,7 +685,7 @@ func InsertVolume(module corev1.PodTemplateSpec, comVolume appsv1alpha1.ComDataV
 				},
 			}
 			hyperVolumes = append(hyperVolumes, volume)
-		} else if strings.ToLower(hyperVolume.Type) == "object-storage" {
+		} else if strings.ToLower(hyperVolume.Type) == "obj" {
 			for index := range module.Spec.Containers {
 				if module.Spec.Containers[index].Name == hyperVolume.Name {
 					module.Spec.Containers[index].Env = append(module.Spec.Containers[index].Env, []corev1.EnvVar{

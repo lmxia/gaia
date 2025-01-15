@@ -420,7 +420,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 				itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 				itemRb.Namespace = itemCluster.Namespace
 				itemRb.Spec.TotalPeer = totalPeer
-				itemRb.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(itemRb)
+				itemRb.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(itemRb.Spec.RbApps, sched.selfClusterName)
 				lbs := itemRb.GetLabels()
 				lbs[common.GlobalRBNameLabel] = itemRb.Name
 				lbs[common.NonZeroClusterNumGlobal] = strconv.Itoa(itemRb.Spec.NonZeroClusterNum)
@@ -550,7 +550,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 						// itemRb.Name = fmt.Sprintf("%s-rs-%d", desc.Name, rbIndex)
 						itemRb.Namespace = itemCluster.Namespace
 						itemRb.Spec.TotalPeer = getTotal(itemRb.Spec.TotalPeer, len(scheduleResult.ResourceBindings))
-						itemRb.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(itemRb)
+						itemRb.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(itemRb.Spec.RbApps, sched.selfClusterName)
 						lbs := itemRb.GetLabels()
 						lbs[common.FieldRBNameLabel] = itemRb.Name
 						lbs[common.NonZeroClusterNumField] = strconv.Itoa(itemRb.Spec.NonZeroClusterNum)

@@ -137,8 +137,9 @@ func UpdateResourceBindingHyperLabel(client *gaiaclientset.Clientset, hyperlabel
 		klog.Error("client is nil, skip update resourcebinding %q status", hyperlabel.Name)
 		return fmt.Errorf("client is nil, skip update resourcebinding %q status", hyperlabel.Name)
 	}
+	rbName := hyperlabel.GetLabels()[common.OriginResourceBindingNameLabel]
 	rb, err := client.AppsV1alpha1().ResourceBindings(common.GaiaRBMergedReservedNamespace).Get(context.TODO(),
-		hyperlabel.Name, metav1.GetOptions{})
+		rbName, metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("failed to get rb: %v", err)
 		return err

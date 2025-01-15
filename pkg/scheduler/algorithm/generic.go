@@ -290,7 +290,7 @@ func (g *genericScheduler) Schedule(ctx context.Context, fwk framework.Framework
 						NetworkPath: rbOld.Spec.NetworkPath,
 					},
 				}
-				rbNew.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(rbNew)
+				rbNew.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(rbNew.Spec.RbApps, g.cache.GetSelfClusterName())
 				rbNew.Kind = common.RBKind
 				rbNew.APIVersion = common.GaiaAPIVersion
 				rbIndex += 1
@@ -655,7 +655,8 @@ func (g *genericScheduler) findNodesThatFitComponent(ctx context.Context, fwk fr
 
 	// aggregate all container resource
 	non0CPU, non0MEM, _ := utils.CalculateResource(comm.Module)
-	result, _ := scheduleWorkloadVNode(non0CPU, non0MEM, feasibleNodes, diagnosis, comm.Name)
+	// gpuReqMap := utils.CalculateGPU(comm.Module)
+	result, _ := scheduleWorkloadVNode(comm, non0CPU, non0MEM, feasibleNodes, diagnosis)
 
 	return result, diagnosis, nil
 }
@@ -883,7 +884,7 @@ func (g *genericScheduler) ScheduleVN(ctx context.Context, fwk framework.Framewo
 					NetworkPath: rbOld.Spec.NetworkPath,
 				},
 			}
-			rbNew.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(rbNew)
+			rbNew.Spec.NonZeroClusterNum = utils.CountNonZeroClusterNumForRB(rbNew.Spec.RbApps, g.cache.GetSelfClusterName())
 			rbNew.Kind = common.RBKind
 			rbNew.APIVersion = common.GaiaAPIVersion
 			rbIndex += 1

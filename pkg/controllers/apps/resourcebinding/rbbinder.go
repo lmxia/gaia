@@ -486,10 +486,33 @@ func (c *Binder) handleParentDescription(desc *appsV1alpha1.Description) error {
 	if desc.DeletionTimestamp != nil {
 		descLabels := desc.GetLabels()
 		descName := descLabels[common.OriginDescriptionNameLabel]
-		descNS := descLabels[common.OriginDescriptionNamespaceLabel]
 		descUID := descLabels[common.OriginDescriptionUIDLabel]
-		// delete local descriptions
-		if err := c.offloadLocalDescriptions(descName, descNS, descUID); err != nil {
+		descNS := desc.GetNamespace()
+
+		var allErrs []error
+		errCh := make(chan error, 2)
+		wg := sync.WaitGroup{}
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			if err := c.offloadLocalDescriptions(descName, descNS, descUID); err != nil {
+				errCh <- err
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			if err := c.offloadLocalResourceBindingsByDescription(descName, descNS, types.UID(descUID)); err != nil {
+				errCh <- err
+			}
+		}()
+		wg.Wait()
+		close(errCh)
+
+		for err := range errCh {
+			allErrs = append(allErrs, err)
+		}
+		if len(allErrs) > 0 {
+			err := utilErrors.NewAggregate(allErrs)
 			return err
 		}
 
@@ -954,14 +977,12 @@ func (c *Binder) offloadLocalDescriptions(descName, descNS, uid string) error {
 	var err error
 	if len(uid) != 0 {
 		derivedDescs, err = c.localDescLister.List(labels.SelectorFromSet(labels.Set{
-			common.OriginDescriptionNameLabel:      descName,
-			common.OriginDescriptionNamespaceLabel: descNS,
-			common.OriginDescriptionUIDLabel:       uid,
+			common.OriginDescriptionNameLabel: descName,
+			common.OriginDescriptionUIDLabel:  uid,
 		}))
 	} else {
 		derivedDescs, err = c.localDescLister.List(labels.SelectorFromSet(labels.Set{
-			common.OriginDescriptionNameLabel:      descName,
-			common.OriginDescriptionNamespaceLabel: descNS,
+			common.OriginDescriptionNameLabel: descName,
 		}))
 	}
 	if err != nil {
@@ -1005,13 +1026,13 @@ func (c *Binder) deleteDescription(ctx context.Context, namespacedKey string) er
 func (c *Binder) offloadLocalResourceBindingsByDescription(descName, descNS string, uid types.UID) error {
 	klog.V(5).InfoS("Start deleting local ResourceBindings ...", "Description",
 		klog.KRef(descNS, descName))
-	// offload gaia-merged && gaia-to-be-merged  Rbs
+
 	derivedRBs, err := c.localRBsLister.List(labels.SelectorFromSet(labels.Set{
-		common.OriginDescriptionNameLabel:      descName,
-		common.OriginDescriptionNamespaceLabel: descNS,
-		common.OriginDescriptionUIDLabel:       string(uid),
+		common.OriginDescriptionNameLabel: descName,
+		common.OriginDescriptionUIDLabel:  string(uid),
 	}))
 	if err != nil {
+		klog.Errorf("handleLocalDescription: failed to list local rb, err == %v")
 		return err
 	}
 	var allErrs []error
@@ -1019,9 +1040,11 @@ func (c *Binder) offloadLocalResourceBindingsByDescription(descName, descNS stri
 		if deleteRB.DeletionTimestamp != nil {
 			continue
 		}
-
+		if descNS != common.GaiaReservedNamespace && deleteRB.Namespace == common.GaiaRBMergedReservedNamespace {
+			continue
+		}
 		if err = c.deleteResourceBinding(context.TODO(), klog.KObj(deleteRB).String()); err != nil {
-			klog.ErrorDepth(5, err)
+			klog.V(5).ErrorS(err, "failed to delete local rb", "rb", klog.KObj(deleteRB))
 			allErrs = append(allErrs, err)
 			continue
 		}
@@ -1044,7 +1067,7 @@ func (c *Binder) deleteFrontEnd(ctx context.Context, namespacedKey string) error
 	err = c.localGaiaClient.AppsV1alpha1().Frontends(ns).Delete(ctx, name, metav1.DeleteOptions{
 		PropagationPolicy: &deletePropagationBackground,
 	})
-	if err != nil && apierrors.IsNotFound(err) {
+	if apierrors.IsNotFound(err) {
 		return nil
 	}
 	return err
@@ -1060,7 +1083,7 @@ func (c *Binder) deleteResourceBinding(ctx context.Context, namespacedKey string
 	err = c.localGaiaClient.AppsV1alpha1().ResourceBindings(ns).Delete(ctx, name, metav1.DeleteOptions{
 		PropagationPolicy: &deletePropagationBackground,
 	})
-	if err != nil && apierrors.IsNotFound(err) {
+	if apierrors.IsNotFound(err) {
 		return nil
 	}
 	return err

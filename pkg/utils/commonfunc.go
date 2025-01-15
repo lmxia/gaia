@@ -95,17 +95,17 @@ func NewParentConfig(ctx context.Context, kubeclient *kubernetes.Clientset,
 			klog.Errorf("set parentkubeconfig failed to get secretFromParentCluster: %v", err)
 			return
 		}
-		if err == nil {
-			klog.Infof("found existing secretFromParentCluster '%s/%s' "+
-				"that can be used to access parent cluster", common.GaiaSystemNamespace, common.ParentClusterSecretName)
-			parentKubeConfig, err = GenerateKubeConfigFromToken(target.Spec.ParentURL,
-				string(secret.Data[corev1.ServiceAccountTokenKey]),
-				secret.Data[corev1.ServiceAccountRootCAKey], 2)
-			if err != nil {
-				klog.Errorf("set parentkubeconfig failed to get sa and secretFromParentCluster: %v", err)
-				return
-			}
+
+		klog.Infof("found existing secretFromParentCluster '%s/%s' "+
+			"that can be used to access parent cluster", common.GaiaSystemNamespace, common.ParentClusterSecretName)
+		parentKubeConfig, err = GenerateKubeConfigFromToken(target.Spec.ParentURL,
+			string(secret.Data[corev1.ServiceAccountTokenKey]),
+			secret.Data[corev1.ServiceAccountRootCAKey], 2)
+		if err != nil {
+			klog.Errorf("set parentkubeconfig failed to get sa and secretFromParentCluster: %v", err)
+			return
 		}
+
 		cancel()
 	}, common.DefaultRetryPeriod*4, 0.3, true)
 
@@ -201,28 +201,23 @@ func GetNonzeroRequestForResource(resource corev1.ResourceName, requests *corev1
 	}
 }
 
-func CountNonZeroClusterNumForRB(binding *appsapi.ResourceBinding) int {
+func CountNonZeroClusterNumForRB(rbApps []*appsapi.ResourceBindingApps, clusterName string) int {
 	nonZeroCount := 0
-	for _, rbApp := range binding.Spec.RbApps {
+	for _, rbApp := range rbApps {
+		if len(rbApp.Children) > 0 {
+			if rbApp.ClusterName == clusterName {
+				return CountNonZeroClusterNumForRB(rbApp.Children, clusterName)
+			}
+			continue
+		}
 		for _, v := range rbApp.Replicas {
 			if v > 0 {
 				nonZeroCount += 1
 				break
 			}
 		}
-
-		if len(rbApp.Children) > 0 {
-			nonZeroCount = 0
-			for _, child := range rbApp.Children {
-				for _, v := range child.Replicas {
-					if v > 0 {
-						nonZeroCount += 1
-						break
-					}
-				}
-			}
-		}
 	}
+
 	return nonZeroCount
 }
 

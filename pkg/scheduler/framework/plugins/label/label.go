@@ -76,7 +76,7 @@ func (pl *ClusterAffinity) FilterVN(ctx context.Context, com *v1alpha1.Component
 		return nil
 	}
 	return framework.NewStatus(framework.UnschedulableAndUnresolvable, fmt.Sprintf(
-		"cluster(s) has no label fit for this com: nodeName=%v, componentName=%v `Selector` is %+v",
+		"node has no label fit for this com: nodeName=%v, componentName=%v `Selector` is %+v",
 		node.Name, com.Name, gaiaSelector))
 }
 

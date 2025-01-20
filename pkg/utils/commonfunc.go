@@ -251,3 +251,12 @@ func InterSection(s1, s2 []string) []string {
 	}
 	return result
 }
+
+func IsNodeReady(node *corev1.Node) bool {
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == corev1.NodeReady && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}

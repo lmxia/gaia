@@ -55,7 +55,7 @@ func (n *NodeInfo) CalculateCapacity(cpuRequest int64, memRequest int64) int64 {
 		klog.Errorf("failed to get PromURLPrefix from env, Calculate node Capacity error")
 		return 0
 	}
-	freeCPULeft, freeMemLeft := utils.GetNodeResFromProm(n.Node, promURLPrefix)
+	freeCPULeft, freeMemLeft := utils.GetEachNodeResourceFromPrometheus(n.Node, promURLPrefix)
 	cpuCapacity := freeCPULeft.MilliValue() / cpuRequest
 	memCapacity := freeMemLeft.Value() / memRequest
 

@@ -399,7 +399,25 @@ func spawnResourceBindingAppsVN(mat mat.Matrix, allNodes []*coreV1.Node,
 			rbapps[j].ChosenOne[components[i].Name] = int32(chosenMat.At(i, j))
 		}
 	}
-	return rbapps
+
+	filteredRbapps := make([]*appv1alpha1.ResourceBindingApps, 0)
+	for _, rbapp := range rbapps {
+		if rbapp.ClusterName == "" {
+			continue
+		}
+		allZero := true
+		for _, replicas := range rbapp.Replicas {
+			if replicas != 0 {
+				allZero = false
+				break
+			}
+		}
+		if !allZero {
+			filteredRbapps = append(filteredRbapps, rbapp)
+		}
+	}
+
+	return filteredRbapps
 }
 
 // makeUserAPPPlan return userapp plan, only one replicas needed.

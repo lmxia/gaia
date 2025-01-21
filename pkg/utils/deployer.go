@@ -497,7 +497,7 @@ func getVPCForGroup(group2HugeCom map[string]*appsv1alpha1.HugeComponent, nodes 
 		if len(vpcLabel) != 0 {
 			cpu := vpc2CPU[vpcLabel]
 			mem := vpc2Mem[vpcLabel]
-			availableCPU, availableMem := GetNodeResFromProm(node, promURLPrefix)
+			availableCPU, availableMem := GetEachNodeResourceFromPrometheus(node, promURLPrefix)
 			cpu.Add(availableCPU)
 			mem.Add(availableMem)
 
@@ -551,55 +551,60 @@ func GetNodeResFromProm(node *corev1.Node, promURLPrefix string) (cpu, mem resou
 		resource.MustParse(valueList[1] + "Ki")
 }
 
-// // getEachNodeResourceFromPrometheus returns the cpu, gpu, memory resources from Prometheus in the cluster
-// func getEachNodeResourceFromPrometheus(node *corev1.Node, promPreURL string) (cpu, mem resource.Quantity) {
-// 	var valueList [4]string
-// 	var availableCPU, availableMem resource.Quantity
+// GetEachNodeResourceFromPrometheus returns the cpu, gpu, memory resources from Prometheus in the cluster
+func GetEachNodeResourceFromPrometheus(node *corev1.Node, promPreURL string) (cpu, mem resource.Quantity) {
+	var valueList [4]string
+	var availableCPU, availableMem resource.Quantity
 
-// 	queryMetricSet, nodeMetricList, err := InitConfig(known.MetricConfigMapNodeAbsFilePath)
-// 	if err != nil || len(nodeMetricList) < 4 {
-// 		klog.Warningf("Wrong metrics config or The length of ClusterMetricList not 4, err: %v", err)
-// 		return availableCPU, availableMem
-// 	}
-// 	// sn := GetNodeSNID(node)
-// 	sn := GetNodeName(node)
-// 	for index, metric := range nodeMetricList[2:4] {
-// 		metric = strings.ReplaceAll(metric, "XXX", sn) // use node name
-// 		result, err2 := GetDataFromPrometheus(promPreURL, queryMetricSet[metric])
-// 		if err2 == nil {
-// 			if len(result.(model.Vector)) == 0 {
-// 				klog.Warningf("Query from prometheus successfully, but the result is a null array.")
-// 				valueList[index] = "0"
-// 			} else {
-// 				valueList[index] = result.(model.Vector)[0].Value.String()
-// 			}
-// 		} else {
-// 			valueList[index] = "0"
-// 		}
-// 	}
+	queryMetricSet, nodeMetricList, err := InitConfig(known.MetricConfigMapNodeAbsFilePath)
+	if err != nil || len(nodeMetricList) < 4 {
+		klog.Warningf("Wrong metrics config or The length of ClusterMetricList not 4, err: %v", err)
+		return availableCPU, availableMem
+	}
 
-// 	availableCPU.Add(resource.MustParse(getSubStringWithSpecifiedDecimalPlaceVN(valueList[2], 3)))
-// 	availableMem.Add(resource.MustParse(valueList[3] + "Ki"))
+	sn := GetNodeSNID(node)
+	if sn == "" {
+		klog.V(5).Infof("node %s has no sn label, skip GetEachNodeResourceFromPrometheus", node.Name)
+		return availableCPU, availableMem
+	}
+	for index, metric := range nodeMetricList[2:4] {
+		queryStr := queryMetricSet[metric]
+		queryStr = strings.ReplaceAll(queryStr, "XXX", sn)
+		result, err2 := GetDataFromPrometheus(promPreURL, queryStr)
+		if err2 == nil {
+			if len(result.(model.Vector)) == 0 {
+				klog.Warningf("Query from prometheus successfully, but the result is a null array.")
+				valueList[index] = "0"
+			} else {
+				valueList[index] = result.(model.Vector)[0].Value.String()
+			}
+		} else {
+			valueList[index] = "0"
+		}
+	}
 
-// 	// todo: get gpu resource
+	availableCPU.Add(resource.MustParse(getSubStringWithSpecifiedDecimalPlaceVN(valueList[0], 3)))
+	availableMem.Add(resource.MustParse(valueList[1] + "Ki"))
 
-// 	return availableCPU, availableMem
-// }
+	// todo: get gpu resource
 
-// // getSubStringWithSpecifiedDecimalPlace returns a sub string based on the specified number of decimal places
-// func getSubStringWithSpecifiedDecimalPlaceVN(inputString string, m int) string {
-// 	if inputString == "" {
-// 		return ""
-// 	}
-// 	if m >= len(inputString) {
-// 		return inputString
-// 	}
-// 	newString := strings.Split(inputString, ".")
-// 	if len(newString) < 2 || m >= len(newString[1]) {
-// 		return inputString
-// 	}
-// 	return newString[0] + "." + newString[1][:m]
-// }
+	return availableCPU, availableMem
+}
+
+// getSubStringWithSpecifiedDecimalPlace returns a sub string based on the specified number of decimal places
+func getSubStringWithSpecifiedDecimalPlaceVN(inputString string, m int) string {
+	if inputString == "" {
+		return ""
+	}
+	if m >= len(inputString) {
+		return inputString
+	}
+	newString := strings.Split(inputString, ".")
+	if len(newString) < 2 || m >= len(newString[1]) {
+		return inputString
+	}
+	return newString[0] + "." + newString[1][:m]
+}
 
 func getFitVPC(com *appsv1alpha1.HugeComponent, sli *vpcResourceSlice) (int, error) {
 	sort.Sort(sort.Reverse(sli))

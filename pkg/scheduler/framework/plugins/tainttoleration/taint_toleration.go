@@ -71,7 +71,7 @@ func (pl *TaintToleration) FilterVN(ctx context.Context, com *v1alpha1.Component
 		return nil
 	}
 
-	errReason := fmt.Sprintf("clusters(s) had taint {%s: %s}, that the component not tolerate, "+
+	errReason := fmt.Sprintf("node had taint {%s: %s}, that the component not tolerate, "+
 		"node name is %v, component name is %v",
 		taint.Key, taint.Value, node.Name, com.Name)
 	return framework.NewStatus(framework.UnschedulableAndUnresolvable, errReason)

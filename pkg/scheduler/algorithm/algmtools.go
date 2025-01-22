@@ -21,6 +21,7 @@ import (
 	"github.com/lmxia/gaia/pkg/common"
 	"github.com/lmxia/gaia/pkg/scheduler/framework"
 	"github.com/lmxia/gaia/pkg/scheduler/framework/interfaces"
+	"github.com/lmxia/gaia/pkg/utils"
 )
 
 func scheduleWorkloadVNode(com *appv1alpha1.Component, cpu int64, mem int64,
@@ -32,7 +33,14 @@ func scheduleWorkloadVNode(com *appv1alpha1.Component, cpu int64, mem int64,
 		nodeInfo := &framework.NodeInfo{
 			Node: node,
 		}
-		// todo: judge node is livez
+		if !utils.IsNodeReady(node) {
+			diagnosis.ClusterToStatusMap[node.Name] = interfaces.NewStatus(interfaces.Error, fmt.Sprintf(
+				"node is NotReady: nodeName=%v, componentName=%v",
+				node.Name, com.Name))
+			diagnosis.UnschedulablePlugins.Insert("filtered node==" + node.Name + " is NotReady")
+			nodeInfo.Total = 0
+			continue
+		}
 
 		var nodeCapacity int64
 		if com.Workload.Workloadtype == appv1alpha1.WorkloadTypeDeployment {
@@ -44,7 +52,7 @@ func scheduleWorkloadVNode(com *appv1alpha1.Component, cpu int64, mem int64,
 
 		if nodeCapacity == 0 {
 			diagnosis.ClusterToStatusMap[node.Name] = interfaces.NewStatus(interfaces.Error, fmt.Sprintf(
-				"cluster(s) has not enough resources: nodeName=%v, componentName=%v",
+				"node has not enough resources: nodeName=%v, componentName=%v",
 				node.Name, com.Name))
 			diagnosis.UnschedulablePlugins.Insert("filtered node==" + node.Name + " has resource limit")
 			continue
@@ -70,6 +78,7 @@ func scheduleWorkload(com *appv1alpha1.Component, cpu int64, mem int64, gpuReqMa
 				"cluster(s) is offline: clusterName=%v, componentName=%v",
 				cluster.Name, com.Name))
 			diagnosis.UnschedulablePlugins.Insert("filtered cluster ", cluster.Name, " is offline")
+			clusterInfo.Total = 0
 			continue
 		}
 

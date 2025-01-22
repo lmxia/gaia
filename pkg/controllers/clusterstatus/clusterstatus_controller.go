@@ -420,12 +420,18 @@ func (c *Controller) GetManagedClusterLabels() (nodeLabels map[string]string) {
 		}
 		if len(clusters) == 0 {
 			// get nodes
-			nodes, err2 := c.nodeLister.List(labels.Everything())
-			if err2 != nil {
-				klog.Warningf("failed to list nodes: %v", err2)
-				// nodeLabels = getNodeLabels(nodes)
+			nodes, err := c.nodeLister.List(labels.Everything())
+			if err != nil {
+				klog.Warningf("failed to list nodes: %v", err)
+				return nodeLabels
 			}
-			nodeLabels = getNodeLabels(nodes)
+			readyNodes := make([]*corev1.Node, 0, len(nodes))
+			for _, node := range nodes {
+				if utils.IsNodeReady(node) {
+					readyNodes = append(readyNodes, node)
+				}
+			}
+			nodeLabels = getNodeLabels(readyNodes)
 		} else {
 			nodeLabels = getClusterLabels(clusters)
 		}
@@ -567,11 +573,21 @@ func getNodeResourceFromPrometheus(promPreURL string) (capacity, allocatable, av
 
 // getEachNodeResourceFromPrometheus returns the cpu, gpu, memory resources from Prometheus in the cluster
 func getEachNodeResourceFromPrometheus(promPreURL string, nodes []*corev1.Node) map[string]clusterapi.NodeResources {
-	// var entityNodeRes clusterapi.NodeResources
 	nodeResourcesMap := make(map[string]clusterapi.NodeResources)
+
+	// 筛选节点
+	filteredNodes := make([]*corev1.Node, 0, len(nodes))
+	for _, node := range nodes {
+		sn := utils.GetNodeSNID(node)
+		if sn == "" || !utils.IsNodeReady(node) || utils.IsSystemNode(node) {
+			continue
+		}
+		filteredNodes = append(filteredNodes, node)
+	}
+
 	if promPreURL == "" {
 		var nodeResource clusterapi.NodeResources
-		for _, node := range nodes {
+		for _, node := range filteredNodes {
 			sn := utils.GetNodeSNID(node)
 			nodeResourcesMap[sn] = nodeResource
 		}
@@ -584,10 +600,8 @@ func getEachNodeResourceFromPrometheus(promPreURL string, nodes []*corev1.Node) 
 		klog.Warningf("Wrong metrics config or The length of ClusterMetricList not 4, err: %v", err)
 		return nil
 	}
-	for _, node := range nodes {
-		if utils.IsSystemNode(node) {
-			continue
-		}
+
+	for _, node := range filteredNodes {
 		var nodeResource clusterapi.NodeResources
 		var valueList [4]string
 		nodeResource.ClusterName = utils.GetNodeClusterName(node)

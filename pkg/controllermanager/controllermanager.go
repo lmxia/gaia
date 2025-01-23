@@ -284,7 +284,7 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 						go controller.hyperlabelController.Run(common.DefaultThreadiness, ctx.Done())
 					}
 
-					go controller.appStatusController.Run(ctx, controller.parentKubeConfig)
+					go controller.appStatusController.Run(ctx, controller.parentKubeConfig, controller.ClusterLevel)
 				}()
 
 				go func() {
@@ -309,6 +309,7 @@ func (controller *ControllerManager) Run(cc *gaiaconfig.CompletedConfig) {
 				// 7. start frontend cdn accelerate controller
 				if controller.ClusterLevel == common.GlobalLayer {
 					go controller.frontendController.Run(common.DefaultThreadiness, ctx.Done())
+					go controller.appStatusController.Run(ctx, nil, controller.ClusterLevel)
 				}
 
 				// metrics

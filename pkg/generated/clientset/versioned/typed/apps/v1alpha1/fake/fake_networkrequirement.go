@@ -19,124 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	appsv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeNetworkRequirements implements NetworkRequirementInterface
-type FakeNetworkRequirements struct {
+// fakeNetworkRequirements implements NetworkRequirementInterface
+type fakeNetworkRequirements struct {
+	*gentype.FakeClientWithList[*v1alpha1.NetworkRequirement, *v1alpha1.NetworkRequirementList]
 	Fake *FakeAppsV1alpha1
-	ns   string
 }
 
-var networkrequirementsResource = schema.GroupVersionResource{Group: "apps.gaia.io", Version: "v1alpha1", Resource: "networkrequirements"}
-
-var networkrequirementsKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "NetworkRequirement"}
-
-// Get takes name of the networkRequirement, and returns the corresponding networkRequirement object, and an error if there is any.
-func (c *FakeNetworkRequirements) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.NetworkRequirement, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(networkrequirementsResource, c.ns, name), &v1alpha1.NetworkRequirement{})
-
-	if obj == nil {
-		return nil, err
+func newFakeNetworkRequirements(fake *FakeAppsV1alpha1, namespace string) appsv1alpha1.NetworkRequirementInterface {
+	return &fakeNetworkRequirements{
+		gentype.NewFakeClientWithList[*v1alpha1.NetworkRequirement, *v1alpha1.NetworkRequirementList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("networkrequirements"),
+			v1alpha1.SchemeGroupVersion.WithKind("NetworkRequirement"),
+			func() *v1alpha1.NetworkRequirement { return &v1alpha1.NetworkRequirement{} },
+			func() *v1alpha1.NetworkRequirementList { return &v1alpha1.NetworkRequirementList{} },
+			func(dst, src *v1alpha1.NetworkRequirementList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.NetworkRequirementList) []*v1alpha1.NetworkRequirement {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.NetworkRequirementList, items []*v1alpha1.NetworkRequirement) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.NetworkRequirement), err
-}
-
-// List takes label and field selectors, and returns the list of NetworkRequirements that match those selectors.
-func (c *FakeNetworkRequirements) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.NetworkRequirementList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(networkrequirementsResource, networkrequirementsKind, c.ns, opts), &v1alpha1.NetworkRequirementList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.NetworkRequirementList{ListMeta: obj.(*v1alpha1.NetworkRequirementList).ListMeta}
-	for _, item := range obj.(*v1alpha1.NetworkRequirementList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested networkRequirements.
-func (c *FakeNetworkRequirements) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(networkrequirementsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a networkRequirement and creates it.  Returns the server's representation of the networkRequirement, and an error, if there is any.
-func (c *FakeNetworkRequirements) Create(ctx context.Context, networkRequirement *v1alpha1.NetworkRequirement, opts v1.CreateOptions) (result *v1alpha1.NetworkRequirement, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(networkrequirementsResource, c.ns, networkRequirement), &v1alpha1.NetworkRequirement{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.NetworkRequirement), err
-}
-
-// Update takes the representation of a networkRequirement and updates it. Returns the server's representation of the networkRequirement, and an error, if there is any.
-func (c *FakeNetworkRequirements) Update(ctx context.Context, networkRequirement *v1alpha1.NetworkRequirement, opts v1.UpdateOptions) (result *v1alpha1.NetworkRequirement, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(networkrequirementsResource, c.ns, networkRequirement), &v1alpha1.NetworkRequirement{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.NetworkRequirement), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeNetworkRequirements) UpdateStatus(ctx context.Context, networkRequirement *v1alpha1.NetworkRequirement, opts v1.UpdateOptions) (*v1alpha1.NetworkRequirement, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(networkrequirementsResource, "status", c.ns, networkRequirement), &v1alpha1.NetworkRequirement{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.NetworkRequirement), err
-}
-
-// Delete takes name of the networkRequirement and deletes it. Returns an error if one occurs.
-func (c *FakeNetworkRequirements) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(networkrequirementsResource, c.ns, name), &v1alpha1.NetworkRequirement{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeNetworkRequirements) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(networkrequirementsResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.NetworkRequirementList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched networkRequirement.
-func (c *FakeNetworkRequirements) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.NetworkRequirement, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(networkrequirementsResource, c.ns, name, pt, data, subresources...), &v1alpha1.NetworkRequirement{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.NetworkRequirement), err
 }

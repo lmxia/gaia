@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	apisplatformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	versioned "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/lmxia/gaia/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
+	platformv1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Targets.
 type TargetInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.TargetLister
+	Lister() platformv1alpha1.TargetLister
 }
 
 type targetInformer struct {
@@ -61,16 +61,28 @@ func NewFilteredTargetInformer(client versioned.Interface, resyncPeriod time.Dur
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PlatformV1alpha1().Targets().List(context.TODO(), options)
+				return client.PlatformV1alpha1().Targets().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PlatformV1alpha1().Targets().Watch(context.TODO(), options)
+				return client.PlatformV1alpha1().Targets().Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.PlatformV1alpha1().Targets().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.PlatformV1alpha1().Targets().Watch(ctx, options)
 			},
 		},
-		&platformv1alpha1.Target{},
+		&apisplatformv1alpha1.Target{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +93,9 @@ func (f *targetInformer) defaultInformer(client versioned.Interface, resyncPerio
 }
 
 func (f *targetInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&platformv1alpha1.Target{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisplatformv1alpha1.Target{}, f.defaultInformer)
 }
 
-func (f *targetInformer) Lister() v1alpha1.TargetLister {
-	return v1alpha1.NewTargetLister(f.Informer().GetIndexer())
+func (f *targetInformer) Lister() platformv1alpha1.TargetLister {
+	return platformv1alpha1.NewTargetLister(f.Informer().GetIndexer())
 }

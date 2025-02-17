@@ -1,4 +1,4 @@
-FROM 121.40.102.76:30080/ci/golang:alpine AS builder
+FROM 121.40.102.76:30080/ci/golang-make-lint:alpine-1.23.4 AS builder
 
 WORKDIR /build
 

@@ -11,7 +11,7 @@ stages:
 ci-check:
   stage: check
   image:
-    name: ${REGISTRY}/ci/golang-make:alpine
+    name: ${REGISTRY}/ci/golang-make-lint:alpine-1.23.4
   tags:
     - hyperos
     - cloud

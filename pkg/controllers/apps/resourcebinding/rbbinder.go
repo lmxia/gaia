@@ -103,7 +103,7 @@ type Controller struct {
 	// means we can ensure we only process a fixed amount of resources at a
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
-	workqueue workqueue.RateLimitingInterface
+	workqueue workqueue.TypedRateLimitingInterface[string]
 
 	SyncHandler SyncHandlerFunc
 }
@@ -152,9 +152,10 @@ func NewController(gaiaClient gaiaClientSet.Interface, informer informers.Resour
 		GaiaClient: gaiaClient,
 		Lister:     informer.Lister(),
 		Synced:     informer.Informer().HasSynced,
-		workqueue: workqueue.NewNamedRateLimitingQueue(
-			workqueue.NewItemExponentialFailureRateLimiter(time.Second, 100*time.Second),
-			"resource-binding-requests"),
+		workqueue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{Name: "resource-binding-requests"},
+		),
 		SyncHandler: syncHandler,
 	}
 
@@ -314,7 +315,7 @@ func (c *Controller) processNextWorkItem() bool {
 	}
 
 	// We wrap this block in a func, so we can defer c.workqueue.Done.
-	err := func(obj interface{}) error {
+	err := func(obj string) error {
 		// We call Done here so the workqueue knows we have finished
 		// processing this item. We also must remember to call Forget if we
 		// do not want this work item being re-queued. For example, we do
@@ -322,32 +323,17 @@ func (c *Controller) processNextWorkItem() bool {
 		// put back on the workqueue and attempted again after a back-off
 		// period.
 		defer c.workqueue.Done(obj)
-		var key string
-		var ok bool
-		// We expect strings to come off the workqueue. These are of the
-		// form namespace/name. We do this as the delayed nature of the
-		// workqueue means the items in the informer cache may actually be
-		// more up to date that when the item was initially put onto the
-		// workqueue.
-		if key, ok = obj.(string); !ok {
-			// As the item in the workqueue is actually invalid, we call
-			// Forget here else we'd go into a loop of attempting to
-			// process a work item that is invalid.
-			c.workqueue.Forget(obj)
-			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
-			return nil
-		}
 		// Run the syncHandler, passing it the namespace/name string of the
 		// ResourceBinding resource to be synced.
-		if err := c.syncHandler(key); err != nil {
+		if err := c.syncHandler(obj); err != nil {
 			// Put the item back on the workqueue to handle any transient errors.
-			c.workqueue.AddRateLimited(key)
-			return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
+			c.workqueue.AddRateLimited(obj)
+			return fmt.Errorf("error syncing '%s': %s, requeuing", obj, err.Error())
 		}
 		// Finally, if no error occurs we Forget this item, so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		klog.Infof("successfully synced resourcebinding %q", key)
+		klog.Infof("successfully synced resourcebinding %q", obj)
 		return nil
 	}(obj)
 	if err != nil {
@@ -1032,7 +1018,7 @@ func (c *Binder) offloadLocalResourceBindingsByDescription(descName, descNS stri
 		common.OriginDescriptionUIDLabel:  string(uid),
 	}))
 	if err != nil {
-		klog.Errorf("handleLocalDescription: failed to list local rb, err == %v")
+		klog.Errorf("handleLocalDescription: failed to list local rb, err == %v", err)
 		return err
 	}
 	var allErrs []error
@@ -1166,8 +1152,8 @@ func (c *Binder) updateSelectedRB(rb *appsV1alpha1.ResourceBinding, clusterName 
 		return fmt.Errorf("delete rbs not selected: update resourcebinding %q conflict "+
 			"for add label and inject finalizer", klog.KObj(rb))
 	case err != nil:
-		klog.Warning("Delete rbs not selected: failed to inject finalizer %s "+
-			"and update ResourceBinding %s: %v", common.AppFinalizer, klog.KObj(rb), err)
+		klog.Warningf("Delete rbs not selected: failed to inject finalizer %s "+
+			"and update ResourceBinding %s: %v", common.AppFinalizer, klog.KObj(rb).Name, err)
 		return err
 	}
 	// delete unselected rbs

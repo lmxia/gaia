@@ -19,112 +19,32 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/lmxia/gaia/pkg/apis/cluster/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	clusterv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/cluster/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeHypernodes implements HypernodeInterface
-type FakeHypernodes struct {
+// fakeHypernodes implements HypernodeInterface
+type fakeHypernodes struct {
+	*gentype.FakeClientWithList[*v1alpha1.Hypernode, *v1alpha1.HypernodeList]
 	Fake *FakeClusterV1alpha1
-	ns   string
 }
 
-var hypernodesResource = schema.GroupVersionResource{Group: "cluster.pml.com.cn", Version: "v1alpha1", Resource: "hypernodes"}
-
-var hypernodesKind = schema.GroupVersionKind{Group: "cluster.pml.com.cn", Version: "v1alpha1", Kind: "Hypernode"}
-
-// Get takes name of the hypernode, and returns the corresponding hypernode object, and an error if there is any.
-func (c *FakeHypernodes) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.Hypernode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(hypernodesResource, c.ns, name), &v1alpha1.Hypernode{})
-
-	if obj == nil {
-		return nil, err
+func newFakeHypernodes(fake *FakeClusterV1alpha1, namespace string) clusterv1alpha1.HypernodeInterface {
+	return &fakeHypernodes{
+		gentype.NewFakeClientWithList[*v1alpha1.Hypernode, *v1alpha1.HypernodeList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("hypernodes"),
+			v1alpha1.SchemeGroupVersion.WithKind("Hypernode"),
+			func() *v1alpha1.Hypernode { return &v1alpha1.Hypernode{} },
+			func() *v1alpha1.HypernodeList { return &v1alpha1.HypernodeList{} },
+			func(dst, src *v1alpha1.HypernodeList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.HypernodeList) []*v1alpha1.Hypernode { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1alpha1.HypernodeList, items []*v1alpha1.Hypernode) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.Hypernode), err
-}
-
-// List takes label and field selectors, and returns the list of Hypernodes that match those selectors.
-func (c *FakeHypernodes) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.HypernodeList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(hypernodesResource, hypernodesKind, c.ns, opts), &v1alpha1.HypernodeList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.HypernodeList{ListMeta: obj.(*v1alpha1.HypernodeList).ListMeta}
-	for _, item := range obj.(*v1alpha1.HypernodeList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested hypernodes.
-func (c *FakeHypernodes) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(hypernodesResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a hypernode and creates it.  Returns the server's representation of the hypernode, and an error, if there is any.
-func (c *FakeHypernodes) Create(ctx context.Context, hypernode *v1alpha1.Hypernode, opts v1.CreateOptions) (result *v1alpha1.Hypernode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(hypernodesResource, c.ns, hypernode), &v1alpha1.Hypernode{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.Hypernode), err
-}
-
-// Update takes the representation of a hypernode and updates it. Returns the server's representation of the hypernode, and an error, if there is any.
-func (c *FakeHypernodes) Update(ctx context.Context, hypernode *v1alpha1.Hypernode, opts v1.UpdateOptions) (result *v1alpha1.Hypernode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(hypernodesResource, c.ns, hypernode), &v1alpha1.Hypernode{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.Hypernode), err
-}
-
-// Delete takes name of the hypernode and deletes it. Returns an error if one occurs.
-func (c *FakeHypernodes) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(hypernodesResource, c.ns, name), &v1alpha1.Hypernode{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeHypernodes) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(hypernodesResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.HypernodeList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched hypernode.
-func (c *FakeHypernodes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.Hypernode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(hypernodesResource, c.ns, name, pt, data, subresources...), &v1alpha1.Hypernode{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.Hypernode), err
 }

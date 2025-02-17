@@ -29,15 +29,15 @@ type FakePlatformV1alpha1 struct {
 }
 
 func (c *FakePlatformV1alpha1) ClusterRegistrationRequests() v1alpha1.ClusterRegistrationRequestInterface {
-	return &FakeClusterRegistrationRequests{c}
+	return newFakeClusterRegistrationRequests(c)
 }
 
 func (c *FakePlatformV1alpha1) ManagedClusters(namespace string) v1alpha1.ManagedClusterInterface {
-	return &FakeManagedClusters{c, namespace}
+	return newFakeManagedClusters(c, namespace)
 }
 
 func (c *FakePlatformV1alpha1) Targets() v1alpha1.TargetInterface {
-	return &FakeTargets{c}
+	return newFakeTargets(c)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

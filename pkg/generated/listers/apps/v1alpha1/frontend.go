@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // FrontendLister helps list Frontends.
@@ -30,7 +30,7 @@ import (
 type FrontendLister interface {
 	// List lists all Frontends in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Frontend, err error)
+	List(selector labels.Selector) (ret []*appsv1alpha1.Frontend, err error)
 	// Frontends returns an object that can list and get Frontends.
 	Frontends(namespace string) FrontendNamespaceLister
 	FrontendListerExpansion
@@ -38,25 +38,17 @@ type FrontendLister interface {
 
 // frontendLister implements the FrontendLister interface.
 type frontendLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*appsv1alpha1.Frontend]
 }
 
 // NewFrontendLister returns a new FrontendLister.
 func NewFrontendLister(indexer cache.Indexer) FrontendLister {
-	return &frontendLister{indexer: indexer}
-}
-
-// List lists all Frontends in the indexer.
-func (s *frontendLister) List(selector labels.Selector) (ret []*v1alpha1.Frontend, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Frontend))
-	})
-	return ret, err
+	return &frontendLister{listers.New[*appsv1alpha1.Frontend](indexer, appsv1alpha1.Resource("frontend"))}
 }
 
 // Frontends returns an object that can list and get Frontends.
 func (s *frontendLister) Frontends(namespace string) FrontendNamespaceLister {
-	return frontendNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return frontendNamespaceLister{listers.NewNamespaced[*appsv1alpha1.Frontend](s.ResourceIndexer, namespace)}
 }
 
 // FrontendNamespaceLister helps list and get Frontends.
@@ -64,36 +56,15 @@ func (s *frontendLister) Frontends(namespace string) FrontendNamespaceLister {
 type FrontendNamespaceLister interface {
 	// List lists all Frontends in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Frontend, err error)
+	List(selector labels.Selector) (ret []*appsv1alpha1.Frontend, err error)
 	// Get retrieves the Frontend from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.Frontend, error)
+	Get(name string) (*appsv1alpha1.Frontend, error)
 	FrontendNamespaceListerExpansion
 }
 
 // frontendNamespaceLister implements the FrontendNamespaceLister
 // interface.
 type frontendNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Frontends in the indexer for a given namespace.
-func (s frontendNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Frontend, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Frontend))
-	})
-	return ret, err
-}
-
-// Get retrieves the Frontend from the indexer for a given namespace and name.
-func (s frontendNamespaceLister) Get(name string) (*v1alpha1.Frontend, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("frontend"), name)
-	}
-	return obj.(*v1alpha1.Frontend), nil
+	listers.ResourceIndexer[*appsv1alpha1.Frontend]
 }

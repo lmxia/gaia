@@ -28,6 +28,8 @@ import (
 	fakeplatformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1/fake"
 	servicev1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/service/v1alpha1"
 	fakeservicev1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/service/v1alpha1/fake"
+	storagev1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/storage/v1alpha1"
+	fakestoragev1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/storage/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -37,8 +39,12 @@ import (
 
 // NewSimpleClientset returns a clientset that will respond with the provided objects.
 // It's backed by a very simple object tracker that processes creates, updates and deletions as-is,
-// without applying any validations and/or defaults. It shouldn't be considered a replacement
+// without applying any field management, validations and/or defaults. It shouldn't be considered a replacement
 // for a real clientset and is mostly useful in simple unit tests.
+//
+// DEPRECATED: NewClientset replaces this with support for field management, which significantly improves
+// server side apply testing. NewClientset is only available when apply configurations are generated (e.g.
+// via --with-applyconfig).
 func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 	o := testing.NewObjectTracker(scheme, codecs.UniversalDecoder())
 	for _, obj := range objects {
@@ -103,4 +109,9 @@ func (c *Clientset) PlatformV1alpha1() platformv1alpha1.PlatformV1alpha1Interfac
 // ServiceV1alpha1 retrieves the ServiceV1alpha1Client
 func (c *Clientset) ServiceV1alpha1() servicev1alpha1.ServiceV1alpha1Interface {
 	return &fakeservicev1alpha1.FakeServiceV1alpha1{Fake: &c.Fake}
+}
+
+// StorageV1alpha1 retrieves the StorageV1alpha1Client
+func (c *Clientset) StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface {
+	return &fakestoragev1alpha1.FakeStorageV1alpha1{Fake: &c.Fake}
 }

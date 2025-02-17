@@ -65,7 +65,7 @@ func (c *Controller) cdnAccelerateState(frontend *v1alpha1.Frontend) (bool, *str
 		for i := range domainMsg.Body.Domains.PageData {
 			cname := domainMsg.Body.Domains.PageData[i].Cname
 			domainName := domainMsg.Body.Domains.PageData[i].DomainName
-			klog.V(4).Infof("cname and domainName of frontend is: %s", cname, domainName)
+			klog.V(4).Infof("cname and domainName of frontend is: %s, %s", *cname, *domainName)
 			frontendDomain := frontend.Name + "." + frontend.Spec.DomainName
 			if frontendDomain == *domainMsg.Body.Domains.PageData[i].DomainName {
 				exist = common.FrontendAliyunCdnExist
@@ -154,7 +154,7 @@ func (c *Controller) processCdnAccelerateCreate(client *cdn20180510.Client, doma
 				klog.Errorf("Failed to add cdn domain of 'Frontend' %q, error == %v", frontend.Name, err)
 				return err
 			}
-			klog.V(4).Infof("add domain succeed：" + tea.StringValue(response.Body.RequestId))
+			klog.V(4).Info("add domain succeed：" + tea.StringValue(response.Body.RequestId))
 			domainName = tea.StringValue(domain)
 		}
 		for {
@@ -215,11 +215,11 @@ func (c *Controller) GetDomainStatus(client *cdn20180510.Client, domain *string)
 	}
 	response, err := client.DescribeUserDomains(request)
 	if err != nil {
-		klog.Errorf("Failed to describe user domains 'Cname' %q, error == %v", cname, err)
+		klog.Errorf("Failed to describe user domains error == %v", err)
 		return result, cname, err
 	}
 	pageData := response.Body.Domains.PageData[0]
-	klog.V(4).Infof("get the name of domain  is " + tea.StringValue(domain) + "and the status of domain is " +
+	klog.V(4).Info("get the name of domain  is " + tea.StringValue(domain) + "and the status of domain is " +
 		tea.StringValue(pageData.DomainStatus))
 	result = pageData.DomainStatus
 	cname = pageData.Cname
@@ -319,6 +319,6 @@ func (c *Controller) DeleteDomain(client *cdn20180510.Client, domain *string) (e
 		klog.Error(err)
 		return err
 	}
-	klog.V(4).Infof("succeed in delete domain: " + tea.StringValue(response.Body.RequestId))
+	klog.V(4).Info("succeed in delete domain: " + tea.StringValue(response.Body.RequestId))
 	return err
 }

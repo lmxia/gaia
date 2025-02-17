@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/lmxia/gaia/pkg/apis/cluster/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	clusterv1alpha1 "github.com/lmxia/gaia/pkg/apis/cluster/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // HypernodeLister helps list Hypernodes.
@@ -30,7 +30,7 @@ import (
 type HypernodeLister interface {
 	// List lists all Hypernodes in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Hypernode, err error)
+	List(selector labels.Selector) (ret []*clusterv1alpha1.Hypernode, err error)
 	// Hypernodes returns an object that can list and get Hypernodes.
 	Hypernodes(namespace string) HypernodeNamespaceLister
 	HypernodeListerExpansion
@@ -38,25 +38,17 @@ type HypernodeLister interface {
 
 // hypernodeLister implements the HypernodeLister interface.
 type hypernodeLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*clusterv1alpha1.Hypernode]
 }
 
 // NewHypernodeLister returns a new HypernodeLister.
 func NewHypernodeLister(indexer cache.Indexer) HypernodeLister {
-	return &hypernodeLister{indexer: indexer}
-}
-
-// List lists all Hypernodes in the indexer.
-func (s *hypernodeLister) List(selector labels.Selector) (ret []*v1alpha1.Hypernode, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Hypernode))
-	})
-	return ret, err
+	return &hypernodeLister{listers.New[*clusterv1alpha1.Hypernode](indexer, clusterv1alpha1.Resource("hypernode"))}
 }
 
 // Hypernodes returns an object that can list and get Hypernodes.
 func (s *hypernodeLister) Hypernodes(namespace string) HypernodeNamespaceLister {
-	return hypernodeNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return hypernodeNamespaceLister{listers.NewNamespaced[*clusterv1alpha1.Hypernode](s.ResourceIndexer, namespace)}
 }
 
 // HypernodeNamespaceLister helps list and get Hypernodes.
@@ -64,36 +56,15 @@ func (s *hypernodeLister) Hypernodes(namespace string) HypernodeNamespaceLister 
 type HypernodeNamespaceLister interface {
 	// List lists all Hypernodes in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Hypernode, err error)
+	List(selector labels.Selector) (ret []*clusterv1alpha1.Hypernode, err error)
 	// Get retrieves the Hypernode from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.Hypernode, error)
+	Get(name string) (*clusterv1alpha1.Hypernode, error)
 	HypernodeNamespaceListerExpansion
 }
 
 // hypernodeNamespaceLister implements the HypernodeNamespaceLister
 // interface.
 type hypernodeNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all Hypernodes in the indexer for a given namespace.
-func (s hypernodeNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Hypernode, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Hypernode))
-	})
-	return ret, err
-}
-
-// Get retrieves the Hypernode from the indexer for a given namespace and name.
-func (s hypernodeNamespaceLister) Get(name string) (*v1alpha1.Hypernode, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("hypernode"), name)
-	}
-	return obj.(*v1alpha1.Hypernode), nil
+	listers.ResourceIndexer[*clusterv1alpha1.Hypernode]
 }

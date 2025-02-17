@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	apisplatformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	versioned "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/lmxia/gaia/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
+	platformv1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/platform/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ManagedClusters.
 type ManagedClusterInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ManagedClusterLister
+	Lister() platformv1alpha1.ManagedClusterLister
 }
 
 type managedClusterInformer struct {
@@ -62,16 +62,28 @@ func NewFilteredManagedClusterInformer(client versioned.Interface, namespace str
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PlatformV1alpha1().ManagedClusters(namespace).List(context.TODO(), options)
+				return client.PlatformV1alpha1().ManagedClusters(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.PlatformV1alpha1().ManagedClusters(namespace).Watch(context.TODO(), options)
+				return client.PlatformV1alpha1().ManagedClusters(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.PlatformV1alpha1().ManagedClusters(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.PlatformV1alpha1().ManagedClusters(namespace).Watch(ctx, options)
 			},
 		},
-		&platformv1alpha1.ManagedCluster{},
+		&apisplatformv1alpha1.ManagedCluster{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +94,9 @@ func (f *managedClusterInformer) defaultInformer(client versioned.Interface, res
 }
 
 func (f *managedClusterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&platformv1alpha1.ManagedCluster{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisplatformv1alpha1.ManagedCluster{}, f.defaultInformer)
 }
 
-func (f *managedClusterInformer) Lister() v1alpha1.ManagedClusterLister {
-	return v1alpha1.NewManagedClusterLister(f.Informer().GetIndexer())
+func (f *managedClusterInformer) Lister() platformv1alpha1.ManagedClusterLister {
+	return platformv1alpha1.NewManagedClusterLister(f.Informer().GetIndexer())
 }

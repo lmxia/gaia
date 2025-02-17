@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	apisappsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
 	versioned "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/lmxia/gaia/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
+	appsv1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/apps/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // CronMasters.
 type CronMasterInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.CronMasterLister
+	Lister() appsv1alpha1.CronMasterLister
 }
 
 type cronMasterInformer struct {
@@ -62,16 +62,28 @@ func NewFilteredCronMasterInformer(client versioned.Interface, namespace string,
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AppsV1alpha1().CronMasters(namespace).List(context.TODO(), options)
+				return client.AppsV1alpha1().CronMasters(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AppsV1alpha1().CronMasters(namespace).Watch(context.TODO(), options)
+				return client.AppsV1alpha1().CronMasters(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AppsV1alpha1().CronMasters(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.AppsV1alpha1().CronMasters(namespace).Watch(ctx, options)
 			},
 		},
-		&appsv1alpha1.CronMaster{},
+		&apisappsv1alpha1.CronMaster{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +94,9 @@ func (f *cronMasterInformer) defaultInformer(client versioned.Interface, resyncP
 }
 
 func (f *cronMasterInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&appsv1alpha1.CronMaster{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisappsv1alpha1.CronMaster{}, f.defaultInformer)
 }
 
-func (f *cronMasterInformer) Lister() v1alpha1.CronMasterLister {
-	return v1alpha1.NewCronMasterLister(f.Informer().GetIndexer())
+func (f *cronMasterInformer) Lister() appsv1alpha1.CronMasterLister {
+	return appsv1alpha1.NewCronMasterLister(f.Informer().GetIndexer())
 }

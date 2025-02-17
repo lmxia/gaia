@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // CronMasterLister helps list CronMasters.
@@ -30,7 +30,7 @@ import (
 type CronMasterLister interface {
 	// List lists all CronMasters in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.CronMaster, err error)
+	List(selector labels.Selector) (ret []*appsv1alpha1.CronMaster, err error)
 	// CronMasters returns an object that can list and get CronMasters.
 	CronMasters(namespace string) CronMasterNamespaceLister
 	CronMasterListerExpansion
@@ -38,25 +38,17 @@ type CronMasterLister interface {
 
 // cronMasterLister implements the CronMasterLister interface.
 type cronMasterLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*appsv1alpha1.CronMaster]
 }
 
 // NewCronMasterLister returns a new CronMasterLister.
 func NewCronMasterLister(indexer cache.Indexer) CronMasterLister {
-	return &cronMasterLister{indexer: indexer}
-}
-
-// List lists all CronMasters in the indexer.
-func (s *cronMasterLister) List(selector labels.Selector) (ret []*v1alpha1.CronMaster, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.CronMaster))
-	})
-	return ret, err
+	return &cronMasterLister{listers.New[*appsv1alpha1.CronMaster](indexer, appsv1alpha1.Resource("cronmaster"))}
 }
 
 // CronMasters returns an object that can list and get CronMasters.
 func (s *cronMasterLister) CronMasters(namespace string) CronMasterNamespaceLister {
-	return cronMasterNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return cronMasterNamespaceLister{listers.NewNamespaced[*appsv1alpha1.CronMaster](s.ResourceIndexer, namespace)}
 }
 
 // CronMasterNamespaceLister helps list and get CronMasters.
@@ -64,36 +56,15 @@ func (s *cronMasterLister) CronMasters(namespace string) CronMasterNamespaceList
 type CronMasterNamespaceLister interface {
 	// List lists all CronMasters in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.CronMaster, err error)
+	List(selector labels.Selector) (ret []*appsv1alpha1.CronMaster, err error)
 	// Get retrieves the CronMaster from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.CronMaster, error)
+	Get(name string) (*appsv1alpha1.CronMaster, error)
 	CronMasterNamespaceListerExpansion
 }
 
 // cronMasterNamespaceLister implements the CronMasterNamespaceLister
 // interface.
 type cronMasterNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all CronMasters in the indexer for a given namespace.
-func (s cronMasterNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.CronMaster, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.CronMaster))
-	})
-	return ret, err
-}
-
-// Get retrieves the CronMaster from the indexer for a given namespace and name.
-func (s cronMasterNamespaceLister) Get(name string) (*v1alpha1.CronMaster, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("cronmaster"), name)
-	}
-	return obj.(*v1alpha1.CronMaster), nil
+	listers.ResourceIndexer[*appsv1alpha1.CronMaster]
 }

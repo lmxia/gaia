@@ -19,12 +19,14 @@ limitations under the License.
 package versioned
 
 import (
-	"fmt"
+	fmt "fmt"
+	http "net/http"
 
 	appsv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
 	clusterv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/cluster/v1alpha1"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/platform/v1alpha1"
 	servicev1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/service/v1alpha1"
+	storagev1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/storage/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -36,16 +38,17 @@ type Interface interface {
 	ClusterV1alpha1() clusterv1alpha1.ClusterV1alpha1Interface
 	PlatformV1alpha1() platformv1alpha1.PlatformV1alpha1Interface
 	ServiceV1alpha1() servicev1alpha1.ServiceV1alpha1Interface
+	StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface
 }
 
-// Clientset contains the clients for groups. Each group has exactly one
-// version included in a Clientset.
+// Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	appsV1alpha1     *appsv1alpha1.AppsV1alpha1Client
 	clusterV1alpha1  *clusterv1alpha1.ClusterV1alpha1Client
 	platformV1alpha1 *platformv1alpha1.PlatformV1alpha1Client
 	serviceV1alpha1  *servicev1alpha1.ServiceV1alpha1Client
+	storageV1alpha1  *storagev1alpha1.StorageV1alpha1Client
 }
 
 // AppsV1alpha1 retrieves the AppsV1alpha1Client
@@ -68,6 +71,11 @@ func (c *Clientset) ServiceV1alpha1() servicev1alpha1.ServiceV1alpha1Interface {
 	return c.serviceV1alpha1
 }
 
+// StorageV1alpha1 retrieves the StorageV1alpha1Client
+func (c *Clientset) StorageV1alpha1() storagev1alpha1.StorageV1alpha1Interface {
+	return c.storageV1alpha1
+}
+
 // Discovery retrieves the DiscoveryClient
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	if c == nil {
@@ -79,7 +87,29 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 // NewForConfig creates a new Clientset for the given config.
 // If config's RateLimiter is not set and QPS and Burst are acceptable,
 // NewForConfig will generate a rate-limiter in configShallowCopy.
+// NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
+// where httpClient was generated with rest.HTTPClientFor(c).
 func NewForConfig(c *rest.Config) (*Clientset, error) {
+	configShallowCopy := *c
+
+	if configShallowCopy.UserAgent == "" {
+		configShallowCopy.UserAgent = rest.DefaultKubernetesUserAgent()
+	}
+
+	// share the transport between all clients
+	httpClient, err := rest.HTTPClientFor(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewForConfigAndClient(&configShallowCopy, httpClient)
+}
+
+// NewForConfigAndClient creates a new Clientset for the given config and http client.
+// Note the http client provided takes precedence over the configured transport values.
+// If config's RateLimiter is not set and QPS and Burst are acceptable,
+// NewForConfigAndClient will generate a rate-limiter in configShallowCopy.
+func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset, error) {
 	configShallowCopy := *c
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
 		if configShallowCopy.Burst <= 0 {
@@ -87,26 +117,31 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 		}
 		configShallowCopy.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(configShallowCopy.QPS, configShallowCopy.Burst)
 	}
+
 	var cs Clientset
 	var err error
-	cs.appsV1alpha1, err = appsv1alpha1.NewForConfig(&configShallowCopy)
+	cs.appsV1alpha1, err = appsv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
-	cs.clusterV1alpha1, err = clusterv1alpha1.NewForConfig(&configShallowCopy)
+	cs.clusterV1alpha1, err = clusterv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
-	cs.platformV1alpha1, err = platformv1alpha1.NewForConfig(&configShallowCopy)
+	cs.platformV1alpha1, err = platformv1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
-	cs.serviceV1alpha1, err = servicev1alpha1.NewForConfig(&configShallowCopy)
+	cs.serviceV1alpha1, err = servicev1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
+	cs.storageV1alpha1, err = storagev1alpha1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
 
-	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfig(&configShallowCopy)
+	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -116,14 +151,11 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // NewForConfigOrDie creates a new Clientset for the given config and
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
-	var cs Clientset
-	cs.appsV1alpha1 = appsv1alpha1.NewForConfigOrDie(c)
-	cs.clusterV1alpha1 = clusterv1alpha1.NewForConfigOrDie(c)
-	cs.platformV1alpha1 = platformv1alpha1.NewForConfigOrDie(c)
-	cs.serviceV1alpha1 = servicev1alpha1.NewForConfigOrDie(c)
-
-	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
-	return &cs
+	cs, err := NewForConfig(c)
+	if err != nil {
+		panic(err)
+	}
+	return cs
 }
 
 // New creates a new Clientset for the given RESTClient.
@@ -133,6 +165,7 @@ func New(c rest.Interface) *Clientset {
 	cs.clusterV1alpha1 = clusterv1alpha1.New(c)
 	cs.platformV1alpha1 = platformv1alpha1.New(c)
 	cs.serviceV1alpha1 = servicev1alpha1.New(c)
+	cs.storageV1alpha1 = storagev1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

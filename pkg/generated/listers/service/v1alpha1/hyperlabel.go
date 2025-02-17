@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/lmxia/gaia/pkg/apis/service/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	servicev1alpha1 "github.com/lmxia/gaia/pkg/apis/service/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // HyperLabelLister helps list HyperLabels.
@@ -30,7 +30,7 @@ import (
 type HyperLabelLister interface {
 	// List lists all HyperLabels in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.HyperLabel, err error)
+	List(selector labels.Selector) (ret []*servicev1alpha1.HyperLabel, err error)
 	// HyperLabels returns an object that can list and get HyperLabels.
 	HyperLabels(namespace string) HyperLabelNamespaceLister
 	HyperLabelListerExpansion
@@ -38,25 +38,17 @@ type HyperLabelLister interface {
 
 // hyperLabelLister implements the HyperLabelLister interface.
 type hyperLabelLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*servicev1alpha1.HyperLabel]
 }
 
 // NewHyperLabelLister returns a new HyperLabelLister.
 func NewHyperLabelLister(indexer cache.Indexer) HyperLabelLister {
-	return &hyperLabelLister{indexer: indexer}
-}
-
-// List lists all HyperLabels in the indexer.
-func (s *hyperLabelLister) List(selector labels.Selector) (ret []*v1alpha1.HyperLabel, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.HyperLabel))
-	})
-	return ret, err
+	return &hyperLabelLister{listers.New[*servicev1alpha1.HyperLabel](indexer, servicev1alpha1.Resource("hyperlabel"))}
 }
 
 // HyperLabels returns an object that can list and get HyperLabels.
 func (s *hyperLabelLister) HyperLabels(namespace string) HyperLabelNamespaceLister {
-	return hyperLabelNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return hyperLabelNamespaceLister{listers.NewNamespaced[*servicev1alpha1.HyperLabel](s.ResourceIndexer, namespace)}
 }
 
 // HyperLabelNamespaceLister helps list and get HyperLabels.
@@ -64,36 +56,15 @@ func (s *hyperLabelLister) HyperLabels(namespace string) HyperLabelNamespaceList
 type HyperLabelNamespaceLister interface {
 	// List lists all HyperLabels in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.HyperLabel, err error)
+	List(selector labels.Selector) (ret []*servicev1alpha1.HyperLabel, err error)
 	// Get retrieves the HyperLabel from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.HyperLabel, error)
+	Get(name string) (*servicev1alpha1.HyperLabel, error)
 	HyperLabelNamespaceListerExpansion
 }
 
 // hyperLabelNamespaceLister implements the HyperLabelNamespaceLister
 // interface.
 type hyperLabelNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all HyperLabels in the indexer for a given namespace.
-func (s hyperLabelNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.HyperLabel, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.HyperLabel))
-	})
-	return ret, err
-}
-
-// Get retrieves the HyperLabel from the indexer for a given namespace and name.
-func (s hyperLabelNamespaceLister) Get(name string) (*v1alpha1.HyperLabel, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("hyperlabel"), name)
-	}
-	return obj.(*v1alpha1.HyperLabel), nil
+	listers.ResourceIndexer[*servicev1alpha1.HyperLabel]
 }

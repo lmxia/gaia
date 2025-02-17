@@ -40,7 +40,7 @@ type Controller struct {
 	// means we can ensure we only process a fixed amount of resources at a
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
-	workqueue workqueue.RateLimitingInterface
+	workqueue workqueue.TypedRateLimitingInterface[string]
 
 	SyncHandler SyncHandlerFunc
 }
@@ -57,8 +57,10 @@ func NewController(gaiaClient gaiaClientSet.Interface,
 		gaiaClient: gaiaClient,
 		crrsLister: crrsInformer.Lister(),
 		crrsSynced: crrsInformer.Informer().HasSynced,
-		workqueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(),
-			"cluster-registration-requests"),
+		workqueue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{Name: "cluster-registration-requests"},
+		),
 		SyncHandler: syncHandler,
 	}
 
@@ -156,7 +158,7 @@ func (c *Controller) processNextWorkItem() bool {
 	}
 
 	// We wrap this block in a func so we can defer c.workqueue.Done.
-	err := func(obj interface{}) error {
+	err := func(obj string) error {
 		// We call Done here so the workqueue knows we have finished
 		// processing this item. We also must remember to call Forget if we
 		// do not want this work item being re-queued. For example, we do
@@ -164,32 +166,17 @@ func (c *Controller) processNextWorkItem() bool {
 		// put back on the workqueue and attempted again after a back-off
 		// period.
 		defer c.workqueue.Done(obj)
-		var key string
-		var ok bool
-		// We expect strings to come off the workqueue. These are of the
-		// form namespace/name. We do this as the delayed nature of the
-		// workqueue means the items in the informer cache may actually be
-		// more up to date that when the item was initially put onto the
-		// workqueue.
-		if key, ok = obj.(string); !ok {
-			// As the item in the workqueue is actually invalid, we call
-			// Forget here else we'd go into a loop of attempting to
-			// process a work item that is invalid.
-			c.workqueue.Forget(obj)
-			utilruntime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
-			return nil
-		}
 		// Run the syncHandler, passing it the namespace/name string of the
 		// ClusterRegistrationRequest resource to be synced.
-		if err := c.syncHandler(key); err != nil {
+		if err := c.syncHandler(obj); err != nil {
 			// Put the item back on the workqueue to handle any transient errors.
-			c.workqueue.AddRateLimited(key)
-			return fmt.Errorf("error syncing '%s': %s, requeuing", key, err.Error())
+			c.workqueue.AddRateLimited(obj)
+			return fmt.Errorf("error syncing '%s': %s, requeuing", obj, err.Error())
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		klog.Infof("successfully synced ClusterRegistrationRequest %q", key)
+		klog.Infof("successfully synced ClusterRegistrationRequest %q", obj)
 		return nil
 	}(obj)
 	if err != nil {
@@ -263,7 +250,7 @@ func (c *Controller) UpdateCRRStatus(crr *clusterapi.ClusterRegistrationRequest,
 			crr, metav1.UpdateOptions{})
 		if err == nil {
 			klog.V(4).Infof("successfully update status of ClusterRegistrationRequest %q to %q",
-				crr.Name, status.Result)
+				crr.Name, *status.Result)
 			return nil
 		}
 

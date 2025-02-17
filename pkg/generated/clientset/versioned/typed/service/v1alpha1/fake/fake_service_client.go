@@ -29,7 +29,7 @@ type FakeServiceV1alpha1 struct {
 }
 
 func (c *FakeServiceV1alpha1) HyperLabels(namespace string) v1alpha1.HyperLabelInterface {
-	return &FakeHyperLabels{c, namespace}
+	return newFakeHyperLabels(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

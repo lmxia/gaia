@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	servicev1alpha1 "github.com/lmxia/gaia/pkg/apis/service/v1alpha1"
+	apisservicev1alpha1 "github.com/lmxia/gaia/pkg/apis/service/v1alpha1"
 	versioned "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/lmxia/gaia/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/service/v1alpha1"
+	servicev1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/service/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // HyperLabels.
 type HyperLabelInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.HyperLabelLister
+	Lister() servicev1alpha1.HyperLabelLister
 }
 
 type hyperLabelInformer struct {
@@ -62,16 +62,28 @@ func NewFilteredHyperLabelInformer(client versioned.Interface, namespace string,
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ServiceV1alpha1().HyperLabels(namespace).List(context.TODO(), options)
+				return client.ServiceV1alpha1().HyperLabels(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ServiceV1alpha1().HyperLabels(namespace).Watch(context.TODO(), options)
+				return client.ServiceV1alpha1().HyperLabels(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ServiceV1alpha1().HyperLabels(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ServiceV1alpha1().HyperLabels(namespace).Watch(ctx, options)
 			},
 		},
-		&servicev1alpha1.HyperLabel{},
+		&apisservicev1alpha1.HyperLabel{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +94,9 @@ func (f *hyperLabelInformer) defaultInformer(client versioned.Interface, resyncP
 }
 
 func (f *hyperLabelInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&servicev1alpha1.HyperLabel{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisservicev1alpha1.HyperLabel{}, f.defaultInformer)
 }
 
-func (f *hyperLabelInformer) Lister() v1alpha1.HyperLabelLister {
-	return v1alpha1.NewHyperLabelLister(f.Informer().GetIndexer())
+func (f *hyperLabelInformer) Lister() servicev1alpha1.HyperLabelLister {
+	return servicev1alpha1.NewHyperLabelLister(f.Informer().GetIndexer())
 }

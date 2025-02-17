@@ -29,7 +29,7 @@ type FakeClusterV1alpha1 struct {
 }
 
 func (c *FakeClusterV1alpha1) Hypernodes(namespace string) v1alpha1.HypernodeInterface {
-	return &FakeHypernodes{c, namespace}
+	return newFakeHypernodes(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

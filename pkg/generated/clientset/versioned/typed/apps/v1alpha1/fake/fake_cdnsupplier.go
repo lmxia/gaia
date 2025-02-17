@@ -19,124 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	appsv1alpha1 "github.com/lmxia/gaia/pkg/generated/clientset/versioned/typed/apps/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeCdnSuppliers implements CdnSupplierInterface
-type FakeCdnSuppliers struct {
+// fakeCdnSuppliers implements CdnSupplierInterface
+type fakeCdnSuppliers struct {
+	*gentype.FakeClientWithList[*v1alpha1.CdnSupplier, *v1alpha1.CdnSupplierList]
 	Fake *FakeAppsV1alpha1
-	ns   string
 }
 
-var cdnsuppliersResource = schema.GroupVersionResource{Group: "apps.gaia.io", Version: "v1alpha1", Resource: "cdnsuppliers"}
-
-var cdnsuppliersKind = schema.GroupVersionKind{Group: "apps.gaia.io", Version: "v1alpha1", Kind: "CdnSupplier"}
-
-// Get takes name of the cdnSupplier, and returns the corresponding cdnSupplier object, and an error if there is any.
-func (c *FakeCdnSuppliers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.CdnSupplier, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(cdnsuppliersResource, c.ns, name), &v1alpha1.CdnSupplier{})
-
-	if obj == nil {
-		return nil, err
+func newFakeCdnSuppliers(fake *FakeAppsV1alpha1, namespace string) appsv1alpha1.CdnSupplierInterface {
+	return &fakeCdnSuppliers{
+		gentype.NewFakeClientWithList[*v1alpha1.CdnSupplier, *v1alpha1.CdnSupplierList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("cdnsuppliers"),
+			v1alpha1.SchemeGroupVersion.WithKind("CdnSupplier"),
+			func() *v1alpha1.CdnSupplier { return &v1alpha1.CdnSupplier{} },
+			func() *v1alpha1.CdnSupplierList { return &v1alpha1.CdnSupplierList{} },
+			func(dst, src *v1alpha1.CdnSupplierList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.CdnSupplierList) []*v1alpha1.CdnSupplier {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.CdnSupplierList, items []*v1alpha1.CdnSupplier) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.CdnSupplier), err
-}
-
-// List takes label and field selectors, and returns the list of CdnSuppliers that match those selectors.
-func (c *FakeCdnSuppliers) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.CdnSupplierList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(cdnsuppliersResource, cdnsuppliersKind, c.ns, opts), &v1alpha1.CdnSupplierList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.CdnSupplierList{ListMeta: obj.(*v1alpha1.CdnSupplierList).ListMeta}
-	for _, item := range obj.(*v1alpha1.CdnSupplierList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested cdnSuppliers.
-func (c *FakeCdnSuppliers) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(cdnsuppliersResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a cdnSupplier and creates it.  Returns the server's representation of the cdnSupplier, and an error, if there is any.
-func (c *FakeCdnSuppliers) Create(ctx context.Context, cdnSupplier *v1alpha1.CdnSupplier, opts v1.CreateOptions) (result *v1alpha1.CdnSupplier, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(cdnsuppliersResource, c.ns, cdnSupplier), &v1alpha1.CdnSupplier{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.CdnSupplier), err
-}
-
-// Update takes the representation of a cdnSupplier and updates it. Returns the server's representation of the cdnSupplier, and an error, if there is any.
-func (c *FakeCdnSuppliers) Update(ctx context.Context, cdnSupplier *v1alpha1.CdnSupplier, opts v1.UpdateOptions) (result *v1alpha1.CdnSupplier, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(cdnsuppliersResource, c.ns, cdnSupplier), &v1alpha1.CdnSupplier{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.CdnSupplier), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeCdnSuppliers) UpdateStatus(ctx context.Context, cdnSupplier *v1alpha1.CdnSupplier, opts v1.UpdateOptions) (*v1alpha1.CdnSupplier, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(cdnsuppliersResource, "status", c.ns, cdnSupplier), &v1alpha1.CdnSupplier{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.CdnSupplier), err
-}
-
-// Delete takes name of the cdnSupplier and deletes it. Returns an error if one occurs.
-func (c *FakeCdnSuppliers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(cdnsuppliersResource, c.ns, name), &v1alpha1.CdnSupplier{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeCdnSuppliers) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(cdnsuppliersResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.CdnSupplierList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched cdnSupplier.
-func (c *FakeCdnSuppliers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.CdnSupplier, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(cdnsuppliersResource, c.ns, name, pt, data, subresources...), &v1alpha1.CdnSupplier{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.CdnSupplier), err
 }

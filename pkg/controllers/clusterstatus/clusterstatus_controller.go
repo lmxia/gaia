@@ -21,7 +21,7 @@ import (
 	corev1lister "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	utilpointer "k8s.io/utils/pointer"
+	utilpointer "k8s.io/utils/ptr"
 
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
 	clusterapi "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
@@ -170,7 +170,7 @@ func (c *Controller) collectingClusterStatus(ctx context.Context) {
 	status.Capacity = capacity
 	status.Available = available
 	status.NodesResources = nodesAllRes
-	status.HeartbeatFrequencySeconds = utilpointer.Int64(int64(c.heartbeatFrequency.Seconds()))
+	status.HeartbeatFrequencySeconds = utilpointer.To(int64(c.heartbeatFrequency.Seconds()))
 	status.Conditions = []metav1.Condition{c.getCondition(status)}
 	status.TopologyInfo = topoInfo
 	c.setClusterStatus(status)

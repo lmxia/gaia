@@ -9,7 +9,6 @@ import (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope="Namespaced",shortName=hyperlabel,categories=gaia
-// +k8s:openapi-gen=true
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 type HyperLabel struct {
 	metav1.TypeMeta   `json:",inline"`

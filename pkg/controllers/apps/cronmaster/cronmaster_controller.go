@@ -43,7 +43,7 @@ var (
 // Controller is a controller for cronMaster.
 // It is local cluster controller
 type Controller struct {
-	queue workqueue.RateLimitingInterface
+	queue workqueue.TypedRateLimitingInterface[string]
 	// recorder record.EventRecorder
 
 	dynamicClient dynamic.Interface
@@ -72,7 +72,10 @@ func NewController(gaiaClient gaiaClientSet.Interface, kubeClient kubernetes.Int
 	}
 	cronInformer := gaiaInformerFactory.Apps().V1alpha1().CronMasters()
 	c := &Controller{
-		queue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "cronmaster"),
+		queue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{Name: "cronmaster"},
+		),
 		restMapper: restmapper.NewDeferredDiscoveryRESTMapper(cacheddiscovery.NewMemCacheClient(
 			kubeClient.Discovery())),
 		dynamicClient:        localDynamicClient,
@@ -133,10 +136,10 @@ func (c *Controller) processNextWorkItem() bool {
 	}
 	defer c.queue.Done(key)
 
-	requeueAfter, err := c.sync(key.(string))
+	requeueAfter, err := c.sync(key)
 	switch {
 	case err != nil:
-		utilruntime.HandleError(fmt.Errorf("error syncing CronMasterController %v, requeuing: %v", key.(string), err))
+		utilruntime.HandleError(fmt.Errorf("error syncing CronMasterController %v, requeuing: %v", key, err))
 		c.queue.AddRateLimited(key)
 	case requeueAfter != nil:
 		c.queue.Forget(key)

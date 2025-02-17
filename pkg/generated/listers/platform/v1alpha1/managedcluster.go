@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ManagedClusterLister helps list ManagedClusters.
@@ -30,7 +30,7 @@ import (
 type ManagedClusterLister interface {
 	// List lists all ManagedClusters in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ManagedCluster, err error)
+	List(selector labels.Selector) (ret []*platformv1alpha1.ManagedCluster, err error)
 	// ManagedClusters returns an object that can list and get ManagedClusters.
 	ManagedClusters(namespace string) ManagedClusterNamespaceLister
 	ManagedClusterListerExpansion
@@ -38,25 +38,17 @@ type ManagedClusterLister interface {
 
 // managedClusterLister implements the ManagedClusterLister interface.
 type managedClusterLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*platformv1alpha1.ManagedCluster]
 }
 
 // NewManagedClusterLister returns a new ManagedClusterLister.
 func NewManagedClusterLister(indexer cache.Indexer) ManagedClusterLister {
-	return &managedClusterLister{indexer: indexer}
-}
-
-// List lists all ManagedClusters in the indexer.
-func (s *managedClusterLister) List(selector labels.Selector) (ret []*v1alpha1.ManagedCluster, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ManagedCluster))
-	})
-	return ret, err
+	return &managedClusterLister{listers.New[*platformv1alpha1.ManagedCluster](indexer, platformv1alpha1.Resource("managedcluster"))}
 }
 
 // ManagedClusters returns an object that can list and get ManagedClusters.
 func (s *managedClusterLister) ManagedClusters(namespace string) ManagedClusterNamespaceLister {
-	return managedClusterNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return managedClusterNamespaceLister{listers.NewNamespaced[*platformv1alpha1.ManagedCluster](s.ResourceIndexer, namespace)}
 }
 
 // ManagedClusterNamespaceLister helps list and get ManagedClusters.
@@ -64,36 +56,15 @@ func (s *managedClusterLister) ManagedClusters(namespace string) ManagedClusterN
 type ManagedClusterNamespaceLister interface {
 	// List lists all ManagedClusters in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ManagedCluster, err error)
+	List(selector labels.Selector) (ret []*platformv1alpha1.ManagedCluster, err error)
 	// Get retrieves the ManagedCluster from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.ManagedCluster, error)
+	Get(name string) (*platformv1alpha1.ManagedCluster, error)
 	ManagedClusterNamespaceListerExpansion
 }
 
 // managedClusterNamespaceLister implements the ManagedClusterNamespaceLister
 // interface.
 type managedClusterNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all ManagedClusters in the indexer for a given namespace.
-func (s managedClusterNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.ManagedCluster, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ManagedCluster))
-	})
-	return ret, err
-}
-
-// Get retrieves the ManagedCluster from the indexer for a given namespace and name.
-func (s managedClusterNamespaceLister) Get(name string) (*v1alpha1.ManagedCluster, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("managedcluster"), name)
-	}
-	return obj.(*v1alpha1.ManagedCluster), nil
+	listers.ResourceIndexer[*platformv1alpha1.ManagedCluster]
 }

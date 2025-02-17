@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // TargetLister helps list Targets.
@@ -30,39 +30,19 @@ import (
 type TargetLister interface {
 	// List lists all Targets in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.Target, err error)
+	List(selector labels.Selector) (ret []*platformv1alpha1.Target, err error)
 	// Get retrieves the Target from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.Target, error)
+	Get(name string) (*platformv1alpha1.Target, error)
 	TargetListerExpansion
 }
 
 // targetLister implements the TargetLister interface.
 type targetLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*platformv1alpha1.Target]
 }
 
 // NewTargetLister returns a new TargetLister.
 func NewTargetLister(indexer cache.Indexer) TargetLister {
-	return &targetLister{indexer: indexer}
-}
-
-// List lists all Targets in the indexer.
-func (s *targetLister) List(selector labels.Selector) (ret []*v1alpha1.Target, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Target))
-	})
-	return ret, err
-}
-
-// Get retrieves the Target from the index for a given name.
-func (s *targetLister) Get(name string) (*v1alpha1.Target, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("target"), name)
-	}
-	return obj.(*v1alpha1.Target), nil
+	return &targetLister{listers.New[*platformv1alpha1.Target](indexer, platformv1alpha1.Resource("target"))}
 }

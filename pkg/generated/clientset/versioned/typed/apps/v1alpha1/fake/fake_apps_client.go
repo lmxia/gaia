@@ -29,31 +29,31 @@ type FakeAppsV1alpha1 struct {
 }
 
 func (c *FakeAppsV1alpha1) CdnSuppliers(namespace string) v1alpha1.CdnSupplierInterface {
-	return &FakeCdnSuppliers{c, namespace}
+	return newFakeCdnSuppliers(c, namespace)
 }
 
 func (c *FakeAppsV1alpha1) CronMasters(namespace string) v1alpha1.CronMasterInterface {
-	return &FakeCronMasters{c, namespace}
+	return newFakeCronMasters(c, namespace)
 }
 
 func (c *FakeAppsV1alpha1) Descriptions(namespace string) v1alpha1.DescriptionInterface {
-	return &FakeDescriptions{c, namespace}
+	return newFakeDescriptions(c, namespace)
 }
 
 func (c *FakeAppsV1alpha1) Frontends(namespace string) v1alpha1.FrontendInterface {
-	return &FakeFrontends{c, namespace}
+	return newFakeFrontends(c, namespace)
 }
 
 func (c *FakeAppsV1alpha1) NetworkRequirements(namespace string) v1alpha1.NetworkRequirementInterface {
-	return &FakeNetworkRequirements{c, namespace}
+	return newFakeNetworkRequirements(c, namespace)
 }
 
 func (c *FakeAppsV1alpha1) ResourceBindings(namespace string) v1alpha1.ResourceBindingInterface {
-	return &FakeResourceBindings{c, namespace}
+	return newFakeResourceBindings(c, namespace)
 }
 
 func (c *FakeAppsV1alpha1) UserAPPs(namespace string) v1alpha1.UserAPPInterface {
-	return &FakeUserAPPs{c, namespace}
+	return newFakeUserAPPs(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

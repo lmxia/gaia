@@ -23,6 +23,7 @@ import (
 	clusterv1alpha1 "github.com/lmxia/gaia/pkg/apis/cluster/v1alpha1"
 	platformv1alpha1 "github.com/lmxia/gaia/pkg/apis/platform/v1alpha1"
 	servicev1alpha1 "github.com/lmxia/gaia/pkg/apis/service/v1alpha1"
+	storagev1alpha1 "github.com/lmxia/gaia/pkg/apis/storage/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -38,6 +39,7 @@ var localSchemeBuilder = runtime.SchemeBuilder{
 	clusterv1alpha1.AddToScheme,
 	platformv1alpha1.AddToScheme,
 	servicev1alpha1.AddToScheme,
+	storagev1alpha1.AddToScheme,
 }
 
 // AddToScheme adds all types of this clientset into the given scheme. This allows composition

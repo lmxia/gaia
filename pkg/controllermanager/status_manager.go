@@ -144,7 +144,7 @@ func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterI
 		if updateMCError == nil {
 			mgr.managedCluster = mcls
 		} else {
-			klog.Warning("failed to update labels of ManagedCluster: %v", updateMCError)
+			klog.V(4).Infof("failed to update labels of ManagedCluster: %v", updateMCError)
 		}
 
 		mgr.managedCluster.Status = *status
@@ -164,7 +164,7 @@ func (mgr *Manager) updateClusterStatus(ctx context.Context, namespace, clusterI
 		return false, nil
 	})
 	if err != nil {
-		klog.WarningDepth(2, "failed to update status of ManagedCluster: %v", lastError)
+		klog.WarningfDepth(2, "failed to update status of ManagedCluster: %v", lastError)
 	}
 }
 
@@ -200,8 +200,8 @@ func (mgr *Manager) modifyDescStatusForAbnormalPods(ctx context.Context, namespa
 		desc.Status.Phase = appsapi.DescriptionPhaseReSchedule
 		err := utils.UpdateDescriptionStatus(client, desc)
 		if err != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
-				desc.Namespace, desc.Name, err)
+			klog.WarningfDepth(2, "failed to update status of description's status phase: %s/%s, err is"+
+				" %v", desc.Namespace, desc.Name, err)
 		}
 		klog.V(5).Infof("Update the status phase of the desc(%v/%v) to %s successfully.",
 			namespace, descName, appsapi.DescriptionPhaseReSchedule)

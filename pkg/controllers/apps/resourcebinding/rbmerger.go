@@ -229,11 +229,11 @@ func (m *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding
 				m.clustersRBsOfOneFieldRB[indexFieldRB] = &ClustersRBs{}
 
 				// add debug log for map content
-				klog.V(5).Infof(fmt.Sprintf("m.parentRBsOfDescUID[%s]:\n   %+v\n", descUID,
-					m.parentRBsOfDescUID[UID(descUID)]))
+				klog.V(5).Infof("m.parentRBsOfDescUID[%s]:\n   %+v\n", descUID,
+					m.parentRBsOfDescUID[UID(descUID)])
 				for _, indexParentRB := range m.parentRBsOfDescUID[UID(descUID)] {
-					klog.V(5).Infof(fmt.Sprintf("m.fieldsRBOfOneParentRB[%s]:\n   %+v\n", indexParentRB,
-						m.fieldsRBOfOneParentRB[indexParentRB]))
+					klog.V(5).Infof("m.fieldsRBOfOneParentRB[%s]:\n   %+v\n", indexParentRB,
+						m.fieldsRBOfOneParentRB[indexParentRB])
 				}
 
 				for _, rbApp := range rb.Spec.RbApps {
@@ -253,11 +253,11 @@ func (m *RBMerger) handleToParentResourceBinding(rb *appV1alpha1.ResourceBinding
 					append(m.fieldsRBOfOneParentRB[indexParentRB].rbsOfFields, m.clustersRBsOfOneFieldRB[indexFieldRB])
 				m.fieldsRBOfOneParentRB[indexParentRB].Unlock()
 				// add debug log for map content
-				klog.V(5).Infof(fmt.Sprintf("after added: m.parentRBsOfDescUID[%s]:\n   %+v\n",
-					descUID, m.parentRBsOfDescUID[UID(descUID)]))
+				klog.V(5).Infof("after added: m.parentRBsOfDescUID[%s]:\n   %+v\n",
+					descUID, m.parentRBsOfDescUID[UID(descUID)])
 				for _, indexParentRB := range m.parentRBsOfDescUID[UID(descUID)] {
-					klog.V(5).Infof(fmt.Sprintf("after added: m.fieldsRBOfOneParentRB[%s]:\n   %+v\n",
-						indexParentRB, m.fieldsRBOfOneParentRB[indexParentRB]))
+					klog.V(5).Infof("after added: m.fieldsRBOfOneParentRB[%s]:\n   %+v\n",
+						indexParentRB, m.fieldsRBOfOneParentRB[indexParentRB])
 				}
 
 				// process parentRBsOfDescUID: map[descUID][descUID-parentRBName...]
@@ -363,11 +363,11 @@ func (m *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding)
 		m.clustersRBsOfOneFieldRB[indexFieldRB] = &ClustersRBs{}
 
 		// add debug log for map content
-		klog.V(5).Infof(fmt.Sprintf("m.parentRBsOfDescUID[%s]:\n   %+v\n", descUID,
-			m.parentRBsOfDescUID[UID(descUID)]))
+		klog.V(5).Infof("m.parentRBsOfDescUID[%s]:\n   %+v\n", descUID,
+			m.parentRBsOfDescUID[UID(descUID)])
 		for _, indexParentRB := range m.parentRBsOfDescUID[UID(descUID)] {
-			klog.V(5).Infof(fmt.Sprintf("m.fieldsRBOfOneParentRB[%s]:\n   %+v\n", indexParentRB,
-				m.fieldsRBOfOneParentRB[indexParentRB]))
+			klog.V(5).Infof("m.fieldsRBOfOneParentRB[%s]:\n   %+v\n", indexParentRB,
+				m.fieldsRBOfOneParentRB[indexParentRB])
 		}
 		for _, rbApp := range rb.Spec.RbApps {
 			m.clustersRBsOfOneFieldRB[indexFieldRB].rbsOfParentRB =
@@ -386,11 +386,11 @@ func (m *RBMerger) handleToLocalResourceBinding(rb *appV1alpha1.ResourceBinding)
 			append(m.fieldsRBOfOneParentRB[indexParentRB].rbsOfFields, m.clustersRBsOfOneFieldRB[indexFieldRB])
 		m.fieldsRBOfOneParentRB[indexParentRB].Unlock()
 		// add debug log for map content
-		klog.V(5).Infof(fmt.Sprintf("after added: m.parentRBsOfDescUID[%s]:\n   %+v\n",
-			descUID, m.parentRBsOfDescUID[UID(descUID)]))
+		klog.V(5).Infof("after added: m.parentRBsOfDescUID[%s]:\n   %+v\n",
+			descUID, m.parentRBsOfDescUID[UID(descUID)])
 		for _, indexParentRB := range m.parentRBsOfDescUID[UID(descUID)] {
-			klog.V(5).Infof(fmt.Sprintf("after added: m.fieldsRBOfOneParentRB[%s]:\n   %+v\n",
-				indexParentRB, m.fieldsRBOfOneParentRB[indexParentRB]))
+			klog.V(5).Infof("after added: m.fieldsRBOfOneParentRB[%s]:\n   %+v\n",
+				indexParentRB, m.fieldsRBOfOneParentRB[indexParentRB])
 		}
 
 		// process parentRBsOfDescUID: map[descUID][descUID-parentRBName...]
@@ -684,11 +684,11 @@ func (m *RBMerger) postMergedRBs(descName string) error {
 
 func (m *RBMerger) canDeleteDescUID(uid string, totalPeer int) bool {
 	if len(m.parentRBsOfDescUID[UID(uid)]) == totalPeer {
-		klog.V(5).Infof(fmt.Sprintf("canDeleteDescUID: m.parentRBsOfDescUID[%s]:\n   %+v\n",
-			uid, m.parentRBsOfDescUID[UID(uid)]))
+		klog.V(5).Infof("canDeleteDescUID: m.parentRBsOfDescUID[%s]:\n   %+v\n",
+			uid, m.parentRBsOfDescUID[UID(uid)])
 		for _, indexParentRB := range m.parentRBsOfDescUID[UID(uid)] {
-			klog.V(5).Infof(fmt.Sprintf("canDeleteDescUID: m.fieldsRBOfOneParentRB[%s]:\n   %+v\n",
-				indexParentRB, m.fieldsRBOfOneParentRB[indexParentRB]))
+			klog.V(5).Infof("canDeleteDescUID: m.fieldsRBOfOneParentRB[%s]:\n   %+v\n",
+				indexParentRB, m.fieldsRBOfOneParentRB[indexParentRB])
 		}
 
 		for _, indexParentRB := range m.parentRBsOfDescUID[UID(uid)] {
@@ -710,8 +710,8 @@ func (m *RBMerger) deleteGlobalDescUID(uid string) {
 		delete(m.fieldsRBOfOneParentRB, indexParentRB)
 	}
 	delete(m.parentRBsOfDescUID, UID(uid))
-	klog.V(5).Infof(fmt.Sprintf("deleteGlobalDescUID: m.parentRBsOfDescUID[%s]:\n   %+v\n",
-		uid, m.parentRBsOfDescUID[UID(uid)]))
+	klog.V(5).Infof("deleteGlobalDescUID: m.parentRBsOfDescUID[%s]:\n   %+v\n",
+		uid, m.parentRBsOfDescUID[UID(uid)])
 }
 
 func (m *RBMerger) deleteFieldDescUID(uid UID, indexParentRB string) {

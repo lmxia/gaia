@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	appsv1alpha1 "github.com/lmxia/gaia/pkg/apis/apps/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // CdnSupplierLister helps list CdnSuppliers.
@@ -30,7 +30,7 @@ import (
 type CdnSupplierLister interface {
 	// List lists all CdnSuppliers in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.CdnSupplier, err error)
+	List(selector labels.Selector) (ret []*appsv1alpha1.CdnSupplier, err error)
 	// CdnSuppliers returns an object that can list and get CdnSuppliers.
 	CdnSuppliers(namespace string) CdnSupplierNamespaceLister
 	CdnSupplierListerExpansion
@@ -38,25 +38,17 @@ type CdnSupplierLister interface {
 
 // cdnSupplierLister implements the CdnSupplierLister interface.
 type cdnSupplierLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*appsv1alpha1.CdnSupplier]
 }
 
 // NewCdnSupplierLister returns a new CdnSupplierLister.
 func NewCdnSupplierLister(indexer cache.Indexer) CdnSupplierLister {
-	return &cdnSupplierLister{indexer: indexer}
-}
-
-// List lists all CdnSuppliers in the indexer.
-func (s *cdnSupplierLister) List(selector labels.Selector) (ret []*v1alpha1.CdnSupplier, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.CdnSupplier))
-	})
-	return ret, err
+	return &cdnSupplierLister{listers.New[*appsv1alpha1.CdnSupplier](indexer, appsv1alpha1.Resource("cdnsupplier"))}
 }
 
 // CdnSuppliers returns an object that can list and get CdnSuppliers.
 func (s *cdnSupplierLister) CdnSuppliers(namespace string) CdnSupplierNamespaceLister {
-	return cdnSupplierNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return cdnSupplierNamespaceLister{listers.NewNamespaced[*appsv1alpha1.CdnSupplier](s.ResourceIndexer, namespace)}
 }
 
 // CdnSupplierNamespaceLister helps list and get CdnSuppliers.
@@ -64,36 +56,15 @@ func (s *cdnSupplierLister) CdnSuppliers(namespace string) CdnSupplierNamespaceL
 type CdnSupplierNamespaceLister interface {
 	// List lists all CdnSuppliers in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.CdnSupplier, err error)
+	List(selector labels.Selector) (ret []*appsv1alpha1.CdnSupplier, err error)
 	// Get retrieves the CdnSupplier from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.CdnSupplier, error)
+	Get(name string) (*appsv1alpha1.CdnSupplier, error)
 	CdnSupplierNamespaceListerExpansion
 }
 
 // cdnSupplierNamespaceLister implements the CdnSupplierNamespaceLister
 // interface.
 type cdnSupplierNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all CdnSuppliers in the indexer for a given namespace.
-func (s cdnSupplierNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.CdnSupplier, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.CdnSupplier))
-	})
-	return ret, err
-}
-
-// Get retrieves the CdnSupplier from the indexer for a given namespace and name.
-func (s cdnSupplierNamespaceLister) Get(name string) (*v1alpha1.CdnSupplier, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("cdnsupplier"), name)
-	}
-	return obj.(*v1alpha1.CdnSupplier), nil
+	listers.ResourceIndexer[*appsv1alpha1.CdnSupplier]
 }

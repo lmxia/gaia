@@ -93,13 +93,13 @@ type Scheduler struct {
 	scheduleAlgorithm algorithm.ScheduleAlgorithm
 
 	// localSchedulingQueue holds description in local namespace to be scheduled
-	localSchedulingQueue workqueue.RateLimitingInterface
+	localSchedulingQueue workqueue.TypedRateLimitingInterface[string]
 
 	// parentSchedulingQueue holds description in parent cluster namespace to be scheduled
-	parentSchedulingQueue workqueue.RateLimitingInterface
+	parentSchedulingQueue workqueue.TypedRateLimitingInterface[string]
 
 	// parentSchedulingRetryQueue holds description in parent cluster namespace to be rescheduled
-	parentSchedulingRetryQueue workqueue.RateLimitingInterface
+	parentSchedulingRetryQueue workqueue.TypedRateLimitingInterface[string]
 
 	framework framework.Framework
 
@@ -164,11 +164,20 @@ func NewSchedule(ctx context.Context, childKubeConfigFile string, opts *option.O
 		childKubeClientSet:       childKubeClientSet,
 
 		// dynamicClient:              dynamicClient,
-		registry:                   plugins.NewInTreeRegistry(),
-		scheduleAlgorithm:          algorithm.NewGenericScheduler(schedulerCache),
-		localSchedulingQueue:       workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
-		parentSchedulingQueue:      workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
-		parentSchedulingRetryQueue: workqueue.NewRateLimitingQueue(workqueue.DefaultItemBasedRateLimiter()),
+		registry:          plugins.NewInTreeRegistry(),
+		scheduleAlgorithm: algorithm.NewGenericScheduler(schedulerCache),
+		localSchedulingQueue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{Name: "localSchedulingQueue"},
+		),
+		parentSchedulingQueue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{Name: "parentSchedulingQueue"},
+		),
+		parentSchedulingRetryQueue: workqueue.NewTypedRateLimitingQueueWithConfig(
+			workqueue.DefaultTypedControllerRateLimiter[string](),
+			workqueue.TypedRateLimitingQueueConfig[string]{Name: "parentSchedulingRetryQueue"},
+		),
 	}
 
 	framework, err := frameworkruntime.NewFramework(sched.registry, getDefaultPlugins(),
@@ -336,7 +345,7 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 
 	// TODO: scheduling
 	// Convert the namespace/name string into a distinct namespace and name
-	ns, name, err := cache.SplitMetaNamespaceKey(key.(string))
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
 		return
@@ -390,8 +399,8 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 		desc.Status.Reason = truncateMessage(err.Error())
 		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 		if err != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
-				desc.Namespace, desc.Name, err)
+			klog.WarningfDepth(2, "failed to update status of description's status phase: %s/%s, err is"+
+				" %v", desc.Namespace, desc.Name, err)
 		}
 		klog.Warningf("scheduler failed %v", err)
 		return
@@ -449,8 +458,8 @@ func (sched *Scheduler) RunLocalScheduler(ctx context.Context) {
 		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 		err = utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 		if err != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
-				desc.Namespace, desc.Name, err)
+			klog.WarningfDepth(2, "failed to update status of description's status phase: %s/%s,"+
+				" err is %v", desc.Namespace, desc.Name, err)
 		}
 		metrics.SchedulingAlgorithmLatency.Observe(metrics.SinceInSeconds(start))
 		metrics.DescriptionScheduled(sched.framework.ProfileName(), metrics.SinceInSeconds(start))
@@ -471,7 +480,7 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 
 	// TODO: scheduling
 	// Convert the namespace/name string into a distinct namespace and name
-	ns, name, err := cache.SplitMetaNamespaceKey(key.(string))
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
 		return
@@ -511,8 +520,8 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 				desc.Status.Reason = truncateMessage(errVN.Error())
 				errU := utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 				if errU != nil {
-					klog.Info("failed to update status of description's status phase: %v/%v, "+
-						"err is ", desc.Namespace, desc.Name, errU)
+					klog.V(4).Infof("failed to update status of description's status phase: %s/%s, "+
+						"err is %v", desc.Namespace, desc.Name, errU)
 				}
 				klog.Warningf("scheduler failed:  %v", errVN)
 				return
@@ -533,8 +542,8 @@ func (sched *Scheduler) RunParentScheduler(ctx context.Context) {
 			desc.Status.Reason = truncateMessage(err2.Error())
 			errU := utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 			if errU != nil {
-				klog.Info("failed to update status of description's status phase: %v/%v, "+
-					"err is ", desc.Namespace, desc.Name, errU)
+				klog.V(4).Infof("failed to update status of description's status phase: %s/%s, "+
+					"err is %v", desc.Namespace, desc.Name, errU)
 			}
 			klog.Warningf("scheduler failed %v", err2)
 			return
@@ -626,7 +635,7 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	defer sched.parentSchedulingRetryQueue.Done(key)
 
 	// Convert the namespace/name string into a distinct namespace and name
-	ns, name, err := cache.SplitMetaNamespaceKey(key.(string))
+	ns, name, err := cache.SplitMetaNamespaceKey(key)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("invalid resource key: %s", key))
 		return
@@ -689,7 +698,7 @@ func (sched *Scheduler) RunParentReScheduler(ctx context.Context) {
 	desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 	err = utils.UpdateDescriptionStatus(sched.parentGaiaClient, desc)
 	if err != nil {
-		klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
+		klog.WarningfDepth(2, "failed to update status of description's status phase: %s/%s, err is %v",
 			desc.Namespace, desc.Name, err)
 	}
 	sched.parentSchedulingRetryQueue.Forget(key)
@@ -1023,8 +1032,8 @@ func (sched *Scheduler) createFrontRBLocal(desc *appsapi.Description, rbs []*app
 		desc.Status.Reason = truncateMessage(err.Error())
 		err2 := utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 		if err2 != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, err is ",
-				desc.Namespace, desc.Name, err2)
+			klog.WarningfDepth(2, "failed to update status of description's status phase: %s/%s,"+
+				" err is %v", desc.Namespace, desc.Name, err2)
 			return err2
 		}
 		return err
@@ -1035,8 +1044,8 @@ func (sched *Scheduler) createFrontRBLocal(desc *appsapi.Description, rbs []*app
 		desc.Status.Phase = appsapi.DescriptionPhaseScheduled
 		err2 := utils.UpdateDescriptionStatus(sched.localGaiaClient, desc)
 		if err2 != nil {
-			klog.WarningDepth(2, "failed to update status of description's status phase: %v/%v, error==%v",
-				desc.Namespace, desc.Name, err2)
+			klog.WarningfDepth(2, "failed to update status of description's status phase: %s/%s,"+
+				" error is %v", desc.Namespace, desc.Name, err2)
 			return err2
 		}
 	}
@@ -1156,9 +1165,9 @@ func transferRB(srcClient, dstClient *gaiaClientSet.Clientset, level, srcNS, dst
 				labels.Set{
 					common.GaiaDescriptionLabel: descName,
 				}).String()})
-		klog.Info("i have try to delete rbs in parent cluster")
+		klog.V(4).Info("i have try to delete rbs in parent cluster")
 		if err != nil {
-			klog.Infof("failed to delete rbs in parent cluster", err)
+			klog.V(4).Infof("failed to delete rbs in parent cluster %v", err)
 		}
 	}
 }

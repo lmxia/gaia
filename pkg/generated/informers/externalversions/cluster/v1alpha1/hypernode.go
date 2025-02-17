@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	clusterv1alpha1 "github.com/lmxia/gaia/pkg/apis/cluster/v1alpha1"
+	apisclusterv1alpha1 "github.com/lmxia/gaia/pkg/apis/cluster/v1alpha1"
 	versioned "github.com/lmxia/gaia/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/lmxia/gaia/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/cluster/v1alpha1"
+	clusterv1alpha1 "github.com/lmxia/gaia/pkg/generated/listers/cluster/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // Hypernodes.
 type HypernodeInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.HypernodeLister
+	Lister() clusterv1alpha1.HypernodeLister
 }
 
 type hypernodeInformer struct {
@@ -62,16 +62,28 @@ func NewFilteredHypernodeInformer(client versioned.Interface, namespace string, 
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ClusterV1alpha1().Hypernodes(namespace).List(context.TODO(), options)
+				return client.ClusterV1alpha1().Hypernodes(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ClusterV1alpha1().Hypernodes(namespace).Watch(context.TODO(), options)
+				return client.ClusterV1alpha1().Hypernodes(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ClusterV1alpha1().Hypernodes(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ClusterV1alpha1().Hypernodes(namespace).Watch(ctx, options)
 			},
 		},
-		&clusterv1alpha1.Hypernode{},
+		&apisclusterv1alpha1.Hypernode{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,9 +94,9 @@ func (f *hypernodeInformer) defaultInformer(client versioned.Interface, resyncPe
 }
 
 func (f *hypernodeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&clusterv1alpha1.Hypernode{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisclusterv1alpha1.Hypernode{}, f.defaultInformer)
 }
 
-func (f *hypernodeInformer) Lister() v1alpha1.HypernodeLister {
-	return v1alpha1.NewHypernodeLister(f.Informer().GetIndexer())
+func (f *hypernodeInformer) Lister() clusterv1alpha1.HypernodeLister {
+	return clusterv1alpha1.NewHypernodeLister(f.Informer().GetIndexer())
 }

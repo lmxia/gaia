@@ -31,7 +31,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/component-base/metrics/legacyregistry"
 	"k8s.io/klog/v2"
-	utilpointer "k8s.io/utils/pointer"
+	utilpointer "k8s.io/utils/ptr"
 
 	hypernodeclientset "github.com/SUMMERLm/hyperNodes/pkg/generated/clientset/versioned"
 	vhostclientset "github.com/SUMMERLm/vhost/pkg/generated/clientset/versioned"
@@ -540,8 +540,8 @@ func (controller *ControllerManager) waitingForApproval(ctx context.Context, cli
 		return err
 	}
 	controller.parentKubeConfig = parentDedicatedKubeConfig
-	controller.DedicatedNamespace = utilpointer.String(crr.Status.DedicatedNamespace)
-	controller.GaiaClusterName = utilpointer.String(crr.Status.ManagedClusterName)
+	controller.DedicatedNamespace = utilpointer.To(crr.Status.DedicatedNamespace)
+	controller.GaiaClusterName = utilpointer.To(crr.Status.ManagedClusterName)
 
 	// once the request gets approved
 	// store auto-populated credentials to Secret "parent-cluster" in "gaia-system" namespace

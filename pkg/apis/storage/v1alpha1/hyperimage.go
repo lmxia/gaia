@@ -25,9 +25,9 @@ type HyperImageItem struct {
 
 type HyperImageTransportInfo struct {
 	// image source, of couse it's in a nfs or some kind network storage path.
-	ImageSource string
+	ImageSource string `json:"imageSource"`
 	// image tag info
-	ImageTag string
+	ImageTag string `json:"imageTag"`
 }
 
 type StatusDeploy string

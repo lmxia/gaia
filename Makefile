@@ -18,7 +18,11 @@ gaia-scheduler:
 	CGO_ENABLED=0 GOOS=linux go build -ldflags "-w -s" -a -installsuffix cgo -o cmd/bin/gaia-scheduler cmd/gaia-scheduler/main.go
 # Generate manifests e.g. CRD, RBAC etc.
 manifests: controller-gen
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./..." output:crd:artifacts:config=../scheduler-stack/charts/gaia/crds/
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/cluster/..." output:crd:dir=../scheduler-stack/charts/gaia/crds/
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/platform/..." output:crd:dir=../scheduler-stack/charts/gaia/crds/
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/service/..." output:crd:dir=../scheduler-stack/charts/gaia/crds/
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/storage/..." output:crd:dir=../scheduler-stack/charts/gaia/crds/
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) paths="./pkg/apis/apps/..." output:crd:dir=../scheduler-stack/charts/gaia/crds/
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -29,7 +33,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.8.0 ;\
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.2 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen
